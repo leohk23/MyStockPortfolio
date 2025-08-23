@@ -32,15 +32,14 @@
     </table>
     <div id="summary"></div>
 
-    <script src="data.js"></script> <!-- Your portfolio data file -->
+    <script src="data.js"></script>
     <script>
-        // Function to fetch current stock price using Yahoo Finance API
         async function getCurrentPrice(yhoo) {
             try {
                 const response = await fetch(`/api/${yhoo}`);
                 const data = await response.json();
+                console.log(`Price data for ${yhoo}:`, data);
                 let price = data.chart.result[0].meta.regularMarketPrice;
-                // Special handling for pence-based tickers
                 if (yhoo === 'SPOL.L') {
                     price /= 100; // Convert pence to GBP
                 }
@@ -51,51 +50,56 @@
             }
         }
 
-        // Function to fetch exchange rate (USD per currency)
         async function getExchangeRate(currency) {
             if (currency === 'USD') return 1;
             try {
                 const response = await fetch(`/api/${currency}USD=X`);
                 const data = await response.json();
-                return data.chart.result[0].meta.regularMarketPrice; // USD per currency unit
+                console.log(`Exchange rate data for ${currency}:`, data);
+                return data.chart.result[0].meta.regularMarketPrice;
             } catch (error) {
                 console.error(`Error fetching rate for ${currency}:`, error);
                 return null;
             }
         }
 
-        // Function to calculate and display portfolio
         async function displayPortfolio() {
+            console.log('Portfolio:', portfolio);
             const tableBody = document.querySelector('#portfolio-table tbody');
             let totalPurchaseValueUSD = 0;
             let totalCurrentValueUSD = 0;
 
-            // Get unique currencies and fetch rates
-            const currencies = [...new Set(portfolio.map(stock => stock.currency))];
+            const currencyMap = portfolio.map(stock => stock.currency === 'Gbpence' ? 'GBP' : stock.currency);
+            const currencies = [...new Set(currencyMap)];
+            console.log('Currencies:', currencies);
             const rates = {};
             for (const c of currencies) {
                 rates[c] = await getExchangeRate(c);
-                if (rates[c] === null) return; // Skip if rate fetch fails
+                console.log(`Rate for ${c}:`, rates[c]);
+                if (rates[c] === null) {
+                    console.error(`Failed to fetch rate for ${c}, using 1 as fallback`);
+                    rates[c] = 1; // Fallback to avoid skipping all stocks
+                }
             }
 
             for (const stock of portfolio) {
-                // Handle special currency cases
                 let effectiveCurrency = stock.currency;
                 let effectivePurchasePrice = stock.purchasePrice;
                 if (stock.currency === 'Gbpence') {
                     effectiveCurrency = 'GBP';
-                    effectivePurchasePrice /= 100; // Convert pence to GBP
+                    effectivePurchasePrice /= 100;
                 }
 
                 const yhoo = stock.yhoo || stock.symbol;
                 let currentPriceLC = await getCurrentPrice(yhoo);
-                if (currentPriceLC === null) continue;
-
-                // Special handling for pence-based tickers if needed (already handled in getCurrentPrice)
+                console.log(`Current price for ${yhoo}:`, currentPriceLC);
+                if (currentPriceLC === null) {
+                    console.error(`Skipping ${yhoo} due to failed price fetch`);
+                    continue;
+                }
 
                 const purchasePriceUSD = effectivePurchasePrice * rates[effectiveCurrency];
                 const currentPriceUSD = currentPriceLC * rates[effectiveCurrency];
-
                 const purchaseValueUSD = stock.quantity * purchasePriceUSD;
                 const currentValueUSD = stock.quantity * currentPriceUSD;
                 const gainLossUSD = currentValueUSD - purchaseValueUSD;
@@ -126,8 +130,7 @@
             `;
         }
 
-        // Call the function on page load
-        displayPortfolio();
+        displayPortfolio().catch(err => console.error('Portfolio display failed:', err));
     </script>
 </body>
 </html>
