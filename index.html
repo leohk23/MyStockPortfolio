@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Stock Portfolio</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+        th { background-color: #f2f2f2; }
+        .gain { color: green; }
+        .loss { color: red; }
+        #summary { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>My Stock Portfolio (Values in USD)</h1>
+    <table id="portfolio-table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Quantity</th>
+                <th>Purchase Price</th>
+                <th>Current Price</th>
+                <th>Value</th>
+                <th>Gain/Loss ($)</th>
+                <th>Gain/Loss (%)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <div id="summary"></div>
+
+    <script src="data.js"></script> <!-- Your portfolio data file -->
+    <script>
+        // Function to fetch current stock price using Yahoo Finance API
+        async function getCurrentPrice(yhoo) {
+            try {
+                const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yhoo}?interval=1d`);
+                const data = await response.json();
+                let price = data.chart.result[0].meta.regularMarketPrice;
+                // Special handling for pence-based tickers
+                if (yhoo === 'SPOL.L') {
+                    price /= 100; // Convert pence to GBP
+                }
+                return price;
+            } catch (error) {
+                console.error(`Error fetching price for ${yhoo}:`, error);
+                return null;
+            }
+        }
+
+        // Function to fetch exchange rate (USD per currency)
+        async function getExchangeRate(currency) {
+            if (currency === 'USD') return 1;
+            try {
+                const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${currency}USD=X?interval=1d`);
+                const data = await response.json();
+                return data.chart.result[0].meta.regularMarketPrice; // USD per currency unit
+            } catch (error) {
+                console.error(`Error fetching rate for ${currency}:`, error);
+                return null;
+            }
+        }
+
+        // Function to calculate and display portfolio
+        async function displayPortfolio() {
+            const tableBody = document.querySelector('#portfolio-table tbody');
+            let totalPurchaseValueUSD = 0;
+            let totalCurrentValueUSD = 0;
+
+            // Get unique currencies and fetch rates
+            const currencies = [...new Set(portfolio.map(stock => stock.currency))];
+            const rates = {};
+            for (const c of currencies) {
+                rates[c] = await getExchangeRate(c);
+                if (rates[c] === null) return; // Skip if rate fetch fails
+            }
+
+            for (const stock of portfolio) {
+                // Handle special currency cases
+                let effectiveCurrency = stock.currency;
+                let effectivePurchasePrice = stock.purchasePrice;
+                if (stock.currency === 'Gbpence') {
+                    effectiveCurrency = 'GBP';
+                    effectivePurchasePrice /= 100; // Convert pence to GBP
+                }
+
+                const yhoo = stock.yhoo || stock.symbol;
+                let currentPriceLC = await getCurrentPrice(yhoo);
+                if (currentPriceLC === null) continue;
+
+                // Special handling for pence-based tickers if needed (already handled in getCurrentPrice)
+
+                const purchasePriceUSD = effectivePurchasePrice * rates[effectiveCurrency];
+                const currentPriceUSD = currentPriceLC * rates[effectiveCurrency];
+
+                const purchaseValueUSD = stock.quantity * purchasePriceUSD;
+                const currentValueUSD = stock.quantity * currentPriceUSD;
+                const gainLossUSD = currentValueUSD - purchaseValueUSD;
+                const gainLossPercent = purchaseValueUSD ? (gainLossUSD / purchaseValueUSD) * 100 : 0;
+
+                totalPurchaseValueUSD += purchaseValueUSD;
+                totalCurrentValueUSD += currentValueUSD;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${stock.symbol}</td>
+                    <td>${stock.quantity}</td>
+                    <td>$${purchasePriceUSD.toFixed(2)}</td>
+                    <td>$${currentPriceUSD.toFixed(2)}</td>
+                    <td>$${currentValueUSD.toFixed(2)}</td>
+                    <td class="${gainLossUSD >= 0 ? 'gain' : 'loss'}">$${gainLossUSD.toFixed(2)}</td>
+                    <td class="${gainLossPercent >= 0 ? 'gain' : 'loss'}">${gainLossPercent.toFixed(2)}%</td>
+                `;
+                tableBody.appendChild(row);
+            }
+
+            const totalGainLossUSD = totalCurrentValueUSD - totalPurchaseValueUSD;
+            const totalGainLossPercent = totalPurchaseValueUSD ? (totalGainLossUSD / totalPurchaseValueUSD) * 100 : 0;
+
+            document.getElementById('summary').innerHTML = `
+                Total Portfolio Value: $${totalCurrentValueUSD.toFixed(2)}<br>
+                Total Gain/Loss: $${totalGainLossUSD.toFixed(2)} (${totalGainLossPercent.toFixed(2)}%)
+            `;
+        }
+
+        // Call the function on page load
+        displayPortfolio();
+    </script>
+</body>
+</html>
