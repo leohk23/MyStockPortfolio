@@ -6,16 +6,23 @@
     <title>My Stock Portfolio</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; min-width: 900px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
         th { background-color: #f2f2f2; }
         .gain { color: green; }
         .loss { color: red; }
         #summary { margin-top: 20px; font-weight: bold; }
+        @media (max-width: 600px) {
+            body { margin: 5px; }
+            table { font-size: 12px; min-width: 600px; }
+            th, td { padding: 4px; }
+        }
     </style>
 </head>
 <body>
     <h1>My Stock Portfolio (Values in USD)</h1>
+    <div class="table-responsive">
     <table id="portfolio-table">
         <thead>
             <tr>
@@ -26,10 +33,17 @@
                 <th>Value</th>
                 <th>Gain/Loss ($)</th>
                 <th>Gain/Loss (%)</th>
+                <th>7d %</th>
+                <th>1m %</th>
+                <th>3m %</th>
+                <th>6m %</th>
+                <th>1y %</th>
+                <th>YTD %</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
+    </div>
     <div id="summary"></div>
 
     <script src="data.js"></script>
@@ -38,14 +52,28 @@
             try {
                 const response = await fetch(`/api/${yhoo}`);
                 const data = await response.json();
-                console.log(`Price data for ${yhoo}:`, data);
                 let price = data.chart.result[0].meta.regularMarketPrice;
                 if (yhoo === 'SPOL.L') {
-                    price /= 100; // Convert pence to GBP
+                    price /= 100;
                 }
                 return price;
             } catch (error) {
-                console.error(`Error fetching price for ${yhoo}:`, error);
+                return null;
+            }
+        }
+
+        async function getHistoricalPrice(yhoo, period) {
+            try {
+                const response = await fetch(`/api/${yhoo}?period=${period}`);
+                const data = await response.json();
+                // Use the last value in the close array for the start-of-period price
+                let closes = data.chart.result[0].indicators.quote[0].close;
+                let price = closes && closes.length > 0 ? closes[closes.length - 1] : null;
+                if (yhoo === 'SPOL.L' && price !== null) {
+                    price /= 100;
+                }
+                return price;
+            } catch (error) {
                 return null;
             }
         }
@@ -55,31 +83,23 @@
             try {
                 const response = await fetch(`/api/${currency}USD=X`);
                 const data = await response.json();
-                console.log(`Exchange rate data for ${currency}:`, data);
                 return data.chart.result[0].meta.regularMarketPrice;
             } catch (error) {
-                console.error(`Error fetching rate for ${currency}:`, error);
                 return null;
             }
         }
 
         async function displayPortfolio() {
-            console.log('Portfolio:', portfolio);
             const tableBody = document.querySelector('#portfolio-table tbody');
             let totalPurchaseValueUSD = 0;
             let totalCurrentValueUSD = 0;
 
             const currencyMap = portfolio.map(stock => stock.currency === 'Gbpence' ? 'GBP' : stock.currency);
             const currencies = [...new Set(currencyMap)];
-            console.log('Currencies:', currencies);
             const rates = {};
             for (const c of currencies) {
                 rates[c] = await getExchangeRate(c);
-                console.log(`Rate for ${c}:`, rates[c]);
-                if (rates[c] === null) {
-                    console.error(`Failed to fetch rate for ${c}, using 1 as fallback`);
-                    rates[c] = 1; // Fallback to avoid skipping all stocks
-                }
+                if (rates[c] === null) rates[c] = 1;
             }
 
             for (const stock of portfolio) {
@@ -92,10 +112,25 @@
 
                 const yhoo = stock.yhoo || stock.symbol;
                 let currentPriceLC = await getCurrentPrice(yhoo);
-                console.log(`Current price for ${yhoo}:`, currentPriceLC);
-                if (currentPriceLC === null) {
-                    console.error(`Skipping ${yhoo} due to failed price fetch`);
-                    continue;
+                if (currentPriceLC === null) continue;
+
+                // Fetch historical prices for price movement columns
+                const periods = [
+                    { key: '7d', period: '7d' },
+                    { key: '1m', period: '1mo' },
+                    { key: '3m', period: '3mo' },
+                    { key: '6m', period: '6mo' },
+                    { key: '1y', period: '1y' },
+                    { key: 'ytd', period: 'ytd' }
+                ];
+                let movements = {};
+                for (const p of periods) {
+                    let histPrice = await getHistoricalPrice(yhoo, p.period);
+                    if (histPrice && histPrice > 0) {
+                        movements[p.key] = Math.round(((currentPriceLC - histPrice) / histPrice) * 100);
+                    } else {
+                        movements[p.key] = '-';
+                    }
                 }
 
                 const purchasePriceUSD = effectivePurchasePrice * rates[effectiveCurrency];
@@ -114,9 +149,15 @@
                     <td>${stock.quantity}</td>
                     <td>$${purchasePriceUSD.toFixed(2)}</td>
                     <td>$${currentPriceUSD.toFixed(2)}</td>
-                    <td>$${currentValueUSD.toFixed(2)}</td>
-                    <td class="${gainLossUSD >= 0 ? 'gain' : 'loss'}">$${gainLossUSD.toFixed(2)}</td>
-                    <td class="${gainLossPercent >= 0 ? 'gain' : 'loss'}">${gainLossPercent.toFixed(2)}%</td>
+                    <td>$${Math.round(currentValueUSD).toLocaleString()}</td>
+                    <td class="${gainLossUSD >= 0 ? 'gain' : 'loss'}">$${Math.round(gainLossUSD).toLocaleString()}</td>
+                    <td class="${gainLossPercent >= 0 ? 'gain' : 'loss'}">${Math.round(gainLossPercent)}%</td>
+                    <td>${movements['7d'] !== '-' ? movements['7d'] + '%' : '-'}</td>
+                    <td>${movements['1m'] !== '-' ? movements['1m'] + '%' : '-'}</td>
+                    <td>${movements['3m'] !== '-' ? movements['3m'] + '%' : '-'}</td>
+                    <td>${movements['6m'] !== '-' ? movements['6m'] + '%' : '-'}</td>
+                    <td>${movements['1y'] !== '-' ? movements['1y'] + '%' : '-'}</td>
+                    <td>${movements['ytd'] !== '-' ? movements['ytd'] + '%' : '-'}</td>
                 `;
                 tableBody.appendChild(row);
             }
@@ -125,8 +166,8 @@
             const totalGainLossPercent = totalPurchaseValueUSD ? (totalGainLossUSD / totalPurchaseValueUSD) * 100 : 0;
 
             document.getElementById('summary').innerHTML = `
-                Total Portfolio Value: $${totalCurrentValueUSD.toFixed(2)}<br>
-                Total Gain/Loss: $${totalGainLossUSD.toFixed(2)} (${totalGainLossPercent.toFixed(2)}%)
+                Total Portfolio Value: $${Math.round(totalCurrentValueUSD).toLocaleString()}<br>
+                Total Gain/Loss: $${Math.round(totalGainLossUSD).toLocaleString()} (${Math.round(totalGainLossPercent)}%)
             `;
         }
 
