@@ -5,14 +5,13 @@ Static portfolio dashboard, hosted on GitHub Pages. No server, no dependencies.
 A GitHub Action fetches quotes and FX rates from Yahoo Finance every hour and commits
 `prices.json`. The page reads that file and does the arithmetic in the browser.
 
-## Setup (one time)
+## Dashboard
 
-1. Push to GitHub.
-2. **Settings → Pages → Source: Deploy from a branch → `main` / `/ (root)`**.
-3. **Settings → Actions → General → Workflow permissions → Read and write permissions**
-   (the workflow commits `prices.json` back to the repo).
+<https://leohk23.github.io/MyStockPortfolio/>
 
-Your dashboard: `https://leohk23.github.io/MyStockPortfolio/`
+Already configured: Pages deploys from `main` / root, and the workflow has write
+permission to commit `prices.json`. Committing that file re-triggers the Pages
+build, so the live site follows the hourly refresh automatically.
 
 ⚠️ A public repo means **your holdings and cost basis are public**. Make the repo private
 if that's not what you want — Pages on private repos requires GitHub Pro.
