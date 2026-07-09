@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "Static stock portfolio dashboard. Prices refreshed hourly by GitHub Actions.",
   "scripts": {
+    "extract": "node extract-portfolio.js",
     "fetch": "node fetch-prices.js",
-    "test": "node fetch-prices.js --selftest",
+    "test": "node fetch-prices.js --selftest && node extract-portfolio.js --selftest",
     "start": "npx --yes serve ."
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/leohk23/MyStockPortfolio.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "xlsx": "^0.18.5"
+  }
 }

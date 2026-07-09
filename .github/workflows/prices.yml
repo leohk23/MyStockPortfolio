@@ -24,7 +24,10 @@ jobs:
         with:
           node-version: 22
 
+      # No devDependencies in CI: these two scripts are dependency-free by design.
+      # extract-portfolio.js needs the workbook and never runs here.
       - run: node fetch-prices.js --selftest
+      - run: node portfolio.js --selftest
       - run: node fetch-prices.js
 
       - name: Commit prices.json
