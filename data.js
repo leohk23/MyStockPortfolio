@@ -44,3 +44,5 @@ const portfolio = [
     { symbol: 'SPOL', quantity: 25, purchasePrice: 2021.12, currency: 'Gbpence', yhoo: 'SPOL.L' },
     { symbol: 'CSUK', quantity: 3, purchasePrice: 160.9432, currency: 'GBP', yhoo: 'CSUK.L' }
 ];
+
+if (typeof module !== 'undefined') module.exports = { portfolio };

@@ -1,25 +1,15 @@
 {
   "name": "mystockportfolio",
   "version": "1.0.0",
-  "main": "data.js",
+  "description": "Static stock portfolio dashboard. Prices refreshed hourly by GitHub Actions.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "fetch": "node fetch-prices.js",
+    "test": "node fetch-prices.js --selftest",
+    "start": "npx --yes serve ."
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/leohk23/MyStockPortfolio.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/leohk23/MyStockPortfolio/issues"
-  },
-  "homepage": "https://github.com/leohk23/MyStockPortfolio#readme",
-  "dependencies": {
-    "express": "^5.1.0",
-    "node-fetch": "^2.7.0"
-  },
-  "description": ""
+  "license": "ISC"
 }

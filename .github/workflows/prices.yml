@@ -1,0 +1,38 @@
+name: Refresh prices
+
+on:
+  schedule:
+    # Hourly. Cron is UTC; this spans the US, HK, and European sessions.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: node fetch-prices.js --selftest
+      - run: node fetch-prices.js
+
+      - name: Commit prices.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prices.json
+          git diff --staged --quiet && echo "no change" && exit 0
+          git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash
+          git push
