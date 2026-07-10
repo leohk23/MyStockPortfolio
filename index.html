@@ -15,10 +15,14 @@
             --text-primary: #ffffff;
             --text-secondary: #c3c2b7;
             --text-muted: #85847c;
-            --series-1: #3987e5;   /* validated on #1a1a19: lightness band, chroma floor, 3:1 contrast */
+            /* Categorical series, validated on #1a1a19 (L-band, chroma, CVD, 3:1 contrast). */
+            --series-port: #3987e5;   /* portfolio (blue) */
+            --series-spx:  #199e70;   /* S&P 500 (aqua) */
+            --series-hsi:  #c98500;   /* HSI (yellow) */
             --good: #4ec26f;
             --bad: #ef5f5f;
         }
+        * { box-sizing: border-box; }
         body {
             font-family: -apple-system, "Segoe UI", Arial, sans-serif;
             margin: 16px; background: var(--surface-1); color: var(--text-primary);
@@ -27,45 +31,61 @@
         #updated { color: var(--text-muted); font-size: 12px; margin-bottom: 14px; }
 
         #totals { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 18px; }
-        #totals > div { min-width: 110px; }
+        #totals > div { min-width: 104px; }
         #totals .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
         #totals .value { font-size: 20px; font-weight: 600; }
 
-        .btns { display: flex; gap: 4px; }
+        .btns { display: inline-flex; gap: 4px; flex-wrap: wrap; }
         .btns button {
             font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
             background: transparent; color: var(--text-secondary);
             border: 1px solid var(--line); border-radius: 5px;
         }
         .btns button:hover { border-color: var(--text-muted); }
-        .btns button[aria-pressed="true"] { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+        .btns button[aria-pressed="true"] { background: var(--series-port); border-color: var(--series-port); color: #fff; }
+        .btns button.bench[aria-pressed="true"] { color: #fff; }
+        .btns button.bench.spx[aria-pressed="true"] { background: var(--series-spx); border-color: var(--series-spx); }
+        .btns button.bench.hsi[aria-pressed="true"] { background: var(--series-hsi); border-color: var(--series-hsi); }
 
-        /* ---- NAV chart ---- */
-        #chart-card { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 8px; margin-bottom: 24px; }
-        #chart-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+        /* ---- chart ---- */
+        #chart-card { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 8px; margin-bottom: 22px; }
+        #chart-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; margin-bottom: 8px; }
         #chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
         #chart-change { font-size: 18px; font-weight: 600; margin: 2px 0; }
         #chart-sub { font-size: 12px; color: var(--text-muted); }
-        #ranges { margin-left: auto; }
+        #chart-controls { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        #legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 2px 0 8px; font-size: 12px; }
+        #legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); }
+        #legend i { width: 11px; height: 3px; border-radius: 2px; display: inline-block; }
         #plot { position: relative; }
         #plot svg { display: block; width: 100%; }
         .grid { stroke: var(--line); stroke-width: 1; }
         .axis-label { fill: var(--text-muted); font-size: 10px; }
-        .navline { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-        .navarea { fill: var(--series-1); opacity: .10; }
+        .zero { stroke: var(--text-muted); stroke-width: 1; opacity: .5; }
+        .sline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        .sarea { opacity: .10; }
         .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
-        .cursor-dot { fill: var(--series-1); stroke: var(--surface-3); stroke-width: 2; } /* 2px surface ring */
+        .cursor-dot { stroke: var(--surface-3); stroke-width: 2; }
+        .trade-buy { fill: var(--good); stroke: var(--surface-3); stroke-width: 1.5; }
+        .trade-sell { fill: var(--bad); stroke: var(--surface-3); stroke-width: 1.5; }
         #tip {
             position: absolute; pointer-events: none; opacity: 0; transition: opacity .1s;
             background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
             padding: 6px 8px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -100%);
+            z-index: 2;
         }
-        #tip .d { color: var(--text-muted); font-size: 11px; }
+        #tip .d { color: var(--text-muted); font-size: 11px; margin-bottom: 2px; }
+        #tip .row { display: flex; align-items: center; gap: 5px; }
+        #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
-        /* ---- tables ---- */
+        /* ---- group-by toggle ---- */
+        #groupby { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        #groupby .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+        /* ---- table ---- */
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; min-width: 1080px; }
+        table { border-collapse: collapse; width: 100%; min-width: 1120px; }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
@@ -79,25 +99,25 @@
         th[aria-sort="descending"]::after { content: '▼'; }
         th[aria-sort="ascending"]::after { content: '▲'; }
 
-        /* Group rows expand to show the instruments behind them. */
         tr.group { cursor: pointer; }
         tr.group:hover { background: var(--surface-2); }
-        tr.group td:first-child::before { content: '▸ '; color: var(--text-muted); }
-        tr.group.open td:first-child::before { content: '▾ '; }
-        tr.group.single td:first-child::before { content: '   '; }
         tr.leg { display: none; font-size: 12px; background: var(--surface-3); }
         tr.leg.show { display: table-row; }
-        tr.leg td:first-child { padding-left: 26px; color: var(--text-secondary); }
-
-        h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 26px 0 6px; }
-        #geo table { min-width: 420px; }
+        tr.leg td:first-child { padding-left: 22px; color: var(--text-secondary); }
+        tr.leg { cursor: pointer; }
+        tr.leg:hover { background: var(--surface-2); }
+        tr.sel, tr.sel:hover { background: rgba(57,135,229,.16); }
+        /* Chevron at the END of the position name. */
+        .chev { color: var(--text-muted); margin-left: 6px; display: inline-block; width: 10px; }
+        tr.group.open .chev { color: var(--text-secondary); }
 
         @media (max-width: 600px) {
             body { margin: 8px; }
             table { font-size: 12px; }
             th, td { padding: 5px 6px; }
-            #ranges { margin-left: 0; width: 100%; }
-            #ranges button { flex: 1; padding: 6px 0; } /* thumb-sized hit targets */
+            #chart-controls { margin-left: 0; align-items: stretch; width: 100%; }
+            #chart-controls .btns { justify-content: stretch; }
+            #chart-controls .btns button { flex: 1; padding: 6px 0; }
         }
     </style>
 </head>
@@ -114,25 +134,42 @@
                 <div id="chart-change">–</div>
                 <div id="chart-sub">–</div>
             </div>
-            <div id="ranges" class="btns" role="group" aria-label="Chart range">
-                <button data-days="21" aria-pressed="false">1M</button>
-                <button data-days="63" aria-pressed="false">3M</button>
-                <button data-days="126" aria-pressed="false">6M</button>
-                <button data-days="0" aria-pressed="true">12M</button>
+            <div id="chart-controls">
+                <div id="bench" class="btns" role="group" aria-label="Benchmarks">
+                    <button class="bench spx" data-bench="^GSPC" aria-pressed="false">S&amp;P 500</button>
+                    <button class="bench hsi" data-bench="^HSI" aria-pressed="false">HSI</button>
+                </div>
+                <div id="ranges" class="btns" role="group" aria-label="Chart range">
+                    <button data-days="21" aria-pressed="false">1M</button>
+                    <button data-days="63" aria-pressed="false">3M</button>
+                    <button data-days="126" aria-pressed="false">6M</button>
+                    <button data-days="0" aria-pressed="true">12M</button>
+                </div>
             </div>
         </div>
+        <div id="legend"></div>
         <div id="plot">
-            <svg id="nav" role="img" aria-label="Portfolio value over time"></svg>
+            <svg id="chart" role="img" aria-label="Portfolio chart"></svg>
             <div id="tip" role="status"></div>
         </div>
-        <div id="chart-note">Today's holdings valued at past prices — trades and FX moves are not replayed.</div>
+        <div id="chart-note"></div>
     </section>
+
+    <div id="groupby">
+        <span class="label">Group by</span>
+        <div class="btns" role="group" aria-label="Group by">
+            <button data-dim="instrument" aria-pressed="false">Stock</button>
+            <button data-dim="company" aria-pressed="true">Company</button>
+            <button data-dim="geography" aria-pressed="false">Geography</button>
+        </div>
+    </div>
 
     <div class="table-responsive">
         <table id="portfolio">
             <thead>
                 <tr>
                     <th data-sort="name">Position</th>
+                    <th data-sort="price">Price</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <th data-sort="cost">Cost</th>
@@ -153,20 +190,9 @@
         </table>
     </div>
 
-    <div id="geo">
-        <h2>By geography</h2>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr><th>Region</th><th>Cost</th><th>Value</th><th>Gain/Loss</th><th>%</th><th>Mix</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-
     <script src="portfolio.js"></script>
     <script>
+        /* ---------------- formatting ---------------- */
         // Everything is computed in USD; display currency is a presentation-layer divide.
         // rates.GBP is "USD per 1 GBP", so a GBP figure is usd / rates.GBP.
         const CURRENCIES = { USD: '$', GBP: '£', HKD: 'HK$' };
@@ -177,82 +203,235 @@
             const v = usd / RATES[display];
             return (v < 0 ? '-' : '') + CURRENCIES[display] + Math.round(Math.abs(v)).toLocaleString();
         };
+        // Per-share price keeps decimals; converted from USD to the display currency.
+        const priceUSD = usd => {
+            const v = usd / RATES[display];
+            return CURRENCIES[display] + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
         const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
         const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
-        const shortDate = iso => new Date(iso + 'T00:00:00Z')
-            .toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' });
+        const ymd = isoDay => isoDay.replace(/-/g, '/');            // 2026-07-10 -> 2026/07/10
+        const p2 = n => String(n).padStart(2, '0');
+        const stamp = iso => { const d = new Date(iso);
+            return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())}, ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
 
-        let STATE = null;              // { rows, geo, nav, total }
+        const BENCH_COLOR = { '^GSPC': 'var(--series-spx)', '^HSI': 'var(--series-hsi)' };
+        const PORT_COLOR = 'var(--series-port)';
+
+        /* ---------------- state ---------------- */
+        let STATE = null;        // { holdings, rates, quotes, nav, rows, total, dim }
+        let HISTORY = null;      // lazy-loaded history.json
+        let historyPromise = null;
         let sort = { key: 'value', dir: -1 };
-        let rangeDays = 0;             // 0 = the whole series
+        let rangeDays = 0;       // 0 = whole series
+        let chartSel = null;     // null = portfolio; else a yahoo symbol
+        const benchOn = new Set();
 
-        /* ---------------- NAV chart ---------------- */
-        function drawChart() {
-            const svg = document.getElementById('nav');
-            const tip = document.getElementById('tip');
-            const n = STATE.nav.values.length;
-            const from = rangeDays > 0 ? Math.max(0, n - rangeDays) : 0;
-            const days = STATE.nav.days.slice(from);
-            const values = STATE.nav.values.slice(from);
+        const rateFor = c => portfolioLib.rateFor(c, STATE.rates);
 
-            const W = svg.clientWidth || svg.parentNode.clientWidth;
-            const H = 200, L = 62, R = 12, T = 10, B = 22;
-            if (!W || values.length < 2) return;
+        function loadHistory() {
+            if (HISTORY) return Promise.resolve(HISTORY);
+            if (!historyPromise) historyPromise = fetch('history.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : Promise.reject(new Error('history ' + r.status)))
+                .then(h => (HISTORY = h));
+            return historyPromise;
+        }
 
+        /* ---------------- chart ---------------- */
+        // Slice the trailing `rangeDays` off a day axis and any parallel arrays.
+        function sliceRange(days, arrays) {
+            const from = rangeDays > 0 ? Math.max(0, days.length - rangeDays) : 0;
+            return { days: days.slice(from), arrays: arrays.map(a => a.slice(from)) };
+        }
+        const firstNonNull = a => a.find(v => v != null);
+        const lastNonNull = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; };
+
+        // Build the chart spec for the current mode. May need HISTORY; caller ensures it.
+        function chartSpec() {
+            if (chartSel) return instrumentSpec(chartSel);
+            if (benchOn.size) return benchmarkSpec();
+            return portfolioValueSpec();
+        }
+
+        function portfolioValueSpec() {
+            const { days, arrays } = sliceRange(STATE.nav.days, [STATE.nav.values]);
+            const values = arrays[0].map(v => v / RATES[display]);
             const first = values[0], last = values[values.length - 1];
-            const change = (last - first) / first;
-            document.getElementById('chart-change').innerHTML =
-                `<span class="${cls(change)}">${pct(change)}</span> <span class="muted">${money(last - first)}</span>`;
-            document.getElementById('chart-sub').textContent =
-                `${money(last)} · ${shortDate(days[0])} → ${shortDate(days[days.length - 1])}`;
+            return {
+                days,
+                series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
+                fmtY: v => money(v * RATES[display]),
+                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
+                    + `<span class="muted">${money((last - first) * RATES[display])}</span>`,
+                sub: `${money(last * RATES[display])} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                title: 'Portfolio value',
+                note: "Today's holdings valued at past prices — trades and FX moves are not replayed.",
+                tip: i => `${money(values[i] * RATES[display])} <span class="${cls((values[i] - first) / first)}">${pct((values[i] - first) / first)}</span>`,
+            };
+        }
 
-            // Pad the domain so the line never touches the frame.
-            let lo = Math.min(...values), hi = Math.max(...values);
+        // Rebase a value array to its first non-null in the visible window → fractional change.
+        function rebase(arr) {
+            const base = firstNonNull(arr);
+            return arr.map(v => v == null || base == null ? null : (v - base) / base);
+        }
+
+        function benchmarkSpec() {
+            // Portfolio value keyed by date, read along the history calendar so every
+            // series shares one x-axis before rebasing to % change.
+            const navByDay = new Map(STATE.nav.days.map((d, i) => [d, STATE.nav.values[i]]));
+            const full = HISTORY.days.map(d => navByDay.get(d) ?? null);
+            const seriesRaw = [{ label: 'Portfolio', color: PORT_COLOR, sym: null, raw: full }];
+            for (const sym of ['^GSPC', '^HSI']) {
+                if (benchOn.has(sym) && HISTORY.closes[sym])
+                    seriesRaw.push({ label: HISTORY.benchmarks[sym].name, color: BENCH_COLOR[sym], sym, raw: HISTORY.closes[sym] });
+            }
+            const sliced = sliceRange(HISTORY.days, seriesRaw.map(s => s.raw));
+            const series = seriesRaw.map((s, k) => ({ label: s.label, color: s.color, values: rebase(sliced.arrays[k]) }));
+            const days = sliced.days;
+            const port = series[0].values;
+            return {
+                days, series, percent: true, zero: true,
+                fmtY: v => pct(v),
+                headline: series.map(s => `<span style="color:${s.color}">${pct(lastNonNull(s.values))}</span>`).join(' <span class="muted">·</span> '),
+                sub: `Indexed to ${ymd(days[0])} = 0%`,
+                title: 'Portfolio vs benchmarks',
+                note: 'Each line rebased to 0% at the start of the range. Benchmarks are price indices (no dividends).',
+                tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
+            };
+        }
+
+        function instrumentSpec(yahoo) {
+            const q = STATE.quotes[yahoo];
+            const holding = STATE.holdings.find(h => h.yahoo === yahoo);
+            const nativeToUSD = rateFor(q.currency);
+            const closes = HISTORY.closes[yahoo] || [];
+            // Trim leading nulls (a late listing) so the line starts at the stock's history.
+            let start = closes.findIndex(v => v != null);
+            if (start < 0) start = 0;
+            const daysAll = HISTORY.days.slice(start);
+            const usdAll = closes.slice(start).map(v => v == null ? null : v * nativeToUSD);
+            const { days, arrays } = sliceRange(daysAll, [usdAll]);
+            const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
+
+            // Trades on this instrument, mapped to the nearest visible day index.
+            const dayIndex = new Map(days.map((d, i) => [d, i]));
+            const markers = [];
+            const byIndex = new Map();
+            for (const t of (holding?.trades || [])) {
+                let i = dayIndex.get(t.date);
+                if (i == null) { // nearest day on/after the trade
+                    i = days.findIndex(d => d >= t.date);
+                    if (i < 0) continue;
+                }
+                const usd = t.price * rateFor(t.currency);
+                markers.push({ i, side: t.side, usd, trade: t });
+                (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
+            }
+            const first = firstNonNull(values), last = lastNonNull(values);
+            const name = holding ? `${holding.group} · ${yahoo}` : yahoo;
+            return {
+                days,
+                series: [{ label: name, color: PORT_COLOR, values, area: true }],
+                markers, markersByIndex: byIndex,
+                fmtY: v => priceUSD(v * RATES[display]),
+                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
+                    + `<span class="muted">${priceUSD(last * RATES[display])}</span>`,
+                sub: `${q.qty ?? holding?.qty ?? ''} shares · price per share · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                title: name,
+                note: 'Price per share, converted to ' + display + ' at today\'s FX. ▲ buy · ▼ sell (split-adjusted).',
+                tip: i => {
+                    let s = `${priceUSD(values[i] * RATES[display])}`;
+                    for (const t of (byIndex.get(i) || []))
+                        s += `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>${t.side} ${t.qty} @ ${t.price.toLocaleString()} ${t.currency}</div>`;
+                    return s;
+                },
+            };
+        }
+
+        function drawChart() {
+            const spec = chartSpec();
+            const svg = document.getElementById('chart');
+            const tip = document.getElementById('tip');
+            const { days, series } = spec;
+            const W = svg.clientWidth || svg.parentNode.clientWidth;
+            const H = 210, L = 64, R = 14, T = 10, B = 22;
+            if (!W || days.length < 2) return;
+
+            document.getElementById('chart-title').textContent = spec.title;
+            document.getElementById('chart-change').innerHTML = spec.headline;
+            document.getElementById('chart-sub').textContent = spec.sub;
+            document.getElementById('chart-note').textContent = spec.note;
+
+            // Legend (always shown for >=2 series).
+            const legend = document.getElementById('legend');
+            legend.innerHTML = series.length > 1
+                ? series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')
+                : '';
+
+            // y-domain across all series; include 0 in percent mode so the zero line shows.
+            let vals = series.flatMap(s => s.values).filter(v => v != null);
+            if (spec.zero) vals = vals.concat(0);
+            let lo = Math.min(...vals), hi = Math.max(...vals);
             const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.02 || 1;
             lo -= pad; hi += pad;
 
-            const x = i => L + (i / (values.length - 1)) * (W - L - R);
+            const x = i => L + (i / (days.length - 1)) * (W - L - R);
             const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
 
-            const ticks = 4;
-            const gridEls = Array.from({ length: ticks + 1 }, (_, k) => lo + (k / ticks) * (hi - lo)).map(v =>
+            const gridEls = Array.from({ length: 5 }, (_, k) => lo + (k / 4) * (hi - lo)).map(v =>
                 `<line class="grid" x1="${L}" y1="${y(v).toFixed(1)}" x2="${W - R}" y2="${y(v).toFixed(1)}"/>` +
-                `<text class="axis-label" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${money(v)}</text>`
+                `<text class="axis-label" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${spec.fmtY(v)}</text>`
             ).join('');
-
-            // First / middle / last date — enough to orient, not enough to clutter.
+            const zeroEl = spec.zero && lo < 0 && hi > 0 ? `<line class="zero" x1="${L}" y1="${y(0).toFixed(1)}" x2="${W - R}" y2="${y(0).toFixed(1)}"/>` : '';
             const dateEls = [0, Math.floor((days.length - 1) / 2), days.length - 1].map((i, k) =>
-                `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${shortDate(days[i])}</text>`
+                `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${ymd(days[i])}</text>`
             ).join('');
 
-            const line = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-            const area = `${line} L${x(values.length - 1).toFixed(1)},${y(lo).toFixed(1)} L${x(0).toFixed(1)},${y(lo).toFixed(1)} Z`;
+            // Path per series; skip null gaps by breaking the path.
+            const pathFor = arr => arr.map((v, i) =>
+                v == null ? '' : `${(i && arr[i - 1] != null) ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ').trim();
+            const lineEls = series.map(s => {
+                let d = pathFor(s.values);
+                let area = '';
+                if (s.area) {
+                    const xs = s.values.map((v, i) => v == null ? null : i).filter(i => i != null);
+                    area = `<path class="sarea" style="fill:${s.color}" d="${d} L${x(xs[xs.length - 1]).toFixed(1)},${y(lo).toFixed(1)} L${x(xs[0]).toFixed(1)},${y(lo).toFixed(1)} Z"/>`;
+                }
+                return `${area}<path class="sline" style="stroke:${s.color}" d="${d}"/>`;
+            }).join('');
+
+            // Trade markers (instrument mode): ▲ buy, ▼ sell.
+            const markerEls = (spec.markers || []).map(m => {
+                const cx = x(m.i), cy = y(m.usd / RATES[display]);
+                const tri = m.side === 'SELL'
+                    ? `${cx - 4},${cy - 4} ${cx + 4},${cy - 4} ${cx},${cy + 4}`
+                    : `${cx - 4},${cy + 4} ${cx + 4},${cy + 4} ${cx},${cy - 4}`;
+                return `<polygon class="trade-${m.side === 'SELL' ? 'sell' : 'buy'}" points="${tri}"/>`;
+            }).join('');
 
             svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
             svg.setAttribute('height', H);
-            svg.innerHTML = `
-                ${gridEls}${dateEls}
-                <path class="navarea" d="${area}"/>
-                <path class="navline" d="${line}"/>
+            svg.innerHTML = `${gridEls}${zeroEl}${dateEls}${lineEls}${markerEls}
                 <line class="crosshair" id="cross" y1="${T}" y2="${H - B}" style="display:none"/>
-                <circle class="cursor-dot" id="dot" r="4" style="display:none"/>
+                <circle class="cursor-dot" id="dot" r="4" style="display:none;fill:${series[0].color}"/>
                 <rect id="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
 
             const cross = svg.querySelector('#cross'), dot = svg.querySelector('#dot');
             const move = ev => {
                 const rect = svg.getBoundingClientRect();
-                const scale = W / rect.width; // svg units per css pixel
+                const scale = W / rect.width;
                 const px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left) * scale;
-                const step = (W - L - R) / (values.length - 1);
-                const i = Math.max(0, Math.min(values.length - 1, Math.round((px - L) / step)));
-                const cx = x(i), cy = y(values[i]);
+                const i = Math.max(0, Math.min(days.length - 1, Math.round((px - L) / ((W - L - R) / (days.length - 1)))));
+                const cx = x(i);
                 cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
-                dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.style.display = '';
-                const delta = (values[i] - first) / first;
-                tip.innerHTML = `<div class="d">${shortDate(days[i])}</div>${money(values[i])} <span class="${cls(delta)}">${pct(delta)}</span>`;
+                const yv = series[0].values[i];
+                if (yv != null) { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(yv)); dot.style.display = ''; }
+                else dot.style.display = 'none';
+                tip.innerHTML = `<div class="d">${ymd(days[i])}</div>${spec.tip(i)}`;
                 tip.style.left = `${cx / scale}px`;
-                tip.style.top = `${cy / scale - 10}px`;
+                tip.style.top = `${(yv != null ? y(yv) : T) / scale - 10}px`;
                 tip.style.opacity = 1;
             };
             const leave = () => { tip.style.opacity = 0; cross.style.display = 'none'; dot.style.display = 'none'; };
@@ -263,69 +442,81 @@
             hit.addEventListener('touchend', leave);
         }
 
-        /* ---------------- tables ---------------- */
+        // Redraw, loading history first if the current mode needs it.
+        function updateChart() {
+            document.getElementById('bench').style.display = chartSel ? 'none' : '';
+            if (chartSel || benchOn.size) loadHistory().then(drawChart).catch(e => {
+                document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
+            });
+            else drawChart();
+        }
+
+        function selectChart(yahoo) {
+            chartSel = (chartSel === yahoo) ? null : yahoo; // click again to return to portfolio
+            markSelectedRow();
+            updateChart();
+        }
+        function markSelectedRow() {
+            document.querySelectorAll('#portfolio tr').forEach(tr =>
+                tr.classList.toggle('sel', !!chartSel && tr.dataset.yahoo === chartSel));
+        }
+
+        /* ---------------- table ---------------- */
         function tradeCell(t) {
             if (!t) return '<span class="muted">–</span>';
             const price = t.price.toLocaleString(undefined, { maximumFractionDigits: 2 });
             const side = t.side === 'SELL' ? 'SELL' : 'BUY';
-            return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${shortDate(t.date)} <span class="muted">@ ${price}</span>`;
+            return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} <span class="muted">@ ${price}</span>`;
         }
+        const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
+            : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
 
-        // Sort keys map onto row fields; the period columns live under row.moves.
         const sortValue = (row, key) => {
             if (portfolioLib.PERIODS.includes(key)) return row.moves[key];
             if (key === 'tradeDate') return row.lastTrade ? row.lastTrade.date : '';
             return row[key];
         };
-
         function sortedRows() {
-            const rows = [...STATE.rows];
-            rows.sort((a, b) => {
+            return [...STATE.rows].sort((a, b) => {
                 const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
-                // Nulls always sink, regardless of direction.
                 if (x == null && y == null) return 0;
                 if (x == null) return 1;
                 if (y == null) return -1;
                 if (typeof x === 'string') return sort.dir * x.localeCompare(y);
                 return sort.dir * (x - y);
             });
-            return rows;
         }
 
         function renderTotals() {
             const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
-            const value = STATE.total;
-            const gain = value - cost;
+            const value = STATE.total, gain = value - cost;
             document.getElementById('totals').innerHTML = `
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
                 <div><div class="label">Return</div><div class="value ${cls(gain)}">${pct(gain / cost)}</div></div>
-                <div><div class="label">Positions</div><div class="value">${STATE.rows.length}</div></div>
-                <div>
-                    <div class="label">Currency</div>
+                <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>
+                <div><div class="label">Currency</div>
                     <div class="btns" style="margin-top:3px">
-                        ${Object.keys(CURRENCIES).map(c =>
-                            `<button data-ccy="${c}" aria-pressed="${c === display}">${c}</button>`).join('')}
+                        ${Object.keys(CURRENCIES).map(c => `<button data-ccy="${c}" aria-pressed="${c === display}">${c}</button>`).join('')}
                     </div>
                 </div>`;
             document.querySelectorAll('[data-ccy]').forEach(b =>
-                b.addEventListener('click', () => {
-                    display = b.dataset.ccy;
-                    localStorage.setItem('ccy', display);
-                    renderAll();
-                }));
+                b.addEventListener('click', () => { display = b.dataset.ccy; localStorage.setItem('ccy', display); renderAll(); }));
         }
 
-        function renderPortfolio() {
+        function renderTable() {
             const total = STATE.total;
             const tbody = document.querySelector('#portfolio tbody');
             tbody.innerHTML = '';
             for (const r of sortedRows()) {
+                const multi = r.legs.length > 1;
                 const tr = document.createElement('tr');
-                tr.className = 'group' + (r.legs.length > 1 ? '' : ' single');
+                tr.className = 'group';
+                tr.dataset.yahoo = r.primaryYahoo;
                 tr.innerHTML = `
-                    <td>${r.name}${r.legs.length > 1 ? ` <span class="muted">(${r.legs.length})</span>` : ''}</td>
+                    <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>` : ''}<span class="chev">${multi ? '▸' : ''}</span></td>
+                    <td>${priceCell(r.price, r.priceCurrency)}</td>
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${money(r.cost)}</td>
@@ -337,12 +528,15 @@
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}`;
                 tbody.appendChild(tr);
 
-                const legRows = r.legs.map(leg => {
+                // Only multi-instrument rows have constituents to expand.
+                const legRows = multi ? r.legs.map(leg => {
                     const el = document.createElement('tr');
                     el.className = 'leg';
+                    el.dataset.yahoo = leg.yahoo;
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
-                        <td>${leg.yahoo} <span class="muted">${leg.qty} @ ${leg.quote.price.toLocaleString()} ${leg.quote.currency}</span></td>
+                        <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
+                        <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td>${money(leg.cost)}</td>
@@ -352,78 +546,86 @@
                         <td>${plain(leg.value / total)}</td>
                         <td></td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}`;
+                    el.addEventListener('click', () => selectChart(leg.yahoo));
                     tbody.appendChild(el);
                     return el;
-                });
+                }) : [];
 
-                if (r.legs.length > 1) {
-                    tr.addEventListener('click', () => {
-                        tr.classList.toggle('open');
-                        legRows.forEach(l => l.classList.toggle('show'));
-                    });
-                }
+                // Chevron toggles expansion; clicking the rest of the row charts the position.
+                const chev = tr.querySelector('.chev');
+                if (multi) chev.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    tr.classList.toggle('open');
+                    chev.textContent = tr.classList.contains('open') ? '▾' : '▸';
+                    legRows.forEach(l => l.classList.toggle('show'));
+                });
+                tr.addEventListener('click', () => selectChart(r.primaryYahoo));
             }
+            markSelectedRow();
         }
 
-        function renderGeography() {
-            const tbody = document.querySelector('#geo tbody');
-            tbody.innerHTML = '';
-            for (const r of STATE.geo) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${r.name}</td>
-                    <td>${money(r.cost)}</td>
-                    <td>${money(r.value)}</td>
-                    <td class="${cls(r.gain)}">${money(r.gain)}</td>
-                    <td class="${cls(r.gain)}">${pct(r.cost ? r.gain / r.cost : null)}</td>
-                    <td>${plain(r.value / STATE.total)}</td>`;
-                tbody.appendChild(tr);
-            }
+        function rebuildRows() {
+            STATE.rows = portfolioLib.build(STATE.holdings, STATE.rates, STATE.quotes, STATE.dim);
+            STATE.total = STATE.rows.reduce((a, r) => a + r.value, 0);
         }
 
         function renderAll() {
             renderTotals();
-            renderPortfolio();
-            renderGeography();
+            renderTable();
             drawChart();
         }
 
+        /* ---------------- controls ---------------- */
         document.querySelectorAll('#ranges button').forEach(b =>
             b.addEventListener('click', () => {
                 rangeDays = Number(b.dataset.days);
-                document.querySelectorAll('#ranges button').forEach(o =>
-                    o.setAttribute('aria-pressed', String(o === b)));
+                document.querySelectorAll('#ranges button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
                 drawChart();
+            }));
+
+        document.querySelectorAll('#bench button').forEach(b =>
+            b.addEventListener('click', () => {
+                const sym = b.dataset.bench;
+                benchOn.has(sym) ? benchOn.delete(sym) : benchOn.add(sym);
+                b.setAttribute('aria-pressed', String(benchOn.has(sym)));
+                updateChart();
+            }));
+
+        document.querySelectorAll('#groupby button').forEach(b =>
+            b.addEventListener('click', () => {
+                STATE.dim = b.dataset.dim;
+                localStorage.setItem('dim', STATE.dim);
+                document.querySelectorAll('#groupby button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+                chartSel = null; // grouping changed; return chart to portfolio
+                rebuildRows();
+                renderTable();
+                updateChart();
             }));
 
         document.querySelectorAll('#portfolio th[data-sort]').forEach(th =>
             th.addEventListener('click', () => {
                 const key = th.dataset.sort;
-                // Same column toggles direction; a new column starts descending,
-                // except the name column, which reads better A→Z.
-                sort = sort.key === key
-                    ? { key, dir: -sort.dir }
-                    : { key, dir: key === 'name' ? 1 : -1 };
+                sort = sort.key === key ? { key, dir: -sort.dir } : { key, dir: key === 'name' ? 1 : -1 };
                 document.querySelectorAll('#portfolio th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', sort.dir === 1 ? 'ascending' : 'descending');
-                renderPortfolio();
+                renderTable();
             }));
 
+        /* ---------------- boot ---------------- */
         const bust = '?t=' + Date.now();
         Promise.all([
             fetch('holdings.json' + bust).then(r => r.json()),
             fetch('prices.json' + bust).then(r => r.json()),
         ]).then(([{ holdings }, { updated, rates, quotes, nav }]) => {
             RATES = rates;
-            const rows = portfolioLib.build(holdings, rates, quotes);
-            STATE = {
-                rows, nav,
-                geo: portfolioLib.byGeography(holdings, rates, quotes),
-                total: rows.reduce((a, r) => a + r.value, 0),
-            };
+            const dim = ['instrument', 'company', 'geography'].includes(localStorage.getItem('dim')) ? localStorage.getItem('dim') : 'company';
+            STATE = { holdings, rates, quotes, nav, dim };
+            document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
+            document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
+            rebuildRows();
             renderAll();
             document.getElementById('updated').textContent =
-                `Prices as of ${new Date(updated).toLocaleString()} · tap a grouped row to see its instruments`;
+                `Prices as of ${stamp(updated)} · click a row to chart it · click the chevron to expand`;
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));
         }).catch(err => {
             document.getElementById('updated').textContent = `Could not load data: ${err.message}`;

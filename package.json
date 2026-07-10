@@ -6,7 +6,7 @@
     "extract": "node extract-portfolio.js",
     "publish": "node publish.js",
     "fetch": "node fetch-prices.js",
-    "test": "node fetch-prices.js --selftest && node extract-portfolio.js --selftest",
+    "test": "node fetch-prices.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest",
     "start": "npx --yes serve ."
   },
   "repository": {

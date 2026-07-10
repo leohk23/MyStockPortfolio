@@ -22,8 +22,14 @@ function weightedMove(legs, period) {
 
 const PERIODS = ['7d', '1m', '3m', '6m', '1y', 'ytd'];
 
-// holdings[] + prices.json -> one row per Grouping1, sorted by market value.
-function build(holdings, rates, quotes) {
+// How to bucket holdings into rows. 'company' is Grouping1 from the workbook
+// (VOO + VUSA.L -> "S&P 500"); 'geography' its region; 'instrument' one row each.
+const DIMENSIONS = { company: 'group', geography: 'geography', instrument: 'yahoo' };
+
+// holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
+// Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
+function build(holdings, rates, quotes, dimension = 'company') {
+    const field = DIMENSIONS[dimension] || DIMENSIONS.company;
     const groups = new Map();
     for (const h of holdings) {
         const quote = quotes[h.yahoo];
@@ -43,17 +49,19 @@ function build(holdings, rates, quotes) {
             value: h.qty * quote.priceUSD,
             income: h.qty * (h.divTTM || 0) * rate,
         };
-        if (!groups.has(h.group)) groups.set(h.group, { name: h.group, legs: [] });
-        groups.get(h.group).legs.push(leg);
+        const key = String(h[field]);
+        if (!groups.has(key)) groups.set(key, { name: key, legs: [] });
+        groups.get(key).legs.push(leg);
     }
 
     const rows = [...groups.values()].map(g => {
         const sum = k => g.legs.reduce((a, l) => a + l[k], 0);
         const cost = sum('cost'), value = sum('value');
         g.legs.sort((a, b) => b.value - a.value);
-        // A group's "last trade" is the most recent across its instruments.
+        // A row's "last trade" is the most recent across its instruments.
         const traded = g.legs.filter(l => l.lastTrade);
         const recent = traded.sort((a, b) => b.lastTrade.date.localeCompare(a.lastTrade.date))[0];
+        const single = g.legs.length === 1 ? g.legs[0] : null;
         return {
             ...g, cost, value,
             gain: value - cost,
@@ -62,29 +70,18 @@ function build(holdings, rates, quotes) {
             moves: Object.fromEntries(PERIODS.map(p => [p, weightedMove(g.legs, p)])),
             lastTrade: recent ? recent.lastTrade : null,
             since: recent ? recent.since : null,
+            // Current price per share only makes sense for a single instrument; shown native.
+            price: single ? single.quote.price : null,
+            priceCurrency: single ? single.quote.currency : null,
+            // The instrument a click on this row charts: its largest leg.
+            primaryYahoo: g.legs[0].yahoo,
         };
     });
     rows.sort((a, b) => b.value - a.value);
     return rows;
 }
 
-function byGeography(holdings, rates, quotes) {
-    const regions = new Map();
-    for (const h of holdings) {
-        const quote = quotes[h.yahoo];
-        if (!quote) continue;
-        const rate = rateFor(h.currency, rates);
-        const region = regions.get(h.geography) || { cost: 0, value: 0 };
-        region.cost += h.costLC * rate;
-        region.value += h.qty * quote.priceUSD;
-        regions.set(h.geography, region);
-    }
-    return [...regions.entries()]
-        .map(([name, r]) => ({ name, ...r, gain: r.value - r.cost }))
-        .sort((a, b) => b.value - a.value);
-}
-
-const portfolioLib = { rateFor, weightedMove, build, byGeography, PERIODS };
+const portfolioLib = { rateFor, weightedMove, build, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -112,7 +109,7 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
         { yahoo: 'C', group: 'Solo', geography: 'US', currency: 'USD', qty: 1, costLC: 50, divTTM: 2 },
     ];
     const quotes = {
-        A: { priceUSD: 20, '1y': 0.5 }, B: { priceUSD: 2, '1y': 0 }, C: { priceUSD: 100, '1y': null },
+        A: { price: 20, priceUSD: 20, '1y': 0.5 }, B: { price: 20, priceUSD: 2, '1y': 0 }, C: { price: 100, priceUSD: 100, '1y': null },
     };
     const rows = build(holdings, rates, quotes);
     assert.strictEqual(rows.length, 2);
@@ -153,9 +150,22 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     // A missing FX rate is loud, not a silent zero.
     assert.throws(() => build(holdings, { USD: 1 }, quotes), /no FX rate for HKD/);
 
-    const geo = byGeography(holdings, rates, quotes);
-    assert.deepStrictEqual(geo.map(g => g.name), ['China', 'US']);
-    assert.strictEqual(geo[0].value, 400);
+    // Single-instrument rows carry a native price; merged rows do not.
+    assert.strictEqual(rows.find(r => r.name === 'Solo').price, 100);
+    assert.strictEqual(byd.price, null);
+    assert.strictEqual(byd.primaryYahoo, 'A'); // larger leg (value 200 vs 200 -> A first is fine)
+
+    // Grouping by geography buckets both BYD legs plus Solo into China + US.
+    const geo = build(holdings, rates, quotes, 'geography');
+    assert.deepStrictEqual(geo.map(g => g.name).sort(), ['China', 'US']);
+    assert.strictEqual(geo.find(g => g.name === 'China').value, 400);
+    assert.strictEqual(geo.find(g => g.name === 'China').legs.length, 2);
+
+    // Grouping by instrument gives one row per holding, never merged.
+    const inst = build(holdings, rates, quotes, 'instrument');
+    assert.strictEqual(inst.length, 3);
+    assert.ok(inst.every(r => r.legs.length === 1));
+    assert.ok(inst.every(r => r.price != null));
 
     console.log('selftest ok');
 }

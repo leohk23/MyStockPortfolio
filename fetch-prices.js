@@ -32,7 +32,8 @@ function movements(timestamps, closes, current, now = Date.now() / 1000) {
 
 // One request per ticker: a year of daily closes covers every period column.
 async function fetchTicker(ticker) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1y&interval=1d`;
+    // Index symbols start with a caret (^GSPC); encode it so the URL stays valid.
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d`;
     const res = await fetch(url, { headers: { 'User-Agent': UA } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const r = (await res.json()).chart?.result?.[0];
@@ -57,6 +58,31 @@ function rateFor(code, rates) {
 
 const isoDay = ts => new Date(ts * 1000).toISOString().slice(0, 10);
 
+// Per-ticker daily native closes aligned to one shared calendar (exchanges differ).
+// Leading days before a ticker's first close are null; interior gaps (holidays,
+// half-days) forward-fill. This is the "honest" matrix used to chart a single stock;
+// the NAV sum below seeds the leading nulls so a late listing doesn't fake a ramp.
+function alignedCloses(tickers, quotes) {
+    const days = [...new Set(
+        tickers.flatMap(t => quotes[t]?.series.timestamps.map(isoDay) ?? [])
+    )].sort();
+
+    const closes = {};
+    for (const t of tickers) {
+        const { timestamps, closes: cs } = quotes[t].series;
+        const byDay = new Map();
+        timestamps.forEach((ts, i) => { if (cs[i] != null) byDay.set(isoDay(ts), cs[i]); });
+        const arr = [];
+        let last = null, seen = false;
+        for (const day of days) {
+            if (byDay.has(day)) { last = byDay.get(day); seen = true; }
+            arr.push(seen ? last : null);
+        }
+        closes[t] = arr;
+    }
+    return { days, closes };
+}
+
 // Portfolio value over the last year, valued daily.
 //
 // ponytail: assumes TODAY's share counts and TODAY's FX for every past day. It answers
@@ -64,44 +90,31 @@ const isoDay = ts => new Date(ts * 1000).toISOString().slice(0, 10);
 // buys, sells and FX drift are invisible. Real NAV needs the Tradelog replayed; do that
 // only if this proxy starts misleading you.
 function navHistory(holdings, quotes, rates) {
-    // Exchanges keep different calendars, so use the union of all trading days.
-    const days = [...new Set(
-        holdings.flatMap(h => quotes[h.yahoo]?.series.timestamps.map(isoDay) ?? [])
-    )].sort();
+    const tickers = [...new Set(holdings.map(h => h.yahoo))];
+    const { days, closes } = alignedCloses(tickers, quotes);
 
-    const seriesFor = {};
-    for (const h of holdings) {
-        const { timestamps, closes } = quotes[h.yahoo].series;
-        const byDay = new Map();
-        timestamps.forEach((ts, i) => { if (closes[i] != null) byDay.set(isoDay(ts), closes[i]); });
-        seriesFor[h.yahoo] = byDay;
-    }
+    // Seed each ticker's leading nulls with its first real close so a recently-listed
+    // line (NW0.DE has ~113 bars) is held flat at its first price instead of counting
+    // as zero — which would fake a ramp. Distortion is bounded by that holding's size.
+    const seed = {};
+    for (const t of tickers) seed[t] = closes[t].find(v => v != null);
 
-    // Seed with each ticker's earliest close so a recently-listed line (NW0.DE has ~113
-    // bars) is held flat at its first price instead of counting as zero, which would
-    // fake a ramp — or, if we trimmed to full coverage instead, cost everyone else
-    // half a year of history. Distortion is bounded by that holding's size.
-    const last = {};
-    for (const h of holdings) {
-        const first = seriesFor[h.yahoo].keys().next().value;
-        if (first !== undefined) last[h.yahoo] = seriesFor[h.yahoo].get(first);
-    }
-
-    const values = [];
-    for (const day of days) {
+    const values = days.map((_, i) => {
         let total = 0;
         for (const h of holdings) {
-            const close = seriesFor[h.yahoo].get(day) ?? last[h.yahoo]; // forward-fill holidays
+            const close = closes[h.yahoo][i] ?? seed[h.yahoo];
             if (close == null) continue;
-            last[h.yahoo] = close;
             total += h.qty * close * rateFor(quotes[h.yahoo].currency, rates);
         }
-        values.push(Math.round(total));
-    }
+        return Math.round(total);
+    });
     return { days, values };
 }
 
 const sleep = () => new Promise(r => setTimeout(r, 300)); // ponytail: fixed delay; backoff if Yahoo starts 429ing
+
+// Chart benchmarks: Yahoo symbol -> display name. Rebased to % on the client.
+const BENCHMARKS = { '^GSPC': 'S&P 500', '^HSI': 'HSI' };
 
 async function main() {
     const tickers = [...new Set(holdings.map(h => h.yahoo))];
@@ -150,6 +163,38 @@ async function main() {
     const priced = holdings.filter(h => quotes[h.yahoo]);
     const nav = navHistory(priced, quotes, rates);
 
+    // Benchmark indices for the chart overlay. Best-effort: a failed benchmark just
+    // means that toggle has no data, never a broken price file.
+    const benchQuotes = {};
+    for (const sym of Object.keys(BENCHMARKS)) {
+        try {
+            benchQuotes[sym] = await fetchTicker(sym);
+            console.log(`ok   ${sym} ${benchQuotes[sym].price} (${BENCHMARKS[sym]})`);
+        } catch (e) {
+            console.error(`skip ${sym}: ${e.message}`);
+        }
+        await sleep();
+    }
+
+    // Per-instrument close history (native currency) for charting a single stock,
+    // plus the benchmarks, on one shared calendar. Separate file, loaded by the page
+    // only when needed (stock click or benchmark toggle) so first paint stays lean.
+    const histTickers = [...priced.map(h => h.yahoo), ...Object.keys(benchQuotes)];
+    const hist = alignedCloses(histTickers, { ...quotes, ...benchQuotes });
+    const round = arr => arr.map(v => v == null ? null : Number(v.toPrecision(6)));
+    const closes = {};
+    for (const t of Object.keys(hist.closes)) closes[t] = round(hist.closes[t]);
+    const benchmarks = {};
+    for (const [sym, name] of Object.entries(BENCHMARKS)) {
+        if (benchQuotes[sym]) benchmarks[sym] = { name, currency: benchQuotes[sym].currency };
+    }
+    fs.writeFileSync('history.json', JSON.stringify({
+        updated: new Date().toISOString(),
+        days: hist.days,
+        closes,
+        benchmarks,
+    }, null, 1));
+
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
     fs.writeFileSync('prices.json', JSON.stringify({
@@ -159,7 +204,9 @@ async function main() {
         nav,
         failed,
     }, null, 1));
-    console.log(`wrote prices.json (${Object.keys(quotes).length} tickers, ${failed.length} failed, ${nav.days.length} nav days)`);
+    const kb = f => (fs.statSync(f).size / 1024).toFixed(0);
+    console.log(`wrote prices.json (${Object.keys(quotes).length} tickers, ${failed.length} failed, ${nav.days.length} nav days, ${kb('prices.json')}KB)`);
+    console.log(`wrote history.json (${Object.keys(closes).length} series, ${Object.keys(benchmarks).length} benchmarks, ${kb('history.json')}KB)`);
 }
 
 function selftest() {
@@ -205,6 +252,14 @@ function selftest() {
     const back = navHistory([{ yahoo: 'A', qty: 1 }, { yahoo: 'B', qty: 1 }], late, { USD: 1 });
     assert.strictEqual(back.days.length, 3);
     assert.deepStrictEqual(back.values, [15, 15, 15]);
+
+    // alignedCloses keeps leading nulls honest (no backfill) so a single-stock chart
+    // starts at the IPO, while interior holiday gaps forward-fill.
+    const aligned = alignedCloses(['A', 'B'], late);
+    assert.deepStrictEqual(aligned.days.length, 3);
+    assert.deepStrictEqual(aligned.closes.A, [10, 10, 10]);
+    assert.deepStrictEqual(aligned.closes.B, [null, null, 5]); // null before B's first close
+    assert.deepStrictEqual(alignedCloses(['A'], gap).closes.A, [10, 10, 12]);
 
     console.log('selftest ok');
 }

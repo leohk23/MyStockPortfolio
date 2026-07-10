@@ -30,11 +30,11 @@ jobs:
       - run: node portfolio.js --selftest
       - run: node fetch-prices.js
 
-      - name: Commit prices.json
+      - name: Commit prices.json + history.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json
+          git add prices.json history.json
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
           git pull --rebase --autostash

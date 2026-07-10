@@ -54,33 +54,38 @@ function cleanGroup(name) {
     return String(name).replace(/\s*\([^)]*:[^)]*\)\s*$/, '').trim();
 }
 
-// Most recent trade per Tradelog symbol. Comments column is deliberately not read —
-// it holds trade rationale, and the published repo is public.
-function lastTrades(sheet) {
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
-    const latest = new Map();
-    for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        const symbol = r[TRADE.symbol];
-        const date = r[TRADE.date];
-        const price = r[TRADE.adjPrice];
-        if (!symbol || !(date instanceof Date) || price == null) continue;
-        const prev = latest.get(String(symbol));
-        if (prev && prev.raw >= date) continue;
-        latest.set(String(symbol), {
-            raw: date,
-            date: date.toISOString().slice(0, 10),
-            side: String(r[TRADE.side] || '').toUpperCase(),
-            qty: Math.abs(r[TRADE.qty] || 0),
-            price,
-            currency: String(r[TRADE.currency] || 'USD'),
-        });
-    }
-    for (const t of latest.values()) delete t.raw;
-    return latest;
+// All trades per Tradelog symbol, oldest first, for the chart's buy/sell markers.
+// Comments column is deliberately not read — it holds trade rationale, and the
+// published repo is public. Price is split-adjusted so it lines up with today's spot.
+function parseTrade(r) {
+    const date = r[TRADE.date];
+    if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null) return null;
+    return {
+        symbol: String(r[TRADE.symbol]),
+        date: date.toISOString().slice(0, 10),
+        side: String(r[TRADE.side] || '').toUpperCase().startsWith('S') ? 'SELL' : 'BUY',
+        qty: Math.abs(r[TRADE.qty] || 0),
+        price: r[TRADE.adjPrice],
+        currency: String(r[TRADE.currency] || 'USD'),
+    };
 }
 
-function extract(sheet, trades) {
+function tradesBySymbol(sheet) {
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
+    const bySymbol = new Map();
+    for (let i = 1; i < rows.length; i++) {
+        const t = parseTrade(rows[i]);
+        if (!t) continue;
+        const { symbol, ...trade } = t;
+        const list = bySymbol.get(symbol) || [];
+        list.push(trade);
+        bySymbol.set(symbol, list);
+    }
+    for (const list of bySymbol.values()) list.sort((a, b) => a.date.localeCompare(b.date));
+    return bySymbol;
+}
+
+function extract(sheet, tradesBy) {
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
     const holdings = [];
     for (let i = HEADER_ROW + 1; i < rows.length; i++) {
@@ -91,6 +96,7 @@ function extract(sheet, trades) {
         if (!ticker || !group || !(qty > 0)) continue; // closed positions and pivot rows
         if (/grand total/i.test(String(group))) break;
 
+        const trades = tradesBy.get(String(r[COL.lookup] ?? ticker)) ?? [];
         holdings.push({
             ticker: String(ticker),
             yahoo: yahooSymbol({
@@ -106,7 +112,8 @@ function extract(sheet, trades) {
             costLC: r[COL.costLC] ?? 0,       // cost basis in the instrument's currency
             realizedLC: r[COL.realized] ?? 0,
             divTTM: r[COL.divTTM] ?? 0,
-            lastTrade: trades.get(String(r[COL.lookup] ?? ticker)) ?? null,
+            trades,
+            lastTrade: trades.length ? trades[trades.length - 1] : null,
         });
     }
     return holdings;
@@ -120,7 +127,7 @@ function main() {
     if (!wb.Sheets.Portfolio) throw new Error('no "Portfolio" tab in workbook');
     if (!wb.Sheets.Tradelog) throw new Error('no "Tradelog" tab in workbook');
 
-    const trades = lastTrades(wb.Sheets.Tradelog);
+    const trades = tradesBySymbol(wb.Sheets.Tradelog);
     const holdings = extract(wb.Sheets.Portfolio, trades);
     if (holdings.length < 10) throw new Error(`only ${holdings.length} holdings parsed; refusing to overwrite`);
 
