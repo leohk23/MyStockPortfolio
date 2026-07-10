@@ -228,7 +228,7 @@
         let chartSel = null;     // null = portfolio; else a yahoo symbol
         const benchOn = new Set();
 
-        const rateFor = c => portfolioLib.rateFor(c, STATE.rates);
+        const rateOf = c => portfolioLib.rateFor(c, STATE.rates);
 
         function loadHistory() {
             if (HISTORY) return Promise.resolve(HISTORY);
@@ -305,7 +305,7 @@
         function instrumentSpec(yahoo) {
             const q = STATE.quotes[yahoo];
             const holding = STATE.holdings.find(h => h.yahoo === yahoo);
-            const nativeToUSD = rateFor(q.currency);
+            const nativeToUSD = rateOf(q.currency);
             const closes = HISTORY.closes[yahoo] || [];
             // Trim leading nulls (a late listing) so the line starts at the stock's history.
             let start = closes.findIndex(v => v != null);
@@ -325,7 +325,7 @@
                     i = days.findIndex(d => d >= t.date);
                     if (i < 0) continue;
                 }
-                const usd = t.price * rateFor(t.currency);
+                const usd = t.price * rateOf(t.currency);
                 markers.push({ i, side: t.side, usd, trade: t });
                 (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
             }
