@@ -31,13 +31,28 @@ function movements(timestamps, closes, current, now = Date.now() / 1000) {
 }
 
 // One request per ticker: a year of daily closes covers every period column.
-async function fetchTicker(ticker) {
+// Retries transient failures — CI runs from a shared IP that Yahoo rate-limits,
+// and a single hiccup would otherwise silently drop a holding from the dashboard.
+async function fetchTicker(ticker, attempts = 3) {
     // Index symbols start with a caret (^GSPC); encode it so the URL stays valid.
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d`;
-    const res = await fetch(url, { headers: { 'User-Agent': UA } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const r = (await res.json()).chart?.result?.[0];
-    if (!r?.meta?.regularMarketPrice) throw new Error('no price in response');
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const r = (await res.json()).chart?.result?.[0];
+            if (!r?.meta?.regularMarketPrice) throw new Error('no price in response');
+            return shape(r);
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
+}
+
+function shape(r) {
     const price = r.meta.regularMarketPrice;
     const timestamps = r.timestamp || [];
     const closes = r.indicators?.quote?.[0]?.close || [];
