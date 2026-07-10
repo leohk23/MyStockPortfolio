@@ -65,6 +65,7 @@
         .sline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
         .sarea { opacity: .10; }
         .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+        .trade-guide { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .45; }
         .cursor-dot { stroke: var(--surface-3); stroke-width: 2; }
         .trade-buy { fill: var(--good); stroke: var(--surface-3); stroke-width: 1.5; }
         .trade-sell { fill: var(--bad); stroke: var(--surface-3); stroke-width: 1.5; }
@@ -85,7 +86,7 @@
 
         /* ---- table ---- */
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; min-width: 1120px; }
+        table { border-collapse: collapse; width: 100%; min-width: 1280px; }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
@@ -106,10 +107,17 @@
         tr.leg td:first-child { padding-left: 22px; color: var(--text-secondary); }
         tr.leg { cursor: pointer; }
         tr.leg:hover { background: var(--surface-2); }
+        tr.trade-detail { display: none; font-size: 12px; background: var(--surface-3); }
+        tr.trade-detail.show { display: table-row; }
+        tr.trade-detail td { padding-left: 22px; text-align: left; color: var(--text-secondary); white-space: normal; }
+        .trade-comment { color: var(--text-muted); margin-top: 3px; }
         tr.sel, tr.sel:hover { background: rgba(57,135,229,.16); }
         /* Chevron at the END of the position name. */
-        .chev { color: var(--text-muted); margin-left: 6px; display: inline-block; width: 10px; }
+        .chev { font: inherit; color: var(--text-muted); background: none; border: 0; padding: 0;
+            margin-left: 6px; display: inline-block; width: 14px; cursor: pointer; }
         tr.group.open .chev { color: var(--text-secondary); }
+        tfoot { font-weight: 600; background: var(--surface-2); }
+        tfoot td { border-top: 1px solid var(--text-muted); }
 
         @media (max-width: 600px) {
             body { margin: 8px; }
@@ -135,6 +143,10 @@
                 <div id="chart-sub">–</div>
             </div>
             <div id="chart-controls">
+                <div id="metric" class="btns" role="group" aria-label="Stock chart metric" style="display:none">
+                    <button data-metric="price" aria-pressed="true">Price</button>
+                    <button data-metric="gain" aria-pressed="false">Gain/Loss</button>
+                </div>
                 <div id="bench" class="btns" role="group" aria-label="Benchmarks">
                     <button class="bench spx" data-bench="^GSPC" aria-pressed="false">S&amp;P 500</button>
                     <button class="bench hsi" data-bench="^HSI" aria-pressed="false">HSI</button>
@@ -144,6 +156,9 @@
                     <button data-days="63" aria-pressed="false">3M</button>
                     <button data-days="126" aria-pressed="false">6M</button>
                     <button data-days="0" aria-pressed="true">12M</button>
+                    <button data-years="2" data-long aria-pressed="false">2Y</button>
+                    <button data-years="5" data-long aria-pressed="false">5Y</button>
+                    <button data-days="0" data-long aria-pressed="false">All</button>
                 </div>
             </div>
         </div>
@@ -175,9 +190,11 @@
                     <th data-sort="cost">Cost</th>
                     <th data-sort="value" aria-sort="descending">Value</th>
                     <th data-sort="gain">Gain/Loss</th>
+                    <th data-sort="realized">Realized</th>
                     <th data-sort="gainPct">%</th>
                     <th data-sort="value">Mix</th>
-                    <th data-sort="yield">Yield</th>
+                    <th data-sort="yield" title="Yahoo trailing 12-month dividends divided by current price">Yield TTM</th>
+                    <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
                     <th data-sort="7d">7D</th>
                     <th data-sort="1m">1M</th>
                     <th data-sort="3m">3M</th>
@@ -187,6 +204,7 @@
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot></tfoot>
         </table>
     </div>
 
@@ -211,6 +229,10 @@
         const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
         const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
+        const realizedCls = n => n == null || Math.abs(n) < 1e-9 ? 'muted' : cls(n);
+        const escapeHTML = text => String(text).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c]);
         const ymd = isoDay => isoDay.replace(/-/g, '/');            // 2026-07-10 -> 2026/07/10
         const p2 = n => String(n).padStart(2, '0');
         const stamp = iso => { const d = new Date(iso);
@@ -220,12 +242,16 @@
         const PORT_COLOR = 'var(--series-port)';
 
         /* ---------------- state ---------------- */
-        let STATE = null;        // { holdings, rates, quotes, nav, rows, total, dim }
+        let STATE = null;        // { holdings, rates, quotes, nav, firstTrade, rows, total, dim }
         let HISTORY = null;      // lazy-loaded history.json
         let historyPromise = null;
         let sort = { key: 'value', dir: -1 };
         let rangeDays = 0;       // 0 = whole series
-        let chartSel = null;     // null = portfolio; else a yahoo symbol
+        let rangeYears = 0;
+        let longRange = false;   // weekly full history instead of daily one-year data
+        let chartSel = null;     // null = portfolio/group; else a yahoo symbol
+        let chartGroup = null;   // selected Company/Geography row
+        let instrumentMetric = 'price';
         const benchOn = new Set();
 
         const rateOf = c => portfolioLib.rateFor(c, STATE.rates);
@@ -239,9 +265,13 @@
         }
 
         /* ---------------- chart ---------------- */
-        // Slice the trailing `rangeDays` off a day axis and any parallel arrays.
-        function sliceRange(days, arrays) {
-            const from = rangeDays > 0 ? Math.max(0, days.length - rangeDays) : 0;
+        // Slice short ranges by trading bars; long ranges by exact calendar years.
+        function sliceRange(days, arrays, notBefore = '') {
+            const cutoff = new Date(days[days.length - 1] + 'T00:00:00Z');
+            cutoff.setUTCFullYear(cutoff.getUTCFullYear() - rangeYears);
+            let from = rangeYears ? days.findIndex(d => d >= cutoff.toISOString().slice(0, 10))
+                : rangeDays > 0 ? Math.max(0, days.length - rangeDays) : 0;
+            if (notBefore) from = Math.max(from, days.findIndex(d => d >= notBefore));
             return { days: days.slice(from), arrays: arrays.map(a => a.slice(from)) };
         }
         const firstNonNull = a => a.find(v => v != null);
@@ -249,13 +279,15 @@
 
         // Build the chart spec for the current mode. May need HISTORY; caller ensures it.
         function chartSpec() {
+            if (chartGroup) return groupValueSpec(chartGroup);
             if (chartSel) return instrumentSpec(chartSel);
             if (benchOn.size) return benchmarkSpec();
             return portfolioValueSpec();
         }
 
         function portfolioValueSpec() {
-            const { days, arrays } = sliceRange(STATE.nav.days, [STATE.nav.values]);
+            const nav = longRange ? HISTORY.long.nav : STATE.nav;
+            const { days, arrays } = sliceRange(nav.days, [nav.values], longRange && !rangeYears ? STATE.firstTrade : '');
             const values = arrays[0].map(v => v / RATES[display]);
             const first = values[0], last = values[values.length - 1];
             return {
@@ -271,6 +303,30 @@
             };
         }
 
+        function groupValueSpec(group) {
+            const history = longRange ? HISTORY.long : HISTORY;
+            const full = portfolioLib.basketHistory(history.days, history.closes, group.legs, STATE.rates);
+            const firstTrade = group.legs.flatMap(leg => leg.trades || [])
+                .reduce((first, trade) => !first || trade.date < first ? trade.date : first, '');
+            const { days, arrays } = sliceRange(
+                history.days, [full], longRange && !rangeYears ? firstTrade : '',
+            );
+            const values = arrays[0].map(v => v / RATES[display]);
+            const first = values[0], last = values[values.length - 1];
+            const count = group.legs.length;
+            return {
+                days,
+                series: [{ label: group.name, color: PORT_COLOR, values, area: true }],
+                fmtY: v => money(v * RATES[display]),
+                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
+                    + `<span class="muted">${money((last - first) * RATES[display])}</span>`,
+                sub: `${money(last * RATES[display])} · ${count} instrument${count === 1 ? '' : 's'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                title: `${group.name} NAV`,
+                note: "Today's holdings in this group valued at past prices — trades and FX moves are not replayed.",
+                tip: i => `${money(values[i] * RATES[display])} <span class="${cls((values[i] - first) / first)}">${pct((values[i] - first) / first)}</span>`,
+            };
+        }
+
         // Rebase a value array to its first non-null in the visible window → fractional change.
         function rebase(arr) {
             const base = firstNonNull(arr);
@@ -278,16 +334,18 @@
         }
 
         function benchmarkSpec() {
+            const history = longRange ? HISTORY.long : HISTORY;
             // Portfolio value keyed by date, read along the history calendar so every
             // series shares one x-axis before rebasing to % change.
-            const navByDay = new Map(STATE.nav.days.map((d, i) => [d, STATE.nav.values[i]]));
-            const full = HISTORY.days.map(d => navByDay.get(d) ?? null);
+            const nav = longRange ? HISTORY.long.nav : STATE.nav;
+            const navByDay = new Map(nav.days.map((d, i) => [d, nav.values[i]]));
+            const full = history.days.map(d => navByDay.get(d) ?? null);
             const seriesRaw = [{ label: 'Portfolio', color: PORT_COLOR, sym: null, raw: full }];
             for (const sym of ['^GSPC', '^HSI']) {
-                if (benchOn.has(sym) && HISTORY.closes[sym])
-                    seriesRaw.push({ label: HISTORY.benchmarks[sym].name, color: BENCH_COLOR[sym], sym, raw: HISTORY.closes[sym] });
+                if (benchOn.has(sym) && history.closes[sym])
+                    seriesRaw.push({ label: HISTORY.benchmarks[sym].name, color: BENCH_COLOR[sym], sym, raw: history.closes[sym] });
             }
-            const sliced = sliceRange(HISTORY.days, seriesRaw.map(s => s.raw));
+            const sliced = sliceRange(history.days, seriesRaw.map(s => s.raw), longRange && !rangeYears ? STATE.firstTrade : '');
             const series = seriesRaw.map((s, k) => ({ label: s.label, color: s.color, values: rebase(sliced.arrays[k]) }));
             const days = sliced.days;
             const port = series[0].values;
@@ -303,17 +361,28 @@
         }
 
         function instrumentSpec(yahoo) {
+            const history = longRange ? HISTORY.long : HISTORY;
             const q = STATE.quotes[yahoo];
             const holding = STATE.holdings.find(h => h.yahoo === yahoo);
             const nativeToUSD = rateOf(q.currency);
-            const closes = HISTORY.closes[yahoo] || [];
-            // Trim leading nulls (a late listing) so the line starts at the stock's history.
-            let start = closes.findIndex(v => v != null);
+            const gainMode = instrumentMetric === 'gain';
+            const closes = history.closes[yahoo] || [];
+            const replay = gainMode
+                ? portfolioLib.gainHistory(history.days, closes, holding?.trades || [], STATE.rates, q.currency)
+                : null;
+            const usdSource = gainMode ? replay.gains
+                : closes.map(v => v == null ? null : v * nativeToUSD);
+            // Price starts at listing; gain/loss starts at the first recorded trade.
+            let start = usdSource.findIndex(v => v != null);
             if (start < 0) start = 0;
-            const daysAll = HISTORY.days.slice(start);
-            const usdAll = closes.slice(start).map(v => v == null ? null : v * nativeToUSD);
-            const { days, arrays } = sliceRange(daysAll, [usdAll]);
+            const daysAll = history.days.slice(start);
+            const sourceArrays = gainMode
+                ? [replay.gains.slice(start), replay.costs.slice(start), replay.quantities.slice(start)]
+                : [usdSource.slice(start)];
+            const { days, arrays } = sliceRange(daysAll, sourceArrays);
             const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
+            const costsUSD = gainMode ? arrays[1] : null;
+            const quantities = gainMode ? arrays[2] : null;
 
             // Trades on this instrument, mapped to the nearest visible day index.
             const dayIndex = new Map(days.map((d, i) => [d, i]));
@@ -326,23 +395,36 @@
                     if (i < 0) continue;
                 }
                 const usd = t.price * rateOf(t.currency);
-                markers.push({ i, side: t.side, usd, trade: t });
+                markers.push({
+                    i, side: t.side,
+                    usd: gainMode ? t.balanceQty * (t.price - t.avgPrice) * rateOf(t.currency) : usd,
+                    trade: t,
+                });
                 (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
             }
             const first = firstNonNull(values), last = lastNonNull(values);
             const name = holding ? `${holding.group} · ${yahoo}` : yahoo;
+            const formatValue = gainMode ? money : priceUSD;
+            const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
+            const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
+            const gainPct = lastCostUSD ? last * RATES[display] / lastCostUSD : null;
             return {
                 days,
-                series: [{ label: name, color: PORT_COLOR, values, area: true }],
+                series: [{ label: name, color: PORT_COLOR, values, area: !gainMode }],
                 markers, markersByIndex: byIndex,
-                fmtY: v => priceUSD(v * RATES[display]),
-                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
-                    + `<span class="muted">${priceUSD(last * RATES[display])}</span>`,
-                sub: `${q.qty ?? holding?.qty ?? ''} shares · price per share · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
-                title: name,
-                note: 'Price per share, converted to ' + display + ' at today\'s FX. ▲ buy · ▼ sell (split-adjusted).',
+                zero: gainMode,
+                fmtY: v => formatValue(v * RATES[display]),
+                headline: gainMode
+                    ? `<span class="${cls(last)}">${money(last * RATES[display])}</span> <span class="muted">${pct(gainPct)}</span>`
+                    : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> <span class="muted">${priceUSD(last * RATES[display])}</span>`,
+                sub: `${shownQty} shares · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                title: gainMode ? `${name} Gain/Loss` : name,
+                note: gainMode
+                    ? `Unrealized gain/loss from Tradelog balance quantity and average cost, using today's FX — realized gains excluded. ▲ buy · ▼ sell.`
+                    : 'Price per share, converted to ' + display + ' at today\'s FX. ▲ buy · ▼ sell (split-adjusted).',
                 tip: i => {
-                    let s = `${priceUSD(values[i] * RATES[display])}`;
+                    let s = `${formatValue(values[i] * RATES[display])}`;
+                    if (gainMode) s += ` <span class="${cls(values[i])}">${pct(costsUSD[i] ? values[i] * RATES[display] / costsUSD[i] : null)}</span>`;
                     for (const t of (byIndex.get(i) || []))
                         s += `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>${t.side} ${t.qty} @ ${t.price.toLocaleString()} ${t.currency}</div>`;
                     return s;
@@ -413,19 +495,26 @@
 
             svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
             svg.setAttribute('height', H);
-            svg.innerHTML = `${gridEls}${zeroEl}${dateEls}${lineEls}${markerEls}
+            svg.innerHTML = `${gridEls}${zeroEl}${dateEls}${lineEls}
+                <line class="trade-guide" id="trade-guide" x1="${L}" x2="${W - R}" style="display:none"/>
+                ${markerEls}
                 <line class="crosshair" id="cross" y1="${T}" y2="${H - B}" style="display:none"/>
                 <circle class="cursor-dot" id="dot" r="4" style="display:none;fill:${series[0].color}"/>
                 <rect id="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
 
-            const cross = svg.querySelector('#cross'), dot = svg.querySelector('#dot');
+            const cross = svg.querySelector('#cross'), dot = svg.querySelector('#dot'), guide = svg.querySelector('#trade-guide');
             const move = ev => {
                 const rect = svg.getBoundingClientRect();
                 const scale = W / rect.width;
-                const px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left) * scale;
+                const point = ev.touches ? ev.touches[0] : ev;
+                const px = (point.clientX - rect.left) * scale;
+                const py = (point.clientY - rect.top) * H / rect.height;
                 const i = Math.max(0, Math.min(days.length - 1, Math.round((px - L) / ((W - L - R) / (days.length - 1)))));
                 const cx = x(i);
                 cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
+                const marker = (spec.markers || []).find(m => Math.hypot(x(m.i) - px, y(m.usd / RATES[display]) - py) <= 10);
+                if (marker) { const gy = y(marker.usd / RATES[display]); guide.setAttribute('y1', gy); guide.setAttribute('y2', gy); guide.style.display = ''; }
+                else guide.style.display = 'none';
                 const yv = series[0].values[i];
                 if (yv != null) { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(yv)); dot.style.display = ''; }
                 else dot.style.display = 'none';
@@ -434,7 +523,7 @@
                 tip.style.top = `${(yv != null ? y(yv) : T) / scale - 10}px`;
                 tip.style.opacity = 1;
             };
-            const leave = () => { tip.style.opacity = 0; cross.style.display = 'none'; dot.style.display = 'none'; };
+            const leave = () => { tip.style.opacity = 0; cross.style.display = 'none'; dot.style.display = 'none'; guide.style.display = 'none'; };
             const hit = svg.querySelector('#hit');
             hit.addEventListener('mousemove', move);
             hit.addEventListener('mouseleave', leave);
@@ -444,21 +533,33 @@
 
         // Redraw, loading history first if the current mode needs it.
         function updateChart() {
-            document.getElementById('bench').style.display = chartSel ? 'none' : '';
-            if (chartSel || benchOn.size) loadHistory().then(drawChart).catch(e => {
+            const selected = chartSel || chartGroup;
+            document.getElementById('bench').style.display = selected ? 'none' : '';
+            document.getElementById('metric').style.display = chartSel ? '' : 'none';
+            if (longRange || selected || benchOn.size) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
             else drawChart();
         }
 
         function selectChart(yahoo) {
-            chartSel = (chartSel === yahoo) ? null : yahoo; // click again to return to portfolio
+            const same = !chartGroup && chartSel === yahoo;
+            chartGroup = null;
+            chartSel = same ? null : yahoo; // click again to return to portfolio
+            markSelectedRow();
+            updateChart();
+        }
+        function selectGroup(group) {
+            const same = chartGroup?.name === group.name;
+            chartSel = null;
+            chartGroup = same ? null : group;
             markSelectedRow();
             updateChart();
         }
         function markSelectedRow() {
             document.querySelectorAll('#portfolio tr').forEach(tr =>
-                tr.classList.toggle('sel', !!chartSel && tr.dataset.yahoo === chartSel));
+                tr.classList.toggle('sel', (!!chartSel && tr.dataset.yahoo === chartSel)
+                    || (!!chartGroup && tr.dataset.group === chartGroup.name)));
         }
 
         /* ---------------- table ---------------- */
@@ -467,6 +568,14 @@
             const price = t.price.toLocaleString(undefined, { maximumFractionDigits: 2 });
             const side = t.side === 'SELL' ? 'SELL' : 'BUY';
             return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} <span class="muted">@ ${price}</span>`;
+        }
+        function tradeDetail(t) {
+            const n = value => value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+            const side = t.side === 'SELL' ? 'SELL' : 'BUY';
+            return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} · `
+                + `${n(t.qty)} shares @ ${n(t.price)} ${t.currency} `
+                + `<span class="muted">· balance ${n(t.balanceQty)} · avg cost ${n(t.avgPrice)} ${t.currency}</span>`
+                + (t.comment ? `<div class="trade-comment">${escapeHTML(t.comment)}</div>` : '');
         }
         const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
             : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
@@ -511,20 +620,27 @@
             tbody.innerHTML = '';
             for (const r of sortedRows()) {
                 const multi = r.legs.length > 1;
+                const trades = STATE.dim === 'instrument' ? r.legs[0].trades || [] : [];
+                const expandable = multi || trades.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = 'group';
                 tr.dataset.yahoo = r.primaryYahoo;
+                tr.dataset.group = r.name;
                 tr.innerHTML = `
-                    <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>` : ''}<span class="chev">${multi ? '▸' : ''}</span></td>
+                    <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
+                        : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
+                        ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency)}</td>
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${money(r.cost)}</td>
                     <td>${money(r.value)}</td>
                     <td class="${cls(r.gain)}">${money(r.gain)}</td>
+                    <td class="${realizedCls(r.realized)}">${money(r.realized)}</td>
                     <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
                     <td>${plain(r.value / total)}</td>
                     <td class="muted">${r.yield ? plain(r.yield) : '–'}</td>
+                    <td>${money(r.income)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}`;
                 tbody.appendChild(tr);
 
@@ -542,25 +658,56 @@
                         <td>${money(leg.cost)}</td>
                         <td>${money(leg.value)}</td>
                         <td class="${cls(gain)}">${money(gain)}</td>
+                        <td class="${realizedCls(leg.realized)}">${money(leg.realized)}</td>
                         <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
                         <td>${plain(leg.value / total)}</td>
-                        <td></td>
+                        <td class="muted">${leg.quote.divYield ? plain(leg.quote.divYield) : '–'}</td>
+                        <td>${money(leg.income)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}`;
                     el.addEventListener('click', () => selectChart(leg.yahoo));
                     tbody.appendChild(el);
                     return el;
                 }) : [];
 
+                const tradeRows = trades.slice().reverse().map(trade => {
+                    const el = document.createElement('tr');
+                    el.className = 'trade-detail';
+                    el.innerHTML = `<td colspan="18">${tradeDetail(trade)}</td>`;
+                    tbody.appendChild(el);
+                    return el;
+                });
+
                 // Chevron toggles expansion; clicking the rest of the row charts the position.
                 const chev = tr.querySelector('.chev');
-                if (multi) chev.addEventListener('click', ev => {
+                if (expandable) chev.addEventListener('click', ev => {
                     ev.stopPropagation();
                     tr.classList.toggle('open');
-                    chev.textContent = tr.classList.contains('open') ? '▾' : '▸';
-                    legRows.forEach(l => l.classList.toggle('show'));
+                    const open = tr.classList.contains('open');
+                    chev.textContent = open ? '▾' : '▸';
+                    chev.setAttribute('aria-expanded', String(open));
+                    [...legRows, ...tradeRows].forEach(row => row.classList.toggle('show'));
                 });
-                tr.addEventListener('click', () => selectChart(r.primaryYahoo));
+                tr.addEventListener('click', () => {
+                    const individual = STATE.dim === 'instrument' || (STATE.dim === 'company' && r.legs.length === 1);
+                    individual ? selectChart(r.primaryYahoo) : selectGroup(r);
+                });
             }
+            const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
+            const gain = total - cost;
+            const realized = STATE.rows.reduce((a, r) => a + r.realized, 0);
+            const income = STATE.rows.reduce((a, r) => a + r.income, 0);
+            document.querySelector('#portfolio tfoot').innerHTML = `<tr>
+                <td>Total</td><td></td><td></td><td></td>
+                <td>${money(cost)}</td><td>${money(total)}</td>
+                <td class="${cls(gain)}">${money(gain)}</td>
+                <td class="${realizedCls(realized)}">${money(realized)}</td>
+                <td class="${cls(gain)}">${pct(cost ? gain / cost : null)}</td>
+                <td>100.0%</td><td class="muted">${total ? plain(income / total) : '–'}</td>
+                <td>${money(income)}</td>
+                ${portfolioLib.PERIODS.map(p => {
+                    const move = portfolioLib.weightedMove(STATE.rows.map(r => ({ value: r.value, quote: r.moves })), p);
+                    return `<td class="${cls(move)}">${pct(move)}</td>`;
+                }).join('')}</tr>`;
             markSelectedRow();
         }
 
@@ -578,9 +725,18 @@
         /* ---------------- controls ---------------- */
         document.querySelectorAll('#ranges button').forEach(b =>
             b.addEventListener('click', () => {
-                rangeDays = Number(b.dataset.days);
+                rangeDays = Number(b.dataset.days || 0);
+                rangeYears = Number(b.dataset.years || 0);
+                longRange = b.hasAttribute('data-long');
                 document.querySelectorAll('#ranges button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
-                drawChart();
+                updateChart();
+            }));
+
+        document.querySelectorAll('#metric button').forEach(b =>
+            b.addEventListener('click', () => {
+                instrumentMetric = b.dataset.metric;
+                document.querySelectorAll('#metric button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+                updateChart();
             }));
 
         document.querySelectorAll('#bench button').forEach(b =>
@@ -597,6 +753,7 @@
                 localStorage.setItem('dim', STATE.dim);
                 document.querySelectorAll('#groupby button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
                 chartSel = null; // grouping changed; return chart to portfolio
+                chartGroup = null;
                 rebuildRows();
                 renderTable();
                 updateChart();
@@ -619,7 +776,8 @@
         ]).then(([{ holdings }, { updated, rates, quotes, nav }]) => {
             RATES = rates;
             const dim = ['instrument', 'company', 'geography'].includes(localStorage.getItem('dim')) ? localStorage.getItem('dim') : 'company';
-            STATE = { holdings, rates, quotes, nav, dim };
+            const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
+            STATE = { holdings, rates, quotes, nav, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             rebuildRows();

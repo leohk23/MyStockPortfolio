@@ -22,22 +22,31 @@ Master Cashflow.xlsx          (gitignored — never leaves your machine)
 
 Committing the price files re-triggers the Pages build, so the live site follows the
 hourly refresh on its own. Pages and the workflow's write permission are already
-configured. `history.json` is loaded by the page only when you click a stock or a
-benchmark, so the first paint stays light.
+configured. `history.json` is loaded by the page only when you click a stock, a benchmark,
+or a 2Y/5Y/All range, so the first paint stays light.
 
 ## What the dashboard shows
 
-- **Totals + a NAV chart** with 1M/3M/6M/12M ranges and a hover crosshair.
+- **Totals + a NAV chart** with 1M/3M/6M/12M/2Y/5Y/All ranges and a hover crosshair.
+  Portfolio "All" begins at the first recorded trade; individual stocks retain their
+  full available price history.
 - **Benchmark toggle** — overlay the portfolio against **S&P 500** and **HSI**, all
   rebased to 0% at the start of the range (indexed, single axis — never dual).
 - **Group by Stock / Company / Geography** — the table re-buckets live. "Company" is
   the workbook's `Grouping1`; a multi-instrument row (e.g. BYD = HK line + ADR) shows a
-  chevron at the end of its name to expand.
-- **Click any row** to filter the chart to that stock, with your **buy/sell trades
-  plotted** on its price line (▲ buy, ▼ sell).
-- **Sortable columns**, a **USD / GBP / HKD** display toggle, and a current **Price**
-  column per position. **Since** = the price move since your last trade on that position
-  (current price vs. that trade's price, both in USD).
+  chevron at the end of its name to expand. In Stock view, the chevron expands the full
+  split-adjusted trade history with running balance and average cost. Multi-instrument
+  Company rows and Geography totals chart aggregate NAV; a one-stock Company row keeps
+  the individual Price/Gain-Loss views.
+- **Click any row** to filter the chart to that stock, switch between **Price / Gain/Loss**, and
+  see your **buy/sell trades plotted** on the line (▲ buy, ▼ sell). Gain/Loss replays the
+  Tradelog quantity and average cost; realized gains are excluded.
+- **Sortable columns**, a **USD / GBP / HKD** display toggle, current and realized
+  gain/loss, and a current **Price** column per position. **Since** = the price move since
+  your last trade on that position (current price vs. that trade's price, both in USD).
+  **Yield TTM** comes from Yahoo's trailing-12-month dividend events divided by current price;
+  the workbook dividend field is not exported or used. **Income TTM** multiplies those
+  online dividends per share by today's position quantity.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 
@@ -48,9 +57,9 @@ For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 - **Portfolio** — one row per instrument. `Grouping1` is the consolidation key, so
   BYD's HK line and its US ADR collapse into one row (click it to expand). This
   reproduces the workbook's own *Other Summary* pivot.
-- **Tradelog** — every trade per symbol, for the "Last trade" column and the buy/sell
-  markers on the chart. The `Comments` column is deliberately **not** exported: it holds
-  your trade rationale, and this repo is public.
+- **Tradelog** — every trade per symbol, including split-adjusted quantity, running balance,
+  average cost, and the comment shown in expandable trade history. These comments are
+  deliberately published at the owner's request; this repository and site are public.
 
 `currency` in the workbook describes the currency the **purchase price** was
 recorded in. The current price's currency comes from Yahoo (`meta.currency`), so
@@ -65,7 +74,8 @@ per-ticker special cases.
   GBP/USD rate. The `GBP` rows right beside them apply 1.34 correctly.
 - **The NAV chart is a proxy.** It values *today's* holdings at past prices using
   *today's* FX. It answers "what would this basket have been worth then", not "what
-  was my account worth". Buys, sells, and FX drift are not replayed.
+  was my account worth". Buys, sells, and FX drift are not replayed. The individual-stock
+  Gain/Loss view does replay Tradelog quantity and average cost, but still uses today's FX.
 
 ## After you trade
 
@@ -91,5 +101,5 @@ npm run fetch       # refresh prices.json by hand
 npm test            # self-check the maths (needs `npm install`)
 ```
 
-⚠️ Public repo: your holdings and cost basis are public. Pages on a private repo
+⚠️ Public repo: your holdings, cost basis, trade history, and Tradelog comments are public. Pages on a private repo
 requires GitHub Pro.

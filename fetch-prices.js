@@ -5,6 +5,7 @@ const { holdings } = require('./holdings.json');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 const DAY = 86400;
+const weekEnd = ts => ts + ((5 - new Date(ts * 1000).getUTCDay() + 7) % 7) * DAY;
 
 // Fractional change (0.25 = +25%) from the first close on/after cutoff, to current.
 // Fractions, not whole percents: the page formats them, and every other ratio in
@@ -35,7 +36,7 @@ function movements(timestamps, closes, current, now = Date.now() / 1000) {
 // and a single hiccup would otherwise silently drop a holding from the dashboard.
 async function fetchTicker(ticker, attempts = 3) {
     // Index symbols start with a caret (^GSPC); encode it so the URL stays valid.
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d&events=div`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
@@ -56,13 +57,38 @@ function shape(r) {
     const price = r.meta.regularMarketPrice;
     const timestamps = r.timestamp || [];
     const closes = r.indicators?.quote?.[0]?.close || [];
+    const divTTM = Object.values(r.events?.dividends || {}).reduce((sum, d) => sum + (d.amount || 0), 0);
     return {
         price,
         // Trust Yahoo over the workbook: .L tickers quote in pence ("GBp"), .T in JPY.
         currency: r.meta.currency || 'USD',
+        divTTM: Number(divTTM.toPrecision(6)),
+        divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
         ...movements(timestamps, closes, price),
         series: { timestamps, closes }, // stripped before writing; only used to build NAV history
     };
+}
+
+// Weekly full-history closes for the long chart ranges (2Y/5Y/All). Weekly keeps the
+// file bounded — daily over 10y × 57 tickers would be several MB. Same {currency,series}
+// shape as the daily quotes, so alignedCloses/navHistory work on it unchanged.
+async function fetchWeekly(ticker, attempts = 3) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk`;
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const r = (await res.json()).chart?.result?.[0];
+            if (!r?.timestamp) throw new Error('no history in response');
+            if (r.meta?.dataGranularity !== '1wk') throw new Error(`Yahoo returned ${r.meta?.dataGranularity || 'unknown'} history`);
+            return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes: r.indicators?.quote?.[0]?.close || [] } };
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
 }
 
 // GBp (pence) is GBP/100. Everything else needs a real FX rate.
@@ -73,7 +99,7 @@ function rateFor(code, rates) {
 
 const isoDay = ts => new Date(ts * 1000).toISOString().slice(0, 10);
 
-// Per-ticker daily native closes aligned to one shared calendar (exchanges differ).
+// Per-ticker native closes aligned to one shared calendar (exchanges differ).
 // Leading days before a ticker's first close are null; interior gaps (holidays,
 // half-days) forward-fill. This is the "honest" matrix used to chart a single stock;
 // the NAV sum below seeds the leading nulls so a late listing doesn't fake a ramp.
@@ -98,7 +124,7 @@ function alignedCloses(tickers, quotes) {
     return { days, closes };
 }
 
-// Portfolio value over the last year, valued daily.
+// Portfolio value over the supplied price history.
 //
 // ponytail: assumes TODAY's share counts and TODAY's FX for every past day. It answers
 // "what would this basket have been worth back then", not "what was my account worth" —
@@ -193,12 +219,29 @@ async function main() {
 
     // Per-instrument close history (native currency) for charting a single stock,
     // plus the benchmarks, on one shared calendar. Separate file, loaded by the page
-    // only when needed (stock click or benchmark toggle) so first paint stays lean.
+    // only when needed (stock click, benchmark toggle, or long range) so first paint stays lean.
     const histTickers = [...priced.map(h => h.yahoo), ...Object.keys(benchQuotes)];
-    const hist = alignedCloses(histTickers, { ...quotes, ...benchQuotes });
+    const dailyHistory = { ...quotes, ...benchQuotes };
+    const hist = alignedCloses(histTickers, dailyHistory);
+    const weeklyQuotes = {};
+    for (const t of histTickers) {
+        try {
+            weeklyQuotes[t] = await fetchWeekly(t);
+            console.log(`ok   ${t} weekly`);
+        } catch (e) {
+            weeklyQuotes[t] = dailyHistory[t];
+            console.error(`fallback ${t} weekly: ${e.message}`);
+        }
+        await sleep();
+    }
+    const weeklyTickers = Object.keys(weeklyQuotes);
+    const longHist = alignedCloses(weeklyTickers, weeklyQuotes);
+    const longNav = navHistory(priced.filter(h => weeklyQuotes[h.yahoo]), weeklyQuotes, rates);
     const round = arr => arr.map(v => v == null ? null : Number(v.toPrecision(6)));
     const closes = {};
     for (const t of Object.keys(hist.closes)) closes[t] = round(hist.closes[t]);
+    const longCloses = {};
+    for (const t of Object.keys(longHist.closes)) longCloses[t] = round(longHist.closes[t]);
     const benchmarks = {};
     for (const [sym, name] of Object.entries(BENCHMARKS)) {
         if (benchQuotes[sym]) benchmarks[sym] = { name, currency: benchQuotes[sym].currency };
@@ -208,6 +251,7 @@ async function main() {
         days: hist.days,
         closes,
         benchmarks,
+        long: { days: longHist.days, closes: longCloses, nav: longNav },
     }, null, 1));
 
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
@@ -243,6 +287,16 @@ function selftest() {
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
+    const shaped = shape({
+        meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
+        indicators: { quote: [{ close: [] }] },
+        events: { dividends: { a: { amount: 1.25 }, b: { amount: 0.75 } } },
+    });
+    assert.strictEqual(shaped.divTTM, 2);
+    assert.strictEqual(shaped.divYield, 0.02);
+    // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
+    assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
+    assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');
 
     // NAV: two holdings, one priced in HKD, over three trading days.
     const d = ['2026-01-05', '2026-01-06', '2026-01-07'].map(s => Date.parse(s) / 1000);

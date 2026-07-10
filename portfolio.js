@@ -26,6 +26,39 @@ const PERIODS = ['7d', '1m', '3m', '6m', '1y', 'ytd'];
 // (VOO + VUSA.L -> "S&P 500"); 'geography' its region; 'instrument' one row each.
 const DIMENSIONS = { company: 'group', geography: 'geography', instrument: 'yahoo' };
 
+// Replays the workbook's split-adjusted balance quantity and average cost on each
+// price day. Values and costs are in USD using today's FX, matching the rest of the app.
+function gainHistory(days, closes, trades, rates, quoteCurrency) {
+    const ordered = [...trades].sort((a, b) => a.date.localeCompare(b.date));
+    const quoteRate = rateFor(quoteCurrency, rates);
+    const gains = [], costs = [], quantities = [];
+    let ti = 0, state = null;
+    for (let i = 0; i < days.length; i++) {
+        while (ti < ordered.length && ordered[ti].date <= days[i]) state = ordered[ti++];
+        if (!state || closes[i] == null) {
+            gains.push(null); costs.push(null); quantities.push(0);
+            continue;
+        }
+        const qty = state.balanceQty;
+        const cost = qty * state.avgPrice * rateFor(state.currency, rates);
+        gains.push(qty * closes[i] * quoteRate - cost);
+        costs.push(cost);
+        quantities.push(qty);
+    }
+    return { gains, costs, quantities };
+}
+
+// Values today's shares in a selected company/geography basket across a shared
+// history calendar. Leading pre-listing gaps are held flat at the first close,
+// matching the whole-portfolio NAV proxy.
+function basketHistory(days, closes, legs, rates) {
+    const seeds = Object.fromEntries(legs.map(l => [l.yahoo, closes[l.yahoo]?.find(v => v != null)]));
+    return days.map((_, i) => legs.reduce((total, leg) => {
+        const close = closes[leg.yahoo]?.[i] ?? seeds[leg.yahoo];
+        return total + (close == null ? 0 : leg.qty * close * rateFor(leg.quote.currency, rates));
+    }, 0));
+}
+
 // holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
 // Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
 function build(holdings, rates, quotes, dimension = 'company') {
@@ -43,11 +76,13 @@ function build(holdings, rates, quotes, dimension = 'company') {
             const tradeUSD = h.lastTrade.price * rateFor(h.lastTrade.currency, rates);
             if (tradeUSD) since = (quote.priceUSD - tradeUSD) / tradeUSD;
         }
+        const value = h.qty * quote.priceUSD;
         const leg = {
             ...h, quote, since,
             cost: h.costLC * rate,
-            value: h.qty * quote.priceUSD,
-            income: h.qty * (h.divTTM || 0) * rate,
+            value,
+            realized: (h.realizedLC || 0) * rate,
+            income: value * (quote.divYield || 0),
         };
         const key = String(h[field]);
         if (!groups.has(key)) groups.set(key, { name: key, legs: [] });
@@ -56,17 +91,17 @@ function build(holdings, rates, quotes, dimension = 'company') {
 
     const rows = [...groups.values()].map(g => {
         const sum = k => g.legs.reduce((a, l) => a + l[k], 0);
-        const cost = sum('cost'), value = sum('value');
+        const cost = sum('cost'), value = sum('value'), income = sum('income');
         g.legs.sort((a, b) => b.value - a.value);
         // A row's "last trade" is the most recent across its instruments.
         const traded = g.legs.filter(l => l.lastTrade);
         const recent = traded.sort((a, b) => b.lastTrade.date.localeCompare(a.lastTrade.date))[0];
         const single = g.legs.length === 1 ? g.legs[0] : null;
         return {
-            ...g, cost, value,
+            ...g, cost, value, income, realized: sum('realized'),
             gain: value - cost,
             gainPct: cost ? (value - cost) / cost : null,
-            yield: value ? sum('income') / value : null,
+            yield: value ? income / value : null,
             moves: Object.fromEntries(PERIODS.map(p => [p, weightedMove(g.legs, p)])),
             lastTrade: recent ? recent.lastTrade : null,
             since: recent ? recent.since : null,
@@ -81,7 +116,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, build, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, build, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -94,6 +129,28 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(rateFor('Gbpence', rates), 0.02);
     assert.strictEqual(rateFor('USD', rates), 1);
 
+    // Transaction-replayed gain/loss uses the balance and average cost after each trade.
+    const replay = gainHistory(
+        ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+        [10, 12, 11, 15],
+        [
+            { date: '2026-01-02', balanceQty: 2, avgPrice: 10, currency: 'USD' },
+            { date: '2026-01-04', balanceQty: 3, avgPrice: 12, currency: 'USD' },
+        ],
+        rates, 'USD',
+    );
+    assert.deepStrictEqual(replay.gains, [null, 4, 2, 9]);
+    assert.deepStrictEqual(replay.costs, [null, 20, 20, 36]);
+    assert.deepStrictEqual(replay.quantities, [0, 2, 2, 3]);
+
+    const basket = basketHistory(
+        ['2026-01-01', '2026-01-02', '2026-01-03'],
+        { A: [10, 11, 12], B: [null, 20, 21] },
+        [{ yahoo: 'A', qty: 2, quote: { currency: 'USD' } }, { yahoo: 'B', qty: 1, quote: { currency: 'HKD' } }],
+        rates,
+    );
+    assert.deepStrictEqual(basket, [22, 24, 26.1]);
+
     // Weighted by value: a $300 leg at +10% and a $100 leg at -10% => +5%.
     const legs = [{ value: 300, quote: { '1y': 0.10 } }, { value: 100, quote: { '1y': -0.10 } }];
     assert.strictEqual(weightedMove(legs, '1y'), 0.05);
@@ -104,12 +161,14 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
 
     // Two instruments of one company collapse into a single row, costs and values summed.
     const holdings = [
-        { yahoo: 'A', group: 'BYD', geography: 'China', currency: 'USD', qty: 10, costLC: 100, divTTM: 0 },
-        { yahoo: 'B', group: 'BYD', geography: 'China', currency: 'HKD', qty: 100, costLC: 1000, divTTM: 0 },
-        { yahoo: 'C', group: 'Solo', geography: 'US', currency: 'USD', qty: 1, costLC: 50, divTTM: 2 },
+        { yahoo: 'A', group: 'BYD', geography: 'China', currency: 'USD', qty: 10, costLC: 100, realizedLC: 5 },
+        { yahoo: 'B', group: 'BYD', geography: 'China', currency: 'HKD', qty: 100, costLC: 1000, realizedLC: 10 },
+        { yahoo: 'C', group: 'Solo', geography: 'US', currency: 'USD', qty: 1, costLC: 50 },
     ];
     const quotes = {
-        A: { price: 20, priceUSD: 20, '1y': 0.5 }, B: { price: 20, priceUSD: 2, '1y': 0 }, C: { price: 100, priceUSD: 100, '1y': null },
+        A: { price: 20, priceUSD: 20, divYield: 0.01, '1y': 0.5 },
+        B: { price: 20, priceUSD: 2, divYield: 0.03, '1y': 0 },
+        C: { price: 100, priceUSD: 100, divYield: 0.02, '1y': null },
     };
     const rows = build(holdings, rates, quotes);
     assert.strictEqual(rows.length, 2);
@@ -119,10 +178,14 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(byd.value, 10 * 20 + 100 * 2);     // 400
     assert.strictEqual(byd.gain, 200);
     assert.strictEqual(byd.gainPct, 1);
+    assert.strictEqual(byd.realized, 6);
+    assert.strictEqual(byd.income, 8);
+    assert.strictEqual(byd.yield, 0.02);                  // value-weighted online yields
     assert.strictEqual(byd.moves['1y'], 0.25);            // 200@+50% and 200@0%
     // Rows are sorted by value, and yield uses trailing dividends over market value.
     assert.strictEqual(rows[0].name, 'BYD');
-    assert.strictEqual(rows[1].yield, 2 / 100);
+    assert.strictEqual(rows[1].yield, 0.02);
+    assert.strictEqual(rows[1].income, 2);
 
     // Since-last-trade compares in USD. A pence trade at 500 GBp = $10 vs $20 spot = +100%.
     const pence = [{ yahoo: 'P', group: 'G', geography: 'UK', currency: 'GBp', qty: 1, costLC: 0, divTTM: 0,

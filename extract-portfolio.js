@@ -13,12 +13,12 @@ const HEADER_ROW = 2; // 0-indexed; rows 0-1 are title/date banners
 // Portfolio tab column indexes. Positional because several headers repeat ("Q", "Cost").
 const COL = {
     currency: 0, exchangeTicker: 2, lookup: 3, ticker: 4, group: 6, geography: 7,
-    qty: 8, divTTM: 11, avgPrice: 36, realized: 44, costLC: 46,
+    qty: 8, avgPrice: 36, realized: 44, costLC: 46,
 };
 
 // Tradelog tab. "Exec Time" is the bulk-import stamp, not the trade date — "Non US date" is.
 // "Adjusted Price" is split-adjusted, so it stays comparable to today's spot; raw "Price" is not.
-const TRADE = { side: 2, qty: 3, symbol: 4, date: 7, adjPrice: 9, currency: 15 };
+const TRADE = { side: 2, symbol: 4, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, comment: 24 };
 
 // Yahoo suffix by exchange prefix. Anything not listed falls through to the
 // currency guess below, which is why every result gets verified against Yahoo.
@@ -55,18 +55,23 @@ function cleanGroup(name) {
 }
 
 // All trades per Tradelog symbol, oldest first, for the chart's buy/sell markers.
-// Comments column is deliberately not read — it holds trade rationale, and the
-// published repo is public. Price is split-adjusted so it lines up with today's spot.
+// Comments are deliberately published beside expanded trades at the owner's request.
+// Price and quantity are split-adjusted; balance quantity and average purchase price
+// let the browser replay the workbook's cost basis exactly.
 function parseTrade(r) {
     const date = r[TRADE.date];
-    if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null) return null;
+    if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null || r[TRADE.adjQty] == null) return null;
+    const comment = String(r[TRADE.comment] ?? '').trim();
     return {
         symbol: String(r[TRADE.symbol]),
         date: date.toISOString().slice(0, 10),
         side: String(r[TRADE.side] || '').toUpperCase().startsWith('S') ? 'SELL' : 'BUY',
-        qty: Math.abs(r[TRADE.qty] || 0),
+        qty: Math.abs(r[TRADE.adjQty] || 0),
         price: r[TRADE.adjPrice],
+        balanceQty: r[TRADE.balanceQty] ?? 0,
+        avgPrice: r[TRADE.avgPrice] ?? 0,
         currency: String(r[TRADE.currency] || 'USD'),
+        ...(comment ? { comment } : {}),
     };
 }
 
@@ -111,7 +116,6 @@ function extract(sheet, tradesBy) {
             avgPrice: r[COL.avgPrice] ?? null,
             costLC: r[COL.costLC] ?? 0,       // cost basis in the instrument's currency
             realizedLC: r[COL.realized] ?? 0,
-            divTTM: r[COL.divTTM] ?? 0,
             trades,
             lastTrade: trades.length ? trades[trades.length - 1] : null,
         });
@@ -133,6 +137,10 @@ function main() {
 
     const dupes = holdings.map(h => h.yahoo).filter((y, i, a) => a.indexOf(y) !== i);
     if (dupes.length) throw new Error(`duplicate Yahoo symbols: ${dupes.join(', ')}`);
+
+    const unreconciled = holdings.filter(h => h.lastTrade &&
+        (Math.abs(h.lastTrade.balanceQty - h.qty) > 1e-6 || Math.abs(h.lastTrade.avgPrice - h.avgPrice) > 1e-6));
+    if (unreconciled.length) throw new Error(`Tradelog does not reconcile: ${unreconciled.map(h => h.yahoo).join(', ')}`);
 
     fs.writeFileSync('holdings.json', JSON.stringify({
         generated: new Date().toISOString(),
@@ -163,6 +171,15 @@ function selftest() {
     assert.strictEqual(cleanGroup('QUALCOMM INCORPORATED (XNAS:QCOM)'), 'QUALCOMM INCORPORATED');
     assert.strictEqual(cleanGroup('Google'), 'Google');
     assert.strictEqual(cleanGroup("L'Oreal"), "L'Oreal");   // parens-free names untouched
+    const tradeRow = [];
+    tradeRow[TRADE.side] = 'SELL'; tradeRow[TRADE.symbol] = 'NVDA';
+    tradeRow[TRADE.date] = new Date('2025-01-22T00:00:00Z'); tradeRow[TRADE.adjPrice] = 147.27;
+    tradeRow[TRADE.adjQty] = -5; tradeRow[TRADE.balanceQty] = 115;
+    tradeRow[TRADE.avgPrice] = 13.267; tradeRow[TRADE.currency] = 'USD'; tradeRow[TRADE.comment] = 'Trim & review';
+    assert.deepStrictEqual(parseTrade(tradeRow), {
+        symbol: 'NVDA', date: '2025-01-22', side: 'SELL', qty: 5, price: 147.27,
+        balanceQty: 115, avgPrice: 13.267, currency: 'USD', comment: 'Trim & review',
+    });
     console.log('selftest ok');
 }
 

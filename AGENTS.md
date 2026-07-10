@@ -19,14 +19,14 @@ holdings.json          positions, cost basis, geography, group, full trade log  
       │  node fetch-prices.js        (GitHub Actions, hourly; dependency-free)
       ▼
 prices.json            quotes, FX rates, portfolio NAV series      (committed)
-history.json           per-instrument daily closes + benchmarks    (committed, ~150KB)
+history.json           daily + weekly closes, long NAV + benchmarks (committed, ~2MB)
       │
       ▼
 index.html + portfolio.js   all arithmetic in the browser
 ```
 
 - **prices.json** loads on every page view (small). **history.json** is **lazy-loaded**
-  only when the user selects a stock or toggles a benchmark — keep it that way.
+  only for a stock, benchmark, or 2Y/5Y/All range — keep it that way.
 - Committing prices.json/history.json re-triggers the Pages build, so the site follows
   the hourly refresh automatically.
 
@@ -57,8 +57,9 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
 
 ## Invariants — do not break these
 
-1. **Public repo.** Never export the workbook's `Comments` column (trade rationale) or add
-   anything sensitive to holdings.json. `*.xlsx` is gitignored; keep it so.
+1. **Public repo.** Tradelog comments are intentionally exported beside expanded trades at
+   the owner's explicit request, so treat them as world-readable. Never export other account
+   detail. `*.xlsx` is gitignored; keep it so.
 2. **Currency.** Everything is computed in **USD**, then divided for the display toggle.
    `rateFor(code, rates)` handles `GBp`/`Gbpence` = GBP/100. A holding's declared `currency`
    is its **purchase** currency; the live price's currency comes from Yahoo (`meta.currency`)
@@ -70,14 +71,23 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
 5. **Chart colors are validated.** Series use `--series-port/spx/hsi`, validated against the
    dark surface with the dataviz skill's `validate_palette.js`. Re-validate if you change them.
 6. **NAV / history are proxies.** They value *today's* share counts at past prices with
-   *today's* FX. Not true time-weighted return. The caveat is shown on the page; keep it.
+   *today's* FX. Not true time-weighted return. Stock Gain/Loss is the exception: it replays
+   Tradelog balance quantity and average cost, but still uses today's FX and excludes realized gains.
+7. Portfolio **All** starts at the earliest recorded trade. Individual Price **All** keeps
+   full available price history; Gain/Loss **All** starts at that instrument's first trade.
+8. **Yield is online-only.** `fetch-prices.js` sums Yahoo dividend events over `range=1y`
+   and divides by current price. Never use the workbook dividend field for table yield.
 
 ## Grouping (the "one line per company" feature)
 
 `holdings.json` carries `group` (workbook `Grouping1`, e.g. VOO + VUSA.L → "S&P 500") and
 `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`:
-`'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument rows expand
-(chevron at end of name) to show their legs. Clicking a row charts it.
+`'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand
+to show their legs; instrument rows expand to show every adjusted trade with balance and average
+cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views.
+Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is
+reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves
+like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
 ## Yahoo symbol mapping
 
