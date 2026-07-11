@@ -45,6 +45,9 @@
         .btns button[aria-pressed="true"] { background: var(--series-port); border-color: var(--series-port); color: #fff; }
         .btns button.bench[aria-pressed="true"] { color: #fff; }
         .btns button.bench.spx[aria-pressed="true"] { background: var(--series-spx); border-color: var(--series-spx); }
+        .btns button.cohort[aria-pressed="true"] { color: #fff; }
+        .btns button.cohort[data-cohort="existing"][aria-pressed="true"] { background: var(--series-spx); border-color: var(--series-spx); }
+        .btns button.cohort[data-cohort="new"][aria-pressed="true"] { background: var(--series-hsi); border-color: var(--series-hsi); }
         .btns button.bench.hsi[aria-pressed="true"] { background: var(--series-hsi); border-color: var(--series-hsi); }
 
         /* ---- chart ---- */
@@ -110,7 +113,13 @@
         tr.trade-detail { display: none; font-size: 12px; background: var(--surface-3); }
         tr.trade-detail.show { display: table-row; }
         tr.trade-detail td { padding-left: 22px; text-align: left; color: var(--text-secondary); white-space: normal; }
-        .trade-comment { color: var(--text-muted); margin-top: 3px; }
+        .trade-comment { color: var(--text-muted); }
+        .broker { font-size: 10px; font-weight: 600; letter-spacing: .03em; padding: 1px 5px;
+            border-radius: 4px; border: 1px solid currentColor; color: var(--text-muted); }
+        .broker.b-ib { color: var(--series-port); }   /* IBKR */
+        .broker.b-td { color: var(--series-spx); }    /* TD */
+        .broker.b-t212 { color: var(--series-hsi); }  /* Trading 212 */
+        .broker.b-sc { color: var(--good); }          /* SC */
         tr.sel, tr.sel:hover { background: rgba(57,135,229,.16); }
         /* Chevron at the END of the position name. */
         .chev { font: inherit; color: var(--text-muted); background: none; border: 0; padding: 0;
@@ -147,6 +156,15 @@
                     <button data-metric="price" aria-pressed="true">Price</button>
                     <button data-metric="gain" aria-pressed="false">Gain/Loss</button>
                 </div>
+                <div id="pmetric" class="btns" role="group" aria-label="Portfolio chart metric">
+                    <button data-pmetric="value" aria-pressed="true">Value</button>
+                    <button data-pmetric="twr" aria-pressed="false">Performance</button>
+                </div>
+                <div id="cohorts" class="btns" role="group" aria-label="Performance cohorts" style="display:none">
+                    <button class="cohort" data-cohort="total" aria-pressed="true">Total</button>
+                    <button class="cohort" data-cohort="existing" aria-pressed="false">Existing</button>
+                    <button class="cohort" data-cohort="new" aria-pressed="false">New</button>
+                </div>
                 <div id="bench" class="btns" role="group" aria-label="Benchmarks">
                     <button class="bench spx" data-bench="^GSPC" aria-pressed="false">S&amp;P 500</button>
                     <button class="bench hsi" data-bench="^HSI" aria-pressed="false">HSI</button>
@@ -155,6 +173,7 @@
                     <button data-days="21" aria-pressed="false">1M</button>
                     <button data-days="63" aria-pressed="false">3M</button>
                     <button data-days="126" aria-pressed="false">6M</button>
+                    <button data-ytd aria-pressed="false">YTD</button>
                     <button data-days="0" aria-pressed="true">12M</button>
                     <button data-years="2" data-long aria-pressed="false">2Y</button>
                     <button data-years="5" data-long aria-pressed="false">5Y</button>
@@ -248,11 +267,15 @@
         let sort = { key: 'value', dir: -1 };
         let rangeDays = 0;       // 0 = whole series
         let rangeYears = 0;
+        let rangeYtd = false;    // from last year's close to now (daily)
         let longRange = false;   // weekly full history instead of daily one-year data
         let chartSel = null;     // null = portfolio/group; else a yahoo symbol
         let chartGroup = null;   // selected Company/Geography row
         let instrumentMetric = 'price';
+        let portfolioMetric = 'value';        // whole-portfolio chart: 'value' (NAV proxy) or 'twr'
         const benchOn = new Set();
+        const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
+        const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
 
         const rateOf = c => portfolioLib.rateFor(c, STATE.rates);
 
@@ -269,7 +292,9 @@
         function sliceRange(days, arrays, notBefore = '') {
             const cutoff = new Date(days[days.length - 1] + 'T00:00:00Z');
             cutoff.setUTCFullYear(cutoff.getUTCFullYear() - rangeYears);
-            let from = rangeYears ? days.findIndex(d => d >= cutoff.toISOString().slice(0, 10))
+            let from;
+            if (rangeYtd) { from = 0; for (let i = 0; i < days.length; i++) if (days[i] < YEAR_START) from = i; } // last close of last year
+            else from = rangeYears ? days.findIndex(d => d >= cutoff.toISOString().slice(0, 10))
                 : rangeDays > 0 ? Math.max(0, days.length - rangeDays) : 0;
             if (notBefore) from = Math.max(from, days.findIndex(d => d >= notBefore));
             return { days: days.slice(from), arrays: arrays.map(a => a.slice(from)) };
@@ -279,10 +304,53 @@
 
         // Build the chart spec for the current mode. May need HISTORY; caller ensures it.
         function chartSpec() {
-            if (chartGroup) return groupValueSpec(chartGroup);
             if (chartSel) return instrumentSpec(chartSel);
+            if (chartGroup) return portfolioMetric === 'twr'
+                ? portfolioTwrSpec(twrHoldings(chartGroup.legs), chartGroup.name)
+                : groupValueSpec(chartGroup);
+            if (portfolioMetric === 'twr') return portfolioTwrSpec(twrHoldings(STATE.holdings), 'Portfolio');
             if (benchOn.size) return benchmarkSpec();
             return portfolioValueSpec();
+        }
+
+        // Normalise holdings (or a group's legs) into what cohortMV needs.
+        const twrHoldings = list => list.map(h => ({
+            yahoo: h.yahoo, trades: h.trades || [],
+            quoteCurrency: STATE.quotes[h.yahoo]?.currency || h.quote?.currency || h.currency,
+        }));
+
+        // Time-weighted return of a set of holdings — real performance with the effect of
+        // deposits/withdrawals removed. Used for the whole portfolio and for a selected group.
+        // Cohorts (multi-select) split it by when you invested: Total (everything), Existing
+        // (positions from before this year, held flat), New buys (this year's purchases).
+        // Each line is rebased to 0% at the left edge of the range.
+        function portfolioTwrSpec(hold, label) {
+            const history = longRange ? HISTORY.long : HISTORY;
+            const DEFS = {
+                total:    { label: 'Total',    color: PORT_COLOR,          filter: null },
+                existing: { label: `Existing (pre-${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^GSPC'], filter: t => t.date < YEAR_START },
+                // New = money put in this year (buys); a 2026 trim of an older position stays
+                // in the Existing story rather than becoming a phantom short here.
+                new:      { label: `New buys (${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^HSI'],  filter: t => t.date >= YEAR_START && t.side !== 'SELL' },
+            };
+            const active = ['total', 'existing', 'new'].filter(k => cohortOn.has(k));
+            if (!active.length) active.push('total');
+            const raw = active.map(k => portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, DEFS[k].filter));
+            const { days, arrays } = sliceRange(history.days, raw.flatMap(r => [r.mv, r.flow]),
+                longRange && !rangeYears ? STATE.firstTrade : '');
+            const series = active.map((k, idx) => ({
+                label: DEFS[k].label, color: DEFS[k].color,
+                values: portfolioLib.twr(arrays[idx * 2], arrays[idx * 2 + 1]),
+            }));
+            return {
+                days, series, percent: true, zero: true,
+                fmtY: v => pct(v),
+                headline: series.map(s => `<span style="color:${s.color}">${pct(lastNonNull(s.values))}</span>`).join(' <span class="muted">·</span> '),
+                sub: `Time-weighted return · indexed to ${ymd(days[0])} = 0%`,
+                title: `${label} performance`,
+                note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. Today\'s FX; dividends and realized gains excluded. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases.',
+                tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
+            };
         }
 
         function portfolioValueSpec() {
@@ -534,9 +602,14 @@
         // Redraw, loading history first if the current mode needs it.
         function updateChart() {
             const selected = chartSel || chartGroup;
-            document.getElementById('bench').style.display = selected ? 'none' : '';
+            // Performance (TWR) applies to the whole portfolio and to a selected group, but not
+            // to a single stock (which has its own Price / Gain-Loss toggle).
+            const twrMode = !chartSel && portfolioMetric === 'twr';
             document.getElementById('metric').style.display = chartSel ? '' : 'none';
-            if (longRange || selected || benchOn.size) loadHistory().then(drawChart).catch(e => {
+            document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
+            document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
+            document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
+            if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
             else drawChart();
@@ -569,13 +642,15 @@
             const side = t.side === 'SELL' ? 'SELL' : 'BUY';
             return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} <span class="muted">@ ${price}</span>`;
         }
+        const BROKER = { IB: 'IBKR', T212: 'Trading 212' }; // others (TD, SC) shown as their code
         function tradeDetail(t) {
             const n = value => value.toLocaleString(undefined, { maximumFractionDigits: 4 });
             const side = t.side === 'SELL' ? 'SELL' : 'BUY';
             return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} · `
                 + `${n(t.qty)} shares @ ${n(t.price)} ${t.currency} `
                 + `<span class="muted">· balance ${n(t.balanceQty)} · avg cost ${n(t.avgPrice)} ${t.currency}</span>`
-                + (t.comment ? `<div class="trade-comment">${escapeHTML(t.comment)}</div>` : '');
+                + (t.platform ? ` <span class="broker b-${t.platform.toLowerCase()}">${escapeHTML(BROKER[t.platform] || t.platform)}</span>` : '')
+                + (t.comment ? ` <span class="trade-comment">· ${escapeHTML(t.comment)}</span>` : '');
         }
         const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
             : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
@@ -599,11 +674,15 @@
         function renderTotals() {
             const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
             const value = STATE.total, gain = value - cost;
+            const perf = STATE.performance || {};
+            const perfTile = (label, v) => `<div><div class="label">${label}</div><div class="value ${v == null ? '' : cls(v)}">${v == null ? '–' : pct(v)}</div></div>`;
             document.getElementById('totals').innerHTML = `
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
                 <div><div class="label">Return</div><div class="value ${cls(gain)}">${pct(gain / cost)}</div></div>
+                ${perfTile('YTD Performance', perf.ytdTotal)}
+                ${perfTile('New Buys YTD', perf.ytdNew)}
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>
                 <div><div class="label">Currency</div>
                     <div class="btns" style="margin-top:3px">
@@ -727,6 +806,7 @@
             b.addEventListener('click', () => {
                 rangeDays = Number(b.dataset.days || 0);
                 rangeYears = Number(b.dataset.years || 0);
+                rangeYtd = b.hasAttribute('data-ytd');
                 longRange = b.hasAttribute('data-long');
                 document.querySelectorAll('#ranges button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
                 updateChart();
@@ -744,6 +824,21 @@
                 const sym = b.dataset.bench;
                 benchOn.has(sym) ? benchOn.delete(sym) : benchOn.add(sym);
                 b.setAttribute('aria-pressed', String(benchOn.has(sym)));
+                updateChart();
+            }));
+
+        document.querySelectorAll('#pmetric button').forEach(b =>
+            b.addEventListener('click', () => {
+                portfolioMetric = b.dataset.pmetric;
+                document.querySelectorAll('#pmetric button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+                updateChart();
+            }));
+
+        document.querySelectorAll('#cohorts button').forEach(b =>
+            b.addEventListener('click', () => {
+                const k = b.dataset.cohort;
+                cohortOn.has(k) ? cohortOn.delete(k) : cohortOn.add(k);
+                b.setAttribute('aria-pressed', String(cohortOn.has(k)));
                 updateChart();
             }));
 
@@ -773,11 +868,11 @@
         Promise.all([
             fetch('holdings.json' + bust).then(r => r.json()),
             fetch('prices.json' + bust).then(r => r.json()),
-        ]).then(([{ holdings }, { updated, rates, quotes, nav }]) => {
+        ]).then(([{ holdings }, { updated, rates, quotes, nav, performance }]) => {
             RATES = rates;
             const dim = ['instrument', 'company', 'geography'].includes(localStorage.getItem('dim')) ? localStorage.getItem('dim') : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, nav, firstTrade, dim };
+            STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             rebuildRows();

@@ -59,6 +59,66 @@ function basketHistory(days, closes, legs, rates) {
     }, 0));
 }
 
+// Signed share change (+buy / -sell) and its external cash flow in USD (today's FX).
+function tradeFlow(t, rates) {
+    const dq = (t.side === 'SELL' ? -1 : 1) * t.qty;
+    return { dq, cash: dq * t.price * rateFor(t.currency, rates) };
+}
+
+// Daily market value and daily external cash flow (both USD, today's FX) for a set of
+// holdings, optionally restricted to a subset of each holding's trades. Trades on/before
+// the first day fold into the opening balance — their cash is a starting value, not an
+// in-window flow. Days where no holding has a close are null so twr() can gap them.
+// holdings items need { yahoo, trades, quoteCurrency }; closesBySym maps yahoo -> closes[].
+function cohortMV(days, holdings, closesBySym, rates, tradeFilter) {
+    const mv = new Array(days.length).fill(0);
+    const flow = new Array(days.length).fill(0);
+    const priced = new Array(days.length).fill(false);
+    for (const h of holdings) {
+        const closes = closesBySym[h.yahoo];
+        if (!closes) continue;
+        // Hold price flat across data gaps so a holding doesn't blink in/out of the basket:
+        // a ragged first day (some tickers list a day later) would otherwise read as a return.
+        // Leading gaps use the first known close (seed); interior gaps carry the last known.
+        const seed = closes.find(v => v != null);
+        if (seed == null) continue;
+        const qc = rateFor(h.quoteCurrency, rates);
+        const trades = (tradeFilter ? h.trades.filter(tradeFilter) : h.trades)
+            .slice().sort((a, b) => a.date.localeCompare(b.date));
+        let ti = 0, qty = 0, lastClose = null;
+        for (let i = 0; i < days.length; i++) {
+            while (ti < trades.length && trades[ti].date <= days[i]) {
+                const { dq, cash } = tradeFlow(trades[ti], rates);
+                qty += dq;
+                if (i > 0) flow[i] += cash; // day-0 (and earlier) trades are opening balance
+                ti++;
+            }
+            if (closes[i] != null) lastClose = closes[i];
+            mv[i] += qty * (lastClose != null ? lastClose : seed) * qc;
+            priced[i] = true;
+        }
+    }
+    for (let i = 0; i < days.length; i++) if (!priced[i]) mv[i] = null;
+    return { mv, flow };
+}
+
+// Cumulative time-weighted return from a daily market-value series (nulls = no data) and
+// daily external cash flows. Removing the flow from each day's change strips out the
+// effect of investing/withdrawing money, leaving pure investment performance. Fractional
+// (0.1 = +10%); 0 on the first valid day, chained after, carried across gaps.
+function twr(mv, flow) {
+    const out = new Array(mv.length).fill(null);
+    let cum = 1, prev = null;
+    for (let i = 0; i < mv.length; i++) {
+        const v = mv[i];
+        if (v == null) { prev = null; continue; }        // gap: break the daily linkage
+        if (prev != null && prev > 0) cum *= 1 + (v - prev - (flow[i] || 0)) / prev;
+        out[i] = cum - 1;                                 // 0 at first valid day; carries otherwise
+        prev = v;
+    }
+    return out;
+}
+
 // holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
 // Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
 function build(holdings, rates, quotes, dimension = 'company') {
@@ -116,7 +176,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, build, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, cohortMV, twr, build, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -142,6 +202,43 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(replay.gains, [null, 4, 2, 9]);
     assert.deepStrictEqual(replay.costs, [null, 20, 20, 36]);
     assert.deepStrictEqual(replay.quantities, [0, 2, 2, 3]);
+
+    // TWR strips out cash flows: a deposit that doubles market value is not a return.
+    // Day1: value 100->160 but +50 was deposited -> real move +10%. Day2: 160->176 = +10%.
+    const perf = twr([100, 160, 176], [0, 50, 0]);
+    assert.strictEqual(perf[0], 0);
+    assert.ok(Math.abs(perf[1] - 0.10) < 1e-12);
+    assert.ok(Math.abs(perf[2] - 0.21) < 1e-12);       // 1.1 * 1.1 - 1
+    // No flows -> TWR is just the value ratio; nulls gap without breaking the chain.
+    assert.deepStrictEqual(twr([100, 110, 90], [0, 0, 0]).map(v => Math.round(v * 100) / 100), [0, 0.1, -0.1]);
+    assert.strictEqual(twr([null, 100, 110], [0, 0, 0])[0], null);
+
+    // cohortMV: one holding, a buy on day2 adds shares (flow) and lifts market value.
+    const cm = cohortMV(
+        ['2026-01-01', '2026-01-02', '2026-01-03'],
+        [{ yahoo: 'A', quoteCurrency: 'USD', trades: [
+            { date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' },
+            { date: '2026-01-03', side: 'BUY', qty: 5, price: 12, currency: 'USD' },
+        ] }],
+        { A: [10, 11, 12] }, rates, null,
+    );
+    assert.deepStrictEqual(cm.mv, [100, 110, 180]);     // 10@10, 10@11, 15@12
+    assert.deepStrictEqual(cm.flow, [0, 0, 60]);        // day-1 buy is opening balance; day-3 buy = 5*12
+    // A trade filter partitions the same holding into cohorts (existing vs new-money).
+    const newOnly = cohortMV(['2026-01-01', '2026-01-03'],
+        [{ yahoo: 'A', quoteCurrency: 'USD', trades: [
+            { date: '2025-06-01', side: 'BUY', qty: 10, price: 8, currency: 'USD' },
+            { date: '2026-01-03', side: 'BUY', qty: 5, price: 12, currency: 'USD' },
+        ] }],
+        { A: [11, 12] }, rates, t => t.date >= '2026-01-01');
+    assert.deepStrictEqual(newOnly.mv, [0, 60]);        // only the 5 new shares counted
+    assert.deepStrictEqual(newOnly.flow, [0, 60]);
+    // Price gaps hold flat, so a ragged first day doesn't read as a huge day-1 jump:
+    // leading null uses the first known close (seed), interior null carries the last known.
+    const gap = cohortMV(['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+        [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' }] }],
+        { A: [null, 20, null, 22] }, rates, null);
+    assert.deepStrictEqual(gap.mv, [200, 200, 200, 220]);
 
     const basket = basketHistory(
         ['2026-01-01', '2026-01-02', '2026-01-03'],

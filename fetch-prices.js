@@ -2,6 +2,7 @@
 // Run by .github/workflows/prices.yml; also `node fetch-prices.js` locally.
 const fs = require('fs');
 const { holdings } = require('./holdings.json');
+const { cohortMV, twr } = require('./portfolio.js'); // local, dependency-free — CI stays clean
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 const DAY = 86400;
@@ -254,6 +255,24 @@ async function main() {
         long: { days: longHist.days, closes: longCloses, nav: longNav },
     }, null, 1));
 
+    // Year-to-date time-weighted return for the headline KPIs — computed here because the
+    // daily closes live in this process and the page loads only prices.json (not history).
+    // Deposits/withdrawals removed, so it's investment performance not money added.
+    const YEAR_START = new Date().getUTCFullYear() + '-01-01';
+    const twrHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
+    let ytdStart = 0;
+    for (let i = 0; i < hist.days.length; i++) if (hist.days[i] < YEAR_START) ytdStart = i; // last close of last year
+    const ytdTwr = filter => {
+        const { mv, flow } = cohortMV(hist.days, twrHold, hist.closes, rates, filter);
+        const t = twr(mv.slice(ytdStart), flow.slice(ytdStart));
+        for (let i = t.length - 1; i >= 0; i--) if (t[i] != null) return Number(t[i].toPrecision(4));
+        return null;
+    };
+    const performance = {
+        ytdTotal: ytdTwr(null),
+        ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL'),
+    };
+
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
     fs.writeFileSync('prices.json', JSON.stringify({
@@ -261,6 +280,7 @@ async function main() {
         rates,
         quotes,
         nav,
+        performance,
         failed,
     }, null, 1));
     const kb = f => (fs.statSync(f).size / 1024).toFixed(0);

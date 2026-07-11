@@ -6,8 +6,8 @@ const { execSync } = require('child_process');
 const run = c => execSync(c, { stdio: 'inherit' });
 const quiet = c => { try { execSync(c, { stdio: 'ignore' }); return true; } catch { return false; } };
 
-run('node extract-portfolio.js');       // Master Cashflow.xlsx -> holdings.json (throws if workbook missing)
-run('git add holdings.json');
+run('node extract-portfolio.js');       // Tradelog + meta.json -> holdings.json (throws if workbook missing)
+run('git add holdings.json meta.json'); // meta.json too, in case you added an instrument
 
 // `git diff --staged --quiet` exits non-zero when there IS something staged.
 if (quiet('git diff --staged --quiet')) {

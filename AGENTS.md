@@ -12,7 +12,8 @@ everything committed as world-readable.
 ## Data flow
 
 ```
-Master Cashflow.xlsx   (gitignored, local only — the user's master workbook)
+Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read)
+   meta.json           per-instrument facts: yahoo, group, geography, currency (committed)
       │  node extract-portfolio.js   (needs the xlsx dev-dep; user runs it)
       ▼
 holdings.json          positions, cost basis, geography, group, full trade log  (committed)
@@ -34,7 +35,8 @@ index.html + portfolio.js   all arithmetic in the browser
 
 | File | Role | Runs where |
 |------|------|-----------|
-| `extract-portfolio.js` | Reads the workbook → `holdings.json`. Maps tickers to Yahoo symbols; consolidates by `Grouping1`. | User's machine only (`npm run extract`) |
+| `extract-portfolio.js` | Reads the Tradelog tab + `meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`. | User's machine only (`npm run extract`) |
+| `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`. Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
@@ -71,8 +73,10 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
 5. **Chart colors are validated.** Series use `--series-port/spx/hsi`, validated against the
    dark surface with the dataviz skill's `validate_palette.js`. Re-validate if you change them.
 6. **NAV / history are proxies.** They value *today's* share counts at past prices with
-   *today's* FX. Not true time-weighted return. Stock Gain/Loss is the exception: it replays
-   Tradelog balance quantity and average cost, but still uses today's FX and excludes realized gains.
+   *today's* FX. Not true time-weighted return. Two exceptions replay the Tradelog (both still
+   today's-FX, realized/dividends excluded): stock **Gain/Loss** (balance qty + average cost),
+   and the portfolio **Performance** view (`portfolio.js` `cohortMV`+`twr`) — a genuine
+   time-weighted return with cash flows removed, split into Total / Existing / New-buys cohorts.
 7. Portfolio **All** starts at the earliest recorded trade. Individual Price **All** keeps
    full available price history; Gain/Loss **All** starts at that instrument's first trade.
 8. **Yield is online-only.** `fetch-prices.js` sums Yahoo dividend events over `range=1y`
@@ -80,7 +84,7 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
 
 ## Grouping (the "one line per company" feature)
 
-`holdings.json` carries `group` (workbook `Grouping1`, e.g. VOO + VUSA.L → "S&P 500") and
+`holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and
 `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`:
 `'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand
 to show their legs; instrument rows expand to show every adjusted trade with balance and average
@@ -91,18 +95,19 @@ like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct
 
 ## Yahoo symbol mapping
 
-`extract-portfolio.js` derives Yahoo symbols from the workbook's `Exchange.Ticker` prefix,
-with an `OVERRIDES` map for the ones that lie (e.g. `NTO` is Frankfurt `NTO.F`, not OTC).
-**If you add a holding and its chart/price is missing, add an override and verify it returns
-a price from Yahoo before committing.** All 55 are currently verified.
+Each `meta.json` entry carries its `yahoo` symbol directly — no derivation, no `OVERRIDES`
+map. `extract-portfolio.js` verifies every *new* symbol (one not yet in `prices.json`)
+against Yahoo and refuses to write if it returns no price, so a typo fails the extract
+instead of silently dropping the row (`portfolio.js` skips holdings with no quote). Normal
+runs make zero network calls. All 56 are currently verified.
 
 ## Workbook tabs (for the user trimming the xlsx)
 
-`extract-portfolio.js` reads only **Portfolio** and **Tradelog**. Via formulas, Portfolio
-also depends on **Index** and Tradelog on **Forex**, and Index pulls the yearly tabs
-(2017–2026) + **Pay** + **Lifetime Plan**. Tabs safe to delete (nothing references them):
-Monitor_WW, Cognos_Office_Connection_Cache, Other Summary, Tax, Dental, Misc, By Country,
-Sheet14, Nov 18. Tab names `Portfolio`/`Tradelog` must not be renamed.
+`extract-portfolio.js` now reads **only the Tradelog tab** (cached cell values, so its
+formula dependencies on **Forex** etc. don't matter to extraction). The **Portfolio** tab
+no longer feeds the web app — keep it only if you still want it for your own use. Tab name
+`Tradelog` must not be renamed. Per-instrument display facts (yahoo/group/geography) moved
+out of the workbook into `meta.json`.
 
 ## Gotchas
 

@@ -7,7 +7,8 @@ Static portfolio dashboard on GitHub Pages. No server, no runtime dependencies.
 ## How it fits together
 
 ```
-Master Cashflow.xlsx          (gitignored — never leaves your machine)
+Tradelog.xlsx                 (gitignored — never leaves your machine; only the Tradelog tab is read)
+   meta.json                  per-instrument facts: yahoo symbol, group, geography (committed)
         │  npm run extract     you run this after trading
         ▼
    holdings.json              positions, cost basis, full trade log   (committed)
@@ -30,6 +31,12 @@ or a 2Y/5Y/All range, so the first paint stays light.
 - **Totals + a NAV chart** with 1M/3M/6M/12M/2Y/5Y/All ranges and a hover crosshair.
   Portfolio "All" begins at the first recorded trade; individual stocks retain their
   full available price history.
+- **Value / Performance toggle** on the portfolio chart. *Value* is the NAV proxy (below).
+  *Performance* is **time-weighted return** — deposits and withdrawals stripped out, so it's
+  investment performance rather than money added. It splits into multi-select cohorts:
+  **Total**, **Existing** (holdings from before this year, held flat) and **New buys** (this
+  year's purchases), letting you see how much of the year came from old holdings vs new picks.
+  Today's FX; dividends and realized gains excluded.
 - **Benchmark toggle** — overlay the portfolio against **S&P 500** and **HSI**, all
   rebased to 0% at the start of the range (indexed, single axis — never dual).
 - **Group by Stock / Company / Geography** — the table re-buckets live. "Company" is
@@ -50,21 +57,32 @@ or a 2Y/5Y/All range, so the first paint stays light.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 
-## The workbook is the source of truth
+## The Tradelog is the source of truth
 
-`extract-portfolio.js` reads two tabs and writes `holdings.json`:
+`extract-portfolio.js` reads **only the Tradelog tab** and writes `holdings.json`. Every
+number — current quantity, average cost, realized gain, cost basis — is summed from the
+Tradelog, the same way the workbook's old Portfolio-tab formulas did. That tab (and all its
+reporting columns) no longer feeds the web app, so you can stop maintaining it for reporting.
 
-- **Portfolio** — one row per instrument. `Grouping1` is the consolidation key, so
-  BYD's HK line and its US ADR collapse into one row (click it to expand). This
-  reproduces the workbook's own *Other Summary* pivot.
-- **Tradelog** — every trade per symbol, including split-adjusted quantity, running balance,
-  average cost, and the comment shown in expandable trade history. These comments are
-  deliberately published at the owner's request; this repository and site are public.
+- **Tradelog** — every trade per symbol: split-adjusted quantity, running balance,
+  average cost, realized gain, `Platform` (broker), and the comment shown in expandable
+  trade history. Comments are deliberately published at the owner's request; the repo and
+  site are public.
 
-`currency` in the workbook describes the currency the **purchase price** was
-recorded in. The current price's currency comes from Yahoo (`meta.currency`), so
-London tickers quoting in pence and Tokyo tickers in yen are handled without
-per-ticker special cases.
+The facts that *aren't* in the Tradelog live in **`meta.json`** (committed), one entry per
+instrument keyed by its Tradelog symbol:
+
+```json
+"GOOG": { "ticker": "GOOG", "yahoo": "GOOG", "group": "Google", "geography": "US", "currency": "USD" }
+```
+
+- `yahoo` — the Yahoo Finance symbol (verified to return a price).
+- `group` — the consolidation key: instruments sharing a `group` collapse into one row
+  (BYD's HK line + its ADR), reproducing the workbook's old *Other Summary* pivot.
+- `geography` — the Geography grouping view.
+- `currency` — the currency the **purchase price** was recorded in. The *current* price's
+  currency comes from Yahoo, so London tickers in pence and Tokyo tickers in yen need no
+  per-ticker special case.
 
 ### Two things the app does differently from the spreadsheet
 
@@ -89,9 +107,20 @@ The hourly Action picks it up from there.
 
 ## Adding a holding
 
-Add it to the workbook. If its Yahoo symbol can't be derived from the
-`Exchange.Ticker` prefix, add an entry to `OVERRIDES` in `extract-portfolio.js` and
-verify it returns a price before committing.
+1. Record the trade in the Tradelog as usual.
+2. Add a `meta.json` entry keyed by that Tradelog symbol, with `ticker`, `yahoo`, `group`,
+   `geography`, and `currency`.
+
+`npm run extract` guards both ways a new holding can silently disappear:
+
+- **Missing metadata** — refuses to write if a position is open in the Tradelog but has no
+  `meta.json` entry.
+- **Bad Yahoo symbol** — for any symbol not already in `prices.json`, it pings Yahoo and
+  refuses to write unless the symbol returns a price. (Only *new* symbols hit the network;
+  a normal run makes zero requests.)
+
+So a typo in `yahoo` fails the extract with a clear message instead of dropping the row
+from the live site.
 
 ## Local
 
