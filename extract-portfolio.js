@@ -81,6 +81,13 @@ function buildHoldings(meta, bySymbol, realized) {
             eps: m.eps,
             specialEps: m.specialEps,
             specialEpsLabel: m.specialEpsLabel,
+            // Trough-multiple valuation: the cheapest this traded in living memory, and what
+            // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
+            lowPrice: m.lowPrice,
+            lowEps: m.lowEps,
+            lowDate: m.lowDate,
+            lowGrowth: m.lowGrowth,
+            growth: m.growth,
             qty,
             avgPrice: last.avgPrice,
             costLC: qty * last.avgPrice,        // cost basis in the instrument's currency

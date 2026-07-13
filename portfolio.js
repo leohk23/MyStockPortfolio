@@ -145,8 +145,21 @@ function build(holdings, rates, quotes, dimension = 'company') {
         const pe = eps > 0 ? quote.price / eps : null;
         const specialEps = h.specialEps ?? eps;
         const specialPe = specialEps > 0 ? quote.price / specialEps : null;
+
+        // Trough-multiple valuation. peLow is the multiple the market paid at this stock's
+        // recorded low — a *ratio*, so it is currency- and ADR-agnostic: a low logged off the
+        // US ADR yields the same multiple as the Tokyo ordinary. Applying it to today's EPS
+        // gives implied — what the price would be at its cheapest-ever multiple, on today's
+        // earnings. vsLow is the premium you pay above that: >0 dearer, <0 cheaper.
+        // pegLow does the same growth-adjusted, for stocks whose multiple tracks growth.
+        const peLow = h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null;
+        const pegLow = peLow != null && h.lowGrowth > 0 ? peLow / (h.lowGrowth * 100) : null;
+        const implied = peLow != null && eps > 0 ? peLow * eps : null;
+        const impliedPeg = pegLow != null && h.growth > 0 && eps > 0 ? pegLow * h.growth * 100 * eps : null;
+        const vsLow = implied > 0 ? (quote.price - implied) / implied : null;
+
         const leg = {
-            ...h, quote, since, pe, specialPe,
+            ...h, quote, since, pe, specialPe, peLow, pegLow, implied, impliedPeg, vsLow,
             cost: h.costLC * rate,
             value,
             realized: (h.realizedLC || 0) * rate,
@@ -179,6 +192,12 @@ function build(holdings, rates, quotes, dimension = 'company') {
             pe: single ? single.pe : null,
             specialPe: single ? single.specialPe : null,
             specialEpsLabel: single ? single.specialEpsLabel || null : null,
+            // Same single-instrument rule as PE: a basket has no meaningful trough multiple.
+            peLow: single ? single.peLow : null,
+            implied: single ? single.implied : null,
+            impliedPeg: single ? single.impliedPeg : null,
+            vsLow: single ? single.vsLow : null,
+            lowDate: single ? single.lowDate || null : null,
             // The instrument a click on this row charts: its largest leg.
             primaryYahoo: g.legs[0].yahoo,
         };
@@ -330,6 +349,39 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(build(holdings, rates, { A: quotes.A }).length, 1);
     // A missing FX rate is loud, not a silent zero.
     assert.throws(() => build(holdings, { USD: 1 }, quotes), /no FX rate for HKD/);
+
+    // Trough-multiple valuation, checked against the workbook's own GOOG row:
+    // low 86.70 / EPS 4.96 = P/E Low 17.48; PEG Low = 17.48/22.7 = 0.77;
+    // implied = 17.48 x 8.04 EPS = 140.54; PEG-implied = 0.77 x 26.9 x 8.04 = 166.54.
+    const val = build(
+        [{ yahoo: 'G', group: 'G', geography: 'US', currency: 'USD', qty: 1, costLC: 0,
+           lowPrice: 86.7, lowEps: 4.96, lowGrowth: 0.227, growth: 0.269 }],
+        rates, { G: { price: 200, priceUSD: 200, eps: 8.04 } },
+    )[0];
+    assert.ok(Math.abs(val.peLow - 17.48) < 0.01);
+    assert.ok(Math.abs(val.implied - 140.54) < 0.05);
+    assert.ok(Math.abs(val.impliedPeg - 166.54) < 0.5);
+    // Premium to the trough multiple: 200 vs implied ~140.54 = +42% dearer.
+    assert.ok(Math.abs(val.vsLow - (200 - val.implied) / val.implied) < 1e-12);
+    assert.ok(Math.abs(val.vsLow - 0.423) < 0.001);
+    // A ratio, so an ADR-recorded low gives the same multiple as the ordinary line: scaling
+    // both low price and low EPS by the ADR ratio leaves peLow (and so implied/vsLow) intact.
+    const adr = build(
+        [{ yahoo: 'G', group: 'G', geography: 'US', currency: 'USD', qty: 1, costLC: 0,
+           lowPrice: 86.7 * 5, lowEps: 4.96 * 5 }],
+        rates, { G: { price: 200, priceUSD: 200, eps: 8.04 } },
+    )[0];
+    assert.ok(Math.abs(adr.peLow - val.peLow) < 1e-9);
+    // No low recorded (ETFs, gold, bitcoin) -> nulls, never NaN.
+    const none = build([{ yahoo: 'G', group: 'G', geography: 'US', currency: 'USD', qty: 1, costLC: 0 }],
+        rates, { G: { price: 200, priceUSD: 200, eps: 8.04 } })[0];
+    assert.strictEqual(none.peLow, null);
+    assert.strictEqual(none.implied, null);
+    assert.strictEqual(none.vsLow, null);
+    // Loss-making at the low (negative EPS) is not a meaningful multiple.
+    const loss = build([{ yahoo: 'G', group: 'G', geography: 'US', currency: 'USD', qty: 1, costLC: 0,
+        lowPrice: 50, lowEps: -2 }], rates, { G: { price: 200, priceUSD: 200, eps: 8.04 } })[0];
+    assert.strictEqual(loss.peLow, null);
 
     // Single-instrument rows carry a native price; merged rows do not.
     assert.strictEqual(rows.find(r => r.name === 'Solo').price, 100);

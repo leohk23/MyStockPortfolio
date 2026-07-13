@@ -206,6 +206,9 @@
                     <th data-sort="price">Price</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
                     <th data-sort="specialPe" title="Price ÷ a stock-tailored earnings figure set in meta.json (FFO, adjusted EPS, ...). Falls back to the normal PE when unset.">Special PE</th>
+                    <th data-sort="peLow" title="The multiple the market paid at this stock's recorded low: low price ÷ EPS at that low (meta.json). A ratio, so it is currency- and ADR-agnostic.">PE Low</th>
+                    <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the growth-adjusted (PEG) figure.">Implied</th>
+                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <th data-sort="cost">Cost</th>
@@ -660,6 +663,16 @@
         // loss-making company isn't a meaningful multiple), so this only ever formats positives.
         const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
             : `<span${label ? ` title="${label}"` : ''}>${n.toFixed(1)}x</span>`;
+        // Implied price at the trough multiple, in the quote's own currency (EPS and price are
+        // both native, so no FX belongs here). The growth-adjusted figure rides in the tooltip.
+        const impliedCell = (r) => r.implied == null ? '<span class="muted">–</span>'
+            : `<span title="At its PE Low multiple on today's EPS${r.lowDate ? ` · low ${ymd(r.lowDate)}` : ''}`
+                + `${r.impliedPeg ? ` · PEG-implied ${r.impliedPeg.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : ''}">`
+                + `${r.implied.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>`;
+        // Colour is INVERTED against the rest of the table: below the trough multiple is the
+        // good news here, so a negative premium reads green.
+        const vsLowCell = n => n == null ? '<span class="muted">–</span>'
+            : `<span class="${cls(-n)}">${pct(n)}</span>`;
 
         const sortValue = (row, key) => {
             if (portfolioLib.PERIODS.includes(key)) return row.moves[key];
@@ -718,6 +731,9 @@
                     <td>${priceCell(r.price, r.priceCurrency)}</td>
                     <td>${peCell(r.pe)}</td>
                     <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
+                    <td>${peCell(r.peLow)}</td>
+                    <td>${impliedCell(r)}</td>
+                    <td>${vsLowCell(r.vsLow)}</td>
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${money(r.cost)}</td>
@@ -742,6 +758,9 @@
                         <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
                         <td>${peCell(leg.pe)}</td>
                         <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
+                        <td>${peCell(leg.peLow)}</td>
+                        <td>${impliedCell(leg)}</td>
+                        <td>${vsLowCell(leg.vsLow)}</td>
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td>${money(leg.cost)}</td>
@@ -761,7 +780,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="20">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="23">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });

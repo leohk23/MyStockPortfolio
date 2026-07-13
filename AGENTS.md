@@ -99,6 +99,39 @@ Two optional `meta.json` fields per instrument drive the PE columns:
   multi-year average for a cyclical, ...) and a short label shown in the column's tooltip.
   Native quote currency. Omit both to leave Special PE identical to the normal PE.
 
+## Trough-multiple valuation (the "is it cheap?" hint)
+
+Ported from the workbook's Portfolio!BA:BM block. The idea: record the cheapest the market
+ever valued this business, then ask what that multiple would be worth on *today's* earnings.
+
+`meta.json` inputs (all manual — a 5-year low is a judgement, not a lookup):
+
+- `lowPrice` / `lowEps` — the recorded low and the trailing EPS *at that time*.
+- `lowDate` — when (tooltip only).
+- `lowGrowth` / `growth` — growth rate then and now, as fractions (`0.227` = 22.7%). Optional;
+  only needed for the growth-adjusted (PEG) figure.
+
+Derived in `portfolio.js` `build()`:
+
+| Column | Formula |
+|---|---|
+| **PE Low** | `lowPrice / lowEps` |
+| **Implied** | `PE Low × current EPS` — the price at its cheapest-ever multiple, on today's earnings |
+| **vs Low** | `(price − Implied) / Implied` — the premium you pay over that baseline |
+| *PEG-implied* (tooltip) | `(PE Low / (lowGrowth×100)) × growth × 100 × current EPS` |
+
+**PE Low is a ratio, so it is currency- and ADR-agnostic** — a low recorded off a US ADR
+gives the same multiple as the Tokyo ordinary (5332/7532/8001 rely on this). Implied comes out
+in the quote's own currency because EPS is native; no FX belongs in any of it.
+
+**vs Low inverts the table's colour convention**: below the trough multiple is good news, so
+negative reads green. Single-instrument rows only, same rule as PE.
+
+⚠️ This is *context, not a signal*. A stock can be dear against its own history and still be
+a fine business; a trough multiple is one data point from one bad moment, and `lowEps` ages —
+a company that has since grown into its earnings will look permanently expensive against it.
+Re-record the low when the story changes.
+
 `fetch-prices.js` best-effort fetches trailing EPS from Yahoo's `v7/finance/quote` for every
 holding in one batched request. That endpoint (unlike `v8/finance/chart`) requires a
 crumb+cookie handshake (`getCrumb()`) — Yahoo's anti-scraping measure, not something this repo

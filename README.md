@@ -61,6 +61,20 @@ or a 2Y/5Y/All range, so the first paint stays light.
   `specialEps` (and an optional `specialEpsLabel` shown as a tooltip) in `meta.json`. Leave
   it unset and Special PE just mirrors the normal PE. Both show `–` when there's no earnings
   figure from any source, or on a multi-instrument Company/Geography row.
+- **PE Low / Implied / vs Low** — the "is it cheap?" columns. Record the cheapest the market
+  ever valued a business (`lowPrice` + the `lowEps` it was earning then, in `meta.json`) and
+  the app derives its trough multiple, then asks what that multiple would be worth on *today's*
+  earnings:
+  - **PE Low** — `lowPrice ÷ lowEps`, the multiple paid at the low.
+  - **Implied** — `PE Low × current EPS`: the price at its cheapest-ever multiple, today.
+  - **vs Low** — how much above (red) or below (green) that baseline you're paying. Colour is
+    deliberately inverted from the rest of the table: cheap is the good news here.
+
+  Hovering **Implied** shows the growth-adjusted (PEG) figure if you've set `lowGrowth`/`growth`.
+
+  ⚠️ This is **context, not a signal**. A trough multiple is one data point from one bad
+  moment, and `lowEps` ages — a company that has since grown into its earnings will look
+  permanently expensive against it. Re-record the low when the story changes.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 
