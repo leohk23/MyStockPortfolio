@@ -128,11 +128,25 @@ runs make zero network calls. All 56 are currently verified.
 
 ## Workbook tabs (for the user trimming the xlsx)
 
-`extract-portfolio.js` now reads **only the Tradelog tab** (cached cell values, so its
-formula dependencies on **Forex** etc. don't matter to extraction). The **Portfolio** tab
-no longer feeds the web app — keep it only if you still want it for your own use. Tab name
-`Tradelog` must not be renamed. Per-instrument display facts (yahoo/group/geography) moved
-out of the workbook into `meta.json`.
+`extract-portfolio.js` now reads **only the Tradelog tab**, and only its cached cell values.
+
+⚠️ **Do not delete the Portfolio tab.** The extractor never reads it, but the Tradelog's own
+**Currency** column is a formula that looks it up
+(`=IFNA(INDEX([1]Portfolio!$A:$A, MATCH(...)))`), and the extractor *does* read Currency.
+Deleting Portfolio breaks that lookup, and the next Excel recalc turns Currency into `#REF`
+— which the extractor would happily consume. Same caution for **Forex** (`rngUSDJPY` and
+friends are used by Tradelog Price/Commission formulas). Reading cached values means the app
+survives a broken formula until the workbook is recalculated and saved, which makes this fail
+quietly rather than loudly.
+
+Tab names `Tradelog` and `Portfolio` must not be renamed. Per-instrument display facts
+(yahoo/group/geography) moved out of the workbook into `meta.json`.
+
+**Split column = the units→shares multiplier.** Tradelog `Stock split/Bonus shares` scales
+raw Qty up and raw Price down. A wrong value here is silent: it keeps total cost correct
+while misstating both share count and per-share price. (7532 was logged with `2` when the
+true split was `5`, so the app showed 200 shares instead of 500.) Cross-check quantities
+against the broker when a position looks off.
 
 ## Gotchas
 
