@@ -92,6 +92,75 @@ async function fetchWeekly(ticker, attempts = 3) {
     throw lastErr;
 }
 
+// Yahoo gates EPS behind a crumb+cookie handshake (unlike the chart endpoint above,
+// which is why everything else in this file uses only that). Best-effort: a failed
+// handshake just means no auto EPS this run — meta.json's manual `eps`/`specialEps`
+// (via holdings.json) still drive the PE columns, same as a missing quote does elsewhere.
+//
+// The crumb endpoint's own Set-Cookie is not sufficient on its own — Yahoo's quote API
+// 401s on it. It needs a real session cookie first, from fc.yahoo.com (this is the same
+// two-step dance yfinance and other Yahoo scrapers settled on after Yahoo tightened this
+// in 2023-24). Both requests below must reuse that one cookie.
+async function getCrumb() {
+    const sessionRes = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': UA } });
+    const cookie = (sessionRes.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    if (!cookie) throw new Error('no session cookie from fc.yahoo.com');
+
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+        headers: { 'User-Agent': UA, Cookie: cookie },
+    });
+    if (!crumbRes.ok) throw new Error(`HTTP ${crumbRes.status}`);
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb) throw new Error('no crumb in response');
+    return { crumb, cookie };
+}
+
+// Pure parse, kept separate from the fetch so it's selftest-able without a network call.
+function parseEps(json) {
+    const eps = {};
+    for (const r of json.quoteResponse?.result || []) {
+        if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
+    }
+    return eps;
+}
+
+// Yahoo's fundamentals are in the major currency unit even for tickers whose price
+// quote is in a minor unit (pence) — same GBp quirk rateFor() handles for FX.
+function epsInQuoteUnits(eps, currency) {
+    return (currency === 'GBp' || currency === 'Gbpence') ? eps * 100 : eps;
+}
+
+// One batched request for every ticker's trailing EPS — v7/finance/quote allows
+// comma-separated symbols, so this is a single round-trip regardless of holding count.
+async function fetchEps(tickers, { crumb, cookie }) {
+    const symbols = tickers.map(t => t.replace('^', '%5E')).join(',');
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseEps(await res.json());
+}
+
+// Last run's EPS, straight out of the committed prices.json. The crumb handshake is the
+// one thing here Yahoo actively gates, and it 401/429s from CI's shared IPs far more than
+// from a laptop — without a fallback, one blocked run blanks the whole PE column for
+// everyone. Trailing EPS only moves once a quarter, so a stale figure is a fine trade.
+function previousEps() {
+    try {
+        const prev = JSON.parse(fs.readFileSync('prices.json', 'utf8'));
+        return Object.fromEntries(Object.entries(prev.quotes || {})
+            .filter(([, q]) => typeof q.eps === 'number')
+            .map(([t, q]) => [t, q.eps]));
+    } catch { return {}; }               // no previous file (first run) — nothing to carry
+}
+
+// Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
+// ALREADY in quote units (it was scaled when written), so scaling it again would multiply
+// a pence ticker by 100 a second time.
+function resolveEps(fresh, carried, currency) {
+    if (typeof fresh === 'number') return epsInQuoteUnits(fresh, currency);
+    return typeof carried === 'number' ? carried : undefined;
+}
+
 // GBp (pence) is GBP/100. Everything else needs a real FX rate.
 function rateFor(code, rates) {
     if (code === 'GBp' || code === 'Gbpence') return rates.GBP / 100;
@@ -177,6 +246,27 @@ async function main() {
     if (Object.keys(quotes).length < tickers.length * 0.8) {
         throw new Error(`only ${Object.keys(quotes).length}/${tickers.length} tickers fetched; not writing`);
     }
+
+    // Trailing EPS for the PE columns — best-effort; see getCrumb's comment. Never blocks
+    // the price write, and never throws past this point. Anything Yahoo doesn't hand us
+    // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
+    const carried = previousEps();
+    let fresh = {};
+    try {
+        const { crumb, cookie } = await getCrumb();
+        fresh = await fetchEps(tickers, { crumb, cookie });
+    } catch (e) {
+        console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
+    }
+    let live = 0, stale = 0;
+    for (const t of tickers) {
+        if (!quotes[t]) continue;
+        const eps = resolveEps(fresh[t], carried[t], quotes[t].currency);
+        if (eps === undefined) continue;
+        quotes[t].eps = eps;
+        fresh[t] != null ? live++ : stale++;
+    }
+    console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
 
     // Every currency in play: what the workbook declares, plus what Yahoo actually quotes in.
     const declared = holdings.map(h => h.currency === 'Gbpence' ? 'GBp' : h.currency);
@@ -307,6 +397,17 @@ function selftest() {
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
+    // Yahoo's EPS is in pounds even for a pence-quoted ticker; PE = price/eps needs both
+    // in the same unit, so this must match price's unit, not pass the pounds figure through.
+    assert.strictEqual(epsInQuoteUnits(0.12, 'GBp'), 12);
+    assert.strictEqual(epsInQuoteUnits(3.1, 'USD'), 3.1);
+
+    // resolveEps: fresh Yahoo EPS wins and gets scaled; a carried-forward value is already
+    // in quote units and must NOT be scaled again (that would 100x a pence ticker twice).
+    assert.strictEqual(resolveEps(0.12, 999, 'GBp'), 12);      // fresh wins, scaled once
+    assert.strictEqual(resolveEps(undefined, 12, 'GBp'), 12);  // carried used as-is
+    assert.strictEqual(resolveEps(undefined, 3.1, 'USD'), 3.1);
+    assert.strictEqual(resolveEps(undefined, undefined, 'USD'), undefined); // no data anywhere
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
@@ -314,6 +415,12 @@ function selftest() {
     });
     assert.strictEqual(shaped.divTTM, 2);
     assert.strictEqual(shaped.divYield, 0.02);
+
+    // parseEps skips symbols with no EPS (indices, some ETFs) rather than writing null.
+    assert.deepStrictEqual(
+        parseEps({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }),
+        { AAPL: 6.5 }
+    );
     // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');

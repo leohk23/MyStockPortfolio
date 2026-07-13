@@ -137,8 +137,16 @@ function build(holdings, rates, quotes, dimension = 'company') {
             if (tradeUSD) since = (quote.priceUSD - tradeUSD) / tradeUSD;
         }
         const value = h.qty * quote.priceUSD;
+        // PE uses native price ÷ native EPS (both in the same currency) so no FX enters a
+        // ratio that shouldn't need any. eps: Yahoo's auto-fetched trailing EPS, falling
+        // back to a manual meta.json value. specialPe uses a stock-tailored earnings figure
+        // (FFO, adjusted EPS, ...) when meta.json sets one; otherwise it's the same as pe.
+        const eps = quote.eps ?? h.eps ?? null;
+        const pe = eps > 0 ? quote.price / eps : null;
+        const specialEps = h.specialEps ?? eps;
+        const specialPe = specialEps > 0 ? quote.price / specialEps : null;
         const leg = {
-            ...h, quote, since,
+            ...h, quote, since, pe, specialPe,
             cost: h.costLC * rate,
             value,
             realized: (h.realizedLC || 0) * rate,
@@ -168,6 +176,9 @@ function build(holdings, rates, quotes, dimension = 'company') {
             // Current price per share only makes sense for a single instrument; shown native.
             price: single ? single.quote.price : null,
             priceCurrency: single ? single.quote.currency : null,
+            pe: single ? single.pe : null,
+            specialPe: single ? single.specialPe : null,
+            specialEpsLabel: single ? single.specialEpsLabel || null : null,
             // The instrument a click on this row charts: its largest leg.
             primaryYahoo: g.legs[0].yahoo,
         };
@@ -260,12 +271,12 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     const holdings = [
         { yahoo: 'A', group: 'BYD', geography: 'China', currency: 'USD', qty: 10, costLC: 100, realizedLC: 5 },
         { yahoo: 'B', group: 'BYD', geography: 'China', currency: 'HKD', qty: 100, costLC: 1000, realizedLC: 10 },
-        { yahoo: 'C', group: 'Solo', geography: 'US', currency: 'USD', qty: 1, costLC: 50 },
+        { yahoo: 'C', group: 'Solo', geography: 'US', currency: 'USD', qty: 1, costLC: 50, specialEps: 4, specialEpsLabel: 'Adj EPS' },
     ];
     const quotes = {
         A: { price: 20, priceUSD: 20, divYield: 0.01, '1y': 0.5 },
         B: { price: 20, priceUSD: 2, divYield: 0.03, '1y': 0 },
-        C: { price: 100, priceUSD: 100, divYield: 0.02, '1y': null },
+        C: { price: 100, priceUSD: 100, divYield: 0.02, '1y': null, eps: 5 },
     };
     const rows = build(holdings, rates, quotes);
     assert.strictEqual(rows.length, 2);
@@ -283,6 +294,16 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(rows[0].name, 'BYD');
     assert.strictEqual(rows[1].yield, 0.02);
     assert.strictEqual(rows[1].income, 2);
+
+    // PE: normal PE is native price ÷ Yahoo's auto-fetched trailing EPS; special PE uses
+    // meta.json's stock-tailored earnings figure instead. Multi-leg rows (BYD, no eps set
+    // on A/B) leave both null — a group PE isn't well-defined without earnings weighting.
+    const solo = rows.find(r => r.name === 'Solo');
+    assert.strictEqual(solo.pe, 20);          // 100 / 5
+    assert.strictEqual(solo.specialPe, 25);   // 100 / 4
+    assert.strictEqual(solo.specialEpsLabel, 'Adj EPS');
+    assert.strictEqual(byd.pe, null);
+    assert.strictEqual(byd.specialPe, null);
 
     // Since-last-trade compares in USD. A pence trade at 500 GBp = $10 vs $20 spot = +100%.
     const pence = [{ yahoo: 'P', group: 'G', geography: 'UK', currency: 'GBp', qty: 1, costLC: 0, divTTM: 0,

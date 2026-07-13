@@ -76,6 +76,11 @@ function buildHoldings(meta, bySymbol, realized) {
             group: m.group,
             geography: m.geography || 'Other',
             currency: m.currency,
+            // Optional PE inputs — see AGENTS.md. Omitted when unset so they don't bloat
+            // holdings.json for the (most) instruments that don't use them.
+            eps: m.eps,
+            specialEps: m.specialEps,
+            specialEpsLabel: m.specialEpsLabel,
             qty,
             avgPrice: last.avgPrice,
             costLC: qty * last.avgPrice,        // cost basis in the instrument's currency
