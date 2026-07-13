@@ -204,6 +204,8 @@
                 <tr>
                     <th data-sort="name">Position</th>
                     <th data-sort="price">Price</th>
+                    <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
+                    <th data-sort="specialPe" title="Price ÷ a stock-tailored earnings figure set in meta.json (FFO, adjusted EPS, ...). Falls back to the normal PE when unset.">Special PE</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <th data-sort="cost">Cost</th>
@@ -654,6 +656,10 @@
         }
         const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
             : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
+        // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
+        // loss-making company isn't a meaningful multiple), so this only ever formats positives.
+        const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
+            : `<span${label ? ` title="${label}"` : ''}>${n.toFixed(1)}x</span>`;
 
         const sortValue = (row, key) => {
             if (portfolioLib.PERIODS.includes(key)) return row.moves[key];
@@ -710,6 +716,8 @@
                         : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency)}</td>
+                    <td>${peCell(r.pe)}</td>
+                    <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${money(r.cost)}</td>
@@ -732,6 +740,8 @@
                     el.innerHTML = `
                         <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
                         <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
+                        <td>${peCell(leg.pe)}</td>
+                        <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td>${money(leg.cost)}</td>
@@ -751,7 +761,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="18">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="20">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });

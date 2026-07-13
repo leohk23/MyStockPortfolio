@@ -54,6 +54,13 @@ or a 2Y/5Y/All range, so the first paint stays light.
   **Yield TTM** comes from Yahoo's trailing-12-month dividend events divided by current price;
   the workbook dividend field is not exported or used. **Income TTM** multiplies those
   online dividends per share by today's position quantity.
+- **PE and Special PE** (single-instrument rows only). **PE** is price ÷ trailing 12-month
+  EPS, fetched from Yahoo automatically where available. **Special PE** lets you swap in
+  whatever earnings figure actually fits that stock or its industry — FFO/share for a REIT,
+  adjusted EPS for a bank, a normalized multi-year average for a cyclical — by setting
+  `specialEps` (and an optional `specialEpsLabel` shown as a tooltip) in `meta.json`. Leave
+  it unset and Special PE just mirrors the normal PE. Both show `–` when there's no earnings
+  figure from any source, or on a multi-instrument Company/Geography row.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 
@@ -83,6 +90,8 @@ instrument keyed by its Tradelog symbol:
 - `currency` — the currency the **purchase price** was recorded in. The *current* price's
   currency comes from Yahoo, so London tickers in pence and Tokyo tickers in yen need no
   per-ticker special case.
+- `eps` / `specialEps` / `specialEpsLabel` — optional, drive the PE columns. See
+  [AGENTS.md](AGENTS.md#pe--valuation-hint).
 
 ### Two things the app does differently from the spreadsheet
 

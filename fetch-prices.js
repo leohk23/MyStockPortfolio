@@ -92,6 +92,38 @@ async function fetchWeekly(ticker, attempts = 3) {
     throw lastErr;
 }
 
+// Yahoo gates EPS behind a crumb+cookie handshake (unlike the chart endpoint above,
+// which is why everything else in this file uses only that). Best-effort: a failed
+// handshake just means no auto EPS this run — meta.json's manual `eps`/`specialEps`
+// (via holdings.json) still drive the PE columns, same as a missing quote does elsewhere.
+async function getCrumb() {
+    const res = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const cookie = (res.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    const crumb = (await res.text()).trim();
+    if (!crumb || !cookie) throw new Error('no crumb/cookie in response');
+    return { crumb, cookie };
+}
+
+// Pure parse, kept separate from the fetch so it's selftest-able without a network call.
+function parseEps(json) {
+    const eps = {};
+    for (const r of json.quoteResponse?.result || []) {
+        if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
+    }
+    return eps;
+}
+
+// One batched request for every ticker's trailing EPS — v7/finance/quote allows
+// comma-separated symbols, so this is a single round-trip regardless of holding count.
+async function fetchEps(tickers, { crumb, cookie }) {
+    const symbols = tickers.map(t => t.replace('^', '%5E')).join(',');
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseEps(await res.json());
+}
+
 // GBp (pence) is GBP/100. Everything else needs a real FX rate.
 function rateFor(code, rates) {
     if (code === 'GBp' || code === 'Gbpence') return rates.GBP / 100;
@@ -176,6 +208,17 @@ async function main() {
     // Refuse to publish a gutted file — better to keep yesterday's prices than show a broken page.
     if (Object.keys(quotes).length < tickers.length * 0.8) {
         throw new Error(`only ${Object.keys(quotes).length}/${tickers.length} tickers fetched; not writing`);
+    }
+
+    // Trailing EPS for the PE columns — best-effort; see getCrumb's comment. Never blocks
+    // the price write, and never throws past this point.
+    try {
+        const { crumb, cookie } = await getCrumb();
+        const eps = await fetchEps(tickers, { crumb, cookie });
+        for (const [t, v] of Object.entries(eps)) if (quotes[t]) quotes[t].eps = v;
+        console.log(`ok   eps for ${Object.keys(eps).length}/${tickers.length} tickers`);
+    } catch (e) {
+        console.error(`skip eps: ${e.message}`);
     }
 
     // Every currency in play: what the workbook declares, plus what Yahoo actually quotes in.
@@ -314,6 +357,12 @@ function selftest() {
     });
     assert.strictEqual(shaped.divTTM, 2);
     assert.strictEqual(shaped.divYield, 0.02);
+
+    // parseEps skips symbols with no EPS (indices, some ETFs) rather than writing null.
+    assert.deepStrictEqual(
+        parseEps({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }),
+        { AAPL: 6.5 }
+    );
     // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');

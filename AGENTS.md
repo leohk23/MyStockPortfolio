@@ -36,8 +36,8 @@ index.html + portfolio.js   all arithmetic in the browser
 | File | Role | Runs where |
 |------|------|-----------|
 | `extract-portfolio.js` | Reads the Tradelog tab + `meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`. | User's machine only (`npm run extract`) |
-| `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`. Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
-| `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
+| `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
+| `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
 | `publish.js` | `npm run publish`: extract → commit holdings.json → rebase → push. | User's machine |
@@ -81,6 +81,31 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
    full available price history; Gain/Loss **All** starts at that instrument's first trade.
 8. **Yield is online-only.** `fetch-prices.js` sums Yahoo dividend events over `range=1y`
    and divides by current price. Never use the workbook dividend field for table yield.
+9. **PE is single-instrument only, computed in native currency.** `pe` = price ÷ trailing
+   EPS; `specialPe` = price ÷ a stock-tailored earnings figure. Both are `null` on a
+   multi-leg Company/Geography row (see Grouping below) — there's no well-defined "PE of a
+   basket" without earnings-weighting, so don't invent one. EPS itself, from either source,
+   must be in the same currency as the Yahoo-quoted price (e.g. pence for a `GBp` quote) —
+   PE is a ratio, so mixing currencies silently produces a meaningless number, not an error.
+
+## PE / valuation hint
+
+Two optional `meta.json` fields per instrument drive the PE columns:
+
+- `eps` — manual trailing EPS override, used only when Yahoo's auto-fetch (below) has no
+  data for that symbol. Native quote currency.
+- `specialEps` / `specialEpsLabel` — a stock- or industry-appropriate earnings figure that
+  isn't plain trailing EPS (FFO/share for a REIT, adjusted/core EPS for a bank, a normalized
+  multi-year average for a cyclical, ...) and a short label shown in the column's tooltip.
+  Native quote currency. Omit both to leave Special PE identical to the normal PE.
+
+`fetch-prices.js` best-effort fetches trailing EPS from Yahoo's `v7/finance/quote` for every
+holding in one batched request. That endpoint (unlike `v8/finance/chart`) requires a
+crumb+cookie handshake (`getCrumb()`) — Yahoo's anti-scraping measure, not something this repo
+controls, so it can start failing without a code change on our side. A failure there is always
+silent and non-fatal (logs `skip eps: ...` and moves on): PE columns just fall back to
+`meta.json`'s manual `eps`, or show `–` if neither source has a number. Check the Action's log
+line (`ok   eps for N/M tickers`) if PE looks stale.
 
 ## Grouping (the "one line per company" feature)
 
