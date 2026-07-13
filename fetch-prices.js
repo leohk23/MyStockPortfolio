@@ -124,6 +124,12 @@ function parseEps(json) {
     return eps;
 }
 
+// Yahoo's fundamentals are in the major currency unit even for tickers whose price
+// quote is in a minor unit (pence) — same GBp quirk rateFor() handles for FX.
+function epsInQuoteUnits(eps, currency) {
+    return (currency === 'GBp' || currency === 'Gbpence') ? eps * 100 : eps;
+}
+
 // One batched request for every ticker's trailing EPS — v7/finance/quote allows
 // comma-separated symbols, so this is a single round-trip regardless of holding count.
 async function fetchEps(tickers, { crumb, cookie }) {
@@ -225,7 +231,7 @@ async function main() {
     try {
         const { crumb, cookie } = await getCrumb();
         const eps = await fetchEps(tickers, { crumb, cookie });
-        for (const [t, v] of Object.entries(eps)) if (quotes[t]) quotes[t].eps = v;
+        for (const [t, v] of Object.entries(eps)) if (quotes[t]) quotes[t].eps = epsInQuoteUnits(v, quotes[t].currency);
         console.log(`ok   eps for ${Object.keys(eps).length}/${tickers.length} tickers`);
     } catch (e) {
         console.error(`skip eps: ${e.message}`);
@@ -360,6 +366,10 @@ function selftest() {
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
+    // Yahoo's EPS is in pounds even for a pence-quoted ticker; PE = price/eps needs both
+    // in the same unit, so this must match price's unit, not pass the pounds figure through.
+    assert.strictEqual(epsInQuoteUnits(0.12, 'GBp'), 12);
+    assert.strictEqual(epsInQuoteUnits(3.1, 'USD'), 3.1);
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
