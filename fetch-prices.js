@@ -140,6 +140,27 @@ async function fetchEps(tickers, { crumb, cookie }) {
     return parseEps(await res.json());
 }
 
+// Last run's EPS, straight out of the committed prices.json. The crumb handshake is the
+// one thing here Yahoo actively gates, and it 401/429s from CI's shared IPs far more than
+// from a laptop — without a fallback, one blocked run blanks the whole PE column for
+// everyone. Trailing EPS only moves once a quarter, so a stale figure is a fine trade.
+function previousEps() {
+    try {
+        const prev = JSON.parse(fs.readFileSync('prices.json', 'utf8'));
+        return Object.fromEntries(Object.entries(prev.quotes || {})
+            .filter(([, q]) => typeof q.eps === 'number')
+            .map(([t, q]) => [t, q.eps]));
+    } catch { return {}; }               // no previous file (first run) — nothing to carry
+}
+
+// Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
+// ALREADY in quote units (it was scaled when written), so scaling it again would multiply
+// a pence ticker by 100 a second time.
+function resolveEps(fresh, carried, currency) {
+    if (typeof fresh === 'number') return epsInQuoteUnits(fresh, currency);
+    return typeof carried === 'number' ? carried : undefined;
+}
+
 // GBp (pence) is GBP/100. Everything else needs a real FX rate.
 function rateFor(code, rates) {
     if (code === 'GBp' || code === 'Gbpence') return rates.GBP / 100;
@@ -227,15 +248,25 @@ async function main() {
     }
 
     // Trailing EPS for the PE columns — best-effort; see getCrumb's comment. Never blocks
-    // the price write, and never throws past this point.
+    // the price write, and never throws past this point. Anything Yahoo doesn't hand us
+    // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
+    const carried = previousEps();
+    let fresh = {};
     try {
         const { crumb, cookie } = await getCrumb();
-        const eps = await fetchEps(tickers, { crumb, cookie });
-        for (const [t, v] of Object.entries(eps)) if (quotes[t]) quotes[t].eps = epsInQuoteUnits(v, quotes[t].currency);
-        console.log(`ok   eps for ${Object.keys(eps).length}/${tickers.length} tickers`);
+        fresh = await fetchEps(tickers, { crumb, cookie });
     } catch (e) {
-        console.error(`skip eps: ${e.message}`);
+        console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
+    let live = 0, stale = 0;
+    for (const t of tickers) {
+        if (!quotes[t]) continue;
+        const eps = resolveEps(fresh[t], carried[t], quotes[t].currency);
+        if (eps === undefined) continue;
+        quotes[t].eps = eps;
+        fresh[t] != null ? live++ : stale++;
+    }
+    console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
 
     // Every currency in play: what the workbook declares, plus what Yahoo actually quotes in.
     const declared = holdings.map(h => h.currency === 'Gbpence' ? 'GBp' : h.currency);
@@ -370,6 +401,13 @@ function selftest() {
     // in the same unit, so this must match price's unit, not pass the pounds figure through.
     assert.strictEqual(epsInQuoteUnits(0.12, 'GBp'), 12);
     assert.strictEqual(epsInQuoteUnits(3.1, 'USD'), 3.1);
+
+    // resolveEps: fresh Yahoo EPS wins and gets scaled; a carried-forward value is already
+    // in quote units and must NOT be scaled again (that would 100x a pence ticker twice).
+    assert.strictEqual(resolveEps(0.12, 999, 'GBp'), 12);      // fresh wins, scaled once
+    assert.strictEqual(resolveEps(undefined, 12, 'GBp'), 12);  // carried used as-is
+    assert.strictEqual(resolveEps(undefined, 3.1, 'USD'), 3.1);
+    assert.strictEqual(resolveEps(undefined, undefined, 'USD'), undefined); // no data anywhere
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
