@@ -130,17 +130,18 @@ runs make zero network calls. All 56 are currently verified.
 
 `extract-portfolio.js` now reads **only the Tradelog tab**, and only its cached cell values.
 
-⚠️ **Do not delete the Portfolio tab.** The extractor never reads it, but the Tradelog's own
-**Currency** column is a formula that looks it up
-(`=IFNA(INDEX([1]Portfolio!$A:$A, MATCH(...)))`), and the extractor *does* read Currency.
-Deleting Portfolio breaks that lookup, and the next Excel recalc turns Currency into `#REF`
-— which the extractor would happily consume. Same caution for **Forex** (`rngUSDJPY` and
-friends are used by Tradelog Price/Commission formulas). Reading cached values means the app
-survives a broken formula until the workbook is recalculated and saved, which makes this fail
-quietly rather than loudly.
+**Portfolio is no longer a dependency of the app.** Its Currency column used to be an
+`INDEX/MATCH` into Portfolio, which quietly made Portfolio load-bearing; that column is now
+hardcoded (401 cells). The only Tradelog formulas still pointing at Portfolio are **MktVal**
+and **YEVal** (cols 20–21), which the extractor never reads. Portfolio is now purely the
+owner's own Excel reporting — delete it and only those two columns break.
 
-Tab names `Tradelog` and `Portfolio` must not be renamed. Per-instrument display facts
-(yahoo/group/geography) moved out of the workbook into `meta.json`.
+**Forex is still live.** Tradelog Price/Commission formulas use named ranges from it
+(`=5315/rngUSDJPY`). Extraction reads *cached* values, so a broken formula fails quietly
+rather than loudly — the app would happily consume a `#REF`. Keep Forex.
+
+Tab name `Tradelog` must not be renamed. Per-instrument display facts
+(yahoo/group/geography) live in `meta.json`.
 
 **Split column = the units→shares multiplier.** Tradelog `Stock split/Bonus shares` scales
 raw Qty up and raw Price down. A wrong value here is silent: it keeps total cost correct
