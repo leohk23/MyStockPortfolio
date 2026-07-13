@@ -96,12 +96,22 @@ async function fetchWeekly(ticker, attempts = 3) {
 // which is why everything else in this file uses only that). Best-effort: a failed
 // handshake just means no auto EPS this run — meta.json's manual `eps`/`specialEps`
 // (via holdings.json) still drive the PE columns, same as a missing quote does elsewhere.
+//
+// The crumb endpoint's own Set-Cookie is not sufficient on its own — Yahoo's quote API
+// 401s on it. It needs a real session cookie first, from fc.yahoo.com (this is the same
+// two-step dance yfinance and other Yahoo scrapers settled on after Yahoo tightened this
+// in 2023-24). Both requests below must reuse that one cookie.
 async function getCrumb() {
-    const res = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': UA } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const cookie = (res.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
-    const crumb = (await res.text()).trim();
-    if (!crumb || !cookie) throw new Error('no crumb/cookie in response');
+    const sessionRes = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': UA } });
+    const cookie = (sessionRes.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    if (!cookie) throw new Error('no session cookie from fc.yahoo.com');
+
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+        headers: { 'User-Agent': UA, Cookie: cookie },
+    });
+    if (!crumbRes.ok) throw new Error(`HTTP ${crumbRes.status}`);
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb) throw new Error('no crumb in response');
     return { crumb, cookie };
 }
 
