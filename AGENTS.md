@@ -207,3 +207,29 @@ against the broker when a position looks off.
   generated file wins — regenerate rather than hand-merge.
 - Windows shell here is PowerShell; a Bash tool exists too. `.xlsx` reads need `xlsx` installed
   (`npm install`), which is dev-only and absent in CI by design.
+
+## Tradelog.xlsx external link (a live fragility)
+
+`Tradelog.xlsx` is a renamed copy of the Master Cashflow workbook, and the copy left behind an
+**external link** to the original on OneDrive:
+
+```
+https://d.docs.live.net/.../Master Cashflow_CC_v0.4.xlsx
+```
+
+Two columns the extractor reads still resolve through it, in every row:
+
+- **Adj Qty** — `[1]!Table1[[Qty]] × [1]!Table1[[Stock split]]` → every trade's quantity
+- **Gain/(Loss)** — realized gain
+
+Both reference only Tradelog's *own* columns (`Table1` is defined locally, `ref="C1:Y402"`), so
+the `[1]!` prefix is a pure copy artifact. It works today only because `xlsx` reads Excel's
+**cached** values — if Excel ever recalculates with the link unresolved, Adj Qty becomes `#REF!`.
+
+`parseTrade` now **throws** on any non-finite numeric cell rather than letting `Math.abs("#REF!")`
+publish `NaN` quantities. Do not weaken that check.
+
+**To make the workbook self-contained** (then Master Cashflow can be deleted anywhere): retype
+the two columns without the prefix — `=[@Qty]*[@[Stock split/ Bonus shares]]` and
+`=IF([@Side]="SELL",-([@[Adjusted Price w Commisions]]-[@[Average Purchase Price]])*[@[Adjusted Qty]],0)`
+— then Data → Edit Links → Break Link.

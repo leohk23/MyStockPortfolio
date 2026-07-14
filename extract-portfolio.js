@@ -20,9 +20,24 @@ const TRADE = { side: 2, symbol: 4, date: 7, adjPrice: 9, adjQty: 11, balanceQty
 
 // One Tradelog row -> a trade record, or null for header/incomplete rows.
 // Comments are deliberately published beside expanded trades at the owner's request.
-function parseTrade(r) {
+//
+// Numbers are validated as finite, not merely present. Several Tradelog columns are Excel
+// formulas, and a broken one yields an error cell ("#REF!", "#VALUE!") — xlsx hands that
+// through as a string, which Math.abs() would silently turn into NaN and publish. Adj Qty and
+// Gain/(Loss) reach through an external-workbook link, so this is a live risk, not a
+// hypothetical: lose the link and every quantity in the app goes quietly wrong.
+function parseTrade(r, row) {
     const date = r[TRADE.date];
     if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null || r[TRADE.adjQty] == null) return null;
+
+    for (const field of ['adjPrice', 'adjQty', 'balanceQty', 'avgPrice']) {
+        const v = r[TRADE[field]];
+        if (v != null && !Number.isFinite(Number(v))) {
+            throw new Error(`Tradelog row ${row ?? '?'} (${r[TRADE.symbol]}): ${field} is "${v}", not a number. `
+                + `An Excel formula is broken — most likely the external link to the Master Cashflow workbook. `
+                + `Fix the workbook before publishing; refusing to write a bad holdings.json.`);
+        }
+    }
     const comment = String(r[TRADE.comment] ?? '').trim();
     const platform = String(r[TRADE.platform] ?? '').trim(); // broker: IB, TD, SC, T212; page badges IB as IBKR
     return {
@@ -49,8 +64,13 @@ function readTradelog(sheet) {
         const r = rows[i];
         if (!r[TRADE.symbol]) continue;
         const key = String(r[TRADE.symbol]);
-        realized.set(key, (realized.get(key) || 0) + (Number(r[TRADE.gainLC]) || 0));
-        const t = parseTrade(r);
+        const gain = r[TRADE.gainLC];
+        if (gain != null && !Number.isFinite(Number(gain))) {
+            throw new Error(`Tradelog row ${i + 1} (${key}): Gain/(Loss) is "${gain}", not a number. `
+                + `An Excel formula is broken — most likely the external link to the Master Cashflow workbook.`);
+        }
+        realized.set(key, (realized.get(key) || 0) + (Number(gain) || 0));
+        const t = parseTrade(r, i + 1);
         if (!t) continue;
         const { symbol, ...trade } = t;
         const list = bySymbol.get(symbol) || [];
@@ -190,6 +210,17 @@ function selftest() {
     });
     const noPlat = [...row]; noPlat[TRADE.platform] = null;
     assert.strictEqual('platform' in parseTrade(noPlat), false); // blank platform omitted
+
+    // A broken Excel formula must be loud. Adj Qty and Gain/(Loss) resolve through an
+    // external-workbook link; if it breaks, xlsx hands back "#REF!" as a string and
+    // Math.abs() would quietly publish NaN quantities for every trade.
+    const broken = [...row]; broken[TRADE.adjQty] = '#REF!';
+    assert.throws(() => parseTrade(broken, 367), /adjQty is "#REF!", not a number/);
+    const badPrice = [...row]; badPrice[TRADE.adjPrice] = '#VALUE!';
+    assert.throws(() => parseTrade(badPrice, 12), /adjPrice is "#VALUE!"/);
+    // A legitimate numeric string still parses — xlsx sometimes hands numbers back as text.
+    const asText = [...row]; asText[TRADE.adjQty] = '-5';
+    assert.strictEqual(parseTrade(asText).qty, 5);
 
     // buildHoldings: qty/avgPrice/cost from last trade, realized from the map, closed skipped.
     const bySymbol = new Map([
