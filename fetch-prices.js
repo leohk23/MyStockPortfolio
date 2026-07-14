@@ -148,19 +148,33 @@ async function fetchEps(tickers, { crumb, cookie }) {
 // dividing a USD price by a JPY EPS silently produces nonsense (NTDOY read as +20,000% dear
 // before this was caught). The reported EPS already accounts for the ADR share ratio, so a
 // plain FX conversion is enough; it was checked against every ADR in the book (all within 1%).
-async function fetchAnnualEps(ticker, { crumb, cookie }) {
+// Retries like fetchTicker does: 56 rapid requests to the endpoint Yahoo gates hardest will
+// see the odd 429/timeout, and a bare failure here used to get cached as "this company has no
+// earnings" — which is exactly how AAPL and 1211.HK silently lost their PE Low for a week.
+async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
     const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
         + `?symbol=${sym}&type=annualDilutedEPS&period1=${now - 6 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
-    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const arr = (await res.json()).timeseries?.result?.[0]?.annualDilutedEPS || [];
-    const rows = arr.filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number');
-    return {
-        currency: rows.find(x => x.currencyCode)?.currencyCode || null,
-        years: rows.map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw })),
-    };
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const arr = (await res.json()).timeseries?.result?.[0]?.annualDilutedEPS || [];
+            const rows = arr.filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number');
+            // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
+            // earnings. That gets cached. A thrown error does NOT (see the caller).
+            return {
+                currency: rows.find(x => x.currencyCode)?.currencyCode || null,
+                years: rows.map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw })),
+            };
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
 }
 
 const yearBefore = day => {
@@ -236,14 +250,19 @@ function loadEarnings() {
     catch { return { updated: null, eps: {} }; }   // first run
 }
 
-function earningsStale(store, tickers, now = Date.now()) {
-    if (!store.updated) return true;
-    // A pre-currency file (entries were bare arrays, not { currency, years }) is unusable: the
-    // trough needs the reporting currency. Without this the file would never age out, and the
-    // PE Low column would silently stay empty forever.
-    if (tickers.some(t => t in store.eps && !Array.isArray(store.eps[t]?.years))) return true;
-    if ((now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS) return true;
-    return tickers.some(t => !(t in store.eps));   // a holding added since the last refresh
+// Which tickers need a fundamentals request this run — per-ticker, not all-or-nothing.
+//
+// Everything, if the store aged out or predates the reporting-currency field (that shape is
+// unusable: the trough can't convert without it, and it would never age out on its own).
+// Otherwise only the ones with no entry at all: a holding added since the last refresh, or one
+// whose fetch errored and was deliberately NOT cached. That distinction is the whole point —
+// a transient 429 must not be recorded as "this company has no earnings", and retrying it must
+// not drag the other 55 tickers along with it.
+function earningsToFetch(store, tickers, now = Date.now()) {
+    const wholeStore = !store.updated
+        || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS
+        || tickers.some(t => t in store.eps && !Array.isArray(store.eps[t]?.years));
+    return wholeStore ? tickers : tickers.filter(t => !(t in store.eps));
 }
 
 // Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
@@ -367,22 +386,26 @@ async function main() {
     // be in `rates` — an ADR reports in JPY/CNY while quoting in USD, and without that rate the
     // trough can't be converted (and must not be guessed).
     const store = loadEarnings();
-    if (auth && earningsStale(store, tickers)) {
-        console.log(`     annual EPS stale (updated ${store.updated || 'never'}) — refreshing`);
-        for (const t of tickers) {
-            try { store.eps[t] = await fetchAnnualEps(t, auth); }
-            catch (e) {
-                console.error(`     eps history ${t}: ${e.message}`);
-                // Record as known-empty rather than leaving the key absent: earningsStale treats
-                // a missing ticker as "new", so a symbol Yahoo never has fundamentals for would
-                // otherwise force a full refetch every single hour.
-                if (!(t in store.eps)) store.eps[t] = { currency: null, years: [] };
+    const toFetch = auth ? earningsToFetch(store, tickers) : [];
+    if (toFetch.length) {
+        console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`);
+        let failed = 0;
+        for (const t of toFetch) {
+            try {
+                store.eps[t] = await fetchAnnualEps(t, auth);
+            } catch (e) {
+                // Deliberately leave the key ABSENT. Caching a failure as an empty result is
+                // indistinguishable from a genuine no-earnings ETF, and would freeze the PE Low
+                // column empty until the store aged out. Missing = retried next run, alone.
+                failed++;
+                console.error(`     eps history ${t}: ${e.message} — not cached, will retry next run`);
             }
             await sleep();
         }
         store.updated = new Date().toISOString();
         fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
-        console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers)`);
+        console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers`
+            + `${failed ? `, ${failed} failed and will retry` : ''})`);
     } else {
         console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
     }
@@ -547,18 +570,24 @@ function selftest() {
     assert.strictEqual(resolveEps(undefined, 3.1, 'USD'), 3.1);
     assert.strictEqual(resolveEps(undefined, undefined, 'USD'), undefined); // no data anywhere
 
-    // earningsStale: refresh on age, on a never-fetched store, or when a holding is new —
-    // otherwise the trough would silently have no earnings to divide by.
+    // earningsToFetch: per-ticker, not all-or-nothing.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();
     const old7 = new Date(Date.now() - 9 * 86400e3).toISOString();
     const ok = { currency: 'USD', years: [] };
-    assert.strictEqual(earningsStale({ updated: null, eps: {} }, ['A']), true);          // never fetched
-    assert.strictEqual(earningsStale({ updated: old7, eps: { A: ok } }, ['A']), true);   // aged out
-    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A']), false);
-    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A', 'B']), true); // B is new
-    // A pre-currency file (bare array) must force a refresh, or it would never age out and the
-    // trough would have no reporting currency to convert with — silently empty, forever.
-    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [{ date: '2024-12-31', eps: 5 }] } }, ['A']), true);
+    const T = ['A', 'B'];
+    assert.deepStrictEqual(earningsToFetch({ updated: null, eps: {} }, T), T);              // never fetched
+    assert.deepStrictEqual(earningsToFetch({ updated: old7, eps: { A: ok, B: ok } }, T), T); // aged out
+    assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok, B: ok } }, T), []); // nothing to do
+    // Only the ticker with no entry is fetched — a new holding, or one whose last fetch errored
+    // and was deliberately not cached. Retrying it must not drag the other 55 along.
+    assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok } }, T), ['B']);
+    // An empty-but-present entry is a real answer (ETFs have no earnings) and is NOT refetched.
+    assert.deepStrictEqual(
+        earningsToFetch({ updated: fresh7, eps: { A: ok, B: { currency: null, years: [] } } }, T), []);
+    // A pre-currency file (bare array) forces a full refresh: the trough cannot convert without
+    // the reporting currency, and that shape would never age out on its own.
+    assert.deepStrictEqual(
+        earningsToFetch({ updated: fresh7, eps: { A: [{ date: '2024-12-31', eps: 5 }], B: ok } }, T), T);
 
     // troughPe: each fiscal year's lowest close over THAT year's earnings; cheapest wins.
     // 2024 low 50 / eps 5 = 10.0;  2025 low 90 / eps 6 = 15.0  ->  trough is 10.0, not 90/6.
