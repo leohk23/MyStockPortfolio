@@ -95,7 +95,13 @@
         #groupby .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
 
         /* ---- table ---- */
-        .table-responsive { width: 100%; overflow-x: auto; }
+        /* This div is the scroll container for BOTH axes, and that is deliberate: `position:
+           sticky` resolves against the nearest scrollable ancestor, not the viewport. The
+           overflow-x here already made this element that ancestor, so the header's `top: 0`
+           was dead — the div had no vertical scroll to stick within, and the page scrolled
+           instead. Bounding the height gives it one, which is what makes the sticky header
+           and the sticky first column work at the same time. */
+        .table-responsive { width: 100%; overflow: auto; max-height: calc(100vh - 40px); }
         table { border-collapse: collapse; width: 100%; min-width: 1280px; }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
@@ -135,10 +141,13 @@
            needs its OWN opaque background or the scrolled columns show straight through it —
            hence every row state has to repaint it: default, hover, leg, and selected (whose
            translucent blue is re-composited over the row colour beneath it). */
-        th:first-child, td:first-child { position: sticky; left: 0; border-right: 1px solid var(--line); }
+        /* Separator lines use inset box-shadows, not borders: with `border-collapse: collapse`
+           a border belongs to the collapsed grid rather than the cell, so it does not travel
+           with a sticky cell and drops out while scrolling. A shadow paints with the cell. */
+        th:first-child, td:first-child { position: sticky; left: 0; box-shadow: inset -1px 0 0 var(--line); }
         td:first-child { background: var(--surface-1); z-index: 1; }
-        th { z-index: 2; }                  /* header row sits above the pinned body cells */
-        th:first-child { z-index: 3; }      /* ...and the top-left corner above both */
+        th { z-index: 2; box-shadow: inset 0 -1px 0 var(--line); }   /* header above the pinned cells */
+        th:first-child { z-index: 3; box-shadow: inset -1px -1px 0 var(--line); } /* corner: above both */
         tr.group:hover td:first-child { background: var(--surface-2); }
         tr.leg td:first-child { background: var(--surface-3); }
         tr.leg:hover td:first-child { background: var(--surface-2); }
