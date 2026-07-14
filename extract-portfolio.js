@@ -16,7 +16,31 @@ const META = 'meta.json';
 // Tradelog columns (0-indexed). "Non US date" is the trade date; "Exec Time" is the
 // bulk-import stamp. "Adjusted Price/Qty" are split-adjusted so they stay comparable to
 // today's spot. "Bal Qty"/"Average Purchase Price" are the running position and cost.
-const TRADE = { side: 2, symbol: 4, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24 };
+const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24 };
+
+// The workbook prices its Japanese holdings off the US ADR, because its data provider has no
+// Tokyo coverage. So those rows record the price in USD as `=3976/rngUSDJPY` with Currency
+// "USD", even though the trade was ¥3,976 on the Tokyo line. That has to stay — Excel's own
+// reporting depends on it — so the app recovers the real figure instead.
+//
+// The yen price is the formula's numerator. The scale factor is derived from the cell ITSELF
+// (numerator ÷ cached value) rather than read off the Forex tab, because rngUSDJPY is a LIVE
+// rate (`=_FV(...,"Price")`): Excel recomputes the USD value on every refresh, so the recovery
+// must be exact for whatever rate happened to be in force when the file was last saved.
+//
+// Every USD-derived figure on the row was computed from that same USD price, so adjusted price,
+// average cost and realized gain all rescale by the same factor and the trade lands in JPY
+// whole. No match (the other 380-odd rows) means no rescale — Tradelog values pass through.
+const LOCAL_PRICE = /^\s*([\d.]+)\s*\/\s*rngUSD([A-Z]{3})\s*$/;
+
+function localPriceScale(sheet, row, recordedCurrency) {
+    const cell = sheet[XLSX.utils.encode_cell({ r: row, c: TRADE.rawPrice })];
+    const m = cell?.f?.match(LOCAL_PRICE);
+    if (!m || !(cell.v > 0)) return null;
+    const currency = m[2];
+    if (currency === recordedCurrency) return null;   // already recorded in its own currency
+    return { currency, scale: Number(m[1]) / cell.v };
+}
 
 // One Tradelog row -> a trade record, or null for header/incomplete rows.
 // Comments are deliberately published beside expanded trades at the owner's request.
@@ -26,7 +50,7 @@ const TRADE = { side: 2, symbol: 4, date: 7, adjPrice: 9, adjQty: 11, balanceQty
 // through as a string, which Math.abs() would silently turn into NaN and publish. Adj Qty and
 // Gain/(Loss) reach through an external-workbook link, so this is a live risk, not a
 // hypothetical: lose the link and every quantity in the app goes quietly wrong.
-function parseTrade(r, row) {
+function parseTrade(r, row, local = null) {
     const date = r[TRADE.date];
     if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null || r[TRADE.adjQty] == null) return null;
 
@@ -40,15 +64,16 @@ function parseTrade(r, row) {
     }
     const comment = String(r[TRADE.comment] ?? '').trim();
     const platform = String(r[TRADE.platform] ?? '').trim(); // broker: IB, TD, SC, T212; page badges IB as IBKR
+    const k = local ? local.scale : 1;   // USD -> the price's real currency (see LOCAL_PRICE)
     return {
         symbol: String(r[TRADE.symbol]),
         date: date.toISOString().slice(0, 10),
         side: String(r[TRADE.side] || '').toUpperCase().startsWith('S') ? 'SELL' : 'BUY',
         qty: Math.abs(r[TRADE.adjQty] || 0),
-        price: r[TRADE.adjPrice],
-        balanceQty: r[TRADE.balanceQty] ?? 0,
-        avgPrice: r[TRADE.avgPrice] ?? 0,
-        currency: String(r[TRADE.currency] || 'USD'),
+        price: r[TRADE.adjPrice] * k,
+        balanceQty: r[TRADE.balanceQty] ?? 0,      // a share count — never rescaled
+        avgPrice: (r[TRADE.avgPrice] ?? 0) * k,
+        currency: local ? local.currency : String(r[TRADE.currency] || 'USD'),
         ...(platform ? { platform } : {}),
         ...(comment ? { comment } : {}),
     };
@@ -69,8 +94,10 @@ function readTradelog(sheet) {
             throw new Error(`Tradelog row ${i + 1} (${key}): Gain/(Loss) is "${gain}", not a number. `
                 + `An Excel formula is broken — most likely the external link to the Master Cashflow workbook.`);
         }
-        realized.set(key, (realized.get(key) || 0) + (Number(gain) || 0));
-        const t = parseTrade(r, i + 1);
+        // Realized gain was computed off the same USD price, so it rescales with it.
+        const local = localPriceScale(sheet, i, String(r[TRADE.currency] || ''));
+        realized.set(key, (realized.get(key) || 0) + (Number(gain) || 0) * (local ? local.scale : 1));
+        const t = parseTrade(r, i + 1, local);
         if (!t) continue;
         const { symbol, ...trade } = t;
         const list = bySymbol.get(symbol) || [];
@@ -157,7 +184,9 @@ async function main() {
         throw new Error(`${WORKBOOK} not found. It is gitignored, so this only runs on your machine.`);
     }
     const meta = JSON.parse(fs.readFileSync(META, 'utf8'));
-    const wb = XLSX.readFile(WORKBOOK, { cellDates: true });
+    // cellFormula: the Japanese rows hide their real yen price inside the price formula, and the
+    // cached value alone is a USD figure that drifts with a live FX rate. See LOCAL_PRICE.
+    const wb = XLSX.readFile(WORKBOOK, { cellDates: true, cellFormula: true });
     if (!wb.Sheets.Tradelog) throw new Error('no "Tradelog" tab in workbook');
 
     const { bySymbol, realized } = readTradelog(wb.Sheets.Tradelog);
@@ -221,6 +250,33 @@ function selftest() {
     // A legitimate numeric string still parses — xlsx sometimes hands numbers back as text.
     const asText = [...row]; asText[TRADE.adjQty] = '-5';
     assert.strictEqual(parseTrade(asText).qty, 5);
+
+    // localPriceScale: the real 5332 row. Excel stores `=3976/rngUSDJPY` with Currency "USD"
+    // because its data provider cannot price Tokyo, so it reports the ADR. The yen price is the
+    // numerator; the scale comes from the cell itself, so it is exact whatever the live rate is.
+    const sheet = { F1: { f: '3976/rngUSDJPY', v: 3976 / 162.39 } };
+    const scaled = localPriceScale(sheet, 0, 'USD');
+    assert.strictEqual(scaled.currency, 'JPY');
+    assert.ok(Math.abs(scaled.scale - 162.39) < 1e-6);
+    // Rows already recorded in their own currency are left alone, as are plain typed prices.
+    assert.strictEqual(localPriceScale({ F1: { f: '3976/rngUSDJPY', v: 24.48 } }, 0, 'JPY'), null);
+    assert.strictEqual(localPriceScale({ F1: { v: 12.5 } }, 0, 'USD'), null);
+    assert.strictEqual(localPriceScale({}, 0, 'USD'), null);
+
+    // Applying it: price and average cost rescale into JPY, quantities never do, and the
+    // currency follows the recovered one rather than the workbook's "USD".
+    const jp = [];
+    jp[TRADE.side] = 'BUY'; jp[TRADE.symbol] = '5332';
+    jp[TRADE.date] = new Date('2025-02-21T00:00:00Z');
+    jp[TRADE.adjPrice] = 3976 / 162.39; jp[TRADE.adjQty] = 100;
+    jp[TRADE.balanceQty] = 100; jp[TRADE.avgPrice] = 3979.18 / 162.39;
+    jp[TRADE.currency] = 'USD';
+    const out = parseTrade(jp, 341, { currency: 'JPY', scale: 162.39 });
+    assert.strictEqual(out.currency, 'JPY');
+    assert.ok(Math.abs(out.price - 3976) < 1e-6);        // the yen price, recovered
+    assert.ok(Math.abs(out.avgPrice - 3979.18) < 1e-6);  // IBKR's avg for this position
+    assert.strictEqual(out.balanceQty, 100);             // a share count, untouched
+    assert.strictEqual(out.qty, 100);
 
     // buildHoldings: qty/avgPrice/cost from last trade, realized from the map, closed skipped.
     const bySymbol = new Map([

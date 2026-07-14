@@ -233,3 +233,31 @@ publish `NaN` quantities. Do not weaken that check.
 the two columns without the prefix — `=[@Qty]*[@[Stock split/ Bonus shares]]` and
 `=IF([@Side]="SELL",-([@[Adjusted Price w Commisions]]-[@[Average Purchase Price]])*[@[Adjusted Qty]],0)`
 — then Data → Edit Links → Break Link.
+
+## Japanese rows: the price hides in the formula
+
+The workbook's data provider (`_FV`) has no Tokyo coverage, so it prices the Japanese holdings
+off their **US ADR**. Those three Tradelog rows therefore record a USD price with `Currency =
+"USD"`, even though the trade happened in yen on the Tokyo line:
+
+```
+5332  Price = 3976/rngUSDJPY      -> the trade was ¥3,976
+7532  Price = 5315/rngUSDJPY      -> ¥5,315
+8001  Price = 2075.5/rngUSDJPY    -> ¥2,075.5
+```
+
+**This cannot be "fixed" in the workbook** — Excel's own reporting depends on the ADR price. So
+`extract-portfolio.js` recovers the real figure instead (`LOCAL_PRICE` / `localPriceScale`): the
+yen price is the formula's numerator, and every USD-derived figure on the row (adjusted price,
+average cost, realized gain) rescales by the same factor. Quantities never rescale.
+
+⚠️ The scale is derived from the **cell itself** (`numerator ÷ cached value`), NOT from the Forex
+tab, because `rngUSDJPY` is a **live** rate (`=_FV(...,"Price")`) — Excel recomputes the USD
+value on every refresh. Reading the rate separately would drift out of step with the cached
+value; deriving it from the cell is exact whatever the rate was when the file was last saved.
+
+`meta.json` `currency` for these three must be **JPY**, to agree with the recovered trade
+currency. Verified against IBKR: 5332 ¥3,979.18 avg, 8001 ¥2,077.16 — the app now matches.
+
+Side effect, and a good one: cost basis now converts at Yahoo's live JPY rate like every other
+foreign holding, instead of being pinned to the workbook's FX snapshot.
