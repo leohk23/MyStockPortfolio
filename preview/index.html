@@ -865,8 +865,15 @@
             const gain = total - cost;
             const realized = STATE.rows.reduce((a, r) => a + r.realized, 0);
             const income = STATE.rows.reduce((a, r) => a + r.income, 0);
+            // Blank every column up to Cost, counted FROM THE HEADER rather than hardcoded.
+            // Price, PE, PE Low, Implied, vs Low and the rest are per-instrument figures with no
+            // meaningful portfolio aggregate (a basket has no PE — see AGENTS.md invariant 9),
+            // and Last trade / Since don't sum either. This used to be three literal <td>s, so
+            // adding the six valuation columns silently shifted every total six cells left.
+            const leadCols = [...document.querySelectorAll('#portfolio thead th')]
+                .findIndex(th => th.dataset.sort === 'cost');
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>
-                <td>Total</td><td></td><td></td><td></td>
+                <td>Total</td>${'<td></td>'.repeat(Math.max(0, leadCols - 1))}
                 <td>${money(cost)}</td><td>${money(total)}</td>
                 <td class="${cls(gain)}">${money(gain)}</td>
                 <td class="${realizedCls(realized)}">${money(realized)}</td>
