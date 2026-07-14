@@ -551,10 +551,9 @@ function selftest() {
     // otherwise the trough would silently have no earnings to divide by.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();
     const old7 = new Date(Date.now() - 9 * 86400e3).toISOString();
-    assert.strictEqual(earningsStale({ updated: null, eps: {} }, ['A']), true);        // never fetched
-    assert.strictEqual(earningsStale({ updated: old7, eps: { A: [] } }, ['A']), true);  // aged out
-    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [] } }, ['A']), false);
     const ok = { currency: 'USD', years: [] };
+    assert.strictEqual(earningsStale({ updated: null, eps: {} }, ['A']), true);          // never fetched
+    assert.strictEqual(earningsStale({ updated: old7, eps: { A: ok } }, ['A']), true);   // aged out
     assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A']), false);
     assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A', 'B']), true); // B is new
     // A pre-currency file (bare array) must force a refresh, or it would never age out and the
