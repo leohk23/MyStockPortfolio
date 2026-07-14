@@ -152,36 +152,50 @@ async function fetchEps(tickers, { crumb, cookie }) {
 // see the odd 429/timeout, and a bare failure here used to get cached as "this company has no
 // earnings" — which is exactly how AAPL and 1211.HK silently lost their PE Low for a week.
 // Net income comes along for the ride (same request) because EPS alone cannot be trusted
-// across a share-count change — see normaliseEps.
+// across a share-count change — see normaliseEps. Revenue (rev) and net income attributable to
+// common shareholders (nic) ride along too, for the financials panel: nic is the "relevant"
+// bottom line — it is what EPS is actually struck on, and it excludes the minority interests
+// that make a headline net income meaningless for a conglomerate like CKA or 1113.
+const FIELDS = {                       // Yahoo timeseries key -> our short name
+    annualDilutedEPS: 'eps',
+    annualNetIncome: 'ni',
+    annualTotalRevenue: 'rev',
+    annualNetIncomeCommonStockholders: 'nic',
+};
 async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
     const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
-        + `?symbol=${sym}&type=annualDilutedEPS,annualNetIncome`
-        + `&period1=${now - 6 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
+        + `?symbol=${sym}&type=${Object.keys(FIELDS).join(',')}`
+        + `&period1=${now - 8 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const results = (await res.json()).timeseries?.result || [];
-            const eps = {}, ni = {};
+            const rows = {};               // asOfDate -> { eps, ni, rev, nic }
             let currency = null;
             for (const r of results) {
-                for (const [key, into] of [['annualDilutedEPS', eps], ['annualNetIncome', ni]]) {
+                for (const [key, name] of Object.entries(FIELDS)) {
                     for (const x of r[key] || []) {
                         if (!x?.asOfDate || typeof x.reportedValue?.raw !== 'number') continue;
-                        into[x.asOfDate] = x.reportedValue.raw;
+                        (rows[x.asOfDate] ||= {})[name] = x.reportedValue.raw;
+                        // EPS is per-share and revenue is absolute, but both are filed in the
+                        // same reporting currency — any row carrying one settles it.
                         if (x.currencyCode) currency = x.currencyCode;
                     }
                 }
             }
             // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
             // earnings. That gets cached. A thrown error does NOT (see the caller).
+            // Keyed on EPS: a year with revenue but no EPS is a stub Yahoo sometimes emits for
+            // the current, unreported year, and it would show up as a fake 100%-margin-collapse.
             return {
                 currency,
-                years: Object.keys(eps).sort()
-                    .map(date => ({ date, eps: eps[date], ...(ni[date] != null ? { ni: ni[date] } : {}) })),
+                years: Object.keys(rows).sort()
+                    .filter(date => rows[date].eps != null)
+                    .map(date => ({ date, ...rows[date] })),
             };
         } catch (e) {
             lastErr = e;
@@ -285,31 +299,45 @@ function previousEps() {
 const EARNINGS = 'earnings.json';
 const EARNINGS_MAX_AGE_DAYS = 7;
 
+// Bump when the stored shape changes, to force one full refetch. This is a version and not a
+// "does field X exist?" sniff on purpose: a sniff cannot tell "we never fetched this field"
+// from "Yahoo has no revenue for this ticker", so the second case would refetch every ticker,
+// every run, forever. v2 = + net income (EPS alone can't survive a split — see normaliseEps).
+// v3 = + revenue and net income to common, for the financials panel.
+const EARNINGS_V = 3;
+
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
-    catch { return { updated: null, eps: {} }; }   // first run
+    catch { return { v: EARNINGS_V, updated: null, eps: {} }; }   // first run
+}
+
+// Yahoo hands back ~4 fiscal years however wide a window you ask for, so 4 is the ceiling on a
+// single fetch. But the store lives in the repo: keep the years already seen and the history
+// ACCRETES — a 5th year appears next time the fiscal window rolls, instead of dropping off the
+// back. Fresh wins per fiscal year, so restatements still propagate.
+// A fetch that comes back empty keeps the old years (an ETF is empty from the start and has
+// nothing to keep; a company that suddenly reports nothing is a Yahoo glitch, not a fact).
+function mergeEarnings(old, fresh) {
+    if (!old?.years?.length) return fresh;
+    const byDate = new Map(old.years.map(y => [y.date, y]));
+    for (const y of fresh.years) byDate.set(y.date, y);
+    return {
+        currency: fresh.currency ?? old.currency,
+        years: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    };
 }
 
 // Which tickers need a fundamentals request this run — per-ticker, not all-or-nothing.
 //
-// Everything, if the store aged out or predates the reporting-currency field (that shape is
-// unusable: the trough can't convert without it, and it would never age out on its own).
-// Otherwise only the ones with no entry at all: a holding added since the last refresh, or one
-// whose fetch errored and was deliberately NOT cached. That distinction is the whole point —
-// a transient 429 must not be recorded as "this company has no earnings", and retrying it must
-// not drag the other 55 tickers along with it.
+// Everything, if the store aged out or was written by an older shape. Otherwise only the ones
+// with no entry at all: a holding added since the last refresh, or one whose fetch errored and
+// was deliberately NOT cached. That distinction is the whole point — a transient 429 must not
+// be recorded as "this company has no earnings", and retrying it must not drag the other 55
+// tickers along with it.
 function earningsToFetch(store, tickers, now = Date.now()) {
-    const badShape = t => {
-        const e = store.eps[t];
-        if (!(t in store.eps)) return false;                     // absent = "new", handled below
-        if (!Array.isArray(e?.years)) return true;               // predates { currency, years }
-        // Predates net income: without it EPS cannot be rebased across a split, and the trough
-        // would stay silently wrong (BYD read 5.4x instead of ~11x) until the store aged out.
-        return e.years.length > 0 && e.years.every(y => y.ni == null);
-    };
     const wholeStore = !store.updated
-        || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS
-        || tickers.some(badShape);
+        || store.v !== EARNINGS_V
+        || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS;
     return wholeStore ? tickers : tickers.filter(t => !(t in store.eps));
 }
 
@@ -440,7 +468,7 @@ async function main() {
         let failed = 0;
         for (const t of toFetch) {
             try {
-                store.eps[t] = await fetchAnnualEps(t, auth);
+                store.eps[t] = mergeEarnings(store.eps[t], await fetchAnnualEps(t, auth));
             } catch (e) {
                 // Deliberately leave the key ABSENT. Caching a failure as an empty result is
                 // indistinguishable from a genuine no-earnings ETF, and would freeze the PE Low
@@ -450,6 +478,7 @@ async function main() {
             }
             await sleep();
         }
+        store.v = EARNINGS_V;
         store.updated = new Date().toISOString();
         fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
         console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers`
@@ -623,19 +652,41 @@ function selftest() {
     const old7 = new Date(Date.now() - 9 * 86400e3).toISOString();
     const ok = { currency: 'USD', years: [] };
     const T = ['A', 'B'];
-    assert.deepStrictEqual(earningsToFetch({ updated: null, eps: {} }, T), T);              // never fetched
-    assert.deepStrictEqual(earningsToFetch({ updated: old7, eps: { A: ok, B: ok } }, T), T); // aged out
-    assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok, B: ok } }, T), []); // nothing to do
+    const v = EARNINGS_V;
+    assert.deepStrictEqual(earningsToFetch({ v, updated: null, eps: {} }, T), T);            // never fetched
+    assert.deepStrictEqual(earningsToFetch({ v, updated: old7, eps: { A: ok, B: ok } }, T), T); // aged out
+    assert.deepStrictEqual(earningsToFetch({ v, updated: fresh7, eps: { A: ok, B: ok } }, T), []); // nothing to do
     // Only the ticker with no entry is fetched — a new holding, or one whose last fetch errored
     // and was deliberately not cached. Retrying it must not drag the other 55 along.
-    assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok } }, T), ['B']);
+    assert.deepStrictEqual(earningsToFetch({ v, updated: fresh7, eps: { A: ok } }, T), ['B']);
     // An empty-but-present entry is a real answer (ETFs have no earnings) and is NOT refetched.
     assert.deepStrictEqual(
-        earningsToFetch({ updated: fresh7, eps: { A: ok, B: { currency: null, years: [] } } }, T), []);
-    // A pre-currency file (bare array) forces a full refresh: the trough cannot convert without
-    // the reporting currency, and that shape would never age out on its own.
+        earningsToFetch({ v, updated: fresh7, eps: { A: ok, B: { currency: null, years: [] } } }, T), []);
+    // An older shape forces one full refresh however fresh it is, so new fields actually appear.
+    // A per-ticker sniff can't do this job: it cannot tell "never fetched revenue" from "Yahoo
+    // has no revenue for this ticker", so the latter would refetch everything, every run.
+    assert.deepStrictEqual(earningsToFetch({ v: v - 1, updated: fresh7, eps: { A: ok, B: ok } }, T), T);
+    assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok, B: ok } }, T), T); // unversioned
+
+    // mergeEarnings: the repo store outlives Yahoo's ~4-year window.
+    const y = (date, eps) => ({ date, eps });
+    // A year that has rolled off Yahoo's window is kept, so the history grows past 4.
     assert.deepStrictEqual(
-        earningsToFetch({ updated: fresh7, eps: { A: [{ date: '2024-12-31', eps: 5 }], B: ok } }, T), T);
+        mergeEarnings({ currency: 'USD', years: [y('2021-12-31', 1), y('2022-12-31', 2)] },
+            { currency: 'USD', years: [y('2022-12-31', 2), y('2023-12-31', 3)] }),
+        { currency: 'USD', years: [y('2021-12-31', 1), y('2022-12-31', 2), y('2023-12-31', 3)] });
+    // A restatement of a year we already hold overwrites it — fresh wins.
+    assert.deepStrictEqual(
+        mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 9)] },
+            { currency: 'USD', years: [y('2022-12-31', 3)] }).years,
+        [y('2022-12-31', 3)]);
+    // An empty fetch never erases history (glitch), but an ETF stays legitimately empty.
+    assert.deepStrictEqual(
+        mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 2)] }, { currency: null, years: [] }),
+        { currency: 'USD', years: [y('2022-12-31', 2)] });
+    assert.deepStrictEqual(
+        mergeEarnings({ currency: null, years: [] }, { currency: null, years: [] }),
+        { currency: null, years: [] });
 
     // normaliseEps: rebase every year onto the latest year's share basis via net income.
     // A consistent series is left alone (net income and EPS move together).
