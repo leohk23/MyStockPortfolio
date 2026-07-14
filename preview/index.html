@@ -96,10 +96,14 @@
         #deep-head { margin-bottom: 12px; }
         #deep-name { font-size: 16px; font-weight: 600; }
         #deep-sub { font-size: 12px; color: var(--text-muted); }
-        /* Two columns where there's room, stacked where there isn't. */
-        #deep-grid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr); gap: 14px; }
-        @media (max-width: 760px) { #deep-grid { grid-template-columns: 1fr; } }
-        .deep-box { background: var(--surface-1); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+        /* Two columns where there's room, stacked where there isn't.
+           minmax(0, …) not minmax(220px, …): a grid track's default minimum is min-content, so
+           the nowrap financials table would push the track — and the whole section — wider than
+           the screen instead of shrinking. Same reason .deep-box needs min-width: 0. */
+        #deep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
+        @media (max-width: 760px) { #deep-grid { grid-template-columns: minmax(0, 1fr); } }
+        .deep-box { background: var(--surface-1); border: 1px solid var(--line); border-radius: 6px;
+            padding: 10px 12px; min-width: 0; }
         .deep-box h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
             color: var(--text-muted); font-weight: 600; margin: 0 0 8px; }
         .deep-box h3 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
@@ -107,14 +111,20 @@
         #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
         #deep-val dt { color: var(--text-secondary); }
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
-        #deep-fin table { width: 100%; border-collapse: collapse; font-size: 13px;
+        /* Below its natural width the table scrolls inside its own box, so it can never widen
+           the page — the same rule the main table follows. */
+        #deep-fin { overflow-x: auto; }
+        /* min-width: 0 undoes the global `table { min-width: 1280px }` meant for the 24-column
+           portfolio table — without it this 4-column table is forced to 1280px and scrolls. */
+        #deep-fin table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px;
             font-variant-numeric: tabular-nums; }
         #deep-fin th, #deep-fin td { padding: 4px 6px; text-align: right; white-space: nowrap; }
         #deep-fin th { font-size: 11px; color: var(--text-muted); font-weight: 600;
             border-bottom: 1px solid var(--line); }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
-        #deep-fin .yoy { font-size: 11px; }
+        /* Growth sits under its value, not in its own column — half as many columns to fit. */
+        #deep-fin .yoy { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
         /* ---- group-by toggle ---- */
@@ -471,20 +481,21 @@
                 ccy.textContent = e.currency ? `— ${e.currency}` : '';
 
                 const fy = y => +y.date.slice(0, 4);
+                // Each value carries its growth beneath it in the same cell, so the table is four
+                // columns (FY, Revenue, Net income, Margin) not six — the two YoY columns were what
+                // overflowed a phone.
+                const cell = (v, g) => `<td>${big(v)}${g == null ? '' :
+                    `<span class="yoy ${cls(g)}">${pct(g)}</span>`}</td>`;
                 const body = years.map((y, i) => {
                     // Only against the year immediately before. Yahoo's history has holes
                     // (NTDOY skips FY2025), and growth across a two-year gap is not "YoY".
                     const before = years[i - 1];
                     const p = before && fy(y) - fy(before) === 1 ? before : null;
                     const margin = y.rev > 0 && y.nic != null ? y.nic / y.rev : null;
-                    const g = v => v == null ? '' :
-                        `<span class="yoy ${cls(v)}">${pct(v)}</span>`;
                     return `<tr>
                         <td>${y.date.slice(0, 4)}</td>
-                        <td>${big(y.rev)}</td>
-                        <td>${g(yoy(y.rev, p?.rev))}</td>
-                        <td>${big(y.nic)}</td>
-                        <td>${g(yoy(y.nic, p?.nic))}</td>
+                        ${cell(y.rev, yoy(y.rev, p?.rev))}
+                        ${cell(y.nic, yoy(y.nic, p?.nic))}
                         <td class="${margin == null ? 'muted' : ''}">${margin == null ? '–' : plain(margin)}</td>
                     </tr>`;
                 }).join('');
@@ -494,17 +505,15 @@
                 const f = years[0], l = years[years.length - 1];
                 const span = fy(l) - fy(f);
                 const rc = cagr(f.rev, l.rev, span), nc = cagr(f.nic, l.nic, span);
+                const cagrCell = v => `<td>${v == null ? '–' :
+                    `<span class="yoy ${cls(v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
-                        <td>${span}y CAGR</td>
-                        <td></td><td>${rc == null ? '–' : `<span class="yoy ${cls(rc)}">${pct(rc)}</span>`}</td>
-                        <td></td><td>${nc == null ? '–' : `<span class="yoy ${cls(nc)}">${pct(nc)}</span>`}</td>
-                        <td></td>
+                        <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(nc)}<td></td>
                     </tr>` : '';
 
                 fin.innerHTML = `<table>
                     <thead><tr>
-                        <th>FY</th><th colspan="2">Revenue</th>
-                        <th colspan="2">Net income</th><th>Margin</th>
+                        <th>FY</th><th>Revenue</th><th>Net income</th><th>Margin</th>
                     </tr></thead>
                     <tbody>${body}${foot}</tbody>
                 </table>

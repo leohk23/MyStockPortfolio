@@ -90,6 +90,43 @@
         #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
+        /* ---- deep dive ---- */
+        #deep { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px;
+            padding: 14px; margin-bottom: 22px; }
+        #deep-head { margin-bottom: 12px; }
+        #deep-name { font-size: 16px; font-weight: 600; }
+        #deep-sub { font-size: 12px; color: var(--text-muted); }
+        /* Two columns where there's room, stacked where there isn't.
+           minmax(0, …) not minmax(220px, …): a grid track's default minimum is min-content, so
+           the nowrap financials table would push the track — and the whole section — wider than
+           the screen instead of shrinking. Same reason .deep-box needs min-width: 0. */
+        #deep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
+        @media (max-width: 760px) { #deep-grid { grid-template-columns: minmax(0, 1fr); } }
+        .deep-box { background: var(--surface-1); border: 1px solid var(--line); border-radius: 6px;
+            padding: 10px 12px; min-width: 0; }
+        .deep-box h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--text-muted); font-weight: 600; margin: 0 0 8px; }
+        .deep-box h3 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+        #deep-val { margin: 0; font-size: 13px; }
+        #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+        #deep-val dt { color: var(--text-secondary); }
+        #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
+        /* Below its natural width the table scrolls inside its own box, so it can never widen
+           the page — the same rule the main table follows. */
+        #deep-fin { overflow-x: auto; }
+        /* min-width: 0 undoes the global `table { min-width: 1280px }` meant for the 24-column
+           portfolio table — without it this 4-column table is forced to 1280px and scrolls. */
+        #deep-fin table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px;
+            font-variant-numeric: tabular-nums; }
+        #deep-fin th, #deep-fin td { padding: 4px 6px; text-align: right; white-space: nowrap; }
+        #deep-fin th { font-size: 11px; color: var(--text-muted); font-weight: 600;
+            border-bottom: 1px solid var(--line); }
+        #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
+        #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
+        /* Growth sits under its value, not in its own column — half as many columns to fit. */
+        #deep-fin .yoy { display: block; font-size: 11px; }
+        .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
         /* ---- group-by toggle ---- */
         #groupby { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
         #groupby .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
@@ -128,6 +165,30 @@
         .broker.b-t212 { color: var(--series-hsi); }  /* Trading 212 */
         .broker.b-sc { color: var(--good); }          /* SC */
         tr.sel, tr.sel:hover { background: rgba(57,135,229,.16); }
+
+        /* ---- sticky first column ----
+           With 24 columns the position name scrolls out of sight long before Yield or YTD come
+           into view, so pin it. A sticky cell is lifted out of the row's paint, which means it
+           needs its OWN opaque background or the scrolled columns show straight through it —
+           hence every row state has to repaint it: default, hover, leg, and selected (whose
+           translucent blue is re-composited over the row colour beneath it). */
+        th:first-child, td:first-child { position: sticky; left: 0; border-right: 1px solid var(--line); }
+        td:first-child { background: var(--surface-1); z-index: 1; }
+        th { z-index: 2; }                  /* header row sits above the pinned body cells */
+        th:first-child { z-index: 3; }      /* ...and the top-left corner above both */
+        tr.group:hover td:first-child { background: var(--surface-2); }
+        tr.leg td:first-child { background: var(--surface-3); }
+        tr.leg:hover td:first-child { background: var(--surface-2); }
+        tr.sel td:first-child, tr.sel:hover td:first-child {
+            background: linear-gradient(rgba(57,135,229,.16), rgba(57,135,229,.16)), var(--surface-1);
+        }
+        tr.leg.sel td:first-child {
+            background: linear-gradient(rgba(57,135,229,.16), rgba(57,135,229,.16)), var(--surface-3);
+        }
+        /* The expanded trade row is a single cell spanning every column. Pinning it would drag
+           its whole text along with the horizontal scroll, so it opts out. */
+        tr.trade-detail td { position: static; background: var(--surface-3); border-right: 0; }
+
         /* Chevron at the END of the position name. */
         .chev { font: inherit; color: var(--text-muted); background: none; border: 0; padding: 0;
             margin-left: 6px; display: inline-block; width: 14px; cursor: pointer; }
@@ -199,6 +260,26 @@
             <div id="tip" role="status"></div>
         </div>
         <div id="chart-note"></div>
+    </section>
+
+    <!-- Deep dive. Shown only while a single stock is charted, so it hangs off the selection
+         that already exists (click a row) rather than inventing a second way to drill in.
+         Trade history is NOT here: the chevron on each row already expands it, comments and all. -->
+    <section id="deep" hidden>
+        <div id="deep-head">
+            <div id="deep-name">–</div>
+            <div id="deep-sub"></div>
+        </div>
+        <div id="deep-grid">
+            <div class="deep-box">
+                <h3>Valuation</h3>
+                <dl id="deep-val"></dl>
+            </div>
+            <div class="deep-box">
+                <h3>Financials <span id="deep-ccy"></span></h3>
+                <div id="deep-fin"></div>
+            </div>
+        </div>
     </section>
 
     <div id="groupby">
@@ -300,6 +381,8 @@
         let STATE = null;        // { holdings, rates, quotes, nav, firstTrade, rows, total, dim }
         let HISTORY = null;      // lazy-loaded history.json
         let historyPromise = null;
+        let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
+        let earningsPromise = null;
         let sort = { key: 'value', dir: -1 };
         let rangeDays = 0;       // 0 = whole series
         let rangeYears = 0;
@@ -321,6 +404,124 @@
                 .then(r => r.ok ? r.json() : Promise.reject(new Error('history ' + r.status)))
                 .then(h => (HISTORY = h));
             return historyPromise;
+        }
+
+        // Same lazy-once pattern as history: nobody pays for earnings.json until a stock is
+        // opened, and it is the very file fetch-prices already keeps in the repo. No new pipeline.
+        function loadEarnings() {
+            if (EARNINGS) return Promise.resolve(EARNINGS);
+            if (!earningsPromise) earningsPromise = fetch(DATA + 'earnings.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : Promise.reject(new Error('earnings ' + r.status)))
+                .then(e => (EARNINGS = e));
+            return earningsPromise;
+        }
+
+        /* ---------------- deep dive ---------------- */
+        // Financials are shown in the company's REPORTING currency, never converted. A revenue
+        // line is a fact the company filed; passing it through today's spot rate would invent a
+        // number nobody reported, and would make last year's revenue change when FX moves.
+        const legOf = yahoo => STATE.rows.flatMap(r => r.legs).find(l => l.yahoo === yahoo) || null;
+        const big = v => v == null ? '–' : (v < 0 ? '−' : '')
+            + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+                .format(Math.abs(v));
+        const yoy = (v, prev) => v == null || prev == null || prev <= 0 ? null : v / prev - 1;
+        // Compound growth across the window. Undefined through a sign change: a company that
+        // went from a loss to a profit has no meaningful growth RATE, and the root of a negative
+        // ratio would render as NaN%.
+        const cagr = (first, last, years) =>
+            first > 0 && last > 0 && years > 0 ? (last / first) ** (1 / years) - 1 : null;
+
+        function renderDeep() {
+            const box = document.getElementById('deep');
+            const leg = chartSel ? legOf(chartSel) : null;
+            if (!leg) { box.hidden = true; return; }
+            box.hidden = false;
+
+            document.getElementById('deep-name').textContent = leg.group;
+            document.getElementById('deep-sub').textContent =
+                `${leg.yahoo} · ${leg.geography} · ${leg.qty.toLocaleString()} shares`;
+
+            const q = leg.quote, c = q.currency;
+            const px = n => n == null ? '–' : c + ' ' + num2(n);
+            const rows = [
+                ['Price', px(q.price)],
+                ['EPS (trailing)', px(q.eps)],
+                ['P/E', leg.pe == null ? '–' : num2(leg.pe) + '×'],
+                leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
+                    leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
+                ['Cheapest P/E', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
+                ['...on', leg.lowDate || '–'],
+                ['Implied price', px(leg.implied)],
+                ['vs implied', leg.vsLow == null ? '–'
+                    : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
+            ].filter(Boolean);
+            document.getElementById('deep-val').innerHTML = rows
+                .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+
+            renderFinancials(leg);
+        }
+
+        function renderFinancials(leg) {
+            const fin = document.getElementById('deep-fin');
+            const ccy = document.getElementById('deep-ccy');
+            ccy.textContent = '';
+            fin.innerHTML = '<span class="deep-note">Loading…</span>';
+
+            loadEarnings().then(store => {
+                if (chartSel !== leg.yahoo) return;         // selection moved on while loading
+                const e = store.eps[leg.yahoo];
+                // Only years that actually carry a top line. Yahoo emits the odd EPS-only stub
+                // (NTDOY FY2022), which would render as a row of dashes.
+                const years = (e?.years || []).filter(y => y.rev != null).slice(-5);
+                if (!years.length) {
+                    fin.innerHTML = '<span class="deep-note">No reported financials — '
+                        + 'this is a fund, trust or commodity, not an operating company.</span>';
+                    return;
+                }
+                ccy.textContent = e.currency ? `— ${e.currency}` : '';
+
+                const fy = y => +y.date.slice(0, 4);
+                // Each value carries its growth beneath it in the same cell, so the table is four
+                // columns (FY, Revenue, Net income, Margin) not six — the two YoY columns were what
+                // overflowed a phone.
+                const cell = (v, g) => `<td>${big(v)}${g == null ? '' :
+                    `<span class="yoy ${cls(g)}">${pct(g)}</span>`}</td>`;
+                const body = years.map((y, i) => {
+                    // Only against the year immediately before. Yahoo's history has holes
+                    // (NTDOY skips FY2025), and growth across a two-year gap is not "YoY".
+                    const before = years[i - 1];
+                    const p = before && fy(y) - fy(before) === 1 ? before : null;
+                    const margin = y.rev > 0 && y.nic != null ? y.nic / y.rev : null;
+                    return `<tr>
+                        <td>${y.date.slice(0, 4)}</td>
+                        ${cell(y.rev, yoy(y.rev, p?.rev))}
+                        ${cell(y.nic, yoy(y.nic, p?.nic))}
+                        <td class="${margin == null ? 'muted' : ''}">${margin == null ? '–' : plain(margin)}</td>
+                    </tr>`;
+                }).join('');
+
+                // Compound over the calendar span, not the row count — a gap year still counts
+                // as elapsed time, so it must divide the growth.
+                const f = years[0], l = years[years.length - 1];
+                const span = fy(l) - fy(f);
+                const rc = cagr(f.rev, l.rev, span), nc = cagr(f.nic, l.nic, span);
+                const cagrCell = v => `<td>${v == null ? '–' :
+                    `<span class="yoy ${cls(v)}">${pct(v)}</span>`}</td>`;
+                const foot = span > 0 ? `<tr class="cagr">
+                        <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(nc)}<td></td>
+                    </tr>` : '';
+
+                fin.innerHTML = `<table>
+                    <thead><tr>
+                        <th>FY</th><th>Revenue</th><th>Net income</th><th>Margin</th>
+                    </tr></thead>
+                    <tbody>${body}${foot}</tbody>
+                </table>
+                <div class="deep-note">Net income attributable to common shareholders — the line
+                    EPS is struck on, after minorities. Reported figures, never FX-converted.</div>`;
+            }).catch(err => {
+                fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
+            });
         }
 
         /* ---------------- chart ---------------- */
@@ -645,6 +846,7 @@
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
+            renderDeep();
             if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
@@ -877,6 +1079,7 @@
         function renderAll() {
             renderTotals();
             renderTable();
+            renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
 
