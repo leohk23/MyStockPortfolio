@@ -7,7 +7,9 @@
     "publish": "node publish.js",
     "fetch": "node fetch-prices.js",
     "test": "node fetch-prices.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest",
-    "start": "npx --yes serve ."
+    "start": "npx --yes serve .",
+    "promote": "node -e \"require('fs').copyFileSync('preview/index.html','index.html')\" && echo promoted preview -> live",
+    "preview": "npx --yes serve ."
   },
   "repository": {
     "type": "git",
