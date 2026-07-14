@@ -143,6 +143,11 @@ async function fetchEps(tickers, { crumb, cookie }) {
 // Annual diluted EPS per fiscal year. Yahoo caps this at ~4 points regardless of the range
 // asked for (quarterly gives only ~5, trailing ~11), so 4 fiscal years is the real ceiling
 // on free earnings history — the trough below is "cheapest in ~4y", not 5.
+// Returns { currency, years }. The currency matters: Yahoo reports fundamentals in the
+// company's REPORTING currency, not the quote's. An ADR prices in USD but reports in JPY —
+// dividing a USD price by a JPY EPS silently produces nonsense (NTDOY read as +20,000% dear
+// before this was caught). The reported EPS already accounts for the ADR share ratio, so a
+// plain FX conversion is enough; it was checked against every ADR in the book (all within 1%).
 async function fetchAnnualEps(ticker, { crumb, cookie }) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
@@ -151,9 +156,11 @@ async function fetchAnnualEps(ticker, { crumb, cookie }) {
     const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const arr = (await res.json()).timeseries?.result?.[0]?.annualDilutedEPS || [];
-    return arr
-        .filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number')
-        .map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw }));
+    const rows = arr.filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number');
+    return {
+        currency: rows.find(x => x.currencyCode)?.currencyCode || null,
+        years: rows.map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw })),
+    };
 }
 
 const yearBefore = day => {
@@ -169,12 +176,23 @@ const yearBefore = day => {
 // into its earnings (NVDA's 2022 low over its 2026 EPS) would read as absurdly cheap. The
 // low has to be measured against what the business was earning at the time.
 //
-// Pure, so it is selftest-able. days/closes are the weekly history; eps is in Yahoo's major
-// unit and gets scaled into the quote's unit (the GBp/pence trap) before dividing.
-function troughPe(annualEps, days, closes, currency) {
+// Pure, so it is selftest-able. `entry` is { currency, years } from earnings.json; days/closes
+// are the weekly history in the quote's currency.
+//
+// EPS is converted from the reporting currency into the quote's before dividing. Going through
+// rateFor for BOTH sides means the GBp/pence case falls out for free (GBp is GBP/100, so a
+// GBP-reported EPS scales by 100 into a pence-quoted price) — no special case needed.
+// Returns null if we lack an FX rate for either side, rather than a wrong multiple.
+function troughPe(entry, days, closes, quoteCurrency, rates) {
+    const years = entry?.years || [];
+    const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
+    const fxQuote = rateFor(quoteCurrency, rates);
+    if (!fxReport || !fxQuote) return null;
+    const toQuote = fxReport / fxQuote;
+
     let best = null;
-    for (const { date, eps } of annualEps) {
-        const e = epsInQuoteUnits(eps, currency);
+    for (const { date, eps } of years) {
+        const e = eps * toQuote;
         if (!(e > 0)) continue;                        // a loss year has no meaningful multiple
         const from = yearBefore(date);
         let low = null, lowDate = null;
@@ -220,6 +238,10 @@ function loadEarnings() {
 
 function earningsStale(store, tickers, now = Date.now()) {
     if (!store.updated) return true;
+    // A pre-currency file (entries were bare arrays, not { currency, years }) is unusable: the
+    // trough needs the reporting currency. Without this the file would never age out, and the
+    // PE Low column would silently stay empty forever.
+    if (tickers.some(t => t in store.eps && !Array.isArray(store.eps[t]?.years))) return true;
     if ((now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS) return true;
     return tickers.some(t => !(t in store.eps));   // a holding added since the last refresh
 }
@@ -340,9 +362,36 @@ async function main() {
     }
     console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
 
-    // Every currency in play: what the workbook declares, plus what Yahoo actually quotes in.
+    // Annual EPS history: read from the repo, refreshed only when it ages out or a holding is
+    // new. Loaded HERE, before the FX block, because each company's REPORTING currency has to
+    // be in `rates` — an ADR reports in JPY/CNY while quoting in USD, and without that rate the
+    // trough can't be converted (and must not be guessed).
+    const store = loadEarnings();
+    if (auth && earningsStale(store, tickers)) {
+        console.log(`     annual EPS stale (updated ${store.updated || 'never'}) — refreshing`);
+        for (const t of tickers) {
+            try { store.eps[t] = await fetchAnnualEps(t, auth); }
+            catch (e) {
+                console.error(`     eps history ${t}: ${e.message}`);
+                // Record as known-empty rather than leaving the key absent: earningsStale treats
+                // a missing ticker as "new", so a symbol Yahoo never has fundamentals for would
+                // otherwise force a full refetch every single hour.
+                if (!(t in store.eps)) store.eps[t] = { currency: null, years: [] };
+            }
+            await sleep();
+        }
+        store.updated = new Date().toISOString();
+        fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
+        console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers)`);
+    } else {
+        console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
+    }
+
+    // Every currency in play: what the workbook declares, what Yahoo quotes in, and what each
+    // company reports its earnings in (the last one is why CNY/JPY show up for US-listed ADRs).
     const declared = holdings.map(h => h.currency === 'Gbpence' ? 'GBp' : h.currency);
-    const needed = [...new Set([...declared, ...Object.values(quotes).map(q => q.currency)])]
+    const reporting = Object.values(store.eps).map(e => e && e.currency).filter(Boolean);
+    const needed = [...new Set([...declared, ...Object.values(quotes).map(q => q.currency), ...reporting])]
         .map(c => c === 'GBp' ? 'GBP' : c)
         .filter(c => c !== 'USD');
 
@@ -417,34 +466,12 @@ async function main() {
         long: { days: longHist.days, closes: longCloses, nav: longNav },
     }, null, 1));
 
-    // Annual EPS: read from the repo, refreshed only when stale. See EARNINGS above.
-    const store = loadEarnings();
-    if (auth && earningsStale(store, tickers)) {
-        console.log(`     annual EPS stale (updated ${store.updated || 'never'}) — refreshing`);
-        for (const t of tickers) {
-            try { store.eps[t] = await fetchAnnualEps(t, auth); }
-            catch (e) {
-                console.error(`     eps history ${t}: ${e.message}`);
-                // Record it as known-empty rather than leaving the key absent: earningsStale
-                // treats a missing ticker as "new", so a symbol Yahoo never has fundamentals
-                // for would otherwise force a full refetch every single hour.
-                if (!(t in store.eps)) store.eps[t] = [];
-            }
-            await sleep();
-        }
-        store.updated = new Date().toISOString();
-        fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
-        console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers)`);
-    } else {
-        console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
-    }
-
     // Trough multiple — cheapest close in each fiscal year over THAT year's earnings. Pure and
     // free: stored EPS + this run's weekly closes, so a fresh low shows up the hour it prints.
     let troughOk = 0, troughMissing = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
-        const low = troughPe(store.eps[t] || [], longHist.days, longHist.closes[t] || [], quotes[t].currency);
+        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates);
         if (!low) { troughMissing++; continue; }
         Object.assign(quotes[t], {
             peLow: Number(low.peLow.toPrecision(6)),
@@ -527,25 +554,41 @@ function selftest() {
     assert.strictEqual(earningsStale({ updated: null, eps: {} }, ['A']), true);        // never fetched
     assert.strictEqual(earningsStale({ updated: old7, eps: { A: [] } }, ['A']), true);  // aged out
     assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [] } }, ['A']), false);
-    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [] } }, ['A', 'B']), true); // B is new
+    const ok = { currency: 'USD', years: [] };
+    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A']), false);
+    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: ok } }, ['A', 'B']), true); // B is new
+    // A pre-currency file (bare array) must force a refresh, or it would never age out and the
+    // trough would have no reporting currency to convert with — silently empty, forever.
+    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [{ date: '2024-12-31', eps: 5 }] } }, ['A']), true);
 
     // troughPe: each fiscal year's lowest close over THAT year's earnings; cheapest wins.
     // 2024 low 50 / eps 5 = 10.0;  2025 low 90 / eps 6 = 15.0  ->  trough is 10.0, not 90/6.
+    const fx = { USD: 1, GBP: 2, JPY: 0.0062 };
     const days = ['2024-03-01', '2024-09-01', '2025-03-01', '2025-09-01'];
     const px   = [        60,           50,           90,          120];
-    const annual = [{ date: '2024-12-31', eps: 5 }, { date: '2025-12-31', eps: 6 }];
-    const tr = troughPe(annual, days, px, 'USD');
+    const usd = { currency: 'USD', years: [{ date: '2024-12-31', eps: 5 }, { date: '2025-12-31', eps: 6 }] };
+    const tr = troughPe(usd, days, px, 'USD', fx);
     assert.strictEqual(tr.peLow, 10);
     assert.strictEqual(tr.lowPrice, 50);
     assert.strictEqual(tr.lowEps, 5);
     assert.strictEqual(tr.lowDate, '2024-09-01');
     // A loss-making year is skipped, not turned into a negative multiple.
-    assert.strictEqual(troughPe([{ date: '2024-12-31', eps: -2 }], days, px, 'USD'), null);
+    assert.strictEqual(troughPe({ currency: 'USD', years: [{ date: '2024-12-31', eps: -2 }] }, days, px, 'USD', fx), null);
     // No earnings history at all (ETFs, gold, bitcoin) -> null, never NaN.
-    assert.strictEqual(troughPe([], days, px, 'USD'), null);
-    // Pence again: EPS arrives in pounds, closes are in pence, so EPS must be scaled first
-    // or the multiple comes out 100x too high.
-    assert.strictEqual(troughPe([{ date: '2024-12-31', eps: 0.5 }], days, px, 'GBp').peLow, 1); // 50 / (0.5*100)
+    assert.strictEqual(troughPe({ currency: 'USD', years: [] }, days, px, 'USD', fx), null);
+    assert.strictEqual(troughPe(undefined, days, px, 'USD', fx), null);
+
+    // An ADR quotes in USD but REPORTS in JPY. Dividing the USD price by the raw JPY EPS is
+    // the bug that made NTDOY read as +20,000% dear; the EPS must be converted first.
+    // 500 JPY EPS -> $3.10, so the 2024 low of 50 is a 16.1x multiple, not 0.1x.
+    const adr = troughPe({ currency: 'JPY', years: [{ date: '2024-12-31', eps: 500 }] }, days, px, 'USD', fx);
+    assert.ok(Math.abs(adr.lowEps - 3.1) < 1e-9);
+    assert.ok(Math.abs(adr.peLow - 50 / 3.1) < 1e-9);
+    // Pence falls out of the same FX path with no special case: GBp is GBP/100, so a
+    // GBP-reported EPS of 0.5 becomes 50p against a pence-quoted price. 50 / 50 = 1.0x.
+    assert.strictEqual(troughPe({ currency: 'GBP', years: [{ date: '2024-12-31', eps: 0.5 }] }, days, px, 'GBp', fx).peLow, 1);
+    // No FX rate for the reporting currency -> null, never a wrong multiple.
+    assert.strictEqual(troughPe({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, days, px, 'USD', fx), null);
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
