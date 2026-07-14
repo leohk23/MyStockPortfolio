@@ -712,6 +712,9 @@
                 + (t.platform ? ` <span class="broker b-${t.platform.toLowerCase()}">${escapeHTML(BROKER[t.platform] || t.platform)}</span>` : '')
                 + (t.comment ? ` <span class="trade-comment">· ${escapeHTML(t.comment)}</span>` : '');
         }
+        // A holding that pays nothing gets a dash, matching the Yield column. /usr/bin/bash reads like a
+        // real zero payout; the dash says 'this one doesn't pay', which is what you want to see.
+        const incomeCell = usd => usd ? money(usd) : '<span class="muted">–</span>';
         const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
             : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
         // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
@@ -803,7 +806,7 @@
                     <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
                     <td>${plain(r.value / total)}</td>
                     <td class="muted">${r.yield ? plain(r.yield) : '–'}</td>
-                    <td>${money(r.income)}</td>
+                    <td>${incomeCell(r.income)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}`;
                 tbody.appendChild(tr);
 
@@ -831,7 +834,7 @@
                         <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
                         <td>${plain(leg.value / total)}</td>
                         <td class="muted">${leg.quote.divYield ? plain(leg.quote.divYield) : '–'}</td>
-                        <td>${money(leg.income)}</td>
+                        <td>${incomeCell(leg.income)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}`;
                     el.addEventListener('click', () => selectChart(leg.yahoo));
                     tbody.appendChild(el);
