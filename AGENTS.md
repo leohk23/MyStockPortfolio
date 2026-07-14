@@ -101,36 +101,52 @@ Two optional `meta.json` fields per instrument drive the PE columns:
 
 ## Trough-multiple valuation (the "is it cheap?" hint)
 
-Ported from the workbook's Portfolio!BA:BM block. The idea: record the cheapest the market
-ever valued this business, then ask what that multiple would be worth on *today's* earnings.
+The idea (ported from the workbook's old Portfolio!BA:BM block, now fully derived online):
+find the cheapest the market ever valued this business, then ask what that multiple would be
+worth on *today's* earnings. **Nothing here is hand-maintained.**
 
-`meta.json` inputs (all manual — a 5-year low is a judgement, not a lookup):
+**How the trough is found** (`fetch-prices.js` `troughPe`): for each of the last ~4 fiscal
+years, take the lowest weekly close *within that year* and divide by **that year's own EPS**;
+the cheapest of those is `peLow`. Pairing an old low with *today's* EPS would be meaningless —
+NVDA's 2022 low over its 2026 earnings reads as absurdly cheap. The low must be measured
+against what the business was earning at the time.
 
-- `lowPrice` / `lowEps` — the recorded low and the trailing EPS *at that time*.
-- `lowDate` — when (tooltip only).
-- `lowGrowth` / `growth` — growth rate then and now, as fractions (`0.227` = 22.7%). Optional;
-  only needed for the growth-adjusted (PEG) figure.
-
-Derived in `portfolio.js` `build()`:
+**Why ~4 years:** Yahoo's `fundamentals-timeseries` caps `annualDilutedEPS` at 4 points
+(quarterly gives ~5, trailing ~11). 4 fiscal years is the real ceiling on free earnings
+history — don't label it "5y".
 
 | Column | Formula |
 |---|---|
-| **PE Low** | `lowPrice / lowEps` |
+| **PE Low** | `min over fiscal years of (lowest close that year / that year's EPS)` |
+| **Low date** | the week that low printed |
 | **Implied** | `PE Low × current EPS` — the price at its cheapest-ever multiple, on today's earnings |
 | **vs Low** | `(price − Implied) / Implied` — the premium you pay over that baseline |
-| *PEG-implied* (tooltip) | `(PE Low / (lowGrowth×100)) × growth × 100 × current EPS` |
 
-**PE Low is a ratio, so it is currency- and ADR-agnostic** — a low recorded off a US ADR
-gives the same multiple as the Tokyo ordinary (5332/7532/8001 rely on this). Implied comes out
-in the quote's own currency because EPS is native; no FX belongs in any of it.
+**`earnings.json` (committed) caches the annual EPS.** Earnings are reported 4×/year, so
+fetching them hourly for 56 tickers is 56 wasted requests an hour against the one endpoint
+Yahoo rate-limits hardest. `fetch-prices.js` refreshes it only when it ages out
+(`EARNINGS_MAX_AGE_DAYS`) or a new holding appears. **The trough itself is still recomputed
+every run** from the stored EPS plus fresh weekly closes — free, and a new low is picked up
+the hour it prints.
+
+⚠️ A ticker Yahoo has no fundamentals for must be stored as `[]`, not left absent —
+`earningsStale` treats a missing key as "new holding" and would refetch all 56 every hour.
+
+**PE Low is a ratio, so it is currency- and ADR-agnostic.** Implied comes out in the quote's
+own currency because EPS is native; no FX belongs in any of it. EPS arrives in Yahoo's major
+unit, so `epsInQuoteUnits` scales it for pence tickers before dividing — the same GBp trap.
+
+`meta.json` `lowPrice`/`lowEps` still work as a **fallback** for symbols with no Yahoo
+earnings history, and `lowGrowth`/`growth` still drive the optional PEG tooltip. Neither is
+required.
 
 **vs Low inverts the table's colour convention**: below the trough multiple is good news, so
 negative reads green. Single-instrument rows only, same rule as PE.
 
-⚠️ This is *context, not a signal*. A stock can be dear against its own history and still be
-a fine business; a trough multiple is one data point from one bad moment, and `lowEps` ages —
-a company that has since grown into its earnings will look permanently expensive against it.
-Re-record the low when the story changes.
+⚠️ This is *context, not a signal*. A trough multiple is one data point from one bad moment,
+and a company that has since grown into its earnings will look permanently expensive against
+it. NVDA at +380% is not a sell — it says its 2022 trough EPS bears little relation to today's
+business. Most trustworthy where the business hasn't structurally changed.
 
 `fetch-prices.js` best-effort fetches trailing EPS from Yahoo's `v7/finance/quote` for every
 holding in one batched request. That endpoint (unlike `v8/finance/chart`) requires a

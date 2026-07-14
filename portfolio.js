@@ -152,7 +152,13 @@ function build(holdings, rates, quotes, dimension = 'company') {
         // gives implied — what the price would be at its cheapest-ever multiple, on today's
         // earnings. vsLow is the premium you pay above that: >0 dearer, <0 cheaper.
         // pegLow does the same growth-adjusted, for stocks whose multiple tracks growth.
-        const peLow = h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null;
+        // peLow is derived online by fetch-prices (lowest close in each of the last ~4 fiscal
+        // years over that year's own earnings). A manual meta.json low is only a fallback, for
+        // symbols Yahoo has no earnings history for — nothing here needs hand-maintaining.
+        const peLow = quote.peLow ?? (h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null);
+        const lowDate = quote.lowDate ?? h.lowDate ?? null;
+        const lowPrice = quote.lowPrice ?? h.lowPrice ?? null;
+        const lowEps = quote.lowEps ?? h.lowEps ?? null;
         const pegLow = peLow != null && h.lowGrowth > 0 ? peLow / (h.lowGrowth * 100) : null;
         const implied = peLow != null && eps > 0 ? peLow * eps : null;
         const impliedPeg = pegLow != null && h.growth > 0 && eps > 0 ? pegLow * h.growth * 100 * eps : null;
@@ -160,6 +166,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
 
         const leg = {
             ...h, quote, since, pe, specialPe, peLow, pegLow, implied, impliedPeg, vsLow,
+            lowDate, lowPrice, lowEps,
             cost: h.costLC * rate,
             value,
             realized: (h.realizedLC || 0) * rate,
@@ -198,6 +205,8 @@ function build(holdings, rates, quotes, dimension = 'company') {
             impliedPeg: single ? single.impliedPeg : null,
             vsLow: single ? single.vsLow : null,
             lowDate: single ? single.lowDate || null : null,
+            lowPrice: single ? single.lowPrice : null,
+            lowEps: single ? single.lowEps : null,
             // The instrument a click on this row charts: its largest leg.
             primaryYahoo: g.legs[0].yahoo,
         };

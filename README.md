@@ -61,20 +61,26 @@ or a 2Y/5Y/All range, so the first paint stays light.
   `specialEps` (and an optional `specialEpsLabel` shown as a tooltip) in `meta.json`. Leave
   it unset and Special PE just mirrors the normal PE. Both show `–` when there's no earnings
   figure from any source, or on a multi-instrument Company/Geography row.
-- **PE Low / Implied / vs Low** — the "is it cheap?" columns. Record the cheapest the market
-  ever valued a business (`lowPrice` + the `lowEps` it was earning then, in `meta.json`) and
-  the app derives its trough multiple, then asks what that multiple would be worth on *today's*
-  earnings:
-  - **PE Low** — `lowPrice ÷ lowEps`, the multiple paid at the low.
-  - **Implied** — `PE Low × current EPS`: the price at its cheapest-ever multiple, today.
-  - **vs Low** — how much above (red) or below (green) that baseline you're paying. Colour is
+- **PE Low / Low date / Implied / vs Low** — the "is it cheap?" columns, derived online with
+  **nothing to maintain**. For each of the last ~4 fiscal years the app takes the lowest weekly
+  close *in that year* and divides by *that year's own EPS*; the cheapest is the trough
+  multiple. (Dividing an old low by *today's* EPS would be nonsense — NVDA's 2022 low over its
+  2026 earnings would look absurdly cheap.)
+  - **PE Low** — the cheapest multiple the market ever paid for these earnings.
+  - **Low date** — when that happened.
+  - **Implied** — `PE Low × current EPS`: what the price would be at that cheapest-ever
+    multiple, on today's earnings. Hover it for the low price and EPS behind the number.
+  - **vs Low** — how far above (red) or below (green) that baseline you're paying. Colour is
     deliberately inverted from the rest of the table: cheap is the good news here.
 
-  Hovering **Implied** shows the growth-adjusted (PEG) figure if you've set `lowGrowth`/`growth`.
+  Annual EPS is cached in `earnings.json` (refreshed weekly, not hourly — earnings only print
+  4×/year), but the trough is recomputed every run, so a **new low shows up within the hour**.
+  Limited to ~4 fiscal years because that's all the earnings history Yahoo gives away.
 
   ⚠️ This is **context, not a signal**. A trough multiple is one data point from one bad
-  moment, and `lowEps` ages — a company that has since grown into its earnings will look
-  permanently expensive against it. Re-record the low when the story changes.
+  moment. A company that has genuinely grown into its earnings will read as permanently
+  expensive against a low set in 2022 — NVDA at +380% isn't a sell, it's telling you its 2022
+  trough earnings bear little relation to today's business.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 

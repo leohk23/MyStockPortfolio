@@ -140,6 +140,57 @@ async function fetchEps(tickers, { crumb, cookie }) {
     return parseEps(await res.json());
 }
 
+// Annual diluted EPS per fiscal year. Yahoo caps this at ~4 points regardless of the range
+// asked for (quarterly gives only ~5, trailing ~11), so 4 fiscal years is the real ceiling
+// on free earnings history — the trough below is "cheapest in ~4y", not 5.
+async function fetchAnnualEps(ticker, { crumb, cookie }) {
+    const now = Math.floor(Date.now() / 1000);
+    const sym = ticker.replace('^', '%5E');
+    const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
+        + `?symbol=${sym}&type=annualDilutedEPS&period1=${now - 6 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const arr = (await res.json()).timeseries?.result?.[0]?.annualDilutedEPS || [];
+    return arr
+        .filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number')
+        .map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw }));
+}
+
+const yearBefore = day => {
+    const d = new Date(day + 'T00:00:00Z');
+    d.setUTCFullYear(d.getUTCFullYear() - 1);
+    return d.toISOString().slice(0, 10);
+};
+
+// The cheapest multiple this ever traded at: for each fiscal year, the lowest close *within
+// that year* over that year's own earnings, then the minimum across years.
+//
+// Pairing an old low with TODAY's EPS would be meaningless — a company that has since grown
+// into its earnings (NVDA's 2022 low over its 2026 EPS) would read as absurdly cheap. The
+// low has to be measured against what the business was earning at the time.
+//
+// Pure, so it is selftest-able. days/closes are the weekly history; eps is in Yahoo's major
+// unit and gets scaled into the quote's unit (the GBp/pence trap) before dividing.
+function troughPe(annualEps, days, closes, currency) {
+    let best = null;
+    for (const { date, eps } of annualEps) {
+        const e = epsInQuoteUnits(eps, currency);
+        if (!(e > 0)) continue;                        // a loss year has no meaningful multiple
+        const from = yearBefore(date);
+        let low = null, lowDate = null;
+        for (let i = 0; i < days.length; i++) {
+            if (days[i] <= from || days[i] > date) continue;
+            const c = closes[i];
+            if (c == null) continue;
+            if (low == null || c < low) { low = c; lowDate = days[i]; }
+        }
+        if (low == null) continue;
+        const pe = low / e;
+        if (best == null || pe < best.peLow) best = { peLow: pe, lowPrice: low, lowEps: e, lowDate };
+    }
+    return best;
+}
+
 // Last run's EPS, straight out of the committed prices.json. The crumb handshake is the
 // one thing here Yahoo actively gates, and it 401/429s from CI's shared IPs far more than
 // from a laptop — without a fallback, one blocked run blanks the whole PE column for
@@ -151,6 +202,26 @@ function previousEps() {
             .filter(([, q]) => typeof q.eps === 'number')
             .map(([t, q]) => [t, q.eps]));
     } catch { return {}; }               // no previous file (first run) — nothing to carry
+}
+
+// Annual EPS is reported four times a year, so re-fetching it hourly for every holding is 56
+// wasted requests an hour against the one endpoint Yahoo rate-limits hardest. Keep it in the
+// repo and refresh only when it ages out — or when a new holding has no history yet.
+//
+// The *trough* is still recomputed every run (from this store plus the fresh weekly closes),
+// which costs nothing and means a new low is picked up the hour it happens.
+const EARNINGS = 'earnings.json';
+const EARNINGS_MAX_AGE_DAYS = 7;
+
+function loadEarnings() {
+    try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
+    catch { return { updated: null, eps: {} }; }   // first run
+}
+
+function earningsStale(store, tickers, now = Date.now()) {
+    if (!store.updated) return true;
+    if ((now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS) return true;
+    return tickers.some(t => !(t in store.eps));   // a holding added since the last refresh
 }
 
 // Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
@@ -252,9 +323,10 @@ async function main() {
     // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
     const carried = previousEps();
     let fresh = {};
+    let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
-        const { crumb, cookie } = await getCrumb();
-        fresh = await fetchEps(tickers, { crumb, cookie });
+        auth = await getCrumb();
+        fresh = await fetchEps(tickers, auth);
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
@@ -345,6 +417,45 @@ async function main() {
         long: { days: longHist.days, closes: longCloses, nav: longNav },
     }, null, 1));
 
+    // Annual EPS: read from the repo, refreshed only when stale. See EARNINGS above.
+    const store = loadEarnings();
+    if (auth && earningsStale(store, tickers)) {
+        console.log(`     annual EPS stale (updated ${store.updated || 'never'}) — refreshing`);
+        for (const t of tickers) {
+            try { store.eps[t] = await fetchAnnualEps(t, auth); }
+            catch (e) {
+                console.error(`     eps history ${t}: ${e.message}`);
+                // Record it as known-empty rather than leaving the key absent: earningsStale
+                // treats a missing ticker as "new", so a symbol Yahoo never has fundamentals
+                // for would otherwise force a full refetch every single hour.
+                if (!(t in store.eps)) store.eps[t] = [];
+            }
+            await sleep();
+        }
+        store.updated = new Date().toISOString();
+        fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
+        console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers)`);
+    } else {
+        console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
+    }
+
+    // Trough multiple — cheapest close in each fiscal year over THAT year's earnings. Pure and
+    // free: stored EPS + this run's weekly closes, so a fresh low shows up the hour it prints.
+    let troughOk = 0, troughMissing = 0;
+    for (const t of tickers) {
+        if (!quotes[t]) continue;
+        const low = troughPe(store.eps[t] || [], longHist.days, longHist.closes[t] || [], quotes[t].currency);
+        if (!low) { troughMissing++; continue; }
+        Object.assign(quotes[t], {
+            peLow: Number(low.peLow.toPrecision(6)),
+            lowPrice: Number(low.lowPrice.toPrecision(6)),
+            lowEps: Number(low.lowEps.toPrecision(6)),
+            lowDate: low.lowDate,
+        });
+        troughOk++;
+    }
+    console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
+
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
     // daily closes live in this process and the page loads only prices.json (not history).
     // Deposits/withdrawals removed, so it's investment performance not money added.
@@ -408,6 +519,33 @@ function selftest() {
     assert.strictEqual(resolveEps(undefined, 12, 'GBp'), 12);  // carried used as-is
     assert.strictEqual(resolveEps(undefined, 3.1, 'USD'), 3.1);
     assert.strictEqual(resolveEps(undefined, undefined, 'USD'), undefined); // no data anywhere
+
+    // earningsStale: refresh on age, on a never-fetched store, or when a holding is new —
+    // otherwise the trough would silently have no earnings to divide by.
+    const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();
+    const old7 = new Date(Date.now() - 9 * 86400e3).toISOString();
+    assert.strictEqual(earningsStale({ updated: null, eps: {} }, ['A']), true);        // never fetched
+    assert.strictEqual(earningsStale({ updated: old7, eps: { A: [] } }, ['A']), true);  // aged out
+    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [] } }, ['A']), false);
+    assert.strictEqual(earningsStale({ updated: fresh7, eps: { A: [] } }, ['A', 'B']), true); // B is new
+
+    // troughPe: each fiscal year's lowest close over THAT year's earnings; cheapest wins.
+    // 2024 low 50 / eps 5 = 10.0;  2025 low 90 / eps 6 = 15.0  ->  trough is 10.0, not 90/6.
+    const days = ['2024-03-01', '2024-09-01', '2025-03-01', '2025-09-01'];
+    const px   = [        60,           50,           90,          120];
+    const annual = [{ date: '2024-12-31', eps: 5 }, { date: '2025-12-31', eps: 6 }];
+    const tr = troughPe(annual, days, px, 'USD');
+    assert.strictEqual(tr.peLow, 10);
+    assert.strictEqual(tr.lowPrice, 50);
+    assert.strictEqual(tr.lowEps, 5);
+    assert.strictEqual(tr.lowDate, '2024-09-01');
+    // A loss-making year is skipped, not turned into a negative multiple.
+    assert.strictEqual(troughPe([{ date: '2024-12-31', eps: -2 }], days, px, 'USD'), null);
+    // No earnings history at all (ETFs, gold, bitcoin) -> null, never NaN.
+    assert.strictEqual(troughPe([], days, px, 'USD'), null);
+    // Pence again: EPS arrives in pounds, closes are in pence, so EPS must be scaled first
+    // or the multiple comes out 100x too high.
+    assert.strictEqual(troughPe([{ date: '2024-12-31', eps: 0.5 }], days, px, 'GBp').peLow, 1); // 50 / (0.5*100)
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
