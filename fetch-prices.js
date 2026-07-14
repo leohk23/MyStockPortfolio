@@ -151,23 +151,37 @@ async function fetchEps(tickers, { crumb, cookie }) {
 // Retries like fetchTicker does: 56 rapid requests to the endpoint Yahoo gates hardest will
 // see the odd 429/timeout, and a bare failure here used to get cached as "this company has no
 // earnings" — which is exactly how AAPL and 1211.HK silently lost their PE Low for a week.
+// Net income comes along for the ride (same request) because EPS alone cannot be trusted
+// across a share-count change — see normaliseEps.
 async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
     const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
-        + `?symbol=${sym}&type=annualDilutedEPS&period1=${now - 6 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
+        + `?symbol=${sym}&type=annualDilutedEPS,annualNetIncome`
+        + `&period1=${now - 6 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const arr = (await res.json()).timeseries?.result?.[0]?.annualDilutedEPS || [];
-            const rows = arr.filter(x => x && x.asOfDate && typeof x.reportedValue?.raw === 'number');
+            const results = (await res.json()).timeseries?.result || [];
+            const eps = {}, ni = {};
+            let currency = null;
+            for (const r of results) {
+                for (const [key, into] of [['annualDilutedEPS', eps], ['annualNetIncome', ni]]) {
+                    for (const x of r[key] || []) {
+                        if (!x?.asOfDate || typeof x.reportedValue?.raw !== 'number') continue;
+                        into[x.asOfDate] = x.reportedValue.raw;
+                        if (x.currencyCode) currency = x.currencyCode;
+                    }
+                }
+            }
             // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
             // earnings. That gets cached. A thrown error does NOT (see the caller).
             return {
-                currency: rows.find(x => x.currencyCode)?.currencyCode || null,
-                years: rows.map(x => ({ date: x.asOfDate, eps: x.reportedValue.raw })),
+                currency,
+                years: Object.keys(eps).sort()
+                    .map(date => ({ date, eps: eps[date], ...(ni[date] != null ? { ni: ni[date] } : {}) })),
             };
         } catch (e) {
             lastErr = e;
@@ -175,6 +189,30 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
         }
     }
     throw lastErr;
+}
+
+// Put every year's EPS on the LATEST year's share basis — the same basis Yahoo's split-adjusted
+// price series uses.
+//
+// Yahoo back-adjusts prices for splits but reports EPS as filed, and it restates inconsistently:
+// NVDA's 10:1 was restated, BYD's 2025 bonus issue was not. Left alone, BYD's 2024 EPS (9.22,
+// pre-bonus per-share) divided into its post-bonus-adjusted price gave a PE Low of 5.4x instead
+// of ~11x — the stock read as +363% dear when it was nearer +50%. Yahoo's split-event list is no
+// help either: it reports a 6:1 for BYD that it never applied to the prices.
+//
+// Net income is immune to all of it, so rebase through it:
+//     EPS_norm(t) = netIncome(t) × EPS(anchor) / netIncome(anchor)
+// which is netIncome(t) / impliedShares(anchor). For an already-consistent series this is a
+// no-op (NVDA: 0.174 -> 0.178).
+//
+// ponytail: this also absorbs buybacks, which splits-adjusted prices do NOT — so a heavy
+// repurchaser reads a few percent cheap at its low (AAPL ~8% over four years). Bounded and
+// one-directional, and vastly better than being 3x wrong on a split. Isolating the split
+// component would need a trustworthy split feed, which Yahoo is not.
+function normaliseEps(years) {
+    const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
+    if (!anchor) return years.map(y => y.eps);          // no usable anchor — use EPS as filed
+    return years.map(y => (y.ni != null ? y.ni * anchor.eps / anchor.ni : y.eps));
 }
 
 const yearBefore = day => {
@@ -203,10 +241,12 @@ function troughPe(entry, days, closes, quoteCurrency, rates) {
     const fxQuote = rateFor(quoteCurrency, rates);
     if (!fxReport || !fxQuote) return null;
     const toQuote = fxReport / fxQuote;
+    const normalised = normaliseEps(years);   // onto the latest year's share basis
 
     let best = null;
-    for (const { date, eps } of years) {
-        const e = eps * toQuote;
+    for (let y = 0; y < years.length; y++) {
+        const { date } = years[y];
+        const e = normalised[y] * toQuote;
         if (!(e > 0)) continue;                        // a loss year has no meaningful multiple
         const from = yearBefore(date);
         let low = null, lowDate = null;
@@ -259,9 +299,17 @@ function loadEarnings() {
 // a transient 429 must not be recorded as "this company has no earnings", and retrying it must
 // not drag the other 55 tickers along with it.
 function earningsToFetch(store, tickers, now = Date.now()) {
+    const badShape = t => {
+        const e = store.eps[t];
+        if (!(t in store.eps)) return false;                     // absent = "new", handled below
+        if (!Array.isArray(e?.years)) return true;               // predates { currency, years }
+        // Predates net income: without it EPS cannot be rebased across a split, and the trough
+        // would stay silently wrong (BYD read 5.4x instead of ~11x) until the store aged out.
+        return e.years.length > 0 && e.years.every(y => y.ni == null);
+    };
     const wholeStore = !store.updated
         || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS
-        || tickers.some(t => t in store.eps && !Array.isArray(store.eps[t]?.years));
+        || tickers.some(badShape);
     return wholeStore ? tickers : tickers.filter(t => !(t in store.eps));
 }
 
@@ -588,6 +636,21 @@ function selftest() {
     // the reporting currency, and that shape would never age out on its own.
     assert.deepStrictEqual(
         earningsToFetch({ updated: fresh7, eps: { A: [{ date: '2024-12-31', eps: 5 }], B: ok } }, T), T);
+
+    // normaliseEps: rebase every year onto the latest year's share basis via net income.
+    // A consistent series is left alone (net income and EPS move together).
+    assert.deepStrictEqual(
+        normaliseEps([{ eps: 2, ni: 200 }, { eps: 3, ni: 300 }]).map(v => Math.round(v * 1e6) / 1e6),
+        [2, 3]);
+    // A 3:1 bonus issue Yahoo never restated: the older year's EPS is on the pre-bonus share
+    // count (9 on 100 shares) while the latest is post-bonus (4 on 300). Profit merely grew
+    // 900 -> 1200, so the older year belongs at 3 per share, not 9. This is the BYD case.
+    assert.deepStrictEqual(
+        normaliseEps([{ eps: 9, ni: 900 }, { eps: 4, ni: 1200 }]), [3, 4]);
+    // No net income anywhere (or no positive anchor) -> fall back to EPS as filed, never NaN.
+    assert.deepStrictEqual(normaliseEps([{ eps: 5 }, { eps: 6 }]), [5, 6]);
+    assert.deepStrictEqual(normaliseEps([{ eps: -1, ni: -50 }]), [-1]);
+    assert.deepStrictEqual(normaliseEps([]), []);
 
     // troughPe: each fiscal year's lowest close over THAT year's earnings; cheapest wins.
     // 2024 low 50 / eps 5 = 10.0;  2025 low 90 / eps 6 = 15.0  ->  trough is 10.0, not 90/6.
