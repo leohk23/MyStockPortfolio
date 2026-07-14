@@ -676,7 +676,10 @@
             if (!t) return '<span class="muted">–</span>';
             const price = t.price.toLocaleString(undefined, { maximumFractionDigits: 2 });
             const side = t.side === 'SELL' ? 'SELL' : 'BUY';
-            return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} <span class="muted">@ ${price}</span>`;
+            // Show the trade's currency. It is the PURCHASE currency and can differ from the quote's
+            // (5332 was logged in USD off the ADR while the stock quotes in JPY), and without the unit
+            // the two sit side by side looking like one number is simply wrong.
+            return `<span class="${side === 'BUY' ? 'gain' : 'loss'}">${side}</span> ${ymd(t.date)} <span class="muted">@ ${price} ${t.currency}</span>`;
         }
         const BROKER = { IB: 'IBKR', T212: 'Trading 212' }; // others (TD, SC) shown as their code
         function tradeDetail(t) {
