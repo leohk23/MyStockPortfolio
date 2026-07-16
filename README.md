@@ -4,6 +4,12 @@ Static portfolio dashboard on GitHub Pages. No server, no runtime dependencies.
 
 <https://leohk23.github.io/MyStockPortfolio/>
 
+A personal decision tool with one reader. The goal is **substance over surface**: it
+exists to answer "buy, hold or sell?", so the effort goes into figures that can be
+trusted and audited — not into the interface. Numbers show their workings (where a low
+came from, which currency it was filed in) and show `–` rather than a guess. UI work
+earns its place when it stops you reading the data, and stops there.
+
 ## How it fits together
 
 ```

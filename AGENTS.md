@@ -9,6 +9,37 @@ A **static** stock-portfolio dashboard on GitHub Pages. No server, no runtime de
 Live at <https://leohk23.github.io/MyStockPortfolio/>. The repo is **public** — treat
 everything committed as world-readable.
 
+**One user, one reader: the owner.** This is a personal decision tool, not a product.
+Nobody needs to be impressed or onboarded by it.
+
+## Goal: substance over surface
+
+**Content beats UI. Every time.** The dashboard exists to answer "should I buy, hold or
+sell this?" — so effort belongs in the numbers, not the chrome. When the two compete,
+the numbers win.
+
+What that means in practice:
+
+- **A number that isn't trustworthy is worse than no number**, because it gets acted on.
+  Most of the hard-won work in this repo is defending against *silently wrong* figures —
+  see the war stories below (currency mismatches, unrestated splits, cached fetch
+  failures, `#REF!` leaking in). Read them before touching the pipeline; every one was a
+  plausible-looking number that was flat wrong.
+- **Show the workings.** Prefer a figure whose derivation is visible (a low date, an EPS
+  series, a reporting currency) over a polished one you have to trust blindly.
+- **Say "–", never guess.** Missing data is a fact worth displaying. Interpolating,
+  defaulting to zero, or FX-converting a filed figure invents information.
+- **New signal > new styling.** Given a choice, add a metric that changes a decision.
+- **UI work is justified when it blocks reading the data** — a table that overflows the
+  screen, a column that can't be found, a chart that misleads. That is content work
+  wearing a CSS hat. Polish beyond that point is not the goal.
+- **Correctness is not "surface".** Input validation, FX handling and the guards that
+  throw on bad workbook cells are content work. Never trade those away for brevity.
+
+Corollary: don't gold-plate. No design systems, no component frameworks, no build step.
+Plain HTML/CSS/JS that a future session can read top-to-bottom is the point — the repo
+has no dependencies at runtime and should stay that way.
+
 ## Data flow
 
 ```
