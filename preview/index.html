@@ -472,7 +472,9 @@
                 const e = store.eps[leg.yahoo];
                 // Only years that actually carry a top line. Yahoo emits the odd EPS-only stub
                 // (NTDOY FY2022), which would render as a row of dashes.
-                const years = (e?.years || []).filter(y => y.rev != null).slice(-5);
+                // Six: Yahoo caps at 4 and backfill-earnings.js tops that up to 5, so the 6th
+                // appears on its own as the store accretes — no change needed here.
+                const years = (e?.years || []).filter(y => y.rev != null).slice(-6);
                 if (!years.length) {
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';

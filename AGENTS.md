@@ -69,6 +69,7 @@ index.html + portfolio.js   all arithmetic in the browser
 | `extract-portfolio.js` | Reads the Tradelog tab + `meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`. | User's machine only (`npm run extract`) |
 | `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
+| `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Five years of financials" below). **Manual, one-off — never in CI.** | User's machine only |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
 | `publish.js` | `npm run publish`: extract → commit holdings.json → rebase → push. | User's machine |
@@ -186,6 +187,49 @@ controls, so it can start failing without a code change on our side. A failure t
 silent and non-fatal (logs `skip eps: ...` and moves on): PE columns just fall back to
 `meta.json`'s manual `eps`, or show `–` if neither source has a number. Check the Action's log
 line (`ok   eps for N/M tickers`) if PE looks stale.
+
+## Five years of financials (`backfill-earnings.js`)
+
+The deep-dive panel's revenue / net-income table comes from `earnings.json`. Yahoo
+**hard-caps annual fundamentals at 4 fiscal years** — a 15-year window returns the same
+four, on both the timeseries and quoteSummary endpoints. It is not a widenable parameter.
+Don't spend time trying; it has been probed.
+
+`earnings.json` is the store of record and `mergeEarnings()` keeps banked years forever, so
+history **accretes**: the hourly job merges Yahoo's 4 on top and older years persist. That
+gets the 5th and 6th year over time, but could not produce them on day one — hence the
+backfill.
+
+**Source and why it is safe.** stockanalysis.com carries 5 fiscal years free but has no
+public API; the numbers come from the page's internal SvelteKit `__data.json`, an
+undocumented index-pointer payload that can change shape on any of their deploys. So it is
+used the only way it safely can be: **once, by hand, result committed**. It never runs in
+CI. If it breaks, it breaks on a laptop and the live pipeline is untouched.
+
+**The source proves itself, per ticker.** Yahoo's 4 years overlap the source's 5, so every
+overlapping year must reproduce Yahoo *exactly* on revenue and bottom line, or the ticker is
+skipped whole. This matters because field names vary by market — US pages carry `netIncome`,
+Hong Kong pages carry both `netinc` (group total) and `netinccmn` (after minorities). Rather
+than hard-code a guess, every candidate field is tried and only one that reproduces Yahoo is
+accepted: **the check picks the field**, so a schema change cannot silently pick a wrong one.
+
+**Backfills `rev` + `nic` only — never `eps`/`ni`.** `troughPe()` skips any year whose EPS
+isn't positive, so P/E Low keeps its documented "cheapest in ~4y" meaning instead of shifting
+when this runs. Verified: after a backfill, 0 of 42 `peLow` values moved.
+
+**Coverage is deliberately partial** (~22 of 43 at 5 years). The rest are refused, not
+guessed:
+
+- **Refused (no reconcile)** — ASML, MC.PA, V, TSLA, BRK-B, QCOM, RMS.PA, NFLX, TSM, COIN,
+  GRMN, 0001.HK. The site's US pages have no "to common" line, so for companies with
+  preferred dividends or minorities its `netIncome` ≠ Yahoo's `nic` (Visa: 327M of preferred
+  dividends). Splicing it in would put one year on a different definition from the next four
+  and make the margin trend a lie. 4 years of one definition beats 5 of two.
+- **Not covered** — Frankfurt/Xetra (`.DE`, `.F`), and OTC ADRs (XIACY, CCOEY, KWHIY, TKOMY),
+  which have quote pages but no financials.
+
+Re-run `npm run backfill` after adding a holding; it is incremental and skips tickers that
+are already complete.
 
 ## Grouping (the "one line per company" feature)
 
