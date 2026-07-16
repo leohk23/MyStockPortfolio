@@ -127,6 +127,17 @@
         #deep-fin .yoy { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
+        /* ---- watchlist ---- */
+        #watch { margin-top: 26px; }
+        #watch-head { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--text-muted); font-weight: 600; margin: 0 0 8px; }
+        /* Seven columns, not the portfolio table's 24 — so it must opt out of the global
+           `table { min-width: 1280px }` or it forces a page-wide scrollbar. */
+        #watchlist { min-width: 0; }
+        #watchlist tbody tr { cursor: pointer; }
+        #watchlist tbody tr:hover { background: var(--surface-2); }
+        #watchlist th:first-child, #watchlist td:first-child { text-align: left; }
+
         /* ---- group-by toggle ---- */
         #groupby { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
         #groupby .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
@@ -326,6 +337,21 @@
         </table>
     </div>
 
+    <!-- Watched, not owned. Only the decision columns — there is no position to report on.
+         Clicking a row charts it and opens the same deep-dive panel as a holding. -->
+    <section id="watch" hidden>
+        <h2 id="watch-head">Watchlist</h2>
+        <div class="table-responsive">
+            <table id="watchlist">
+                <thead><tr>
+                    <th>Stock</th><th>Price</th><th>P/E</th><th>P/E Low</th>
+                    <th>Low date</th><th>Implied</th><th>vs Low</th>
+                </tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
     <script>
         /* ---------------- where the data lives ---------------- */
         // This exact file serves both the live page at / and the staging copy at /preview/.
@@ -379,6 +405,7 @@
 
         /* ---------------- state ---------------- */
         let STATE = null;        // { holdings, rates, quotes, nav, firstTrade, rows, total, dim }
+        let WATCH = [];          // watched-not-owned rows; never part of STATE/totals
         let HISTORY = null;      // lazy-loaded history.json
         let historyPromise = null;
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
@@ -420,7 +447,11 @@
         // Financials are shown in the company's REPORTING currency, never converted. A revenue
         // line is a fact the company filed; passing it through today's spot rate would invent a
         // number nobody reported, and would make last year's revenue change when FX moves.
-        const legOf = yahoo => STATE.rows.flatMap(r => r.legs).find(l => l.yahoo === yahoo) || null;
+        // A watched stock is leg-shaped enough for the panel: buildWatchlist() runs the same
+        // valuation() as a holding, so the panel needs no idea which it is looking at.
+        const watchOf = yahoo => WATCH.find(w => w.yahoo === yahoo) || null;
+        const legOf = yahoo => STATE.rows.flatMap(r => r.legs).find(l => l.yahoo === yahoo)
+            || watchOf(yahoo) || null;
         const big = v => v == null ? '–' : (v < 0 ? '−' : '')
             + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
                 .format(Math.abs(v));
@@ -438,8 +469,10 @@
             box.hidden = false;
 
             document.getElementById('deep-name').textContent = leg.group;
+            // A watched stock has no qty — say so rather than printing "0 shares".
             document.getElementById('deep-sub').textContent =
-                `${leg.yahoo} · ${leg.geography} · ${leg.qty.toLocaleString()} shares`;
+                `${leg.yahoo} · ${leg.geography} · `
+                + (leg.qty > 0 ? `${leg.qty.toLocaleString()} shares` : 'not held · watchlist');
 
             const q = leg.quote, c = q.currency;
             const px = n => n == null ? '–' : c + ' ' + num2(n);
@@ -710,7 +743,9 @@
                 (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
             }
             const first = firstNonNull(values), last = lastNonNull(values);
-            const name = holding ? `${holding.group} · ${yahoo}` : yahoo;
+            const watch = watchOf(yahoo);
+            const name = holding ? `${holding.group} · ${yahoo}`
+                : watch ? `${watch.name} · ${yahoo}` : yahoo;
             const formatValue = gainMode ? money : priceUSD;
             const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
             const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
@@ -724,7 +759,8 @@
                 headline: gainMode
                     ? `<span class="${cls(last)}">${money(last * RATES[display])}</span> <span class="muted">${pct(gainPct)}</span>`
                     : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> <span class="muted">${priceUSD(last * RATES[display])}</span>`,
-                sub: `${shownQty} shares · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                // "0 shares" would be a lie about a watched stock — it isn't a sold-out position.
+                sub: `${watch ? 'not held · watchlist' : shownQty + ' shares'} · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: gainMode ? `${name} Gain/Loss` : name,
                 note: gainMode
                     ? `Unrealized gain/loss from Tradelog balance quantity and average cost, using today's FX — realized gains excluded. ▲ buy · ▼ sell.`
@@ -844,7 +880,12 @@
             // Performance (TWR) applies to the whole portfolio and to a selected group, but not
             // to a single stock (which has its own Price / Gain-Loss toggle).
             const twrMode = !chartSel && portfolioMetric === 'twr';
-            document.getElementById('metric').style.display = chartSel ? '' : 'none';
+            // Gain/Loss replays YOUR trades, so it is meaningless for a stock you don't own:
+            // hide the toggle and pin a watched stock to price. Force it back, or a stale 'gain'
+            // selection would render a flat zero line and look like a bug.
+            const watched = !!chartSel && !!watchOf(chartSel);
+            if (watched) instrumentMetric = 'price';
+            document.getElementById('metric').style.display = chartSel && !watched ? '' : 'none';
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
@@ -870,7 +911,7 @@
             updateChart();
         }
         function markSelectedRow() {
-            document.querySelectorAll('#portfolio tr').forEach(tr =>
+            document.querySelectorAll('#portfolio tr, #watchlist tr').forEach(tr =>
                 tr.classList.toggle('sel', (!!chartSel && tr.dataset.yahoo === chartSel)
                     || (!!chartGroup && tr.dataset.group === chartGroup.name)));
         }
@@ -1078,9 +1119,35 @@
             STATE.total = STATE.rows.reduce((a, r) => a + r.value, 0);
         }
 
+        // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
+        // Reuses the holdings table's own cell formatters so a P/E means the same thing in both.
+        function renderWatchlist() {
+            const section = document.getElementById('watch');
+            if (!WATCH.length) { section.hidden = true; return; }
+            section.hidden = false;
+            const tbody = document.querySelector('#watchlist tbody');
+            tbody.textContent = '';
+            for (const w of WATCH) {
+                const tr = document.createElement('tr');
+                tr.dataset.yahoo = w.yahoo;
+                tr.innerHTML = `
+                    <td>${w.name} <span class="muted">${w.geography}</span></td>
+                    <td>${priceCell(w.quote.price, w.quote.currency)}</td>
+                    <td>${peCell(w.pe)}</td>
+                    <td>${peCell(w.peLow)}</td>
+                    <td>${lowDateCell(w.lowDate)}</td>
+                    <td>${impliedCell(w)}</td>
+                    <td>${vsLowCell(w.vsLow)}</td>`;
+                tr.addEventListener('click', () => selectChart(w.yahoo));
+                tbody.appendChild(tr);
+            }
+            markSelectedRow();
+        }
+
         function renderAll() {
             renderTotals();
             renderTable();
+            renderWatchlist();
             renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
@@ -1153,11 +1220,17 @@
         libReady.then(() => Promise.all([
             fetch(DATA + 'holdings.json' + bust).then(r => r.json()),
             fetch(DATA + 'prices.json' + bust).then(r => r.json()),
-        ])).then(([{ holdings }, { updated, rates, quotes, nav, performance }]) => {
+            // Optional: an empty or absent watchlist must not take the dashboard down with it.
+            fetch(DATA + 'watchlist.json' + bust).then(r => r.ok ? r.json() : []).catch(() => []),
+        ])).then(([{ holdings }, { updated, rates, quotes, nav, performance }, watchlist]) => {
             RATES = rates;
             const dim = ['instrument', 'company', 'geography'].includes(localStorage.getItem('dim')) ? localStorage.getItem('dim') : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
             STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
+            // Held names are dropped: once you own it, the holdings table is the truth. This
+            // keeps a stock that was on the list and then bought from appearing twice.
+            const held = new Set(holdings.map(h => h.yahoo));
+            WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             rebuildRows();

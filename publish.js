@@ -7,7 +7,8 @@ const run = c => execSync(c, { stdio: 'inherit' });
 const quiet = c => { try { execSync(c, { stdio: 'ignore' }); return true; } catch { return false; } };
 
 run('node extract-portfolio.js');       // Tradelog + meta.json -> holdings.json (throws if workbook missing)
-run('git add holdings.json meta.json'); // meta.json too, in case you added an instrument
+// meta.json too, in case you added an instrument; watchlist.json in case you added a name to watch
+run('git add holdings.json meta.json watchlist.json');
 
 // `git diff --staged --quiet` exits non-zero when there IS something staged.
 if (quiet('git diff --staged --quiet')) {

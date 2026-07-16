@@ -15,6 +15,7 @@ earns its place when it stops you reading the data, and stops there.
 ```
 Tradelog.xlsx                 (gitignored — never leaves your machine; only the Tradelog tab is read)
    meta.json                  per-instrument facts: yahoo symbol, group, geography (committed)
+   watchlist.json             stocks you watch but don't own (committed; never hits your totals)
         │  npm run extract     you run this after trading
         ▼
    holdings.json              positions, cost basis, full trade log   (committed)

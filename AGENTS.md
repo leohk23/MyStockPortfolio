@@ -45,6 +45,7 @@ has no dependencies at runtime and should stay that way.
 ```
 Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read)
    meta.json           per-instrument facts: yahoo, group, geography, currency (committed)
+   watchlist.json      stocks watched but NOT owned — same pipeline, zero effect on totals
       │  node extract-portfolio.js   (needs the xlsx dev-dep; user runs it)
       ▼
 holdings.json          positions, cost basis, geography, group, full trade log  (committed)
@@ -69,6 +70,7 @@ index.html + portfolio.js   all arithmetic in the browser
 | `extract-portfolio.js` | Reads the Tradelog tab + `meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`. | User's machine only (`npm run extract`) |
 | `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
+| `watchlist.json` | Stocks watched but **not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below. | Committed |
 | `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Five years of financials" below). **Manual, one-off — never in CI.** | User's machine only |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
@@ -187,6 +189,45 @@ controls, so it can start failing without a code change on our side. A failure t
 silent and non-fatal (logs `skip eps: ...` and moves on): PE columns just fall back to
 `meta.json`'s manual `eps`, or show `–` if neither source has a number. Check the Action's log
 line (`ok   eps for N/M tickers`) if PE looks stale.
+
+## Watchlist (stocks not held)
+
+`watchlist.json` lists names to analyse before buying. They ride the **same pipeline** —
+quotes, weekly history, trough P/E, annual financials — because `fetch-prices.js` unions
+them into its ticker list. There is no second fetch path, and `npm run backfill` picks them
+up too (it just walks `earnings.json`).
+
+**The rule: a watched stock must never touch the portfolio maths.** Totals, TWR, cohorts and
+`navHistory()` all iterate `holdings`. A stock you are only *thinking* about must not be able
+to move a number that reports how you are actually doing. Hence:
+
+- `watchlist.json` is a **separate file** — never merged into `holdings.json`.
+- The tempting shortcut (a holding with `qty: 0`) is **wrong**: it would thread a phantom
+  position through every one of those calculations.
+- In `fetch-prices.js`, watchlist symbols join exactly one list — `histTickers`, so they get
+  closes to chart and to price the trough against. `navHistory()` and the TWR input stay
+  strictly `priced` (= holdings). Keep it that way.
+- On the page, `WATCH` is separate from `STATE`, and a name already held is dropped from it
+  (once you own it, the holdings table is the truth).
+
+`valuation()` in `portfolio.js` is shared by `build()` and `buildWatchlist()` — valuation is a
+property of the *stock*, not of owning it, so both paths run one formula and cannot drift. A
+selftest asserts a holding and a watchlist entry on the same quote agree.
+
+**Known gaps** (honest `–`, not guesses):
+
+- **Korean tickers have no trailing EPS from Yahoo** (`005930.KS`, `000660.KS` return
+  `epsTrailingTwelveMonths: undefined`), so P/E and Implied are blank for them. P/E Low still
+  works (it is built from *annual* EPS), as do the chart and the financials table. The escape
+  hatch, if ever wanted, is the `eps` override the entry already accepts — but that is manual
+  maintenance, which this repo deliberately avoids.
+- **The trough is thin for a company with loss years.** `troughPe()` skips any year without
+  positive EPS, so a name like GME — whose earlier years are unusable — has its "cheapest
+  ever" drawn from very few points, and can read *below* its own trough (P/E 16x vs P/E Low
+  26x). Treat vs Low on such names with suspicion.
+
+Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first
+paint). Fine for a dozen; reconsider at 30+.
 
 ## Five years of financials (`backfill-earnings.js`)
 

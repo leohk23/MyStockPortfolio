@@ -119,6 +119,59 @@ function twr(mv, flow) {
     return out;
 }
 
+// Everything the "is it cheap?" question needs, from the quote alone.
+//
+// Deliberately takes no position, cost or trade: valuation is a property of the STOCK, not of
+// owning it. That is what lets a watchlist name get these numbers from the identical code path
+// as a holding — one formula, so the two can never drift apart.
+// `h` supplies only optional manual overrides from meta.json (eps, specialEps, lowPrice/lowEps
+// for symbols Yahoo has no earnings for, and the growth inputs); {} is a fine argument.
+//
+// PE uses native price ÷ native EPS (both in the same currency) so no FX enters a ratio that
+// shouldn't need any. specialPe uses a stock-tailored earnings figure (FFO, adjusted EPS, ...)
+// when meta.json sets one; otherwise it's the same as pe.
+//
+// Trough-multiple: peLow is the multiple the market paid at this stock's recorded low — a
+// *ratio*, so it is currency- and ADR-agnostic: a low logged off the US ADR yields the same
+// multiple as the Tokyo ordinary. Applying it to today's EPS gives implied — what the price
+// would be at its cheapest-ever multiple, on today's earnings. vsLow is the premium you pay
+// above that: >0 dearer, <0 cheaper. pegLow does the same growth-adjusted, for stocks whose
+// multiple tracks growth. peLow is derived online by fetch-prices (lowest close in each of the
+// last ~4 fiscal years over that year's own earnings). A manual meta.json low is only a
+// fallback — nothing here needs hand-maintaining.
+function valuation(h, quote) {
+    const eps = quote.eps ?? h.eps ?? null;
+    const pe = eps > 0 ? quote.price / eps : null;
+    const specialEps = h.specialEps ?? eps;
+    const specialPe = specialEps > 0 ? quote.price / specialEps : null;
+
+    const peLow = quote.peLow ?? (h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null);
+    const lowDate = quote.lowDate ?? h.lowDate ?? null;
+    const lowPrice = quote.lowPrice ?? h.lowPrice ?? null;
+    const lowEps = quote.lowEps ?? h.lowEps ?? null;
+    const pegLow = peLow != null && h.lowGrowth > 0 ? peLow / (h.lowGrowth * 100) : null;
+    const implied = peLow != null && eps > 0 ? peLow * eps : null;
+    const impliedPeg = pegLow != null && h.growth > 0 && eps > 0 ? pegLow * h.growth * 100 * eps : null;
+    const vsLow = implied > 0 ? (quote.price - implied) / implied : null;
+
+    return { eps, pe, specialPe, peLow, pegLow, implied, impliedPeg, vsLow, lowDate, lowPrice, lowEps };
+}
+
+// watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
+//
+// Kept out of build() and out of holdings.json on purpose. Totals, TWR, cohorts and the NAV
+// series all iterate holdings; a stock you are only THINKING about must never be able to move a
+// number that reports how you are actually doing. Separate file, separate path, no contact.
+// The shape matches a leg closely enough for the deep-dive panel to render it unchanged.
+function buildWatchlist(watchlist, quotes) {
+    return watchlist
+        .filter(w => quotes[w.yahoo])
+        .map(w => ({
+            ...w, group: w.name, quote: quotes[w.yahoo], ...valuation(w, quotes[w.yahoo]),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
 // Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
 function build(holdings, rates, quotes, dimension = 'company') {
@@ -137,36 +190,9 @@ function build(holdings, rates, quotes, dimension = 'company') {
             if (tradeUSD) since = (quote.priceUSD - tradeUSD) / tradeUSD;
         }
         const value = h.qty * quote.priceUSD;
-        // PE uses native price ÷ native EPS (both in the same currency) so no FX enters a
-        // ratio that shouldn't need any. eps: Yahoo's auto-fetched trailing EPS, falling
-        // back to a manual meta.json value. specialPe uses a stock-tailored earnings figure
-        // (FFO, adjusted EPS, ...) when meta.json sets one; otherwise it's the same as pe.
-        const eps = quote.eps ?? h.eps ?? null;
-        const pe = eps > 0 ? quote.price / eps : null;
-        const specialEps = h.specialEps ?? eps;
-        const specialPe = specialEps > 0 ? quote.price / specialEps : null;
-
-        // Trough-multiple valuation. peLow is the multiple the market paid at this stock's
-        // recorded low — a *ratio*, so it is currency- and ADR-agnostic: a low logged off the
-        // US ADR yields the same multiple as the Tokyo ordinary. Applying it to today's EPS
-        // gives implied — what the price would be at its cheapest-ever multiple, on today's
-        // earnings. vsLow is the premium you pay above that: >0 dearer, <0 cheaper.
-        // pegLow does the same growth-adjusted, for stocks whose multiple tracks growth.
-        // peLow is derived online by fetch-prices (lowest close in each of the last ~4 fiscal
-        // years over that year's own earnings). A manual meta.json low is only a fallback, for
-        // symbols Yahoo has no earnings history for — nothing here needs hand-maintaining.
-        const peLow = quote.peLow ?? (h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null);
-        const lowDate = quote.lowDate ?? h.lowDate ?? null;
-        const lowPrice = quote.lowPrice ?? h.lowPrice ?? null;
-        const lowEps = quote.lowEps ?? h.lowEps ?? null;
-        const pegLow = peLow != null && h.lowGrowth > 0 ? peLow / (h.lowGrowth * 100) : null;
-        const implied = peLow != null && eps > 0 ? peLow * eps : null;
-        const impliedPeg = pegLow != null && h.growth > 0 && eps > 0 ? pegLow * h.growth * 100 * eps : null;
-        const vsLow = implied > 0 ? (quote.price - implied) / implied : null;
 
         const leg = {
-            ...h, quote, since, pe, specialPe, peLow, pegLow, implied, impliedPeg, vsLow,
-            lowDate, lowPrice, lowEps,
+            ...h, quote, since, ...valuation(h, quote),
             cost: h.costLC * rate,
             value,
             realized: (h.realizedLC || 0) * rate,
@@ -215,7 +241,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, cohortMV, twr, build, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, cohortMV, twr, build, valuation, buildWatchlist, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -408,6 +434,31 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(inst.length, 3);
     assert.ok(inst.every(r => r.legs.length === 1));
     assert.ok(inst.every(r => r.price != null));
+
+    // valuation: derived from the quote alone, so it needs no position at all.
+    const q = { price: 100, eps: 5, peLow: 8, lowPrice: 40, lowEps: 5, lowDate: '2022-10-28', currency: 'USD' };
+    const v = valuation({}, q);
+    assert.strictEqual(v.pe, 20);
+    assert.strictEqual(v.implied, 40);          // trough multiple 8x on today's EPS of 5
+    assert.strictEqual(v.vsLow, 1.5);           // 100 vs 40 = 150% dearer than its cheapest
+    // A holding and a watchlist entry on the same quote MUST agree — one formula, no drift.
+    const heldLeg = build([{ yahoo: 'X', currency: 'USD', qty: 1, costLC: 1, group: 'X', geography: 'US' }],
+        rates, { X: q }, 'instrument')[0].legs[0];
+    const watched = buildWatchlist([{ yahoo: 'X', name: 'X', geography: 'US' }], { X: q })[0];
+    for (const k of ['pe', 'peLow', 'implied', 'vsLow', 'lowDate'])
+        assert.strictEqual(watched[k], heldLeg[k], `watchlist ${k} disagrees with holding`);
+
+    // A loss-maker has no meaningful multiple, and nothing may be fabricated from it.
+    const lossMaker = valuation({}, { price: 10, eps: -2, currency: 'USD' });
+    assert.strictEqual(lossMaker.pe, null);
+    assert.strictEqual(lossMaker.implied, null);
+    assert.strictEqual(lossMaker.vsLow, null);
+    // meta.json overrides only fill gaps; a live quote always wins.
+    assert.strictEqual(valuation({ eps: 99 }, { price: 100, eps: 5, currency: 'USD' }).pe, 20);
+    assert.strictEqual(valuation({ eps: 4 }, { price: 100, currency: 'USD' }).pe, 25);
+
+    // buildWatchlist drops names with no quote rather than rendering a blank row.
+    assert.strictEqual(buildWatchlist([{ yahoo: 'NOPE', name: 'Nope' }], { X: q }).length, 0);
 
     console.log('selftest ok');
 }

@@ -2,6 +2,10 @@
 // Run by .github/workflows/prices.yml; also `node fetch-prices.js` locally.
 const fs = require('fs');
 const { holdings } = require('./holdings.json');
+// Stocks watched but not owned. They ride the SAME pipeline (quotes, weekly history, trough
+// PE, annual financials) — no second fetch path — but they are deliberately absent from
+// navHistory() and from every portfolio total. See buildWatchlist() in portfolio.js.
+const watchlist = require('./watchlist.json');
 const { cohortMV, twr } = require('./portfolio.js'); // local, dependency-free — CI stays clean
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -416,7 +420,9 @@ const sleep = () => new Promise(r => setTimeout(r, 300)); // ponytail: fixed del
 const BENCHMARKS = { '^GSPC': 'S&P 500', '^HSI': 'HSI' };
 
 async function main() {
-    const tickers = [...new Set(holdings.map(h => h.yahoo))];
+    // Held + watched. navHistory() below deliberately re-derives its own holdings-only list:
+    // a watched stock must never leak into the NAV series.
+    const tickers = [...new Set([...holdings.map(h => h.yahoo), ...watchlist.map(w => w.yahoo)])];
     const quotes = {};
     const failed = [];
 
@@ -532,7 +538,12 @@ async function main() {
     // Per-instrument close history (native currency) for charting a single stock,
     // plus the benchmarks, on one shared calendar. Separate file, loaded by the page
     // only when needed (stock click, benchmark toggle, or long range) so first paint stays lean.
-    const histTickers = [...priced.map(h => h.yahoo), ...Object.keys(benchQuotes)];
+    // Watched stocks need closes too — the deep dive charts them, and the trough multiple is
+    // priced off historical lows, so without history they'd show no P/E Low at all. This is the
+    // one list they join; navHistory() above and the TWR below stay strictly `priced`.
+    const watched = watchlist.filter(w => quotes[w.yahoo]);
+    const histTickers = [...new Set([...priced.map(h => h.yahoo), ...watched.map(w => w.yahoo),
+        ...Object.keys(benchQuotes)])];
     const dailyHistory = { ...quotes, ...benchQuotes };
     const hist = alignedCloses(histTickers, dailyHistory);
     const weeklyQuotes = {};
