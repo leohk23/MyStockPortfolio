@@ -143,6 +143,17 @@
         #groupby { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
         #groupby .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
 
+        /* ---- filter ---- */
+        #search-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        #search {
+            flex: 1; max-width: 320px; font: inherit; font-size: 13px; padding: 6px 9px;
+            background: var(--surface-3); color: var(--text-primary);
+            border: 1px solid var(--line); border-radius: 6px;
+        }
+        #search:focus { outline: none; border-color: var(--series-port); }
+        #search::placeholder { color: var(--text-muted); }
+        #search-count { font-size: 12px; }
+
         /* ---- table ---- */
         .table-responsive { width: 100%; overflow-x: auto; }
         table { border-collapse: collapse; width: 100%; min-width: 1280px; }
@@ -294,6 +305,13 @@
         </div>
     </section>
 
+    <!-- type="search" for the native clear button — no JS, no icon, works on mobile. -->
+    <div id="search-bar">
+        <input id="search" type="search" autocomplete="off" spellcheck="false"
+            placeholder="Filter by name, ticker or geography…" aria-label="Filter the table">
+        <span id="search-count" class="muted"></span>
+    </div>
+
     <!-- "View", not "Group by": the last button swaps the dataset rather than the grouping.
          One table area, one control — the watchlist replaces the holdings table in place. -->
     <div id="groupby">
@@ -415,6 +433,9 @@
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
         let earningsPromise = null;
         let sort = { key: 'value', dir: -1 };
+        // Deliberately not persisted: a filter restored on load would hide rows with no
+        // explanation and read as missing data.
+        let filterText = '';
         let rangeDays = 0;       // 0 = whole series
         let rangeYears = 0;
         let rangeYtd = false;    // from last year's close to now (daily)
@@ -998,13 +1019,42 @@
         const vsLowCell = n => n == null ? '<span class="muted">–</span>'
             : `<span class="${cls(-n)}">${pct(n)}</span>`;
 
+        /* ---------------- filter ---------------- */
+        // Everything you might reasonably type at a row: what it's called, every ticker inside
+        // it, and where it is. The legs matter — grouped by Company you see "CKA", and typing
+        // its ticker 1113 should still find it.
+        const haystack = r => [r.name, ...(r.legs || []).flatMap(l => [l.yahoo, l.ticker, l.group, l.geography])]
+            .filter(Boolean).join(' ').toLowerCase();
+        // Space-separated terms, all of which must match: "hk bank" narrows, it doesn't widen.
+        const matches = (text, terms) => terms.every(t => text.includes(t));
+        const searchTerms = () => filterText.split(/\s+/).filter(Boolean);
+        // One definition of "visible" per table, so the count can never disagree with the rows.
+        const visibleRows = () => {
+            const t = searchTerms();
+            return t.length ? STATE.rows.filter(r => matches(haystack(r), t)) : STATE.rows;
+        };
+        const visibleWatch = () => {
+            const t = searchTerms();
+            return t.length
+                ? WATCH.filter(w => matches([w.name, w.yahoo, w.geography].join(' ').toLowerCase(), t))
+                : WATCH;
+        };
+        function updateSearchCount() {
+            const el = document.getElementById('search-count');
+            if (!searchTerms().length) { el.textContent = ''; return; }
+            const watchMode = STATE.dim === 'watch';
+            const shown = watchMode ? visibleWatch().length : visibleRows().length;
+            const of = watchMode ? WATCH.length : STATE.rows.length;
+            el.textContent = shown ? `${shown} of ${of}` : 'no matches';
+        }
+
         const sortValue = (row, key) => {
             if (portfolioLib.PERIODS.includes(key)) return row.moves[key];
             if (key === 'tradeDate') return row.lastTrade ? row.lastTrade.date : '';
             return row[key];
         };
         function sortedRows() {
-            return [...STATE.rows].sort((a, b) => {
+            return [...visibleRows()].sort((a, b) => {
                 const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
                 if (x == null && y == null) return 0;
                 if (x == null) return 1;
@@ -1037,10 +1087,11 @@
         }
 
         function renderTable() {
-            const total = STATE.total;
+            const total = STATE.total;          // Mix is always a share of the WHOLE portfolio
+            const shown = sortedRows();
             const tbody = document.querySelector('#portfolio tbody');
             tbody.innerHTML = '';
-            for (const r of sortedRows()) {
+            for (const r of shown) {
                 const multi = r.legs.length > 1;
                 const trades = STATE.dim === 'instrument' ? r.legs[0].trades || [] : [];
                 const expandable = multi || trades.length > 0;
@@ -1128,10 +1179,16 @@
                     individual ? selectChart(r.primaryYahoo) : selectGroup(r);
                 });
             }
-            const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
-            const gain = total - cost;
-            const realized = STATE.rows.reduce((a, r) => a + r.realized, 0);
-            const income = STATE.rows.reduce((a, r) => a + r.income, 0);
+            // The Total row totals THE ROWS SHOWN. With a filter active it must not keep
+            // reporting the whole portfolio: sitting under three visible rows, that reads as
+            // their total and is simply a wrong number. Mix then answers the useful question —
+            // what share of the portfolio the filtered set is — and lands on 100% unfiltered,
+            // where it used to be hardcoded.
+            const shownValue = shown.reduce((a, r) => a + r.value, 0);
+            const cost = shown.reduce((a, r) => a + r.cost, 0);
+            const gain = shownValue - cost;
+            const realized = shown.reduce((a, r) => a + r.realized, 0);
+            const income = shown.reduce((a, r) => a + r.income, 0);
             // Blank every column up to Cost, counted FROM THE HEADER rather than hardcoded.
             // Price, PE, PE Low, Implied, vs Low and the rest are per-instrument figures with no
             // meaningful portfolio aggregate (a basket has no PE — see AGENTS.md invariant 9),
@@ -1140,17 +1197,19 @@
             const leadCols = [...document.querySelectorAll('#portfolio thead th')]
                 .findIndex(th => th.dataset.sort === 'cost');
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>
-                <td>Total</td>${'<td></td>'.repeat(Math.max(0, leadCols - 1))}
-                <td>${money(cost)}</td><td>${money(total)}</td>
+                <td>${searchTerms().length ? 'Filtered' : 'Total'}</td>${'<td></td>'.repeat(Math.max(0, leadCols - 1))}
+                <td>${money(cost)}</td><td>${money(shownValue)}</td>
                 <td class="${cls(gain)}">${money(gain)}</td>
                 <td class="${realizedCls(realized)}">${money(realized)}</td>
                 <td class="${cls(gain)}">${pct(cost ? gain / cost : null)}</td>
-                <td>100.0%</td><td class="muted">${total ? plain(income / total) : '–'}</td>
+                <td>${total ? plain(shownValue / total) : '–'}</td>
+                <td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>
                 <td>${money(income)}</td>
                 ${portfolioLib.PERIODS.map(p => {
-                    const move = portfolioLib.weightedMove(STATE.rows.map(r => ({ value: r.value, quote: r.moves })), p);
+                    const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                     return `<td class="${cls(move)}">${pct(move)}</td>`;
                 }).join('')}</tr>`;
+            updateSearchCount();
             markSelectedRow();
         }
 
@@ -1166,7 +1225,7 @@
         function renderWatchlist() {
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
-            for (const w of WATCH) {
+            for (const w of visibleWatch()) {
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
@@ -1240,6 +1299,14 @@
                 b.setAttribute('aria-pressed', String(cohortOn.has(k)));
                 updateChart();
             }));
+
+        // 'input' covers typing, paste, and the native clear button in one.
+        document.getElementById('search').addEventListener('input', ev => {
+            filterText = ev.target.value.trim().toLowerCase();
+            renderTable();
+            renderWatchlist();
+            updateSearchCount();
+        });
 
         document.querySelectorAll('#groupby button').forEach(b =>
             b.addEventListener('click', () => {
