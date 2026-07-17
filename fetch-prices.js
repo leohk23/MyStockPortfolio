@@ -300,18 +300,28 @@ function normaliseEps(years) {
     return years.map(y => (y.ni != null ? y.ni * anchor.eps / anchor.ni : y.eps));
 }
 
-const yearBefore = day => {
-    const d = new Date(day + 'T00:00:00Z');
-    d.setUTCFullYear(d.getUTCFullYear() - 1);
-    return d.toISOString().slice(0, 10);
-};
+// Days after a fiscal year ends before its EPS counts as public. 90 covers the statutory
+// deadline in every market this book touches (US 10-K ≤90d, HK results announcement ≤3mo,
+// Japan tanshin ~45d, Korea 90d); most companies announce well inside it, so the model is
+// late rather than clairvoyant.
+// ponytail: flat lag, not real publication dates — exact filed dates exist only for US EDGAR
+// filers; store them in earnings.json if a few weeks' slack ever matters.
+const REPORT_LAG_DAYS = 90;
+const reportedBy = date =>
+    new Date(new Date(date + 'T00:00:00Z').getTime() + REPORT_LAG_DAYS * DAY * 1000)
+        .toISOString().slice(0, 10);
 
-// The cheapest multiple this ever traded at: for each fiscal year, the lowest close *within
-// that year* over that year's own earnings, then the minimum across years.
+// The cheapest multiple the market ever put on this stock's PUBLISHED earnings: each weekly
+// close ÷ the latest annual EPS already reported by that date, minimum across history.
 //
-// Pairing an old low with TODAY's EPS would be meaningless — a company that has since grown
-// into its earnings (NVDA's 2022 low over its 2026 EPS) would read as absurdly cheap. The
-// low has to be measured against what the business was earning at the time.
+// Point-in-time on both sides, and both mistakes it guards against are real:
+//  - Old low over TODAY'S EPS: a company that has since grown into its earnings (NVDA's 2022
+//    low over its 2026 EPS) reads absurdly cheap.
+//  - Old low over that year's OWN EPS (the previous model): earnings reported months AFTER the
+//    low. Trip.com's Apr-2025 low over FY2025 EPS — figures unknown until Feb 2026 — printed a
+//    7.7x trough that was really 14.9x on what investors could actually see.
+// A close before the first published year has no multiple and is skipped; once a published
+// year's EPS is ≤ 0 there is no meaningful multiple until the next profitable year is out.
 //
 // Pure, so it is selftest-able. `entry` is { currency, years } from earnings.json; days/closes
 // are the weekly history in the quote's currency.
@@ -328,22 +338,23 @@ function troughPe(entry, days, closes, quoteCurrency, rates) {
     const toQuote = fxReport / fxQuote;
     const normalised = normaliseEps(years);   // onto the latest year's share basis
 
+    // What was public when: [publication date, EPS] steps, oldest first. A year with no EPS
+    // and no net income (Yahoo's per-field cap) carries no information and is transparent;
+    // a published LOSS is kept — it genuinely voids the multiple until the next profit prints.
+    const known = years
+        .map((y, i) => ({ from: reportedBy(y.date), eps: normalised[i] * toQuote }))
+        .filter(k => Number.isFinite(k.eps))
+        .sort((a, b) => a.from < b.from ? -1 : 1);
+
     let best = null;
-    for (let y = 0; y < years.length; y++) {
-        const { date } = years[y];
-        const e = normalised[y] * toQuote;
-        if (!(e > 0)) continue;                        // a loss year has no meaningful multiple
-        const from = yearBefore(date);
-        let low = null, lowDate = null;
-        for (let i = 0; i < days.length; i++) {
-            if (days[i] <= from || days[i] > date) continue;
-            const c = closes[i];
-            if (c == null) continue;
-            if (low == null || c < low) { low = c; lowDate = days[i]; }
-        }
-        if (low == null) continue;
-        const pe = low / e;
-        if (best == null || pe < best.peLow) best = { peLow: pe, lowPrice: low, lowEps: e, lowDate };
+    for (let i = 0; i < days.length; i++) {
+        const c = closes[i];
+        if (c == null) continue;
+        let e = null;
+        for (const k of known) { if (k.from <= days[i]) e = k.eps; else break; }
+        if (!(e > 0)) continue;
+        const pe = c / e;
+        if (best == null || pe < best.peLow) best = { peLow: pe, lowPrice: c, lowEps: e, lowDate: days[i] };
     }
     return best;
 }
@@ -936,26 +947,45 @@ function selftest() {
     assert.deepStrictEqual(normaliseEps([{ eps: -1, ni: -50 }]), [-1]);
     assert.deepStrictEqual(normaliseEps([]), []);
 
-    // troughPe: each fiscal year's lowest close over THAT year's earnings; cheapest wins.
-    // 2024 low 50 / eps 5 = 10.0;  2025 low 90 / eps 6 = 15.0  ->  trough is 10.0, not 90/6.
+    // troughPe: each close over the latest EPS PUBLISHED by that date; cheapest ratio wins.
+    // FY2023 eps 4 public 2024-03-30; FY2024 eps 5 public 2025-03-31; FY2025 eps 6 public
+    // 2026-03-31 (fiscal end + 90d).
     const fx = { USD: 1, GBP: 2, JPY: 0.0062 };
-    const days = ['2024-03-01', '2024-09-01', '2025-03-01', '2025-09-01'];
-    const px   = [        60,           50,           90,          120];
-    const usd = { currency: 'USD', years: [{ date: '2024-12-31', eps: 5 }, { date: '2025-12-31', eps: 6 }] };
+    const days = ['2024-02-01', '2024-09-01', '2025-04-11', '2025-09-01'];
+    const px   = [        44,           48,           50,           90];
+    const usd = { currency: 'USD', years: [
+        { date: '2023-12-31', eps: 4 }, { date: '2024-12-31', eps: 5 }, { date: '2025-12-31', eps: 6 }] };
     const tr = troughPe(usd, days, px, 'USD', fx);
+    // The Trip.com regression, both halves: the 2025-04-11 close is priced off FY2024's 5
+    // (50/5 = 10), NOT FY2025's 6 — those figures were 10 months away. And 2024-02-01's 44
+    // predates ANY published year (44/4 = 11 would beat 10), so it is skipped, not priced
+    // off earnings from the future.
     assert.strictEqual(tr.peLow, 10);
     assert.strictEqual(tr.lowPrice, 50);
     assert.strictEqual(tr.lowEps, 5);
-    assert.strictEqual(tr.lowDate, '2024-09-01');
-    // A loss-making year is skipped, not turned into a negative multiple.
+    assert.strictEqual(tr.lowDate, '2025-04-11');
+    // The trough is the cheapest MULTIPLE, not the cheapest price: a later, higher close over
+    // newly published higher earnings can be the real low (55/6 = 9.17 beats 50/5 = 10).
+    const tr2 = troughPe(usd, [...days, '2026-06-01'], [...px, 55], 'USD', fx);
+    assert.ok(Math.abs(tr2.peLow - 55 / 6) < 1e-9);
+    assert.strictEqual(tr2.lowDate, '2026-06-01');
+    // A published loss voids the multiple from its publication on — it must not fall back to
+    // the older profit (1/4 = 0.25 must NOT win), and a history that is all-loss has none.
+    const lossy = { currency: 'USD', years: [{ date: '2023-12-31', eps: 4 }, { date: '2024-12-31', eps: -2 }] };
+    assert.strictEqual(troughPe(lossy, ['2024-09-01', '2025-09-01'], [48, 1], 'USD', fx).peLow, 12);
     assert.strictEqual(troughPe({ currency: 'USD', years: [{ date: '2024-12-31', eps: -2 }] }, days, px, 'USD', fx), null);
+    // A year Yahoo sent without EPS or net income (per-field cap) is transparent, not a void:
+    // closes after it still price off the older published figure.
+    assert.strictEqual(troughPe(
+        { currency: 'USD', years: [{ date: '2023-12-31', eps: 4 }, { date: '2024-12-31', rev: 9e9 }] },
+        ['2025-09-01'], [48], 'USD', fx).peLow, 12);
     // No earnings history at all (ETFs, gold, bitcoin) -> null, never NaN.
     assert.strictEqual(troughPe({ currency: 'USD', years: [] }, days, px, 'USD', fx), null);
     assert.strictEqual(troughPe(undefined, days, px, 'USD', fx), null);
 
     // An ADR quotes in USD but REPORTS in JPY. Dividing the USD price by the raw JPY EPS is
     // the bug that made NTDOY read as +20,000% dear; the EPS must be converted first.
-    // 500 JPY EPS -> $3.10, so the 2024 low of 50 is a 16.1x multiple, not 0.1x.
+    // 500 JPY EPS -> $3.10, so the post-publication low of 50 is a 16.1x multiple, not 0.1x.
     const adr = troughPe({ currency: 'JPY', years: [{ date: '2024-12-31', eps: 500 }] }, days, px, 'USD', fx);
     assert.ok(Math.abs(adr.lowEps - 3.1) < 1e-9);
     assert.ok(Math.abs(adr.peLow - 50 / 3.1) < 1e-9);

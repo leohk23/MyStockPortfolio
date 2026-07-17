@@ -125,8 +125,9 @@ function twr(mv, flow) {
 // *ratio*, so it is currency- and ADR-agnostic: a low logged off the US ADR yields the same
 // multiple as the Tokyo ordinary. Applying it to today's EPS gives implied — what the price
 // would be at its cheapest-ever multiple, on today's earnings. vsLow is the premium you pay
-// above that: >0 dearer, <0 cheaper. peLow is derived online by fetch-prices (lowest close in
-// each of the last ~4 fiscal years over that year's own earnings). A manual meta.json low is
+// above that: >0 dearer, <0 cheaper. peLow is derived online by fetch-prices' troughPe():
+// point-in-time, each weekly close over the latest annual EPS PUBLISHED by that date — never
+// the same year's own earnings, which weren't public at the low. A manual meta.json low is
 // only a fallback — nothing here needs hand-maintaining.
 //
 // No PEG here: it needs a growth rate, and the deep-dive panel derives that from the filed

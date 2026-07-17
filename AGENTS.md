@@ -161,11 +161,16 @@ The idea (ported from the workbook's old Portfolio!BA:BM block, now fully derive
 find the cheapest the market ever valued this business, then ask what that multiple would be
 worth on *today's* earnings. **Nothing here is hand-maintained.**
 
-**How the trough is found** (`fetch-prices.js` `troughPe`): for each of the last ~4 fiscal
-years, take the lowest weekly close *within that year* and divide by **that year's own EPS**;
-the cheapest of those is `peLow`. Pairing an old low with *today's* EPS would be meaningless —
-NVDA's 2022 low over its 2026 earnings reads as absurdly cheap. The low must be measured
-against what the business was earning at the time.
+**How the trough is found** (`fetch-prices.js` `troughPe`): **point-in-time** — each weekly
+close is divided by the latest annual EPS **already published** by that date (fiscal end +
+`REPORT_LAG_DAYS` = 90, covering every market's statutory deadline); the cheapest ratio across
+history is `peLow`. Both kinds of hindsight are excluded by construction: an old low over
+*today's* EPS (NVDA's 2022 low on its 2026 earnings reads absurdly cheap), and a low over its
+own fiscal year's EPS — reported months *after* the low. That second one was the previous
+model, and it printed Trip.com's Apr-2025 low as a 7.7× trough on FY2025 earnings nobody would
+see until Feb 2026; on what investors could actually see (FY2024) it was ~14.9×. Closes before
+the first published year are skipped; a published loss voids the multiple until the next
+profitable year prints.
 
 **Why ~4 years:** Yahoo's `fundamentals-timeseries` caps `annualDilutedEPS` at 4 points
 (quarterly gives ~5, trailing ~11). 4 fiscal years is the real ceiling on free earnings
@@ -173,7 +178,7 @@ history — don't label it "5y".
 
 | Column | Formula |
 |---|---|
-| **PE Low** | `min over fiscal years of (lowest close that year / that year's EPS)` |
+| **PE Low** | `min over weekly closes of (close / latest annual EPS published by that date)` |
 | **Low date** | the week that low printed |
 | **Implied** | `PE Low × current EPS` — the price at its cheapest-ever multiple, on today's earnings |
 | **vs Low** | `(price − Implied) / Implied` — the premium you pay over that baseline |
@@ -243,10 +248,10 @@ selftest asserts a holding and a watchlist entry on the same quote agree.
   works (it is built from *annual* EPS), as do the chart and the financials table. The escape
   hatch, if ever wanted, is the `eps` override the entry already accepts — but that is manual
   maintenance, which this repo deliberately avoids.
-- **The trough is thin for a company with loss years.** `troughPe()` skips any year without
-  positive EPS, so a name like GME — whose earlier years are unusable — has its "cheapest
-  ever" drawn from very few points, and can read *below* its own trough (P/E 16x vs P/E Low
-  26x). Treat vs Low on such names with suspicion.
+- **The trough is thin for a company with loss years.** `troughPe()` only prices a close when
+  the latest published EPS is positive, so a name like GME — whose earlier years are unusable
+  — has its "cheapest ever" drawn from very few points, and can read *below* its own trough
+  (P/E 16x vs P/E Low 26x). Treat vs Low on such names with suspicion.
 
 Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first
 paint). Fine for a dozen; reconsider at 30+.
@@ -331,7 +336,7 @@ So **never filter fiscal years on one field's presence.** `fetchAnnualEps` used 
 EPS, which silently discarded LVMH's FY2025 for six months after it was published — Yahoo had
 sent the revenue and the net income all along. Six companies were stuck on FY2024 before this
 was spotted. Every row Yahoo returns is now kept, and consumers filter for what they need
-(the panel takes years with revenue; `troughPe()` takes years with positive EPS).
+(the panel takes years with revenue; `troughPe()` prices closes only off published positive EPS).
 
 `backfill-earnings.js` has the matching rule: a fiscal year you already hold is **not
 necessarily complete**. It patches missing `rev`/`nic` into an existing year rather than
@@ -388,9 +393,9 @@ Hong Kong pages carry both `netinc` (group total) and `netinccmn` (after minorit
 than hard-code a guess, every candidate field is tried and only one that reproduces Yahoo is
 accepted: **the check picks the field**, so a schema change cannot silently pick a wrong one.
 
-**Backfills `rev` + `nic` only — never `eps`/`ni`.** `troughPe()` skips any year whose EPS
-isn't positive, so P/E Low keeps its documented "cheapest in ~4y" meaning instead of shifting
-when this runs. Verified: after a backfill, 0 of 42 `peLow` values moved.
+**Backfills `rev` + `nic` only — never `eps`/`ni`.** A year carrying only `rev`/`nic` has no
+EPS information, so `troughPe()` treats it as transparent — P/E Low keeps its meaning instead
+of shifting when this runs. Verified: after a backfill, 0 of 42 `peLow` values moved.
 
 **No gaps, ever** (`unbrokenRun`). A filer switches XBRL tags mid-history — Google files
 `Revenues` for its older years and `RevenueFromContractWithCustomer...` for its newer ones — so

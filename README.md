@@ -69,11 +69,13 @@ or a 2Y/5Y/All range, so the first paint stays light.
   it unset and Special PE just mirrors the normal PE. Both show `–` when there's no earnings
   figure from any source, or on a multi-instrument Company/Geography row.
 - **PE Low / Low date / Implied / vs Low** — the "is it cheap?" columns, derived online with
-  **nothing to maintain**. For each of the last ~4 fiscal years the app takes the lowest weekly
-  close *in that year* and divides by *that year's own EPS*; the cheapest is the trough
-  multiple. (Dividing an old low by *today's* EPS would be nonsense — NVDA's 2022 low over its
-  2026 earnings would look absurdly cheap.)
-  - **PE Low** — the cheapest multiple the market ever paid for these earnings.
+  **nothing to maintain**. Point-in-time: each weekly close is divided by the latest annual
+  EPS *already published* by that date (fiscal end + 90 days, every market's statutory
+  deadline); the cheapest ratio in history is the trough multiple. Neither form of hindsight
+  is allowed — not an old low over *today's* EPS (NVDA's 2022 low on its 2026 earnings would
+  look absurdly cheap), and not a low over its own year's EPS, which wasn't public until
+  months after the low.
+  - **PE Low** — the cheapest multiple the market ever paid for its published earnings.
   - **Low date** — when that happened.
   - **Implied** — `PE Low × current EPS`: what the price would be at that cheapest-ever
     multiple, on today's earnings. Hover it for the low price and EPS behind the number.
