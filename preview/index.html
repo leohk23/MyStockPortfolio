@@ -591,16 +591,17 @@
             const scenario = (revenue, margin, tax) => {
                 const operatingIncome = revenue * margin - p.operatingExpenses;
                 const netIncome = operatingIncome * (1 - tax);
+                const quarterlyEps = netIncome / p.dilutedShares;
                 return { revenue, operatingIncome, opMargin: operatingIncome / revenue,
                     netIncome, netMargin: netIncome / revenue,
-                    eps: netIncome / p.dilutedShares * 4 };
+                    quarterlyEps, annualEps: quarterlyEps * 4 };
             };
             const low = scenario(p.revenue * (1 - p.revenueTolerance),
                 p.grossMargin - p.grossMarginTolerance, p.taxRate[1]);
             const high = scenario(p.revenue * (1 + p.revenueTolerance),
                 p.grossMargin + p.grossMarginTolerance, p.taxRate[0]);
-            return low.eps > 0 && high.eps >= low.eps
-                ? { low: price / high.eps, high: price / low.eps, lowCase: low, highCase: high,
+            return low.annualEps > 0 && high.annualEps >= low.annualEps
+                ? { low: price / high.annualEps, high: price / low.annualEps, lowCase: low, highCase: high,
                     shares: p.dilutedShares } : null;
         };
 
@@ -615,10 +616,11 @@
             const values = pe ? [
                 range('revenue', big), range('operatingIncome', big), range('opMargin', plain),
                 range('netIncome', big), range('netMargin', plain), big(pe.shares),
+                range('quarterlyEps', num2),
             ] : [
                 metric('Revenue', 'Net sales'), metric('Operating income'),
                 metric('Operating margin', 'Op margin'), metric('Net income'),
-                metric('Net margin'), metric('Shares'),
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'),
             ];
             const source = String(g.source || '');
             const label = `${g.period.replace('FY20', 'FY')}E`;
@@ -630,7 +632,7 @@
                 `Guidance: ${g.period} is one quarter; reported rows are full fiscal years.`,
                 ...(g.note ? [`Assumption: ${g.note}`] : []),
                 pe
-                    ? 'Derived: operating income, op margin, net income and net margin; revenue is company-issued.'
+                    ? 'Derived: operating income, op margin, net income, net margin and quarterly EPS; revenue is company-issued.'
                     : 'Guidance values are company-issued; missing accounts remain blank.',
                 ...(pe ? ['Inputs: guided GAAP gross margin and operating expenses, 16–18% tax and 24.391B latest reported diluted shares; excludes other income/expense.'] : []),
             ];
@@ -708,7 +710,7 @@
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
-                const cell = (v, g, invert) => `<td>${v == null ? '<span class="muted">–</span>' : big(v)}${g == null ? '' :
+                const cell = (v, g, invert, format = big) => `<td>${v == null ? '<span class="muted">–</span>' : format(v)}${g == null ? '' :
                     `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
                 // Margin changes are percentage points, not relative growth: 10% to 12% is
                 // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
@@ -730,6 +732,7 @@
                         ${cell(y.nic, yoy(y.nic, p?.nic))}
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
+                        ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -754,7 +757,7 @@
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
-                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>
                     </tr>` : '';
 
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
@@ -771,12 +774,13 @@
                         <th>FY</th><th>Revenue</th><th>Operating income</th><th>Op margin</th>
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
+                        <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                     </tr></thead>
                     <tbody>${body}${foot}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
-                    'Coverage: shares, operating income and op margin cover Yahoo\'s recent years only.',
+                    'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;

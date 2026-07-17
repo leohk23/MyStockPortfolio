@@ -281,7 +281,7 @@ shows a clearly labelled estimate row in the financials table, with blanks for a
 company did not guide. Every entry must carry its period, issue date,
 official investor-relations URL and any material assumption. Never annualise, FX-convert or
 fill a metric the company did not guide. The one explicit exception is NVIDIA's labelled
-`runRatePe`: it derives the aligned income/margin accounts, moves its annualised P/E into the
+`runRatePe`: it derives the aligned income/margin/EPS accounts, moves its annualised P/E into the
 valuation box, and excludes un-guided other income/expense. Update it by hand after results;
 there is no scraper until the three-stock pilot proves the maintenance cost is worth automating.
 
