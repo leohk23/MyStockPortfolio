@@ -134,10 +134,8 @@
             border-bottom: 1px solid var(--line); }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
-        /* Growth sits under its value, not in its own column — half as many columns to fit. */
+        /* Each metric's prior-year change sits directly under its value. */
         #deep-fin .yoy { display: block; font-size: 11px; }
-        /* Net margin sits under operating margin, quieter — same stacked idea as the YoY line. */
-        #deep-fin .submargin { display: block; font-size: 11px; color: var(--text-muted); }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
         /* ---- watchlist ---- */
@@ -597,7 +595,7 @@
                     + exChip;
                 // Diluted share count is Yahoo's own net income ÷ its own EPS — no new field to
                 // fetch. Only the Yahoo years carry both (the deep backfill stored rev+nic only),
-                // so older rows show a blank share cell, same as operating margin.
+                // so older rows show a blank share cell, same as operating income.
                 const shares = y => y.ni && y.eps ? y.ni / y.eps : null;
                 const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
                 const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
@@ -606,13 +604,12 @@
                 // (a buyback) is the good outcome, so a negative change reads green.
                 const cell = (v, g, invert) => `<td>${v == null ? '<span class="muted">–</span>' : big(v)}${g == null ? '' :
                     `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
-                // Operating margin is the core-business read (net catches one-off tax/FX); net
-                // margin sits muted beneath it. Op is blank on the deep years Yahoo didn't cover.
-                const marginCell = y => {
-                    const op = opMargin(y), net = netMargin(y);
-                    return `<td title="Operating margin over net margin">`
-                        + `${op == null ? '<span class="muted">–</span>' : plain(op)}`
-                        + `${net == null ? '' : `<span class="submargin">${plain(net)}</span>`}</td>`;
+                // Margin changes are percentage points, not relative growth: 10% to 12% is
+                // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
+                const marginCell = (v, prev) => {
+                    const change = v != null && prev != null ? v - prev : null;
+                    return `<td>${v == null ? '<span class="muted">–</span>' : plain(v)}${change == null ? '' :
+                        `<span class="yoy ${cls(change)}">${change >= 0 ? '+' : '−'}${Math.abs(change * 100).toFixed(1)}pp</span>`}</td>`;
                 };
                 const body = years.map((y, i) => {
                     // Only against the year immediately before. Yahoo's history has holes
@@ -622,9 +619,11 @@
                     return `<tr>
                         <td title="Fiscal year ended ${ymd(y.date)}">${fy(y)}</td>
                         ${cell(y.rev, yoy(y.rev, p?.rev))}
+                        ${cell(y.opinc, yoy(y.opinc, p?.opinc))}
+                        ${marginCell(opMargin(y), p ? opMargin(p) : null)}
                         ${cell(y.nic, yoy(y.nic, p?.nic))}
+                        ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
-                        ${marginCell(y)}
                     </tr>`;
                 }).join('');
 
@@ -633,6 +632,10 @@
                 const f = years[0], l = years[years.length - 1];
                 const span = fy(l) - fy(f);
                 const rc = cagr(f.rev, l.rev, span), nc = cagr(f.nic, l.nic, span);
+                const withOpinc = years.filter(y => y.opinc != null);
+                const of = withOpinc[0], ol = withOpinc[withOpinc.length - 1];
+                const ospan = of && ol ? fy(ol) - fy(of) : 0;
+                const oc = ospan === span ? cagr(of.opinc, ol.opinc, ospan) : null;
                 // Share-count CAGR spans only the years that actually carry a count, not the whole
                 // table — the deep years have none, and dividing by a missing base is meaningless.
                 const withShares = years.filter(shares);
@@ -644,7 +647,8 @@
                 const cagrCell = (v, invert) => `<td>${v == null ? '–' :
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
-                        <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(nc)}${cagrCell(scagr, true)}<td></td>
+                        <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}
                     </tr>` : '';
 
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
@@ -658,15 +662,15 @@
 
                 fin.innerHTML = `<table>
                     <thead><tr>
-                        <th>FY</th><th>Revenue</th><th>Net income</th>
+                        <th>FY</th><th>Revenue</th><th>Operating income</th><th>Op margin</th>
+                        <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
-                        <th title="Operating margin over net margin">Op / net margin</th>
                     </tr></thead>
                     <tbody>${body}${foot}</tbody>
                 </table>
                 <div class="deep-note">Net income is attributable to common shareholders (after
-                    minorities); shares are diluted; margin is operating over net. Shares and
-                    operating margin cover Yahoo's recent years only. Reported, never FX-converted.</div>`;
+                    minorities); shares are diluted. Shares and operating income (and its margin)
+                    cover Yahoo's recent years only. Reported, never FX-converted.</div>`;
             }).catch(err => {
                 fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
             });
