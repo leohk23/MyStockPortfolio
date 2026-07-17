@@ -9,27 +9,34 @@
 // returns the same four, on both the timeseries and quoteSummary endpoints. That is the
 // ceiling on the hourly pipeline, and it is not a parameter that can be widened.
 //
-// stockanalysis.com carries 5 fiscal years free. It has no public API: the numbers come
-// out of the page's internal SvelteKit payload (`__data.json`), an undocumented
-// index-pointer format that can change shape on any deploy of their site. That is
-// exactly the kind of source AGENTS.md says not to trust.
+// Two sources fill the gap, tried deepest first:
 //
-// So it is used the only way it safely can be: ONCE, by hand, with the result committed.
-// earnings.json is the store of record and mergeEarnings() keeps banked years forever, so
-// the hourly Yahoo job merges its 4 years on top of this and the older years simply
-// persist. If stockanalysis breaks or changes, this script fails loudly on a laptop and
-// the live pipeline never notices — the data is already in the repo.
+//   1. SEC EDGAR (data.sec.gov) — the filings themselves. Free, no key, documented, stable,
+//      and ~9 fiscal years deep. US filers only: no Hong Kong, Tokyo, Paris, Korea. Covers
+//      20-F filers too (BABA, TSM, ASML all report under us-gaap).
+//   2. stockanalysis.com — 5 fiscal years, but it covers the other markets. No public API:
+//      the numbers come out of the page's internal SvelteKit payload (`__data.json`), an
+//      undocumented index-pointer format that can change shape on any deploy of their site.
 //
-// Trust model: the source proves itself
-// -------------------------------------
-// The 4 years Yahoo *does* have overlap the 5 this source returns. So every overlapping
-// year must match Yahoo EXACTLY on both revenue and bottom line, or the ticker is
-// skipped whole. A source that disagrees where it can be checked is not trusted where it
-// cannot. This also pins down a real hazard: the payload's field names vary by market
-// (US pages carry `netIncome`, Hong Kong pages carry `netinc` AND `netinccmn`, which
-// differ by minority interests). Rather than hard-code a guess per market, every
-// candidate field is tried and only one that reproduces Yahoo's figures is accepted —
-// the check picks the field, so a schema change cannot silently pick a wrong one.
+// Source 2 is exactly what AGENTS.md says not to trust, so it is used the only way it safely
+// can be: ONCE, by hand, with the result committed. earnings.json is the store of record and
+// mergeEarnings() keeps banked years forever, so the hourly Yahoo job merges its 4 years on top
+// of this and the older years simply persist. If a source breaks, it breaks on a laptop and the
+// live pipeline never notices — the data is already in the repo.
+//
+// The source proves itself, per ticker
+// ------------------------------------
+// The 4 years Yahoo *does* have overlap what these sources return. So every overlapping year
+// must reproduce Yahoo EXACTLY on both revenue and bottom line, or the source is refused for
+// that ticker. A source that disagrees where it can be checked is not trusted where it cannot.
+//
+// This also pins down a real hazard: field names vary. stockanalysis's US pages carry
+// `netIncome` while its Hong Kong pages carry `netinc` AND `netinccmn` (differing by minority
+// interests); EDGAR has `NetIncomeLossAvailableToCommonStockholdersBasic` for some filers and
+// only `NetIncomeLoss` for others, and several revenue tags per company. Rather than hard-code
+// a guess, every candidate field is tried and only one that reproduces Yahoo is accepted — the
+// check picks the field, so a schema change cannot silently pick a wrong one. The danger hides
+// where it cannot be seen: Apple has no minorities, so every candidate agrees there.
 //
 // Deliberately backfills `rev` and `nic` only — never `eps` or `ni`. troughPe() skips a
 // year whose EPS is not positive, so the P/E Low keeps its documented "cheapest in ~4y"
@@ -37,10 +44,82 @@
 const fs = require('fs');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
+// SEC asks for a real contact in the User-Agent and blocks generic browser strings.
+const SEC_UA = 'MyStockPortfolio/1.0 (leohk23@gmail.com)';
 const EARNINGS = 'earnings.json';
 
+const getJson = async (url, ua = UA) => {
+    const res = await fetch(url, { headers: { 'User-Agent': ua } });
+    return res.ok ? res.json() : null;
+};
+
+// Fiscal-year ends do not agree between sources — Yahoo normalises Apple's FY2022 to
+// 2022-09-30 while the filing (and both sources here) says 2022-09-24. Align on the calendar
+// year instead. A genuine misalignment cannot slip through: it would have to also match
+// Yahoo's revenue and bottom line to the digit.
+const fyOf = date => date.slice(0, 4);
+const same = (a, b) => a != null && b != null && Math.abs(a - b) <= Math.abs(a) * 1e-9;
+const sleep = (ms = 400) => new Promise(r => setTimeout(r, ms));
+
+/* ---------------- source 1: SEC EDGAR ---------------- */
+
+// Several tags can carry the same line, and which one a filer uses varies (Apple files both
+// Revenues and RevenueFromContractWithCustomer...). Validation picks; these are just candidates.
+const EDGAR_REV = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues',
+    'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenuesNetOfInterestExpense'];
+const EDGAR_NIC = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss'];
+
+let cikCache = null;
+async function cikFor(ticker) {
+    cikCache ||= await getJson('https://www.sec.gov/files/company_tickers.json', SEC_UA) || {};
+    const byTicker = {};
+    for (const v of Object.values(cikCache)) byTicker[v.ticker] = String(v.cik_str).padStart(10, '0');
+    // Yahoo writes BRK-B where SEC writes BRK-B or BRK.B.
+    return byTicker[ticker] || byTicker[ticker.replace('-', '.')] || null;
+}
+
+// One tag -> { fiscal year end date -> value }.
+//
+// The filter is the whole trick. A raw concept mixes annual, quarterly and per-segment rows
+// that share an `end` date — AAPL's 2020-09-26 appears as both 274.5B (the year) and 64.7B (a
+// quarter), and taking the wrong one is a silent 4x error. Annual rows are the ones whose
+// start..end spans a year, on an annual form. Later filings restate earlier ones, so the newest
+// filing of a given year wins.
+function edgarAnnual(facts, tag, currency) {
+    const units = facts.facts?.['us-gaap']?.[tag]?.units;
+    if (!units) return null;
+    const rows = units[currency] || units.USD;
+    if (!rows) return null;
+    const out = new Map();
+    for (const x of [...rows].sort((a, b) => (a.filed || '').localeCompare(b.filed || ''))) {
+        if (!/^(10-K|20-F)$/.test(x.form) || x.fp !== 'FY') continue;
+        if (!x.start || !x.end) continue;
+        const days = (Date.parse(x.end) - Date.parse(x.start)) / 86400e3;
+        if (!(days > 340 && days < 380)) continue;      // a year, not a quarter or a segment
+        out.set(x.end, x.val);
+    }
+    return out.size ? out : null;
+}
+
+async function edgarCandidate(yahoo, currency) {
+    if (yahoo.includes('.') || yahoo.startsWith('^')) return null;   // not a US listing
+    const cik = await cikFor(yahoo);
+    if (!cik) return null;
+    const facts = await getJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, SEC_UA);
+    if (!facts) return null;
+    const byField = (tags) => {
+        const m = new Map();
+        for (const t of tags) { const col = edgarAnnual(facts, t, currency); if (col) m.set(t, col); }
+        return m;
+    };
+    const rev = byField(EDGAR_REV), nic = byField(EDGAR_NIC);
+    return rev.size && nic.size ? { rev, nic } : null;
+}
+
+/* ---------------- source 2: stockanalysis.com ---------------- */
+
 // Yahoo suffix -> stockanalysis exchange path. Verified by probe against a live ticker in
-// each market. Frankfurt/Xetra (.DE, .F) are absent from the site, so they stay on 4 years.
+// each market. Frankfurt/Xetra (.DE, .F) and Korea (.KS) are absent from the site.
 const EXCHANGE = { HK: 'hkg', T: 'tyo', PA: 'epa', L: 'lon' };
 
 // A ticker can sit at more than one path (US listings under /stocks/, ADRs under
@@ -80,61 +159,85 @@ function financialData(json) {
     return null;
 }
 
-async function fetchStatement(yahoo) {
-    for (const path of urlsFor(yahoo)) {
-        const res = await fetch(`https://stockanalysis.com/${path}/financials/__data.json`,
-            { headers: { 'User-Agent': UA } });
-        if (!res.ok) continue;
-        const fd = financialData(await res.json());
-        if (fd) return fd;
-    }
-    return null;
-}
+const SA_NIC = ['netinccmn', 'netIncome', 'netinc'];
 
-// Fiscal-year ends do not agree between sources — Yahoo normalises Apple's FY2022 to
-// 2022-09-30 while the filing (and stockanalysis) says 2022-09-24. Align on the calendar
-// year instead. A genuine misalignment cannot slip through: it would have to also match
-// Yahoo's revenue and bottom line to the digit.
-const fyOf = date => date.slice(0, 4);
-const same = (a, b) => a != null && b != null && Math.abs(a - b) <= Math.abs(a) * 1e-9;
-
-// Pull { fy -> {rev, nic} } out of the payload, choosing the bottom-line field that
-// reproduces Yahoo. Returns null if no candidate field validates.
-function extract(fd, yahooYears) {
-    const rows = fd.datekey
+function saColumns(fd) {
+    const dates = fd.datekey
         .map((date, i) => ({ date, i }))
+        // TTM is not a fiscal year, and would land as a duplicate of the current one.
         .filter(r => r.date !== 'TTM' && /^\d{4}-\d{2}-\d{2}$/.test(r.date));
-    const known = new Map(yahooYears.map(y => [fyOf(y.date), y]));
+    const col = arr => {
+        if (!Array.isArray(arr)) return null;
+        const m = new Map();
+        for (const { date, i } of dates) if (typeof arr[i] === 'number') m.set(date, arr[i]);
+        return m.size ? m : null;
+    };
+    const rev = new Map(), nic = new Map();
+    const r = col(fd.revenue);
+    if (r) rev.set('revenue', r);
+    for (const f of SA_NIC) { const c = col(fd[f]); if (c) nic.set(f, c); }
+    return rev.size && nic.size ? { rev, nic } : null;
+}
 
-    // Revenue must line up first — if it doesn't, the whole payload is suspect.
-    const revOk = rows.every(r => {
-        const y = known.get(fyOf(r.date));
-        return !y || y.rev == null || same(fd.revenue?.[r.i], y.rev);
-    });
-    const overlap = rows.filter(r => known.has(fyOf(r.date)));
-    if (!revOk || !overlap.length) return null;
-
-    for (const field of ['netinccmn', 'netIncome', 'netinc']) {
-        const col = fd[field];
-        if (!Array.isArray(col)) continue;
-        // Every overlapping year must reproduce Yahoo's nic exactly.
-        const ok = overlap.every(r => {
-            const y = known.get(fyOf(r.date));
-            return y.nic == null || same(col[r.i], y.nic);
-        });
-        if (!ok) continue;
-        const out = new Map();
-        for (const r of rows) {
-            const rev = fd.revenue?.[r.i], nic = col[r.i];
-            if (typeof rev === 'number' && typeof nic === 'number')
-                out.set(fyOf(r.date), { date: r.date, rev, nic });
-        }
-        return { field, years: out };
+async function saCandidate(yahoo) {
+    for (const path of urlsFor(yahoo)) {
+        const json = await getJson(`https://stockanalysis.com/${path}/financials/__data.json`);
+        if (!json) continue;
+        const fd = financialData(json);
+        if (fd) return saColumns(fd);
     }
     return null;
 }
 
-const sleep = (ms = 400) => new Promise(r => setTimeout(r, ms));
+/* ---------------- validation ---------------- */
+
+// Pick the (revenue tag, bottom-line tag) pair that reproduces Yahoo on every year both have.
+// Returns null if no pair does — in which case the source is refused outright rather than
+// trusted for the years Yahoo cannot check. That refusal is the point.
+function reconcile(cand, yahooYears) {
+    if (!cand) return null;
+    const known = new Map(yahooYears.map(y => [fyOf(y.date), y]));
+    const agrees = (col, field) => {
+        const dates = [...col.keys()].filter(d => known.has(fyOf(d)));
+        if (!dates.length) return false;                 // nothing to verify against = no proof
+        return dates.every(d => {
+            const want = known.get(fyOf(d))[field];
+            return want == null || same(col.get(d), want);
+        });
+    };
+    for (const [revField, revCol] of cand.rev) {
+        if (!agrees(revCol, 'rev')) continue;
+        for (const [nicField, nicCol] of cand.nic) {
+            if (!agrees(nicCol, 'nic')) continue;
+            const years = new Map();
+            for (const [date, rev] of revCol) {
+                const nic = nicCol.get(date);
+                if (typeof rev === 'number' && typeof nic === 'number')
+                    years.set(fyOf(date), { date, rev, nic });
+            }
+            if (years.size) return { field: `${revField}/${nicField}`, years };
+        }
+    }
+    return null;
+}
+
+// Which fiscal years may be kept: the unbroken run back from the most recent one, across what
+// we already hold plus what the source offers.
+//
+// A filer switches XBRL tags mid-history — Google files `Revenues` for its older years and
+// RevenueFromContractWithCustomer... for its newer ones — so a single validated tag has holes.
+// The tag covering only the old years cannot be validated at all (no overlap with Yahoo's four
+// years = no proof), so it is correctly refused, and what survives is 2017 sitting next to 2021
+// with nothing between. Rendering that as consecutive rows would imply a continuity that does
+// not exist and quietly corrupt a CAGR. Anything on the far side of a gap is dropped.
+function unbrokenRun(haveFys, sourceFys) {
+    const all = [...new Set([...haveFys, ...sourceFys])].map(Number).sort((a, b) => a - b);
+    let i = all.length - 1;
+    while (i > 0 && all[i - 1] === all[i] - 1) i--;
+    return new Set(all.slice(i).map(String));
+}
+
+/* ---------------- main ---------------- */
 
 async function main() {
     const store = JSON.parse(fs.readFileSync(EARNINGS, 'utf8'));
@@ -143,30 +246,31 @@ async function main() {
 
     let added = 0, skipped = 0, unchanged = 0, uncovered = 0;
     for (const [yahoo, entry] of tickers) {
-        if (!urlsFor(yahoo).length) {
-            console.log(`  –    ${yahoo.padEnd(9)} market not covered`);
-            uncovered++;
-            continue;
+        // Deepest source first: EDGAR is the filings themselves and reaches ~9 years, where
+        // stockanalysis stops at 5. Whichever reconciles first wins outright — the years are
+        // never mixed across sources, so a fiscal year can't sit on a different definition
+        // from the one before it.
+        let got = null, via = null;
+        for (const [name, fn] of [['EDGAR', () => edgarCandidate(yahoo, entry.currency)],
+            ['SA', () => saCandidate(yahoo)]]) {
+            let cand;
+            try { cand = await fn(); }
+            catch (e) { console.log(`  !    ${yahoo.padEnd(10)} ${name} failed: ${e.message}`); continue; }
+            if (!cand) continue;
+            const ok = reconcile(cand, entry.years);
+            if (ok) { got = ok; via = name; break; }
+            console.log(`  SKIP ${yahoo.padEnd(10)} ${name} does not reconcile with Yahoo`);
         }
-        let fd;
-        try { fd = await fetchStatement(yahoo); }
-        catch (e) { console.log(`  !    ${yahoo.padEnd(9)} fetch failed: ${e.message}`); skipped++; continue; }
-        if (!fd) { console.log(`  !    ${yahoo.padEnd(9)} no financials found`); skipped++; continue; }
+        if (!got) { (via === null ? uncovered++ : skipped++); await sleep(); continue; }
 
-        const got = extract(fd, entry.years);
-        if (!got) {
-            // The source disagreed with Yahoo where both had data. Trust Yahoo, take nothing.
-            console.log(`  SKIP ${yahoo.padEnd(9)} does not reconcile with Yahoo`);
-            skipped++;
-            await sleep();
-            continue;
-        }
         // A year we already hold is NOT necessarily complete. Yahoo caps each field at 4 points
         // on windows that don't line up, so a year can arrive carrying EPS but no revenue
         // (2638.HK FY2025). Those get patched in place rather than skipped as "already have".
         const byFy = new Map(entry.years.map(y => [fyOf(y.date), y]));
+        const allowed = unbrokenRun([...byFy.keys()], [...got.years.keys()]);
         const fresh = [], patched = [];
         for (const [fy, v] of got.years) {
+            if (!allowed.has(fy)) continue;
             const existing = byFy.get(fy);
             if (!existing) { fresh.push(v); continue; }
             if (existing.rev == null || existing.nic == null) {
@@ -182,7 +286,7 @@ async function main() {
         added += fresh.length + patched.length;
         const what = [fresh.length ? `+${fresh.map(f => fyOf(f.date)).join(' ')}` : '',
             patched.length ? `filled ${patched.join(' ')}` : ''].filter(Boolean).join(', ');
-        console.log(`  ok   ${yahoo.padEnd(9)} ${what}  (verified on ${got.field})`);
+        console.log(`  ok   ${yahoo.padEnd(10)} ${what}  (${via}, on ${got.field})`);
         await sleep();
     }
 
@@ -192,7 +296,7 @@ async function main() {
     } else {
         console.log('\nnothing to add');
     }
-    console.log(`${unchanged} already complete, ${skipped} skipped, ${uncovered} market not covered`);
+    console.log(`${unchanged} already complete, ${skipped} refused, ${uncovered} no source`);
 }
 
 // --selftest: the trust logic, which is the only part worth testing. No network.
@@ -212,45 +316,73 @@ if (process.argv.includes('--selftest')) {
         { date: '2022-12-31', rev: 100, nic: 10, eps: 1, ni: 12 },
         { date: '2023-12-31', rev: 200, nic: 20, eps: 2, ni: 24 },
     ];
+    const cand = (rev, nic) => ({
+        rev: new Map(Object.entries(rev).map(([k, v]) => [k, new Map(Object.entries(v))])),
+        nic: new Map(Object.entries(nic).map(([k, v]) => [k, new Map(Object.entries(v))])),
+    });
+
     // Hong Kong shape: netinc is the group total, netinccmn is after minorities. Only the
     // latter reproduces Yahoo, so it must be the one chosen — this is the 1113.HK case.
-    const hk = {
-        datekey: ['TTM', '2023-12-31', '2022-12-31', '2021-12-31'],
-        revenue: [999, 200, 100, 50],
-        netinc: [999, 24, 12, 6],
-        netinccmn: [999, 20, 10, 5],
-    };
-    const gotHk = extract(hk, yahoo);
-    assert.strictEqual(gotHk.field, 'netinccmn');
+    const hk = cand(
+        { revenue: { '2023-12-31': 200, '2022-12-31': 100, '2021-12-31': 50 } },
+        {
+            netinc: { '2023-12-31': 24, '2022-12-31': 12, '2021-12-31': 6 },
+            netinccmn: { '2023-12-31': 20, '2022-12-31': 10, '2021-12-31': 5 },
+        });
+    const gotHk = reconcile(hk, yahoo);
+    assert.strictEqual(gotHk.field, 'revenue/netinccmn');
     assert.deepStrictEqual(gotHk.years.get('2021'), { date: '2021-12-31', rev: 50, nic: 5 });
-    assert.ok(!gotHk.years.has('TTM'));                            // TTM is not a fiscal year
 
-    // US shape: no netinccmn at all, netIncome IS the figure Yahoo reports as nic.
-    const us = {
-        datekey: ['TTM', '2023-12-31', '2022-12-31', '2021-12-31'],
-        revenue: [999, 200, 100, 50],
-        netIncome: [999, 20, 10, 5],
-    };
-    assert.strictEqual(extract(us, yahoo).field, 'netIncome');
+    // US shape: no "available to common" tag at all, and plain net income IS what Yahoo reports.
+    const us = cand({ revenue: { '2023-12-31': 200, '2022-12-31': 100, '2021-12-31': 50 } },
+        { netIncome: { '2023-12-31': 20, '2022-12-31': 10, '2021-12-31': 5 } });
+    assert.strictEqual(reconcile(us, yahoo).field, 'revenue/netIncome');
+
+    // EDGAR shape: several revenue tags, only one of which is the top line. The check picks.
+    const edgar = cand(
+        {
+            Revenues: { '2023-12-31': 999, '2022-12-31': 999 },                  // wrong tag
+            RevenueFromContractWithCustomerExcludingAssessedTax:
+                { '2023-12-31': 200, '2022-12-31': 100, '2021-12-31': 50, '2020-12-31': 25 },
+        },
+        {
+            NetIncomeLossAvailableToCommonStockholdersBasic:
+                { '2023-12-31': 20, '2022-12-31': 10, '2021-12-31': 5, '2020-12-31': 2 },
+        });
+    const gotEdgar = reconcile(edgar, yahoo);
+    assert.strictEqual(gotEdgar.field,
+        'RevenueFromContractWithCustomerExcludingAssessedTax/NetIncomeLossAvailableToCommonStockholdersBasic');
+    assert.strictEqual(gotEdgar.years.size, 4);
+    assert.deepStrictEqual(gotEdgar.years.get('2020'), { date: '2020-12-31', rev: 25, nic: 2 });
 
     // A source that disagrees with Yahoo where both have data is refused outright, rather
     // than trusted for the years Yahoo cannot check. This is the whole point.
-    const wrongNic = { ...us, netIncome: [999, 21, 10, 5] };
-    assert.strictEqual(extract(wrongNic, yahoo), null);
-    const wrongRev = { ...us, revenue: [999, 201, 100, 50] };
-    assert.strictEqual(extract(wrongRev, yahoo), null);
+    assert.strictEqual(reconcile(cand({ revenue: { '2023-12-31': 200, '2022-12-31': 100 } },
+        { netIncome: { '2023-12-31': 21, '2022-12-31': 10 } }), yahoo), null);   // nic off by 1
+    assert.strictEqual(reconcile(cand({ revenue: { '2023-12-31': 201, '2022-12-31': 100 } },
+        { netIncome: { '2023-12-31': 20, '2022-12-31': 10 } }), yahoo), null);   // rev off by 1
 
     // Fiscal ends that differ by a few days are the SAME year (Apple: Yahoo 09-30 vs
     // filing 09-24) and must still reconcile.
-    const offset = {
-        datekey: ['TTM', '2023-12-28', '2022-12-24', '2021-12-25'],
-        revenue: [999, 200, 100, 50],
-        netIncome: [999, 20, 10, 5],
-    };
-    assert.strictEqual(extract(offset, yahoo).field, 'netIncome');
+    assert.ok(reconcile(cand({ revenue: { '2023-12-28': 200, '2022-12-24': 100 } },
+        { netIncome: { '2023-12-28': 20, '2022-12-24': 10 } }), yahoo));
 
     // No overlap to verify against = no proof = nothing taken.
-    assert.strictEqual(extract({ datekey: ['2019-12-31'], revenue: [1], netIncome: [1] }, yahoo), null);
+    assert.strictEqual(reconcile(cand({ revenue: { '2019-12-31': 1 } },
+        { netIncome: { '2019-12-31': 1 } }), yahoo), null);
+
+    // unbrokenRun: nothing on the far side of a gap.
+    // A clean extension backwards is kept whole.
+    assert.deepStrictEqual([...unbrokenRun(['2024', '2025'], ['2022', '2023', '2024', '2025'])].sort(),
+        ['2022', '2023', '2024', '2025']);
+    // The TSLA/GOOG case: 2018 is stranded behind a hole, so it goes.
+    assert.deepStrictEqual([...unbrokenRun(['2024', '2025'], ['2018', '2021', '2022', '2023'])].sort(),
+        ['2021', '2022', '2023', '2024', '2025']);
+    // A gap the store itself already has is respected — nothing before it is added.
+    assert.deepStrictEqual([...unbrokenRun(['2020', '2024', '2025'], ['2019'])].sort(), ['2024', '2025']);
+    // Source years bridging a hole in the store make the whole span contiguous again.
+    assert.deepStrictEqual([...unbrokenRun(['2022', '2025'], ['2023', '2024'])].sort(),
+        ['2022', '2023', '2024', '2025']);
 
     console.log('selftest ok');
 } else if (require.main === module) {

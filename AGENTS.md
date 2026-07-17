@@ -71,7 +71,7 @@ index.html + portfolio.js   all arithmetic in the browser
 | `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
 | `watchlist.json` | Stocks watched but **not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below. | Committed |
-| `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Five years of financials" below). **Manual, one-off — never in CI.** | User's machine only |
+| `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Deeper financial history" below). **Manual, one-off — never in CI.** | User's machine only |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
 | `publish.js` | `npm run publish`: extract → commit holdings.json → rebase → push. | User's machine |
@@ -289,7 +289,7 @@ SPOL.L (an iShares ETF) reports 22.9M of fund income. The test that separates th
 in **any** year*: a real company has EPS somewhere, even a loss-making one, while a Korean
 ticker missing only the TRAILING figure still has annual EPS. Do not use "has revenue".
 
-## Five years of financials (`backfill-earnings.js`)
+## Deeper financial history (`backfill-earnings.js`)
 
 The deep-dive panel's revenue / net-income table comes from `earnings.json`. Yahoo
 **hard-caps annual fundamentals at 4 fiscal years** — a 15-year window returns the same
@@ -301,11 +301,27 @@ history **accretes**: the hourly job merges Yahoo's 4 on top and older years per
 gets the 5th and 6th year over time, but could not produce them on day one — hence the
 backfill.
 
-**Source and why it is safe.** stockanalysis.com carries 5 fiscal years free but has no
-public API; the numbers come from the page's internal SvelteKit `__data.json`, an
-undocumented index-pointer payload that can change shape on any of their deploys. So it is
-used the only way it safely can be: **once, by hand, result committed**. It never runs in
-CI. If it breaks, it breaks on a laptop and the live pipeline is untouched.
+**Two sources, tried deepest first.**
+
+1. **SEC EDGAR** (`data.sec.gov`) — the filings themselves. Free, no key, documented, stable,
+   and ~9–19 fiscal years deep. **US filers only**, but that includes 20-F filers (BABA, TSM,
+   ASML all report under `us-gaap`). Requires a real contact in the User-Agent.
+2. **stockanalysis.com** — 5 fiscal years, but covers HK/Tokyo/Paris/London. No public API;
+   the numbers come from the page's internal SvelteKit `__data.json`, an undocumented
+   index-pointer payload that can change shape on any of their deploys.
+
+Whichever reconciles first wins **outright** — years are never mixed across sources, so a
+fiscal year can't sit on a different definition from the one before it.
+
+**EDGAR's trap: a raw concept mixes annual, quarterly and per-segment rows that share an `end`
+date.** AAPL's `2020-09-26` appears as both 274.5B (the year) and 64.7B (a quarter); taking the
+wrong one is a silent 4x error. Annual rows are the ones on form `10-K`/`20-F` with `fp: FY`
+whose `start..end` spans ~365 days. Later filings restate earlier ones, so the newest filing of
+a year wins.
+
+**Why the scrape is safe.** stockanalysis is exactly what this file says not to trust, so it is
+used the only way it safely can be: **once, by hand, result committed**. It never runs in CI. If
+it breaks, it breaks on a laptop and the live pipeline is untouched.
 
 **The source proves itself, per ticker.** Yahoo's 4 years overlap the source's 5, so every
 overlapping year must reproduce Yahoo *exactly* on revenue and bottom line, or the ticker is
@@ -318,14 +334,21 @@ accepted: **the check picks the field**, so a schema change cannot silently pick
 isn't positive, so P/E Low keeps its documented "cheapest in ~4y" meaning instead of shifting
 when this runs. Verified: after a backfill, 0 of 42 `peLow` values moved.
 
-**Coverage is deliberately partial** (~22 of 43 at 5 years). The rest are refused, not
-guessed:
+**No gaps, ever** (`unbrokenRun`). A filer switches XBRL tags mid-history — Google files
+`Revenues` for its older years and `RevenueFromContractWithCustomer...` for its newer ones — so
+a single validated tag has holes, and the tag covering only the old years can't be validated at
+all (no overlap with Yahoo's four = no proof). What survives is 2017 sitting next to 2021 with
+nothing between. Only the **unbroken run back from the newest year** is kept; anything stranded
+behind a gap is dropped. That is why TSLA and GOOG stay at 5 years while AAPL gets 9.
 
-- **Refused (no reconcile)** — ASML, MC.PA, V, TSLA, BRK-B, QCOM, RMS.PA, NFLX, TSM, COIN,
-  GRMN, 0001.HK. The site's US pages have no "to common" line, so for companies with
-  preferred dividends or minorities its `netIncome` ≠ Yahoo's `nic` (Visa: 327M of preferred
-  dividends). Splicing it in would put one year on a different definition from the next four
-  and make the margin trend a lie. 4 years of one definition beats 5 of two.
+**Coverage is deliberately partial** — 18 of 50 at 6+ years, 15 at 5, 17 at 4. The rest are
+refused, not guessed:
+
+- **Refused (no reconcile)** — V, BRK-B, IBKR, TSM, MC.PA, RMS.PA, 0001.HK, 0006.HK. Yahoo's
+  `nic` subtracts preferred dividends and minorities; where a source has no "to common" line its
+  net income won't match (Visa: 327M of preferred dividends). Splicing it in would put one year
+  on a different definition from the next and make the margin trend a lie. **Four years of one
+  definition beats five of two.**
 - **Not covered** — Frankfurt/Xetra (`.DE`, `.F`), Korea (`.KS`), and OTC ADRs (XIACY, CCOEY,
   KWHIY, TKOMY), which have quote pages but no financials.
 

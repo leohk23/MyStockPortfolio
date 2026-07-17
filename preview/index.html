@@ -509,8 +509,9 @@
                 const isOperating = (e?.years || []).some(y => y.eps != null);
                 // Only years that actually carry a top line — a year can arrive with EPS and no
                 // revenue, because Yahoo caps each field on its own 4-point window.
-                // Six: Yahoo caps at 4 and backfill-earnings.js tops that up to 5, so the 6th
-                // appears on its own as the store accretes — no change needed here.
+                // Six: Yahoo caps at 4, and backfill-earnings.js reaches deeper (SEC EDGAR gives
+                // ~9-19 for US filers, stockanalysis 5 elsewhere). Where a source is refused or
+                // absent this shows what exists — 4 or 5 — rather than padding it.
                 const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
