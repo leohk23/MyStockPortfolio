@@ -229,6 +229,33 @@ selftest asserts a holding and a watchlist entry on the same quote agree.
 Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first
 paint). Fine for a dozen; reconsider at 30+.
 
+## Yahoo's 4-point cap is PER FIELD, and the windows don't line up
+
+The single nastiest thing about the fundamentals endpoint. Each `type=` you ask for gets its
+own ~4-point window, and they are **not aligned**:
+
+```
+MC.PA    annualTotalRevenue    2022 2023 2024 2025
+         annualDilutedEPS      2021 2022 2023 2024      <- no 2025
+2638.HK  annualTotalRevenue    2021 2022 2023 2024      <- no 2025
+         annualDilutedEPS      2022 2023 2024 2025
+```
+
+So **never filter fiscal years on one field's presence.** `fetchAnnualEps` used to key years on
+EPS, which silently discarded LVMH's FY2025 for six months after it was published — Yahoo had
+sent the revenue and the net income all along. Six companies were stuck on FY2024 before this
+was spotted. Every row Yahoo returns is now kept, and consumers filter for what they need
+(the panel takes years with revenue; `troughPe()` takes years with positive EPS).
+
+`backfill-earnings.js` has the matching rule: a fiscal year you already hold is **not
+necessarily complete**. It patches missing `rev`/`nic` into an existing year rather than
+skipping it as "already have" (that is how 2638.HK FY2025 gets its top line).
+
+**A fund is not an operating company, and Yahoo will hand back "revenue" for one anyway** —
+SPOL.L (an iShares ETF) reports 22.9M of fund income. The test that separates them is *no EPS
+in **any** year*: a real company has EPS somewhere, even a loss-making one, while a Korean
+ticker missing only the TRAILING figure still has annual EPS. Do not use "has revenue".
+
 ## Five years of financials (`backfill-earnings.js`)
 
 The deep-dive panel's revenue / net-income table comes from `earnings.json`. Yahoo
@@ -266,8 +293,14 @@ guessed:
   preferred dividends or minorities its `netIncome` ≠ Yahoo's `nic` (Visa: 327M of preferred
   dividends). Splicing it in would put one year on a different definition from the next four
   and make the margin trend a lie. 4 years of one definition beats 5 of two.
-- **Not covered** — Frankfurt/Xetra (`.DE`, `.F`), and OTC ADRs (XIACY, CCOEY, KWHIY, TKOMY),
-  which have quote pages but no financials.
+- **Not covered** — Frankfurt/Xetra (`.DE`, `.F`), Korea (`.KS`), and OTC ADRs (XIACY, CCOEY,
+  KWHIY, TKOMY), which have quote pages but no financials.
+
+**`NW0.DE` (CSG N.V.) has fabricated fundamentals and should not be trusted.** Yahoo's `nic ÷
+eps` is *exactly* 1,000,000,000 for every year — a placeholder share count — and it shows
+revenue collapsing 24.9B → 1.7B for a €13 stock. It is stuck on FY2024, and no free source
+covers Xetra, so it cannot be repaired. It is the one holding whose financials panel is
+knowingly wrong.
 
 Re-run `npm run backfill` after adding a holding; it is incremental and skips tickers that
 are already complete.

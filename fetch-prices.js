@@ -193,13 +193,16 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
             }
             // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
             // earnings. That gets cached. A thrown error does NOT (see the caller).
-            // Keyed on EPS: a year with revenue but no EPS is a stub Yahoo sometimes emits for
-            // the current, unreported year, and it would show up as a fake 100%-margin-collapse.
+            //
+            // Every row Yahoo sent is kept, whichever fields it carries. Do NOT filter years on
+            // any single field: the 4-point cap applies PER FIELD and the windows do not line up
+            // — MC.PA returns revenue for 2022-25 but diluted EPS only for 2021-24, while
+            // 2638.HK is the exact reverse. Keying on EPS silently dropped LVMH's FY2025 for six
+            // months after it was published. Consumers filter for what they need instead: the
+            // financials panel takes years with revenue, troughPe() takes years with positive EPS.
             return {
                 currency,
-                years: Object.keys(rows).sort()
-                    .filter(date => rows[date].eps != null)
-                    .map(date => ({ date, ...rows[date] })),
+                years: Object.keys(rows).sort().map(date => ({ date, ...rows[date] })),
             };
         } catch (e) {
             lastErr = e;
@@ -308,7 +311,9 @@ const EARNINGS_MAX_AGE_DAYS = 7;
 // from "Yahoo has no revenue for this ticker", so the second case would refetch every ticker,
 // every run, forever. v2 = + net income (EPS alone can't survive a split — see normaliseEps).
 // v3 = + revenue and net income to common, for the financials panel.
-const EARNINGS_V = 3;
+// v4 = stopped keying years on EPS, which discarded fiscal years Yahoo HAD sent revenue for
+//      (LVMH's FY2025 was missing for six months). Forces one refetch to recover them.
+const EARNINGS_V = 4;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }

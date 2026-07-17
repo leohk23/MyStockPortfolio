@@ -161,14 +161,28 @@ async function main() {
             await sleep();
             continue;
         }
-        const have = new Set(entry.years.map(y => fyOf(y.date)));
-        const fresh = [...got.years.entries()].filter(([fy]) => !have.has(fy)).map(([, v]) => v);
-        if (!fresh.length) { unchanged++; await sleep(); continue; }
+        // A year we already hold is NOT necessarily complete. Yahoo caps each field at 4 points
+        // on windows that don't line up, so a year can arrive carrying EPS but no revenue
+        // (2638.HK FY2025). Those get patched in place rather than skipped as "already have".
+        const byFy = new Map(entry.years.map(y => [fyOf(y.date), y]));
+        const fresh = [], patched = [];
+        for (const [fy, v] of got.years) {
+            const existing = byFy.get(fy);
+            if (!existing) { fresh.push(v); continue; }
+            if (existing.rev == null || existing.nic == null) {
+                // Keep Yahoo's own date and its eps/ni — only fill the holes.
+                if (existing.rev == null) existing.rev = v.rev;
+                if (existing.nic == null) existing.nic = v.nic;
+                patched.push(fy);
+            }
+        }
+        if (!fresh.length && !patched.length) { unchanged++; await sleep(); continue; }
 
         entry.years = [...entry.years, ...fresh].sort((a, b) => a.date.localeCompare(b.date));
-        added += fresh.length;
-        console.log(`  +${String(fresh.length).padEnd(3)} ${yahoo.padEnd(9)} ${fresh.map(f => fyOf(f.date)).join(' ')}`
-            + `  (verified on ${got.field})`);
+        added += fresh.length + patched.length;
+        const what = [fresh.length ? `+${fresh.map(f => fyOf(f.date)).join(' ')}` : '',
+            patched.length ? `filled ${patched.join(' ')}` : ''].filter(Boolean).join(', ');
+        console.log(`  ok   ${yahoo.padEnd(9)} ${what}  (verified on ${got.field})`);
         await sleep();
     }
 

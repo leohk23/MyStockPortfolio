@@ -502,19 +502,28 @@
             loadEarnings().then(store => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
                 const e = store.eps[leg.yahoo];
-                // Only years that actually carry a top line. Yahoo emits the odd EPS-only stub
-                // (NTDOY FY2022), which would render as a row of dashes.
+                // A fund is not an operating company, and Yahoo will still hand back "revenue"
+                // for one (SPOL.L, an ETF, reports 22.9M of fund income). No EPS in ANY year is
+                // what separates the two: a real company has EPS somewhere, even a loss-making
+                // one, and a Korean ticker that lacks only the TRAILING figure still has annual.
+                const isOperating = (e?.years || []).some(y => y.eps != null);
+                // Only years that actually carry a top line — a year can arrive with EPS and no
+                // revenue, because Yahoo caps each field on its own 4-point window.
                 // Six: Yahoo caps at 4 and backfill-earnings.js tops that up to 5, so the 6th
                 // appears on its own as the store accretes — no change needed here.
-                const years = (e?.years || []).filter(y => y.rev != null).slice(-6);
+                const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';
                     return;
                 }
-                ccy.textContent = e.currency ? `— ${e.currency}` : '';
 
                 const fy = y => +y.date.slice(0, 4);
+                // Name the latest fiscal year and the date it ended. "FY2026" on a March
+                // year-end is current, not a typo; "FY2024" in mid-2026 means the data is stale.
+                // Without the end date you cannot tell those apart.
+                const latest = years[years.length - 1];
+                ccy.textContent = `${e.currency ? `— ${e.currency} ` : ''}· latest FY${fy(latest)}, ended ${ymd(latest.date)}`;
                 // Each value carries its growth beneath it in the same cell, so the table is four
                 // columns (FY, Revenue, Net income, Margin) not six — the two YoY columns were what
                 // overflowed a phone.
@@ -527,7 +536,7 @@
                     const p = before && fy(y) - fy(before) === 1 ? before : null;
                     const margin = y.rev > 0 && y.nic != null ? y.nic / y.rev : null;
                     return `<tr>
-                        <td>${y.date.slice(0, 4)}</td>
+                        <td title="Fiscal year ended ${ymd(y.date)}">${fy(y)}</td>
                         ${cell(y.rev, yoy(y.rev, p?.rev))}
                         ${cell(y.nic, yoy(y.nic, p?.nic))}
                         <td class="${margin == null ? 'muted' : ''}">${margin == null ? '–' : plain(margin)}</td>
