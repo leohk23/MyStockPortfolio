@@ -277,14 +277,13 @@ would retry daily forever.
 
 `guidance.json` is deliberately separate from Yahoo's filed annual history. Guidance is
 forward-looking, usually quarterly, and each company guides different measures, so the page
-shows the company's values literally beneath the financials table rather than forcing them into
-the annual rows or deriving missing fields. Every entry must carry its period, issue date,
+shows a clearly labelled estimate row in the financials table, with blanks for accounts the
+company did not guide. Every entry must carry its period, issue date,
 official investor-relations URL and any material assumption. Never annualise, FX-convert or
 fill a metric the company did not guide. The one explicit exception is NVIDIA's labelled
-`runRatePe`: it annualises the guided quarter's after-tax operating run-rate, shows the resulting
-EPS range and assumptions beside the P/E, and excludes un-guided other income/expense. Update
-it by hand after results; there is no scraper until the three-stock pilot proves the maintenance
-cost is worth automating.
+`runRatePe`: it derives the aligned income/margin accounts, moves its annualised P/E into the
+valuation box, and excludes un-guided other income/expense. Update it by hand after results;
+there is no scraper until the three-stock pilot proves the maintenance cost is worth automating.
 
 ## When annual figures get fetched
 
