@@ -465,7 +465,7 @@
         let historyPromise = null;
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
         let earningsPromise = null;
-        let GUIDANCE = null;     // manual pilot: company-issued outlook, deep dive only
+        let GUIDANCE = null;     // manual company-issued outlook, deep dive only
         let guidancePromise = null;
         let sort = { key: 'value', dir: -1 };
         // Deliberately not persisted: a filter restored on load would hide rows with no
@@ -504,7 +504,7 @@
             return earningsPromise;
         }
 
-        // Guidance is optional: a missing pilot file must never hide the filed financials.
+        // Guidance is optional: a missing file must never hide the filed financials.
         function loadGuidance() {
             if (GUIDANCE) return Promise.resolve(GUIDANCE);
             if (!guidancePromise) guidancePromise = fetch(DATA + 'guidance.json?t=' + Date.now())
@@ -628,8 +628,11 @@
                 ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="Official guidance issued ${ymd(escapeHTML(g.issued))}">${escapeHTML(label)}</a>`
                 : escapeHTML(label);
             const cells = values.map(v => `<td>${v == null ? '<span class="muted">–</span>' : escapeHTML(v)}</td>`).join('');
+            const horizon = /^Q\d/.test(g.period)
+                ? `${g.period} is one quarter; reported rows are full fiscal years.`
+                : `${g.period} is a full-year forecast.`;
             const notes = [
-                `Guidance: ${g.period} is one quarter; reported rows are full fiscal years.`,
+                `Guidance: ${horizon}`,
                 ...(g.note ? [`Assumption: ${g.note}`] : []),
                 pe
                     ? 'Derived: operating income, op margin, net income, net margin and quarterly EPS; revenue is company-issued.'

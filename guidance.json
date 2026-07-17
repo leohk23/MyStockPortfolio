@@ -1,44 +1,315 @@
 {
- "NVDA": {
-  "period": "Q2 FY2027",
-  "issued": "2026-05-20",
-  "source": "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-First-Quarter-Fiscal-2027/default.aspx",
-  "metrics": [
-   { "label": "Revenue", "value": "US$91.0B ±2%" },
-   { "label": "Gross margin (GAAP)", "value": "74.9% ±0.5pp" },
-   { "label": "Operating expenses (GAAP)", "value": "~US$8.5B" }
-  ],
-  "runRatePe": {
-   "revenue": 91000000000,
-   "revenueTolerance": 0.02,
-   "grossMargin": 0.749,
-   "grossMarginTolerance": 0.005,
-   "operatingExpenses": 8500000000,
-   "taxRate": [0.16, 0.18],
-   "dilutedShares": 24391000000
+  "_coverage": {
+    "checked": "2026-07-17",
+    "scope": "Operating-company tickers in holdings.json and watchlist.json; funds and ETFs excluded.",
+    "noMatchingGuidance": [
+      "1113.HK", "1211.HK", "2638.HK", "9961.HK", "GOOG", "AAPL", "0001.HK",
+      "MC.PA", "DIS", "BLK", "BYDDY", "OR.PA", "BRK-B", "RMS.PA", "V", "TSLA",
+      "COIN", "MKS.L", "BABA", "NW0.DE", "XIACY", "0006.HK", "0002.HK", "1137.HK",
+      "000660.KS", "4063.T", "GME", "IBKR"
+    ],
+    "note": "Checked official investor-relations releases and presentations. These companies had no current quantitative guidance matching the financial-table accounts; qualitative, segment-only, gross-margin, expense and capex outlooks are not substituted."
   },
-  "note": "Excludes Data Center compute revenue from China."
- },
- "TSM": {
-  "period": "Q3 2026",
-  "issued": "2026-07-16",
-  "source": "https://investor.tsmc.com/english/quarterly-results/2026/q2",
-  "metrics": [
-   { "label": "Revenue", "value": "US$44.6–45.8B" },
-   { "label": "Gross margin", "value": "65.0–67.0%" },
-   { "label": "Operating margin", "value": "56.0–58.0%" }
-  ],
-  "note": "Assumes US$1 = NT$32.0."
- },
- "AMZN": {
-  "period": "Q2 2026",
-  "issued": "2026-04-29",
-  "source": "https://ir.aboutamazon.com/news-release/news-release-details/2026/Amazon-com-Announces-First-Quarter-Results/",
-  "metrics": [
-   { "label": "Net sales", "value": "US$194.0–199.0B" },
-   { "label": "Sales growth", "value": "16–19%" },
-   { "label": "Operating income", "value": "US$20.0–24.0B" }
-  ],
-  "note": "Assumes Prime Day occurs in Q2 and no additional acquisitions, restructurings or legal settlements."
- }
+  "NVDA": {
+    "period": "Q2 FY2027",
+    "issued": "2026-05-20",
+    "source": "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-First-Quarter-Fiscal-2027/default.aspx",
+    "metrics": [
+      { "label": "Revenue", "value": "US$91.0B ±2%" },
+      { "label": "Gross margin (GAAP)", "value": "74.9% ±0.5pp" },
+      { "label": "Operating expenses (GAAP)", "value": "~US$8.5B" }
+    ],
+    "runRatePe": {
+      "revenue": 91000000000,
+      "revenueTolerance": 0.02,
+      "grossMargin": 0.749,
+      "grossMarginTolerance": 0.005,
+      "operatingExpenses": 8500000000,
+      "taxRate": [0.16, 0.18],
+      "dilutedShares": 24391000000
+    },
+    "note": "Excludes Data Center compute revenue from China."
+  },
+  "TSM": {
+    "period": "Q3 2026",
+    "issued": "2026-07-16",
+    "source": "https://investor.tsmc.com/english/quarterly-results/2026/q2",
+    "metrics": [
+      { "label": "Revenue", "value": "US$44.6–45.8B" },
+      { "label": "Gross margin", "value": "65.0–67.0%" },
+      { "label": "Operating margin", "value": "56.0–58.0%" }
+    ],
+    "note": "Assumes US$1 = NT$32.0."
+  },
+  "AMZN": {
+    "period": "Q2 2026",
+    "issued": "2026-04-29",
+    "source": "https://ir.aboutamazon.com/news-release/news-release-details/2026/Amazon-com-Announces-First-Quarter-Results/",
+    "metrics": [
+      { "label": "Net sales", "value": "US$194.0–199.0B" },
+      { "label": "Sales growth", "value": "16–19%" },
+      { "label": "Operating income", "value": "US$20.0–24.0B" }
+    ],
+    "note": "Assumes Prime Day occurs in Q2 and no additional acquisitions, restructurings or legal settlements."
+  },
+  "META": {
+    "period": "Q2 2026",
+    "issued": "2026-04-29",
+    "source": "https://investor.atmeta.com/investor-news/press-release-details/2026/Meta-Reports-First-Quarter-2026-Results/",
+    "metrics": [
+      { "label": "Revenue", "value": "US$58.0–61.0B" }
+    ],
+    "note": "Assumes an approximately 2% foreign-currency tailwind to year-over-year revenue growth."
+  },
+  "AMD": {
+    "period": "Q2 2026",
+    "issued": "2026-05-05",
+    "source": "https://ir.amd.com/news-events/press-releases/detail/1284/amd-reports-first-quarter-2026-financial-results",
+    "metrics": [
+      { "label": "Revenue", "value": "US$10.9–11.5B" }
+    ],
+    "note": "Revenue midpoint is US$11.2B, plus or minus US$0.3B."
+  },
+  "INTC": {
+    "period": "Q2 2026",
+    "issued": "2026-04-23",
+    "source": "https://www.intc.com/news-events/press-releases/detail/1767/intel-reports-first-quarter-2026-financial-results",
+    "metrics": [
+      { "label": "Revenue", "value": "US$13.8–14.8B" },
+      { "label": "EPS", "value": "US$0.08 GAAP" }
+    ],
+    "note": "EPS is GAAP guidance at the midpoint of the revenue range; non-GAAP EPS guidance is US$0.20."
+  },
+  "DELL": {
+    "period": "Q2 FY2027",
+    "issued": "2026-05-28",
+    "source": "https://investors.delltechnologies.com/news-releases/news-release-details/dell-technologies-delivers-first-quarter-fiscal-2027-financial",
+    "metrics": [
+      { "label": "Revenue", "value": "US$44.0–45.0B" },
+      { "label": "EPS", "value": "US$4.48 GAAP" }
+    ],
+    "note": "EPS is GAAP guidance at the midpoint; non-GAAP EPS guidance at the midpoint is US$4.80."
+  },
+  "AVGO": {
+    "period": "Q3 FY2026",
+    "issued": "2026-06-03",
+    "source": "https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-second-quarter-fiscal-year-2026-financial",
+    "metrics": [
+      { "label": "Revenue", "value": "~US$29.4B" },
+      { "label": "Operating margin", "value": "~67% non-GAAP" }
+    ],
+    "note": "Operating margin is non-GAAP; the company says it cannot reconcile projected non-GAAP measures to GAAP without unreasonable effort."
+  },
+  "ASML": {
+    "period": "Q2 2026",
+    "issued": "2026-04-15",
+    "source": "https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results",
+    "metrics": [
+      { "label": "Net sales", "value": "€8.4–9.0B" }
+    ],
+    "note": "Gross-margin guidance of 51–52% is omitted because it does not match the financial-table accounts."
+  },
+  "MSFT": {
+    "period": "Q4 FY2026",
+    "issued": "2026-04-29",
+    "source": "https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3",
+    "metrics": [
+      { "label": "Revenue", "value": "US$86.7–87.8B" }
+    ],
+    "note": "Total-company revenue guidance from the official earnings call; outlook includes about US$0.9B of one-time retirement-program costs in cost of revenue and operating expenses."
+  },
+  "NOW": {
+    "period": "Q2 2026",
+    "issued": "2026-04-22",
+    "source": "https://investor.servicenow.com/news/news-details/2026/ServiceNow-Reports-First-Quarter-2026-Financial-Results/default.aspx",
+    "metrics": [
+      { "label": "Operating margin", "value": "26.5% non-GAAP" },
+      { "label": "Shares", "value": "1.04B" }
+    ],
+    "note": "Operating margin is non-GAAP. Subscription-revenue guidance is omitted because the historical Revenue column is total company revenue."
+  },
+  "8001.T": {
+    "period": "FY2026",
+    "issued": "2026-05-01",
+    "source": "https://www.itochu.co.jp/en/ir/finance/outlook/index.html",
+    "metrics": [
+      { "label": "Net income", "value": "¥950.0B" },
+      { "label": "EPS", "value": "¥136.75" }
+    ],
+    "note": "Net income is attributable to ITOCHU; EPS reflects the five-for-one share split on January 1, 2026."
+  },
+  "6288.HK": {
+    "period": "FY2026",
+    "issued": "2026-04-09",
+    "source": "https://www.fastretailing.com/eng/ir/library/pdf/20260409_results_en.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "¥3.900T" },
+      { "label": "Operating income", "value": "¥700.0B" },
+      { "label": "Operating margin", "value": "17.9%" },
+      { "label": "Net income", "value": "¥480.0B" },
+      { "label": "Net margin", "value": "12.3%" }
+    ],
+    "note": "Net income is profit attributable to owners of the parent."
+  },
+  "7532.T": {
+    "period": "FY2026",
+    "issued": "2026-02-12",
+    "source": "https://ppih.co.jp/en/ir/highlight/forecast/",
+    "metrics": [
+      { "label": "Net sales", "value": "¥2.435T" },
+      { "label": "Operating income", "value": "¥174.0B" },
+      { "label": "Net income", "value": "¥107.0B" },
+      { "label": "EPS", "value": "¥35.80" }
+    ],
+    "note": "Forecast was reaffirmed after Q3; EPS reflects the five-for-one stock split effective October 1, 2025."
+  },
+  "QCOM": {
+    "period": "Q3 FY2026",
+    "issued": "2026-04-29",
+    "source": "https://s204.q4cdn.com/645488518/files/doc_financials/2026/q2/FY2026-2nd-Quarter-Earnings-Release.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "US$9.2–10.0B" },
+      { "label": "EPS", "value": "US$1.26–1.46 GAAP" }
+    ],
+    "note": "EPS is GAAP; non-GAAP diluted EPS guidance is US$2.10–2.30."
+  },
+  "ARM": {
+    "period": "Q1 FY2027",
+    "issued": "2026-05-06",
+    "source": "https://investors.arm.com/node/8141/html",
+    "metrics": [
+      { "label": "Revenue", "value": "US$1.21–1.31B" },
+      { "label": "Diluted EPS", "value": "US$0.36–0.44 non-GAAP" }
+    ],
+    "note": "EPS is non-GAAP; the company says it cannot reconcile projected non-GAAP measures to GAAP without unreasonable effort."
+  },
+  "PLTR": {
+    "period": "Q2 2026",
+    "issued": "2026-05-04",
+    "source": "https://investors.palantir.com/files/Palantir%20-%20Q1%202026%20Business%20Update.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "US$1.797–1.801B" },
+      { "label": "Operating income", "value": "US$1.063–1.067B adjusted" }
+    ],
+    "note": "Operating income is adjusted/non-GAAP; Palantir separately expects GAAP operating income and net income in each quarter of 2026."
+  },
+  "GRMN": {
+    "period": "FY2026",
+    "issued": "2026-04-29",
+    "source": "https://s25.q4cdn.com/374139208/files/doc_financials/2026/q1/2026_Q1_Earnings_Press_Release.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "~US$7.9B" },
+      { "label": "EPS", "value": "US$9.35 pro forma" }
+    ],
+    "note": "EPS is pro forma/non-GAAP; Garmin cannot estimate all forward-looking reconciling items."
+  },
+  "2802.T": {
+    "period": "FY2026",
+    "issued": "2026-05-07",
+    "source": "https://www.ajinomoto.co.jp/company/en/ir/library/result/main/013/teaserItems1/0/linkList/06/link/FY25Q4_Tanshin_E.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "¥1.723T" },
+      { "label": "Net income", "value": "¥120.0B" }
+    ],
+    "note": "Officially labelled sales and profit attributable to owners of the parent. Business-profit guidance is omitted because it is not the same account as operating income."
+  },
+  "7011.T": {
+    "period": "FY2026",
+    "issued": "2026-05-12",
+    "source": "https://www.mhi.com/finance/library/result",
+    "metrics": [
+      { "label": "Revenue", "value": "¥5.400T" },
+      { "label": "Net income", "value": "¥380.0B" }
+    ],
+    "note": "Net income is profit attributable to owners of the parent. Profit from business activities is omitted because it is not labelled operating income; assumes US$1 = ¥150 and €1 = ¥180."
+  },
+  "KWHIY": {
+    "period": "FY2026",
+    "issued": "2026-05-12",
+    "source": "https://global.kawasaki.com/en/corp/ir/library/pdf/sta_260512-1e.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "¥2.560T" },
+      { "label": "Net income", "value": "¥110.0B" },
+      { "label": "EPS", "value": "¥131.61" }
+    ],
+    "note": "Net income is attributable to owners of the parent. Business-profit guidance is omitted because it is not labelled operating income; EPS reflects the five-for-one stock split effective April 1, 2026."
+  },
+  "CCOEY": {
+    "period": "FY2026",
+    "issued": "2026-05-13",
+    "source": "https://www.capcom.co.jp/ir/english/finance/review.html",
+    "metrics": [
+      { "label": "Net sales", "value": "¥210.0B" },
+      { "label": "Operating income", "value": "¥83.0B" },
+      { "label": "Operating margin", "value": "39.5%" },
+      { "label": "Net income", "value": "¥58.0B" },
+      { "label": "EPS", "value": "¥138.65" }
+    ],
+    "note": "Net income is profit attributable to owners of the parent; Capcom provides full-year forecasts only."
+  },
+  "NTDOY": {
+    "period": "FY2026",
+    "issued": "2026-05-08",
+    "source": "https://www.nintendo.co.jp/ir/pdf/2026/260508e.pdf",
+    "metrics": [
+      { "label": "Net sales", "value": "¥2.050T" },
+      { "label": "Operating income", "value": "¥370.0B" },
+      { "label": "Net income", "value": "¥310.0B" },
+      { "label": "EPS", "value": "¥268.90" }
+    ],
+    "note": "Net income is profit attributable to owners of the parent; assumes US$1 = ¥150 and €1 = ¥175."
+  },
+  "NTO.F": {
+    "period": "FY2026",
+    "issued": "2026-05-08",
+    "source": "https://www.nintendo.co.jp/ir/pdf/2026/260508e.pdf",
+    "metrics": [
+      { "label": "Net sales", "value": "¥2.050T" },
+      { "label": "Operating income", "value": "¥370.0B" },
+      { "label": "Net income", "value": "¥310.0B" },
+      { "label": "EPS", "value": "¥268.90" }
+    ],
+    "note": "Net income is profit attributable to owners of the parent; assumes US$1 = ¥150 and €1 = ¥175."
+  },
+  "NFLX": {
+    "period": "Q3 2026",
+    "issued": "2026-07-16",
+    "source": "https://s22.q4cdn.com/959853165/files/doc_financials/2026/q2/FINAL-Q2-26-Shareholder-Letter.pdf",
+    "metrics": [
+      { "label": "Revenue", "value": "US$12.860B" },
+      { "label": "Operating income", "value": "US$4.268B" },
+      { "label": "Operating margin", "value": "33.2%" },
+      { "label": "Net income", "value": "US$3.452B" },
+      { "label": "Diluted EPS", "value": "US$0.82" }
+    ],
+    "note": "Quarterly forecast from the official shareholder letter; full-year revenue outlook is US$51.0–51.4B with a 31.5% operating margin."
+  },
+  "5332.T": {
+    "period": "FY2026",
+    "issued": "2026-04-30",
+    "source": "https://jp.toto.com/company/ir/en_governance/",
+    "metrics": [
+      { "label": "Operating income", "value": "¥60.0B" }
+    ],
+    "note": "Only the full-year consolidated operating-income forecast is included; other table accounts were not available in a matching official English source."
+  },
+  "TKOMY": {
+    "period": "FY2026",
+    "issued": "2026-05-26",
+    "source": "https://www.tokiomarinehd.com/en/ir/event/presentation/2026/f5hrqd0000004pev-att/IR_conference_FY2026_e.pdf",
+    "metrics": [
+      { "label": "Net income", "value": "¥830.0B" }
+    ],
+    "note": "Net income is the consolidated financial-accounting projection under IFRS; adjusted profit measures are omitted."
+  },
+  "005930.KS": {
+    "period": "Q2 2026",
+    "issued": "2026-07-07",
+    "source": "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.84695/",
+    "metrics": [
+      { "label": "Revenue", "value": "₩170–172T" },
+      { "label": "Operating income", "value": "₩89.3–89.5T" }
+    ],
+    "note": "Pre-earnings guidance under K-IFRS; official midpoints are ₩171T sales and ₩89.4T operating profit, pending the July 30 results."
+  }
 }

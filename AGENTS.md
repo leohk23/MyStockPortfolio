@@ -71,7 +71,7 @@ index.html + portfolio.js   all arithmetic in the browser
 | `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
 | `watchlist.json` | Stocks watched but **not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below. | Committed |
-| `guidance.json` | Small manual pilot of company-issued near-term guidance. Literal display values + period, issue date, official source and material assumptions; currently NVDA, TSM and AMZN. | Committed |
+| `guidance.json` | Manual company-issued guidance for operating-company holdings/watchlist names. Literal display values + period, issue date, official source and material assumptions; `_coverage` records names checked with no matching quantitative guidance. | Committed |
 | `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Deeper financial history" below). **Manual, one-off — never in CI.** | User's machine only |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
@@ -273,17 +273,19 @@ ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a defin
 (cached, so it backs off) rather than a transient error (retried) — otherwise every ETF payer
 would retry daily forever.
 
-## Official company guidance (manual pilot)
+## Official company guidance
 
 `guidance.json` is deliberately separate from Yahoo's filed annual history. Guidance is
-forward-looking, usually quarterly, and each company guides different measures, so the page
+forward-looking, quarterly or annual, and each company guides different measures, so the page
 shows a clearly labelled estimate row in the financials table, with blanks for accounts the
 company did not guide. Every entry must carry its period, issue date,
 official investor-relations URL and any material assumption. Never annualise, FX-convert or
 fill a metric the company did not guide. The one explicit exception is NVIDIA's labelled
 `runRatePe`: it derives the aligned income/margin/EPS accounts, moves its annualised P/E into the
-valuation box, and excludes un-guided other income/expense. Update it by hand after results;
-there is no scraper until the three-stock pilot proves the maintenance cost is worth automating.
+valuation box, and excludes un-guided other income/expense. Update entries by hand after results;
+there is no generic scraper because companies publish incompatible measures and formats. Keep
+`_coverage.checked` and `noMatchingGuidance` current so a blank row means "official sources
+checked, no matching quantitative guidance" rather than "forgotten".
 
 ## When annual figures get fetched
 
