@@ -280,8 +280,11 @@ forward-looking, usually quarterly, and each company guides different measures, 
 shows the company's values literally beneath the financials table rather than forcing them into
 the annual rows or deriving missing fields. Every entry must carry its period, issue date,
 official investor-relations URL and any material assumption. Never annualise, FX-convert or
-fill a metric the company did not guide. Update it by hand after results; there is no scraper
-until the three-stock pilot proves the maintenance cost is worth automating.
+fill a metric the company did not guide. The one explicit exception is NVIDIA's labelled
+`runRatePe`: it annualises the guided quarter's after-tax operating run-rate, shows the resulting
+EPS range and assumptions beside the P/E, and excludes un-guided other income/expense. Update
+it by hand after results; there is no scraper until the three-stock pilot proves the maintenance
+cost is worth automating.
 
 ## When annual figures get fetched
 

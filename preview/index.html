@@ -577,19 +577,43 @@
             if (el) el.outerHTML = `<span id="deep-peg"${title ? ` title="${title}"` : ''}>${html}</span>`;
         };
 
-        // Literal company figures: do not convert currencies, annualise quarters, or invent
-        // fields a company did not guide. The source stays beside the figures for auditability.
-        const guidanceHTML = g => {
+        // Annualised operating run-rate: a deliberately labelled estimate, not company guidance.
+        // It excludes other income/expense because NVIDIA did not guide it.
+        const guidancePe = (g, price) => {
+            const p = g?.runRatePe;
+            if (!p || !(price > 0) || !Array.isArray(p.taxRate)) return null;
+            const inputs = [p.revenue, p.revenueTolerance, p.grossMargin,
+                p.grossMarginTolerance, p.operatingExpenses, ...p.taxRate, p.dilutedShares];
+            if (!inputs.every(Number.isFinite) || p.taxRate.length !== 2 || !(p.dilutedShares > 0)) return null;
+            const annualEps = (revenue, margin, tax) =>
+                (revenue * margin - p.operatingExpenses) * (1 - tax) / p.dilutedShares * 4;
+            const epsLow = annualEps(p.revenue * (1 - p.revenueTolerance),
+                p.grossMargin - p.grossMarginTolerance, p.taxRate[1]);
+            const epsHigh = annualEps(p.revenue * (1 + p.revenueTolerance),
+                p.grossMargin + p.grossMarginTolerance, p.taxRate[0]);
+            return epsLow > 0 && epsHigh >= epsLow
+                ? { low: price / epsHigh, high: price / epsLow, epsLow, epsHigh } : null;
+        };
+
+        // Literal company figures stay literal. Only the optional run-rate P/E above is derived,
+        // and its workings remain beside it for auditability.
+        const guidanceHTML = (g, price) => {
             const metrics = (g?.metrics || []).filter(m => m?.label && m?.value);
             if (!metrics.length || !g.period || !g.issued) return '';
+            const pe = guidancePe(g, price);
+            const shown = pe ? [...metrics, {
+                label: 'Run-rate P/E', value: `${num2(pe.low)}–${num2(pe.high)}×`
+            }] : metrics;
             const source = String(g.source || '');
             const link = source.startsWith('https://')
                 ? ` · <a href="${escapeHTML(source)}" target="_blank" rel="noopener">official source</a>` : '';
             return `<section class="guidance" aria-label="Company guidance">
                 <h4>Company guidance <span>— ${escapeHTML(g.period)} · issued ${ymd(escapeHTML(g.issued))}${link}</span></h4>
-                <table><thead><tr>${metrics.map(m => `<th>${escapeHTML(m.label)}</th>`).join('')}</tr></thead>
-                    <tbody><tr>${metrics.map(m => `<td>${escapeHTML(m.value)}</td>`).join('')}</tr></tbody></table>
-                ${g.note ? `<div class="deep-note">${escapeHTML(g.note)} Forward-looking; no estimates derived.</div>` : ''}
+                <table><thead><tr>${shown.map(m => `<th>${escapeHTML(m.label)}</th>`).join('')}</tr></thead>
+                    <tbody><tr>${shown.map(m => `<td>${escapeHTML(m.value)}</td>`).join('')}</tr></tbody></table>
+                <div class="deep-note">${g.note ? `${escapeHTML(g.note)} ` : ''}Forward-looking.${pe
+                    ? ` Run-rate P/E is derived, not company-issued: current price ÷ annualised guided EPS of $${num2(pe.epsLow)}–$${num2(pe.epsHigh)}. Uses guided revenue, GAAP gross margin and GAAP operating expenses; 16–18% guided tax; 24.391B latest reported diluted shares; excludes other income/expense.`
+                    : ' No estimates derived.'}</div>
             </section>`;
         };
 
@@ -604,7 +628,7 @@
             Promise.all([loadEarnings(), loadGuidance()]).then(([store, guidanceStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
                 const e = store.eps[leg.yahoo];
-                const guidance = guidanceHTML(guidanceStore[leg.yahoo]);
+                const guidance = guidanceHTML(guidanceStore[leg.yahoo], leg.quote.price);
                 // A fund is not an operating company, and Yahoo will still hand back "revenue"
                 // for one (SPOL.L, an ETF, reports 22.9M of fund income). No EPS in ANY year is
                 // what separates the two: a real company has EPS somewhere, even a loss-making
