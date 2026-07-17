@@ -451,9 +451,13 @@
         const watchOf = yahoo => WATCH.find(w => w.yahoo === yahoo) || null;
         const legOf = yahoo => STATE.rows.flatMap(r => r.legs).find(l => l.yahoo === yahoo)
             || watchOf(yahoo) || null;
+        // Always one decimal. `maximum` alone lets Intl drop a trailing zero, so a column reads
+        // 274.5B / 97B / 391B / 112B — ragged, and the eye can't compare magnitudes down it.
+        // `minimum` pins it: 274.5B / 97.0B / 391.0B / 112.0B.
         const big = v => v == null ? '–' : (v < 0 ? '−' : '')
-            + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-                .format(Math.abs(v));
+            + new Intl.NumberFormat('en', {
+                notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1,
+            }).format(Math.abs(v));
         const yoy = (v, prev) => v == null || prev == null || prev <= 0 ? null : v / prev - 1;
         // Compound growth across the window. Undefined through a sign change: a company that
         // went from a loss to a profit has no meaningful growth RATE, and the root of a negative
