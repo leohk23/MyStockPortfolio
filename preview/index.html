@@ -97,9 +97,6 @@
         /* ---- deep dive ---- */
         #deep { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px;
             padding: 14px; margin-bottom: 22px; }
-        #deep-head { margin-bottom: 12px; }
-        #deep-name { font-size: 16px; font-weight: 600; }
-        #deep-sub { font-size: 12px; color: var(--text-muted); }
         /* Two columns where there's room, stacked where there isn't.
            minmax(0, …) not minmax(220px, …): a grid track's default minimum is min-content, so
            the nowrap financials table would push the track — and the whole section — wider than
@@ -111,6 +108,16 @@
         .deep-box h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
             color: var(--text-muted); font-weight: 600; margin: 0 0 8px; }
         .deep-box h3 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+        /* The two dates answer "how current is this?" and "when does it change?" — the whole
+           point of the panel is deciding, so they get chips instead of dissolving into the grey
+           run of the heading. Reported is past tense and sits back; next is forward-looking and
+           carries the accent, because it's the one you might act on. */
+        #deep-dates { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+        .date-chip { font-size: 11px; line-height: 1.5; padding: 1px 7px; border-radius: 4px;
+            border: 1px solid var(--line); color: var(--text-secondary); white-space: nowrap; }
+        .date-chip b { font-weight: 600; color: var(--text-primary); }
+        .date-chip.next { border-color: var(--series-port); color: var(--series-port); }
+        .date-chip.next b { color: var(--series-port); }
         #deep-val { margin: 0; font-size: 13px; }
         #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
         #deep-val dt { color: var(--text-secondary); }
@@ -287,12 +294,10 @@
 
     <!-- Deep dive. Shown only while a single stock is charted, so it hangs off the selection
          that already exists (click a row) rather than inventing a second way to drill in.
-         Trade history is NOT here: the chevron on each row already expands it, comments and all. -->
+         Carries no name of its own: the chart directly above already says which stock this is
+         and how many shares. Trade history is not here either — the chevron on each row already
+         expands it, comments and all. -->
     <section id="deep" hidden>
-        <div id="deep-head">
-            <div id="deep-name">–</div>
-            <div id="deep-sub"></div>
-        </div>
         <div id="deep-grid">
             <div class="deep-box">
                 <h3>Valuation</h3>
@@ -300,6 +305,7 @@
             </div>
             <div class="deep-box">
                 <h3>Financials <span id="deep-ccy"></span></h3>
+                <div id="deep-dates"></div>
                 <div id="deep-fin"></div>
             </div>
         </div>
@@ -497,12 +503,6 @@
             if (!leg) { box.hidden = true; return; }
             box.hidden = false;
 
-            document.getElementById('deep-name').textContent = leg.group;
-            // A watched stock has no qty — say so rather than printing "0 shares".
-            document.getElementById('deep-sub').textContent =
-                `${leg.yahoo} · ${leg.geography} · `
-                + (leg.qty > 0 ? `${leg.qty.toLocaleString()} shares` : 'not held · watchlist');
-
             const q = leg.quote, c = q.currency;
             const px = n => n == null ? '–' : c + ' ' + num2(n);
             const rows = [
@@ -540,7 +540,9 @@
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
+            const dates = document.getElementById('deep-dates');
             ccy.textContent = '';
+            dates.innerHTML = '';
             fin.innerHTML = '<span class="deep-note">Loading…</span>';
 
             loadEarnings().then(store => {
@@ -571,10 +573,15 @@
                 const latest = years[years.length - 1];
                 // Yahoo only ever gives a FUTURE date here (fetch-prices drops the stale
                 // last-reported one it also hands back), so its absence means "not scheduled yet",
-                // not "never reports".
+                // not "never reports" — say which, rather than leaving a silent blank.
                 const next = leg.quote.earnings;
-                ccy.textContent = `${e.currency ? `— ${e.currency} ` : ''}· latest FY${fy(latest)}, ended ${ymd(latest.date)}`
-                    + (next ? ` · next results ${ymd(next.date)}${next.estimate ? ' (est.)' : ''}` : '');
+                ccy.textContent = e.currency ? `— ${e.currency}` : '';
+                dates.innerHTML =
+                    `<span class="date-chip">Reported <b>FY${fy(latest)}</b> to ${ymd(latest.date)}</span>`
+                    + (next
+                        ? `<span class="date-chip next">Next results <b>${ymd(next.date)}</b>`
+                            + `${next.estimate ? ' (est.)' : ''}</span>`
+                        : '<span class="date-chip">Next results <b>not scheduled</b></span>');
                 // Each value carries its growth beneath it in the same cell, so the table is four
                 // columns (FY, Revenue, Net income, Margin) not six — the two YoY columns were what
                 // overflowed a phone.
