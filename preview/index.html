@@ -120,6 +120,8 @@
         .date-chip.next b { color: var(--series-port); }
         #deep-val { margin: 0; font-size: 13px; }
         #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+        #deep-val .valuation-group-start { border-top: 1px solid var(--line); margin-top: 4px;
+            padding-top: 7px; }
         #deep-val dt { color: var(--text-secondary); }
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
@@ -139,6 +141,8 @@
         /* Each metric's prior-year change sits directly under its value. */
         #deep-fin .yoy { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        ul.deep-note { padding-left: 17px; margin-bottom: 0; }
+        ul.deep-note li + li { margin-top: 3px; }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -544,21 +548,23 @@
             const rows = [
                 ['Price', px(q.price)],
                 ['EPS (trailing)', px(q.eps)],
-                ['P/E', leg.pe == null ? '–' : num2(leg.pe) + '×'],
-                // Filled by renderFinancials: the growth rate comes from the filed earnings, so
-                // it isn't known until earnings.json lands.
-                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['P/E (trailing)', leg.pe == null ? '–' : num2(leg.pe) + '×',
+                    ' class="valuation-group-start"'],
+                // Filled only where guidance.json carries enough inputs to derive it.
+                ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
+                    ' id="deep-guidance-pe-row" hidden'],
                 leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
-                ['Cheapest P/E', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
-                ['...on', leg.lowDate || '–'],
+                ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
+                // Filled by renderFinancials: its growth rate comes from earnings.json.
+                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
                 ['Implied price', px(leg.implied)],
                 ['vs implied', leg.vsLow == null ? '–'
                     : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
             ].filter(Boolean);
             document.getElementById('deep-val').innerHTML = rows
-                .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')
-                + '<div id="deep-guidance-pe-row" hidden><dt>Guidance P/E</dt><dd id="deep-guidance-pe"></dd></div>';
+                .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
 
             renderFinancials(leg);
         }
@@ -620,10 +626,15 @@
                 ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="Official guidance issued ${ymd(escapeHTML(g.issued))}">${escapeHTML(label)}</a>`
                 : escapeHTML(label);
             const cells = values.map(v => `<td>${v == null ? '<span class="muted">–</span>' : escapeHTML(v)}</td>`).join('');
-            const note = `${g.note ? `${escapeHTML(g.note)} ` : ''}Guidance row is one quarter; reported rows are full fiscal years.${pe
-                ? ' Revenue is company-issued; operating income, op margin, net income and net margin are derived. Uses guided GAAP gross margin and operating expenses, 16–18% guided tax and 24.391B latest reported diluted shares; excludes other income/expense.'
-                : ' No estimates derived.'}`;
-            return { row: `<tr class="guidance-row"><td>${first}</td>${cells}</tr>`, note, pe };
+            const notes = [
+                `Guidance: ${g.period} is one quarter; reported rows are full fiscal years.`,
+                ...(g.note ? [`Assumption: ${g.note}`] : []),
+                pe
+                    ? 'Derived: operating income, op margin, net income and net margin; revenue is company-issued.'
+                    : 'Guidance values are company-issued; missing accounts remain blank.',
+                ...(pe ? ['Inputs: guided GAAP gross margin and operating expenses, 16–18% tax and 24.391B latest reported diluted shares; excludes other income/expense.'] : []),
+            ];
+            return { row: `<tr class="guidance-row"><td>${first}</td>${cells}</tr>`, notes, pe };
         };
 
         function renderFinancials(leg) {
@@ -640,7 +651,7 @@
                 const guidance = guidanceView(guidanceStore[leg.yahoo], leg.quote.price);
                 const guidePe = document.getElementById('deep-guidance-pe');
                 if (guidance?.pe && guidePe) {
-                    guidePe.parentElement.hidden = false;
+                    document.getElementById('deep-guidance-pe-row').hidden = false;
                     guidePe.textContent = `${num2(guidance.pe.low)}–${num2(guidance.pe.high)}×`;
                     guidePe.title = 'Current price divided by annualised guided-quarter EPS';
                 }
@@ -763,10 +774,12 @@
                     </tr></thead>
                     <tbody>${body}${foot}${guidance?.row || ''}</tbody>
                 </table>
-                <div class="deep-note">Net income is attributable to common shareholders (after
-                    minorities); shares are diluted. Shares and operating income (and its margin)
-                    cover Yahoo's recent years only. Reported, never FX-converted.${guidance
-                        ? ` ${guidance.note}` : ''}</div>`;
+                <ul class="deep-note">${[
+                    'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
+                    'Coverage: shares, operating income and op margin cover Yahoo\'s recent years only.',
+                    'Currency: reported figures are never FX-converted.',
+                    ...(guidance?.notes || []),
+                ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
             }).catch(err => {
                 fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
             });
