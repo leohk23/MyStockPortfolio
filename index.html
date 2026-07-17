@@ -120,6 +120,8 @@
         .date-chip.next b { color: var(--series-port); }
         #deep-val { margin: 0; font-size: 13px; }
         #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+        #deep-val .valuation-group-start { border-top: 1px solid var(--line); margin-top: 4px;
+            padding-top: 7px; }
         #deep-val dt { color: var(--text-secondary); }
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
@@ -134,9 +136,15 @@
             border-bottom: 1px solid var(--line); }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
+        #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
+        #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
+        #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
+        #deep-fin tr.guidance-row td:first-child, #deep-fin tr.guidance-row a { color: var(--series-port); }
         /* Each metric's prior-year change sits directly under its value. */
         #deep-fin .yoy { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        ul.deep-note { padding-left: 17px; margin-bottom: 0; }
+        ul.deep-note li + li { margin-top: 3px; }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -225,6 +233,21 @@
         tr.group.open .chev { color: var(--text-secondary); }
         tfoot { font-weight: 600; background: var(--surface-2); }
         tfoot td { border-top: 1px solid var(--text-muted); }
+
+        /* Floating Total row: a fixed clone at the viewport bottom, shown only while the real
+           tfoot is scrolled out of sight. Its own overflow-x is the reachable horizontal
+           scrollbar, kept in sync with the table. Hidden until updateTotalFloat() shows it. */
+        #total-float { position: fixed; bottom: 0; z-index: 30; overflow-x: auto; overflow-y: hidden;
+            background: var(--surface-2); border-top: 1px solid var(--text-muted);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, .35); display: none; }
+        #total-float.show { display: block; }
+        #total-float table { border-collapse: collapse; table-layout: fixed; width: max-content;
+            min-width: 0; margin: 0; font-weight: 600; }
+        /* No font-size here on purpose: inherit exactly like the real rows do (body default,
+           dropping to 12px under the mobile `table` rule), so the float matches them. */
+        #total-float td { border: 0; padding: 6px 8px; text-align: right; white-space: nowrap; }
+        #total-float td:first-child { text-align: left; position: sticky; left: 0;
+            background: var(--surface-2); }
 
         @media (max-width: 600px) {
             body { margin: 8px; }
@@ -339,7 +362,7 @@
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
                     <th data-sort="specialPe" title="Price ÷ a stock-tailored earnings figure set in meta.json (FFO, adjusted EPS, ...). Falls back to the normal PE when unset.">Special PE</th>
-                    <th data-sort="peLow" title="Cheapest multiple in the last ~4 fiscal years: the lowest weekly close in each year ÷ that year's own EPS. Derived online — nothing to maintain.">PE Low</th>
+                    <th data-sort="peLow" title="Cheapest the market has priced published earnings: each weekly close ÷ the latest annual EPS already reported by that date (fiscal end + 90 days), minimum over ~4-5y. Point-in-time — never earnings the market hadn't seen yet. Derived online — nothing to maintain.">PE Low</th>
                     <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
                     <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
                     <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
@@ -365,6 +388,12 @@
             <tfoot></tfoot>
         </table>
     </div>
+
+    <!-- A fixed clone of the Total row, pinned to the bottom of the viewport while the real one
+         is scrolled off. It also carries the horizontal scrollbar, synced to the table, so a
+         mouse can scroll sideways without hunting for the scrollbar at the foot of a long table.
+         Populated and positioned by updateTotalFloat(). -->
+    <div id="total-float" aria-hidden="true"></div>
 
     <!-- Watched, not owned. Takes the holdings table's place when View = Watchlist. Carries only
          the columns that mean something without a position — no cost, value, gain or weight.
@@ -438,6 +467,8 @@
         let historyPromise = null;
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
         let earningsPromise = null;
+        let GUIDANCE = null;     // manual company-issued outlook, deep dive only
+        let guidancePromise = null;
         let sort = { key: 'value', dir: -1 };
         // Deliberately not persisted: a filter restored on load would hide rows with no
         // explanation and read as missing data.
@@ -475,6 +506,16 @@
             return earningsPromise;
         }
 
+        // Guidance is optional: a missing file must never hide the filed financials.
+        function loadGuidance() {
+            if (GUIDANCE) return Promise.resolve(GUIDANCE);
+            if (!guidancePromise) guidancePromise = fetch(DATA + 'guidance.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : {})
+                .catch(err => { console.warn('guidance unavailable:', err.message); return {}; })
+                .then(g => (GUIDANCE = g));
+            return guidancePromise;
+        }
+
         /* ---------------- deep dive ---------------- */
         // Financials are shown in the company's REPORTING currency, never converted. A revenue
         // line is a fact the company filed; passing it through today's spot rate would invent a
@@ -509,20 +550,23 @@
             const rows = [
                 ['Price', px(q.price)],
                 ['EPS (trailing)', px(q.eps)],
-                ['P/E', leg.pe == null ? '–' : num2(leg.pe) + '×'],
-                // Filled by renderFinancials: the growth rate comes from the filed earnings, so
-                // it isn't known until earnings.json lands.
-                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['P/E (trailing)', leg.pe == null ? '–' : num2(leg.pe) + '×',
+                    ' class="valuation-group-start"'],
+                // Filled only where guidance.json carries enough inputs to derive it.
+                ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
+                    ' id="deep-guidance-pe-row" hidden'],
                 leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
-                ['Cheapest P/E', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
-                ['...on', leg.lowDate || '–'],
+                ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
+                // Filled by renderFinancials: its growth rate comes from earnings.json.
+                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
                 ['Implied price', px(leg.implied)],
                 ['vs implied', leg.vsLow == null ? '–'
                     : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
             ].filter(Boolean);
             document.getElementById('deep-val').innerHTML = rows
-                .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+                .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
 
             renderFinancials(leg);
         }
@@ -538,6 +582,68 @@
             if (el) el.outerHTML = `<span id="deep-peg"${title ? ` title="${title}"` : ''}>${html}</span>`;
         };
 
+        // Annualised operating run-rate: a deliberately labelled estimate, not company guidance.
+        // It excludes other income/expense because NVIDIA did not guide it.
+        const guidancePe = (g, price) => {
+            const p = g?.runRatePe;
+            if (!p || !(price > 0) || !Array.isArray(p.taxRate)) return null;
+            const inputs = [p.revenue, p.revenueTolerance, p.grossMargin,
+                p.grossMarginTolerance, p.operatingExpenses, ...p.taxRate, p.dilutedShares];
+            if (!inputs.every(Number.isFinite) || p.taxRate.length !== 2 || !(p.dilutedShares > 0)) return null;
+            const scenario = (revenue, margin, tax) => {
+                const operatingIncome = revenue * margin - p.operatingExpenses;
+                const netIncome = operatingIncome * (1 - tax);
+                const quarterlyEps = netIncome / p.dilutedShares;
+                return { revenue, operatingIncome, opMargin: operatingIncome / revenue,
+                    netIncome, netMargin: netIncome / revenue,
+                    quarterlyEps, annualEps: quarterlyEps * 4 };
+            };
+            const low = scenario(p.revenue * (1 - p.revenueTolerance),
+                p.grossMargin - p.grossMarginTolerance, p.taxRate[1]);
+            const high = scenario(p.revenue * (1 + p.revenueTolerance),
+                p.grossMargin + p.grossMarginTolerance, p.taxRate[0]);
+            return low.annualEps > 0 && high.annualEps >= low.annualEps
+                ? { low: price / high.annualEps, high: price / low.annualEps, lowCase: low, highCase: high,
+                    shares: p.dilutedShares } : null;
+        };
+
+        // Fit guidance into the filed-financials columns. Missing company-guided accounts stay
+        // blank; only NVIDIA's explicit runRatePe inputs derive the absent accounts.
+        const guidanceView = (g, price) => {
+            const metrics = (g?.metrics || []).filter(m => m?.label && m?.value);
+            if (!metrics.length || !g.period || !g.issued) return null;
+            const pe = guidancePe(g, price);
+            const range = (key, format) => `${format(pe.lowCase[key])}–${format(pe.highCase[key])}`;
+            const metric = (...labels) => metrics.find(m => labels.includes(m.label))?.value || null;
+            const values = pe ? [
+                range('revenue', big), range('operatingIncome', big), range('opMargin', plain),
+                range('netIncome', big), range('netMargin', plain), big(pe.shares),
+                range('quarterlyEps', num2),
+            ] : [
+                metric('Revenue', 'Net sales'), metric('Operating income'),
+                metric('Operating margin', 'Op margin'), metric('Net income'),
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'),
+            ];
+            const source = String(g.source || '');
+            const label = `${g.period.replace('FY20', 'FY')}E`;
+            const first = source.startsWith('https://')
+                ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="Official guidance issued ${ymd(escapeHTML(g.issued))}">${escapeHTML(label)}</a>`
+                : escapeHTML(label);
+            const cells = values.map(v => `<td>${v == null ? '<span class="muted">–</span>' : escapeHTML(v)}</td>`).join('');
+            const horizon = /^Q\d/.test(g.period)
+                ? `${g.period} is one quarter; reported rows are full fiscal years.`
+                : `${g.period} is a full-year forecast.`;
+            const notes = [
+                `Guidance: ${horizon}`,
+                ...(g.note ? [`Assumption: ${g.note}`] : []),
+                pe
+                    ? 'Derived: operating income, op margin, net income, net margin and quarterly EPS; revenue is company-issued.'
+                    : 'Guidance values are company-issued; missing accounts remain blank.',
+                ...(pe ? ['Inputs: guided GAAP gross margin and operating expenses, 16–18% tax and 24.391B latest reported diluted shares; excludes other income/expense.'] : []),
+            ];
+            return { row: `<tr class="guidance-row"><td>${first}</td>${cells}</tr>`, notes, pe };
+        };
+
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
@@ -546,9 +652,16 @@
             dates.innerHTML = '';
             fin.innerHTML = '<span class="deep-note">Loading…</span>';
 
-            loadEarnings().then(store => {
+            Promise.all([loadEarnings(), loadGuidance()]).then(([store, guidanceStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
                 const e = store.eps[leg.yahoo];
+                const guidance = guidanceView(guidanceStore[leg.yahoo], leg.quote.price);
+                const guidePe = document.getElementById('deep-guidance-pe');
+                if (guidance?.pe && guidePe) {
+                    document.getElementById('deep-guidance-pe-row').hidden = false;
+                    guidePe.textContent = `${num2(guidance.pe.low)}–${num2(guidance.pe.high)}×`;
+                    guidePe.title = 'Current price divided by annualised guided-quarter EPS';
+                }
                 // A fund is not an operating company, and Yahoo will still hand back "revenue"
                 // for one (SPOL.L, an ETF, reports 22.9M of fund income). No EPS in ANY year is
                 // what separates the two: a real company has EPS somewhere, even a loss-making
@@ -602,7 +715,7 @@
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
-                const cell = (v, g, invert) => `<td>${v == null ? '<span class="muted">–</span>' : big(v)}${g == null ? '' :
+                const cell = (v, g, invert, format = big) => `<td>${v == null ? '<span class="muted">–</span>' : format(v)}${g == null ? '' :
                     `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
                 // Margin changes are percentage points, not relative growth: 10% to 12% is
                 // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
@@ -624,6 +737,7 @@
                         ${cell(y.nic, yoy(y.nic, p?.nic))}
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
+                        ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -648,8 +762,45 @@
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
-                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>
                     </tr>` : '';
+
+                // Latest reported QUARTER, at the same granularity as the guidance row below it,
+                // so a quarterly guide can be read against a quarterly actual instead of looming
+                // under full-year rows. Its sub-lines are change vs the SAME quarter a year
+                // earlier — seasonality-free, and the same "smaller line = comparable prior
+                // period" rule the annual rows follow. Only the allowlisted names carry quarters.
+                const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const qLabel = date => { const d = new Date(date + 'T00:00:00Z');
+                    return `Qtr ${MON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`; };
+                // The same quarter a year before `ref`, matched by DATE (±50 days) so a hole in
+                // Yahoo's ~5-point window can't silently pair the wrong quarter. Null if absent.
+                const yearAgoQ = (list, ref) => {
+                    const t = new Date(ref + 'T00:00:00Z'); t.setUTCFullYear(t.getUTCFullYear() - 1);
+                    let best = null, gap = 50 * 864e5;
+                    for (const x of list) { const g = Math.abs(new Date(x.date + 'T00:00:00Z') - t);
+                        if (g < gap) { best = x; gap = g; } }
+                    return best;
+                };
+                // Only quarters with a top line — Yahoo often has the EPS of a just-reported
+                // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
+                // stub first). Same rule the annual rows use: a real reported period has revenue.
+                const qs = (e?.quarters || []).filter(x => x.rev != null);
+                let qrow = '';
+                if (qs.length) {
+                    const L = qs[qs.length - 1], ya = yearAgoQ(qs.filter(x => x !== L), L.date);
+                    const qy = (v, prev) => ya && prev != null ? yoy(v, prev) : null;
+                    qrow = `<tr class="quarter-row">
+                        <td title="Quarter ended ${ymd(L.date)}${ya ? `; change is vs the quarter ended ${ymd(ya.date)}` : ' — no year-ago quarter in range for a comparison'}">${qLabel(L.date)}</td>
+                        ${cell(L.rev, qy(L.rev, ya?.rev))}
+                        ${cell(L.opinc, qy(L.opinc, ya?.opinc))}
+                        ${marginCell(opMargin(L), ya ? opMargin(ya) : null)}
+                        ${cell(L.nic, qy(L.nic, ya?.nic))}
+                        ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
+                        ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
+                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                    </tr>`;
+                }
 
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
                 // can see the number it was divided by rather than taking it on faith.
@@ -665,12 +816,17 @@
                         <th>FY</th><th>Revenue</th><th>Operating income</th><th>Op margin</th>
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
+                        <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                     </tr></thead>
-                    <tbody>${body}${foot}</tbody>
+                    <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
                 </table>
-                <div class="deep-note">Net income is attributable to common shareholders (after
-                    minorities); shares are diluted. Shares and operating income (and its margin)
-                    cover Yahoo's recent years only. Reported, never FX-converted.</div>`;
+                <ul class="deep-note">${[
+                    'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
+                    'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
+                    ...(qrow ? ['Quarter: the latest reported quarter, with change vs the same quarter a year earlier — read the guidance row below it like-for-like against that year-ago quarter, not against the full-year rows.'] : []),
+                    'Currency: reported figures are never FX-converted.',
+                    ...(guidance?.notes || []),
+                ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
             }).catch(err => {
                 fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
             });
@@ -1329,6 +1485,46 @@
                 }).join('')}</tr>`;
             updateSearchCount();
             markSelectedRow();
+            buildTotalFloat();
+        }
+
+        // The floating Total row is a clone: rebuilt whenever the real tfoot changes (buildTotalFloat)
+        // and repositioned/toggled on scroll and resize (updateTotalFloat). Kept a clone rather
+        // than moved so sorting, filtering and the currency toggle all flow through the one real
+        // render path — the float never holds state of its own.
+        let floatSyncing = false;
+        function buildTotalFloat() {
+            const el = document.getElementById('total-float');
+            const wrap = document.getElementById('holdings-table');
+            const table = document.getElementById('portfolio');
+            const footRow = table.tFoot?.rows[0];
+            // Watchlist view has no totals to float; nor does an empty table.
+            if (STATE.dim === 'watch' || !footRow || !table.tBodies[0]?.rows.length) {
+                el.classList.remove('show');
+                el.innerHTML = '';
+                return;
+            }
+            // table-layout:fixed needs explicit column widths; copy the live header's so every
+            // cell lines up under the column it totals, sticky first column included.
+            const widths = [...table.tHead.rows[0].cells].map(th => th.getBoundingClientRect().width);
+            const cols = widths.map(w => `<col style="width:${w}px">`).join('');
+            el.innerHTML = `<table><colgroup>${cols}</colgroup><tbody>${footRow.outerHTML}</tbody></table>`;
+            updateTotalFloat();
+        }
+
+        function updateTotalFloat() {
+            const el = document.getElementById('total-float');
+            if (!el.firstChild) return;                       // nothing built (watchlist/empty)
+            const wrap = document.getElementById('holdings-table');
+            const rect = wrap.getBoundingClientRect();
+            // Show only while the real Total row (at the table's bottom) is below the fold —
+            // otherwise the genuine one is already on screen and a clone would just double it.
+            const show = rect.bottom > window.innerHeight + 4;
+            el.classList.toggle('show', show);
+            if (!show) return;
+            el.style.left = rect.left + 'px';
+            el.style.width = wrap.clientWidth + 'px';         // visible width, not scroll width
+            el.scrollLeft = wrap.scrollLeft;                  // start aligned with the table
         }
 
         function rebuildRows() {
@@ -1477,6 +1673,22 @@
             document.getElementById('updated').textContent =
                 `Prices as of ${stamp(updated)} · click a row to chart it · click the chevron to expand`;
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));
+
+            // Floating Total row: follow the page as it scrolls, and rebuild widths on resize
+            // (column widths change with the viewport and the currency toggle). The two scroll
+            // containers drive each other's scrollLeft — dragging the floating scrollbar scrolls
+            // the table and vice versa — with a flag so the echo doesn't loop.
+            const floatEl = document.getElementById('total-float');
+            const wrap = document.getElementById('holdings-table');
+            const link = (from, to) => from.addEventListener('scroll', () => {
+                if (floatSyncing) { floatSyncing = false; return; }
+                floatSyncing = true;
+                to.scrollLeft = from.scrollLeft;
+            });
+            link(wrap, floatEl);
+            link(floatEl, wrap);
+            window.addEventListener('scroll', updateTotalFloat, { passive: true });
+            window.addEventListener('resize', buildTotalFloat);
         }).catch(err => {
             document.getElementById('updated').textContent = `Could not load data: ${err.message}`;
             console.error(err);
