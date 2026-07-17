@@ -228,6 +228,21 @@
         tfoot { font-weight: 600; background: var(--surface-2); }
         tfoot td { border-top: 1px solid var(--text-muted); }
 
+        /* Floating Total row: a fixed clone at the viewport bottom, shown only while the real
+           tfoot is scrolled out of sight. Its own overflow-x is the reachable horizontal
+           scrollbar, kept in sync with the table. Hidden until updateTotalFloat() shows it. */
+        #total-float { position: fixed; bottom: 0; z-index: 30; overflow-x: auto; overflow-y: hidden;
+            background: var(--surface-2); border-top: 1px solid var(--text-muted);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, .35); display: none; }
+        #total-float.show { display: block; }
+        #total-float table { border-collapse: collapse; table-layout: fixed; width: max-content;
+            min-width: 0; margin: 0; font-weight: 600; }
+        #total-float td { border: 0; padding: 6px 8px; text-align: right; white-space: nowrap;
+            font-size: 13px; }
+        #total-float td:first-child { text-align: left; position: sticky; left: 0;
+            background: var(--surface-2); }
+        @media (max-width: 600px) { #total-float td { font-size: 12px; } }
+
         @media (max-width: 600px) {
             body { margin: 8px; }
             table { font-size: 12px; }
@@ -367,6 +382,12 @@
             <tfoot></tfoot>
         </table>
     </div>
+
+    <!-- A fixed clone of the Total row, pinned to the bottom of the viewport while the real one
+         is scrolled off. It also carries the horizontal scrollbar, synced to the table, so a
+         mouse can scroll sideways without hunting for the scrollbar at the foot of a long table.
+         Populated and positioned by updateTotalFloat(). -->
+    <div id="total-float" aria-hidden="true"></div>
 
     <!-- Watched, not owned. Takes the holdings table's place when View = Watchlist. Carries only
          the columns that mean something without a position — no cost, value, gain or weight.
@@ -1325,6 +1346,46 @@
                 }).join('')}</tr>`;
             updateSearchCount();
             markSelectedRow();
+            buildTotalFloat();
+        }
+
+        // The floating Total row is a clone: rebuilt whenever the real tfoot changes (buildTotalFloat)
+        // and repositioned/toggled on scroll and resize (updateTotalFloat). Kept a clone rather
+        // than moved so sorting, filtering and the currency toggle all flow through the one real
+        // render path — the float never holds state of its own.
+        let floatSyncing = false;
+        function buildTotalFloat() {
+            const el = document.getElementById('total-float');
+            const wrap = document.getElementById('holdings-table');
+            const table = document.getElementById('portfolio');
+            const footRow = table.tFoot?.rows[0];
+            // Watchlist view has no totals to float; nor does an empty table.
+            if (STATE.dim === 'watch' || !footRow || !table.tBodies[0]?.rows.length) {
+                el.classList.remove('show');
+                el.innerHTML = '';
+                return;
+            }
+            // table-layout:fixed needs explicit column widths; copy the live header's so every
+            // cell lines up under the column it totals, sticky first column included.
+            const widths = [...table.tHead.rows[0].cells].map(th => th.getBoundingClientRect().width);
+            const cols = widths.map(w => `<col style="width:${w}px">`).join('');
+            el.innerHTML = `<table><colgroup>${cols}</colgroup><tbody>${footRow.outerHTML}</tbody></table>`;
+            updateTotalFloat();
+        }
+
+        function updateTotalFloat() {
+            const el = document.getElementById('total-float');
+            if (!el.firstChild) return;                       // nothing built (watchlist/empty)
+            const wrap = document.getElementById('holdings-table');
+            const rect = wrap.getBoundingClientRect();
+            // Show only while the real Total row (at the table's bottom) is below the fold —
+            // otherwise the genuine one is already on screen and a clone would just double it.
+            const show = rect.bottom > window.innerHeight + 4;
+            el.classList.toggle('show', show);
+            if (!show) return;
+            el.style.left = rect.left + 'px';
+            el.style.width = wrap.clientWidth + 'px';         // visible width, not scroll width
+            el.scrollLeft = wrap.scrollLeft;                  // start aligned with the table
         }
 
         function rebuildRows() {
@@ -1473,6 +1534,22 @@
             document.getElementById('updated').textContent =
                 `Prices as of ${stamp(updated)} · click a row to chart it · click the chevron to expand`;
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));
+
+            // Floating Total row: follow the page as it scrolls, and rebuild widths on resize
+            // (column widths change with the viewport and the currency toggle). The two scroll
+            // containers drive each other's scrollLeft — dragging the floating scrollbar scrolls
+            // the table and vice versa — with a flag so the echo doesn't loop.
+            const floatEl = document.getElementById('total-float');
+            const wrap = document.getElementById('holdings-table');
+            const link = (from, to) => from.addEventListener('scroll', () => {
+                if (floatSyncing) { floatSyncing = false; return; }
+                floatSyncing = true;
+                to.scrollLeft = from.scrollLeft;
+            });
+            link(wrap, floatEl);
+            link(floatEl, wrap);
+            window.addEventListener('scroll', updateTotalFloat, { passive: true });
+            window.addEventListener('resize', buildTotalFloat);
         }).catch(err => {
             document.getElementById('updated').textContent = `Could not load data: ${err.message}`;
             console.error(err);
