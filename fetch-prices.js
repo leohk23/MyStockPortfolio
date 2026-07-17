@@ -129,8 +129,12 @@ async function getCrumb() {
 // results" date; a past one is dropped rather than displayed as if it were upcoming. `now` is a
 // parameter so this stays testable.
 function parseQuotes(json, now = Date.now()) {
-    const eps = {}, earnings = {};
+    const eps = {}, earnings = {}, types = {};
     for (const r of json.quoteResponse?.result || []) {
+        // EQUITY vs ETF/INDEX/MUTUALFUND/CRYPTOCURRENCY. Rides this batch call for free, and is
+        // what lets the caller skip the per-ticker gated fundamentals fetches (annual EPS,
+        // ex-div) for anything that isn't an operating company — see nonEquity in main().
+        if (r.quoteType) types[r.symbol] = r.quoteType;
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
         const ts = r.earningsTimestamp ?? r.earningsTimestampStart;
         if (typeof ts === 'number' && ts * 1000 > now) {
@@ -141,7 +145,7 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
     }
-    return { eps, earnings };
+    return { eps, earnings, types };
 }
 
 // Ex-dividend date, from quoteSummary's calendarEvents. NOT in the batch v7/quote response
@@ -559,14 +563,20 @@ async function main() {
     // the price write, and never throws past this point. Anything Yahoo doesn't hand us
     // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
     const carried = previousEps();
-    let fresh = {}, earningsDates = {};
+    let fresh = {}, earningsDates = {}, quoteTypes = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
         auth = await getCrumb();
-        ({ eps: fresh, earnings: earningsDates } = await fetchEps(tickers, auth));
+        ({ eps: fresh, earnings: earningsDates, types: quoteTypes } = await fetchEps(tickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
+    // Instruments with no fundamentals to fetch, ever: ETFs, indices, crypto trusts. Yahoo's
+    // quoteType (free, from the batch call above) settles it. Only a KNOWN non-equity is skipped
+    // — an unknown type (Yahoo omitted it, or the handshake failed) falls through to normal
+    // handling, so a real company is never silently denied its earnings. This is what keeps the
+    // 14 funds/indices out of the annual-EPS sweep and the ETF payers out of the ex-div lookups.
+    const nonEquity = new Set(tickers.filter(t => quoteTypes[t] && quoteTypes[t] !== 'EQUITY'));
     let live = 0, stale = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
@@ -594,7 +604,10 @@ async function main() {
         if (prevQuotes[t]?.exDivChecked) quotes[t].exDivChecked = prevQuotes[t].exDivChecked;
     }
     if (auth) {
-        const payers = tickers.filter(t => quotes[t]?.divYield > 0);
+        // Payers, minus funds: an ETF distribution is not in calendarEvents (it 404s), so there
+        // is nothing to look up for VOO/EWJ/VUSA.L and no reason to spend a gated call finding
+        // that out again.
+        const payers = tickers.filter(t => quotes[t]?.divYield > 0 && !nonEquity.has(t));
         const due = exDivToFetch(prevQuotes, payers, today);
         if (due.length) console.log(`     ex-div lookup for ${due.length}/${payers.length} payer(s)`);
         for (const t of due) {
@@ -619,7 +632,10 @@ async function main() {
     // by a targeted due-check. If a daily check moved it, the 30-day sweep would never come due
     // and a restatement would never be seen again.
     const sweeping = isSweepDue(store);
-    const toFetch = auth ? earningsToFetch(store, tickers) : [];
+    // A fund has no annual EPS to fetch — not on the monthly sweep, not as a "new" holding. This
+    // is the bigger win of the two: it keeps 14 ETFs/indices out of every sweep instead of
+    // re-confirming they have no earnings, and stops a newly-added ETF being fetched even once.
+    const toFetch = auth ? earningsToFetch(store, tickers).filter(t => !nonEquity.has(t)) : [];
     if (toFetch.length) {
         console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`
             + ` (${sweeping ? 'monthly sweep' : 'awaiting results / new'})`);
@@ -957,8 +973,17 @@ function selftest() {
     const future = Date.UTC(2026, 6, 30) / 1000, past = Date.UTC(2026, 4, 20) / 1000;
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }, QNOW),
-        { eps: { AAPL: 6.5 }, earnings: {} }
+        { eps: { AAPL: 6.5 }, earnings: {}, types: {} }
     );
+    // quoteType rides along, used to skip fundamentals for non-equities. Even a bogus ETF EPS
+    // (VOO reports one) is captured, so the caller keys "operating company?" on type, not EPS.
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [
+            { symbol: 'AAPL', quoteType: 'EQUITY', epsTrailingTwelveMonths: 6.5 },
+            { symbol: 'VOO', quoteType: 'ETF', epsTrailingTwelveMonths: 25.5 },
+            { symbol: '^GSPC', quoteType: 'INDEX' },
+        ] } }, QNOW).types,
+        { AAPL: 'EQUITY', VOO: 'ETF', '^GSPC': 'INDEX' });
     // A future date is the next results date...
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', earningsTimestamp: future }] } }, QNOW).earnings,
