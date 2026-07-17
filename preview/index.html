@@ -128,10 +128,7 @@
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
         /* ---- watchlist ---- */
-        #watch { margin-top: 26px; }
-        #watch-head { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-            color: var(--text-muted); font-weight: 600; margin: 0 0 8px; }
-        /* Seven columns, not the portfolio table's 24 — so it must opt out of the global
+        /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
            `table { min-width: 1280px }` or it forces a page-wide scrollbar. */
         #watchlist { min-width: 0; }
         #watchlist tbody tr { cursor: pointer; }
@@ -293,16 +290,19 @@
         </div>
     </section>
 
+    <!-- "View", not "Group by": the last button swaps the dataset rather than the grouping.
+         One table area, one control — the watchlist replaces the holdings table in place. -->
     <div id="groupby">
-        <span class="label">Group by</span>
-        <div class="btns" role="group" aria-label="Group by">
+        <span class="label">View</span>
+        <div class="btns" role="group" aria-label="View">
             <button data-dim="instrument" aria-pressed="false">Stock</button>
             <button data-dim="company" aria-pressed="true">Company</button>
             <button data-dim="geography" aria-pressed="false">Geography</button>
+            <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
         </div>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive" id="holdings-table">
         <table id="portfolio">
             <thead>
                 <tr>
@@ -337,20 +337,19 @@
         </table>
     </div>
 
-    <!-- Watched, not owned. Only the decision columns — there is no position to report on.
+    <!-- Watched, not owned. Takes the holdings table's place when View = Watchlist. Carries only
+         the columns that mean something without a position — no cost, value, gain or weight.
          Clicking a row charts it and opens the same deep-dive panel as a holding. -->
-    <section id="watch" hidden>
-        <h2 id="watch-head">Watchlist</h2>
-        <div class="table-responsive">
-            <table id="watchlist">
-                <thead><tr>
-                    <th>Stock</th><th>Price</th><th>P/E</th><th>P/E Low</th>
-                    <th>Low date</th><th>Implied</th><th>vs Low</th>
-                </tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </section>
+    <div class="table-responsive" id="watch" hidden>
+        <table id="watchlist">
+            <thead><tr>
+                <th>Stock</th><th>Price</th><th>P/E</th><th>P/E Low</th>
+                <th>Low date</th><th>Implied</th><th>vs Low</th>
+                <th>7D</th><th>1M</th><th>3M</th><th>6M</th><th>1Y</th><th>YTD</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <script>
         /* ---------------- where the data lives ---------------- */
@@ -1120,11 +1119,10 @@
         }
 
         // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
-        // Reuses the holdings table's own cell formatters so a P/E means the same thing in both.
+        // Reuses the holdings table's own cell formatters so a P/E or a 1Y move means exactly the
+        // same thing in both views. The period moves come straight off the quote, which is where
+        // a holding's come from too — weightedMove() only exists to blend a multi-leg row.
         function renderWatchlist() {
-            const section = document.getElementById('watch');
-            if (!WATCH.length) { section.hidden = true; return; }
-            section.hidden = false;
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
             for (const w of WATCH) {
@@ -1137,14 +1135,23 @@
                     <td>${peCell(w.peLow)}</td>
                     <td>${lowDateCell(w.lowDate)}</td>
                     <td>${impliedCell(w)}</td>
-                    <td>${vsLowCell(w.vsLow)}</td>`;
+                    <td>${vsLowCell(w.vsLow)}</td>
+                    ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}`;
                 tr.addEventListener('click', () => selectChart(w.yahoo));
                 tbody.appendChild(tr);
             }
             markSelectedRow();
         }
 
+        // The watchlist takes the holdings table's place rather than sitting beneath it.
+        function applyView() {
+            const watchMode = STATE.dim === 'watch';
+            document.getElementById('holdings-table').hidden = watchMode;
+            document.getElementById('watch').hidden = !watchMode;
+        }
+
         function renderAll() {
+            applyView();
             renderTotals();
             renderTable();
             renderWatchlist();
@@ -1200,8 +1207,10 @@
                 document.querySelectorAll('#groupby button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
                 chartSel = null; // grouping changed; return chart to portfolio
                 chartGroup = null;
+                applyView();
                 rebuildRows();
                 renderTable();
+                renderWatchlist();
                 updateChart();
             }));
 
@@ -1224,13 +1233,17 @@
             fetch(DATA + 'watchlist.json' + bust).then(r => r.ok ? r.json() : []).catch(() => []),
         ])).then(([{ holdings }, { updated, rates, quotes, nav, performance }, watchlist]) => {
             RATES = rates;
-            const dim = ['instrument', 'company', 'geography'].includes(localStorage.getItem('dim')) ? localStorage.getItem('dim') : 'company';
-            const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
             // Held names are dropped: once you own it, the holdings table is the truth. This
             // keeps a stock that was on the list and then bought from appearing twice.
             const held = new Set(holdings.map(h => h.yahoo));
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
+            // No watchlist, no button — and never restore into a view that would render empty.
+            document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
+            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : [])];
+            const saved = localStorage.getItem('dim');
+            const dim = views.includes(saved) ? saved : 'company';
+            const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
+            STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             rebuildRows();
