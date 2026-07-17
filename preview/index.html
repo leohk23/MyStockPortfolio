@@ -585,14 +585,20 @@
             const inputs = [p.revenue, p.revenueTolerance, p.grossMargin,
                 p.grossMarginTolerance, p.operatingExpenses, ...p.taxRate, p.dilutedShares];
             if (!inputs.every(Number.isFinite) || p.taxRate.length !== 2 || !(p.dilutedShares > 0)) return null;
-            const annualEps = (revenue, margin, tax) =>
-                (revenue * margin - p.operatingExpenses) * (1 - tax) / p.dilutedShares * 4;
-            const epsLow = annualEps(p.revenue * (1 - p.revenueTolerance),
+            const scenario = (revenue, margin, tax) => {
+                const operatingIncome = revenue * margin - p.operatingExpenses;
+                const netIncome = operatingIncome * (1 - tax);
+                return { revenue, operatingIncome, opMargin: operatingIncome / revenue,
+                    netIncome, netMargin: netIncome / revenue,
+                    eps: netIncome / p.dilutedShares * 4 };
+            };
+            const low = scenario(p.revenue * (1 - p.revenueTolerance),
                 p.grossMargin - p.grossMarginTolerance, p.taxRate[1]);
-            const epsHigh = annualEps(p.revenue * (1 + p.revenueTolerance),
+            const high = scenario(p.revenue * (1 + p.revenueTolerance),
                 p.grossMargin + p.grossMarginTolerance, p.taxRate[0]);
-            return epsLow > 0 && epsHigh >= epsLow
-                ? { low: price / epsHigh, high: price / epsLow, epsLow, epsHigh } : null;
+            return low.eps > 0 && high.eps >= low.eps
+                ? { low: price / high.eps, high: price / low.eps, lowCase: low, highCase: high,
+                    shares: p.dilutedShares } : null;
         };
 
         // Literal company figures stay literal. Only the optional run-rate P/E above is derived,
@@ -601,9 +607,16 @@
             const metrics = (g?.metrics || []).filter(m => m?.label && m?.value);
             if (!metrics.length || !g.period || !g.issued) return '';
             const pe = guidancePe(g, price);
-            const shown = pe ? [...metrics, {
-                label: 'Run-rate P/E', value: `${num2(pe.low)}–${num2(pe.high)}×`
-            }] : metrics;
+            const range = (key, format) => `${format(pe.lowCase[key])}–${format(pe.highCase[key])}`;
+            const shown = pe ? [
+                { label: 'Revenue', value: range('revenue', v => `US$${big(v)}`) },
+                { label: 'Operating income', value: range('operatingIncome', v => `US$${big(v)}`) },
+                { label: 'Op margin', value: range('opMargin', plain) },
+                { label: 'Net income', value: range('netIncome', v => `US$${big(v)}`) },
+                { label: 'Net margin', value: range('netMargin', plain) },
+                { label: 'Shares', value: big(pe.shares) },
+                { label: 'Run-rate P/E', value: `${num2(pe.low)}–${num2(pe.high)}×` },
+            ] : metrics;
             const source = String(g.source || '');
             const link = source.startsWith('https://')
                 ? ` · <a href="${escapeHTML(source)}" target="_blank" rel="noopener">official source</a>` : '';
@@ -612,7 +625,7 @@
                 <table><thead><tr>${shown.map(m => `<th>${escapeHTML(m.label)}</th>`).join('')}</tr></thead>
                     <tbody><tr>${shown.map(m => `<td>${escapeHTML(m.value)}</td>`).join('')}</tr></tbody></table>
                 <div class="deep-note">${g.note ? `${escapeHTML(g.note)} ` : ''}Forward-looking.${pe
-                    ? ` Run-rate P/E is derived, not company-issued: current price ÷ annualised guided EPS of $${num2(pe.epsLow)}–$${num2(pe.epsHigh)}. Uses guided revenue, GAAP gross margin and GAAP operating expenses; 16–18% guided tax; 24.391B latest reported diluted shares; excludes other income/expense.`
+                    ? ` Revenue is company-issued. Operating income, op margin, net income, net margin and run-rate P/E are derived, not company-issued. Uses guided GAAP gross margin and operating expenses, 16–18% guided tax and 24.391B latest reported diluted shares; P/E annualises this one quarter and excludes other income/expense.`
                     : ' No estimates derived.'}</div>
             </section>`;
         };
