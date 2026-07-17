@@ -120,12 +120,28 @@ async function getCrumb() {
 }
 
 // Pure parse, kept separate from the fetch so it's selftest-able without a network call.
-function parseEps(json) {
-    const eps = {};
+//
+// The next results date rides along in the same response — no extra request.
+//
+// Yahoo's earningsTimestamp is NOT reliably the NEXT one: once a company has reported and the
+// following date isn't scheduled yet, it keeps handing back the LAST one (in July 2026 MKS.L
+// returns 2026-05-20 and 1113.HK 2026-03-19, both long past). Only a future date is a "next
+// results" date; a past one is dropped rather than displayed as if it were upcoming. `now` is a
+// parameter so this stays testable.
+function parseQuotes(json, now = Date.now()) {
+    const eps = {}, earnings = {};
     for (const r of json.quoteResponse?.result || []) {
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
+        const ts = r.earningsTimestamp ?? r.earningsTimestampStart;
+        if (typeof ts === 'number' && ts * 1000 > now) {
+            earnings[r.symbol] = {
+                date: new Date(ts * 1000).toISOString().slice(0, 10),
+                // Yahoo flags a guessed date; say so rather than implying it's confirmed.
+                ...(r.isEarningsDateEstimate ? { estimate: true } : {}),
+            };
+        }
     }
-    return eps;
+    return { eps, earnings };
 }
 
 // Yahoo's fundamentals are in the major currency unit even for tickers whose price
@@ -141,7 +157,7 @@ async function fetchEps(tickers, { crumb, cookie }) {
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&crumb=${encodeURIComponent(crumb)}`;
     const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return parseEps(await res.json());
+    return parseQuotes(await res.json());
 }
 
 // Annual diluted EPS per fiscal year. Yahoo caps this at ~4 points regardless of the range
@@ -492,22 +508,27 @@ async function main() {
     // the price write, and never throws past this point. Anything Yahoo doesn't hand us
     // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
     const carried = previousEps();
-    let fresh = {};
+    let fresh = {}, earningsDates = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
         auth = await getCrumb();
-        fresh = await fetchEps(tickers, auth);
+        ({ eps: fresh, earnings: earningsDates } = await fetchEps(tickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
     let live = 0, stale = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
+        // Not carried forward like EPS: a stale results date is worse than none, and this one
+        // is cheap to refetch (it comes with the EPS request every run anyway).
+        if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
         const eps = resolveEps(fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
         fresh[t] != null ? live++ : stale++;
     }
+    const dated = tickers.filter(t => quotes[t]?.earnings).length;
+    console.log(`ok   next results date for ${dated}/${tickers.length} tickers`);
     console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
 
     // Annual EPS history: read from the repo, refreshed only when it ages out or a holding is
@@ -852,11 +873,29 @@ function selftest() {
     assert.strictEqual(shaped.divTTM, 2);
     assert.strictEqual(shaped.divYield, 0.02);
 
-    // parseEps skips symbols with no EPS (indices, some ETFs) rather than writing null.
+    // parseQuotes skips symbols with no EPS (indices, some ETFs) rather than writing null.
+    const QNOW = Date.UTC(2026, 6, 17);
+    const future = Date.UTC(2026, 6, 30) / 1000, past = Date.UTC(2026, 4, 20) / 1000;
     assert.deepStrictEqual(
-        parseEps({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }),
-        { AAPL: 6.5 }
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }, QNOW),
+        { eps: { AAPL: 6.5 }, earnings: {} }
     );
+    // A future date is the next results date...
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', earningsTimestamp: future }] } }, QNOW).earnings,
+        { AAPL: { date: '2026-07-30' } });
+    // ...but Yahoo keeps returning the LAST one once a company has reported and the next is not
+    // scheduled (MKS.L in July 2026 returns May 2026). That is not upcoming, so it is dropped.
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'MKS.L', earningsTimestamp: past }] } }, QNOW).earnings, {});
+    // earningsTimestampStart stands in when the exact timestamp is missing (1113.HK).
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestampStart: future }] } }, QNOW).earnings,
+        { X: { date: '2026-07-30' } });
+    // A guessed date is flagged, not passed off as confirmed.
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestamp: future, isEarningsDateEstimate: true }] } }, QNOW).earnings,
+        { X: { date: '2026-07-30', estimate: true } });
     // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');

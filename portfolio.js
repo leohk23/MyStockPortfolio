@@ -125,10 +125,15 @@ function twr(mv, flow) {
 // *ratio*, so it is currency- and ADR-agnostic: a low logged off the US ADR yields the same
 // multiple as the Tokyo ordinary. Applying it to today's EPS gives implied — what the price
 // would be at its cheapest-ever multiple, on today's earnings. vsLow is the premium you pay
-// above that: >0 dearer, <0 cheaper. pegLow does the same growth-adjusted, for stocks whose
-// multiple tracks growth. peLow is derived online by fetch-prices (lowest close in each of the
-// last ~4 fiscal years over that year's own earnings). A manual meta.json low is only a
-// fallback — nothing here needs hand-maintaining.
+// above that: >0 dearer, <0 cheaper. peLow is derived online by fetch-prices (lowest close in
+// each of the last ~4 fiscal years over that year's own earnings). A manual meta.json low is
+// only a fallback — nothing here needs hand-maintaining.
+//
+// No PEG here: it needs a growth rate, and the deep-dive panel derives that from the filed
+// earnings history (see peg() in the page) rather than from a hand-entered number. An earlier
+// pegLow/impliedPeg pair read `growth`/`lowGrowth` out of meta.json, which was never populated
+// for a single instrument — so it never once rendered. Deleted rather than left as a second,
+// dead definition of the same idea.
 function valuation(h, quote) {
     const eps = quote.eps ?? h.eps ?? null;
     const pe = eps > 0 ? quote.price / eps : null;
@@ -139,12 +144,10 @@ function valuation(h, quote) {
     const lowDate = quote.lowDate ?? h.lowDate ?? null;
     const lowPrice = quote.lowPrice ?? h.lowPrice ?? null;
     const lowEps = quote.lowEps ?? h.lowEps ?? null;
-    const pegLow = peLow != null && h.lowGrowth > 0 ? peLow / (h.lowGrowth * 100) : null;
     const implied = peLow != null && eps > 0 ? peLow * eps : null;
-    const impliedPeg = pegLow != null && h.growth > 0 && eps > 0 ? pegLow * h.growth * 100 * eps : null;
     const vsLow = implied > 0 ? (quote.price - implied) / implied : null;
 
-    return { eps, pe, specialPe, peLow, pegLow, implied, impliedPeg, vsLow, lowDate, lowPrice, lowEps };
+    return { eps, pe, specialPe, peLow, implied, vsLow, lowDate, lowPrice, lowEps };
 }
 
 // watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
@@ -227,7 +230,6 @@ function build(holdings, rates, quotes, dimension = 'company') {
             // Same single-instrument rule as PE: a basket has no meaningful trough multiple.
             peLow: single ? single.peLow : null,
             implied: single ? single.implied : null,
-            impliedPeg: single ? single.impliedPeg : null,
             vsLow: single ? single.vsLow : null,
             lowDate: single ? single.lowDate || null : null,
             lowPrice: single ? single.lowPrice : null,
@@ -386,7 +388,6 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     )[0];
     assert.ok(Math.abs(val.peLow - 17.48) < 0.01);
     assert.ok(Math.abs(val.implied - 140.54) < 0.05);
-    assert.ok(Math.abs(val.impliedPeg - 166.54) < 0.5);
     // Premium to the trough multiple: 200 vs implied ~140.54 = +42% dearer.
     assert.ok(Math.abs(val.vsLow - (200 - val.implied) / val.implied) < 1e-12);
     assert.ok(Math.abs(val.vsLow - 0.423) < 0.001);

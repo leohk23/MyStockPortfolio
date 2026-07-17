@@ -509,6 +509,9 @@
                 ['Price', px(q.price)],
                 ['EPS (trailing)', px(q.eps)],
                 ['P/E', leg.pe == null ? '–' : num2(leg.pe) + '×'],
+                // Filled by renderFinancials: the growth rate comes from the filed earnings, so
+                // it isn't known until earnings.json lands.
+                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
                 leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
                 ['Cheapest P/E', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
@@ -522,6 +525,17 @@
 
             renderFinancials(leg);
         }
+
+        // PEG on TRAILING growth: P/E divided by the compound growth of the bottom line over the
+        // years on show. Not the textbook PEG, which uses FORWARD estimates — this repo has no
+        // source for those, and inventing one would be worse than being explicit. Undefined
+        // through a loss or a shrinking bottom line: dividing by negative growth produces a
+        // negative PEG that reads "cheap" for a company going backwards.
+        const peg = (pe, growth) => pe > 0 && growth > 0 ? pe / (growth * 100) : null;
+        const setPeg = (html, title = '') => {
+            const el = document.getElementById('deep-peg');
+            if (el) el.outerHTML = `<span id="deep-peg"${title ? ` title="${title}"` : ''}>${html}</span>`;
+        };
 
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
@@ -544,6 +558,7 @@
                 // absent this shows what exists — 4 or 5 — rather than padding it.
                 const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
+                    setPeg('<span class="muted">–</span>');   // no earnings, no growth, no PEG
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';
                     return;
@@ -554,7 +569,12 @@
                 // year-end is current, not a typo; "FY2024" in mid-2026 means the data is stale.
                 // Without the end date you cannot tell those apart.
                 const latest = years[years.length - 1];
-                ccy.textContent = `${e.currency ? `— ${e.currency} ` : ''}· latest FY${fy(latest)}, ended ${ymd(latest.date)}`;
+                // Yahoo only ever gives a FUTURE date here (fetch-prices drops the stale
+                // last-reported one it also hands back), so its absence means "not scheduled yet",
+                // not "never reports".
+                const next = leg.quote.earnings;
+                ccy.textContent = `${e.currency ? `— ${e.currency} ` : ''}· latest FY${fy(latest)}, ended ${ymd(latest.date)}`
+                    + (next ? ` · next results ${ymd(next.date)}${next.estimate ? ' (est.)' : ''}` : '');
                 // Each value carries its growth beneath it in the same cell, so the table is four
                 // columns (FY, Revenue, Net income, Margin) not six — the two YoY columns were what
                 // overflowed a phone.
@@ -584,6 +604,15 @@
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(nc)}<td></td>
                     </tr>` : '';
+
+                // PEG, on the very bottom-line growth the table above is showing — so the reader
+                // can see the number it was divided by rather than taking it on faith.
+                const g = peg(leg.pe, nc);
+                setPeg(g == null ? '<span class="muted">–</span>' : num2(g),
+                    g == null
+                        ? `No PEG: needs a P/E and positive ${span}y growth in the bottom line`
+                        : `P/E ${num2(leg.pe)} ÷ ${(nc * 100).toFixed(1)}% — the ${span}y CAGR of net income `
+                            + `to common below. Trailing growth, not forward estimates.`);
 
                 fin.innerHTML = `<table>
                     <thead><tr>
@@ -1051,7 +1080,7 @@
             : `<span title="PE Low ${r.peLow.toFixed(1)}x × today's EPS`
                 + `${r.lowPrice != null && r.lowEps != null ? ` — from a low of ${num2(r.lowPrice)} on EPS ${num2(r.lowEps)}` : ''}`
                 + `${r.lowDate ? ` (${ymd(r.lowDate)})` : ''}`
-                + `${r.impliedPeg ? ` · PEG-implied ${num2(r.impliedPeg)}` : ''}">`
+                + `">`
                 + `${num2(r.implied)}</span>`;
         const lowDateCell = d => d == null ? '<span class="muted">–</span>' : `<span class="muted">${ymd(d)}</span>`;
         // Colour is INVERTED against the rest of the table: below the trough multiple is the
