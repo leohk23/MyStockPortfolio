@@ -229,6 +229,34 @@ selftest asserts a holding and a watchlist entry on the same quote agree.
 Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first
 paint). Fine for a dozen; reconsider at 30+.
 
+## When annual figures get fetched
+
+The hourly job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three
+ways:
+
+1. **No entry at all** → fetch. A new holding, or one whose last fetch errored and was
+   deliberately not cached (a transient 429 must never be stored as "this company has no
+   earnings").
+2. **Awaiting results** (`dueForResults`) → one look a day. A company is due when its *next*
+   fiscal year ended 30–210 days ago and still hasn't landed. Nothing else is asked, because
+   nothing else can have changed — a December year-end has nothing new to say in July. Today
+   that is typically **1 ticker out of 63**.
+3. **The monthly sweep** (`EARNINGS_SWEEP_DAYS = 30`) → everything.
+
+The 30–210 day window is bounded at **both** ends deliberately. Before it, nobody has filed.
+After it, the answer isn't coming — NW0.DE has been missing FY2025 for months and must not burn
+a request a day forever.
+
+**Don't delete the sweep.** "Annual figures never change" is false: Yahoo *restates* them. It
+revised ASML's FY2025 diluted EPS from 26.26 to 24.71 after publication — and 26.26 was the
+wrong one (it implies 366M shares; ASML has ~389M). The due-window logic would never re-ask a
+company that already reported, so the sweep is the only thing that catches this. A month is the
+compromise: restatements are rare, new fiscal years arrive within a day via (2).
+
+`store.updated` timestamps **the last sweep only** — a targeted fetch must not touch it, or the
+sweep would never come due again. `checked` is per ticker and stamps every fetch, which is what
+rate-limits (2).
+
 ## Yahoo's 4-point cap is PER FIELD, and the windows don't line up
 
 The single nastiest thing about the fundamentals endpoint. Each `type=` you ask for gets its
@@ -250,6 +278,11 @@ was spotted. Every row Yahoo returns is now kept, and consumers filter for what 
 `backfill-earnings.js` has the matching rule: a fiscal year you already hold is **not
 necessarily complete**. It patches missing `rev`/`nic` into an existing year rather than
 skipping it as "already have" (that is how 2638.HK FY2025 gets its top line).
+
+`mergeEarnings` merges **field by field** for the same reason. A fresh value wins wherever Yahoo
+sent one (so restatements propagate), but a field Yahoo *omitted* is kept from the store. That
+is the only thing protecting backfilled data: Yahoo will return a year carrying EPS alone, and
+replacing the year wholesale would silently delete the revenue the backfill put there.
 
 **A fund is not an operating company, and Yahoo will hand back "revenue" for one anyway** —
 SPOL.L (an iShares ETF) reports 22.9M of fund income. The test that separates them is *no EPS

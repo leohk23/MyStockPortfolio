@@ -304,7 +304,10 @@ function previousEps() {
 // The *trough* is still recomputed every run (from this store plus the fresh weekly closes),
 // which costs nothing and means a new low is picked up the hour it happens.
 const EARNINGS = 'earnings.json';
-const EARNINGS_MAX_AGE_DAYS = 7;
+// The backstop sweep, not the main mechanism — see earningsToFetch. A month, not a week: the
+// only thing it exists to catch is a restatement of an already-published year, and new fiscal
+// years now arrive within a day via the due-window check instead of waiting on this.
+const EARNINGS_SWEEP_DAYS = 30;
 
 // Bump when the stored shape changes, to force one full refetch. This is a version and not a
 // "does field X exist?" sniff on purpose: a sniff cannot tell "we never fetched this field"
@@ -323,31 +326,78 @@ function loadEarnings() {
 // Yahoo hands back ~4 fiscal years however wide a window you ask for, so 4 is the ceiling on a
 // single fetch. But the store lives in the repo: keep the years already seen and the history
 // ACCRETES — a 5th year appears next time the fiscal window rolls, instead of dropping off the
-// back. Fresh wins per fiscal year, so restatements still propagate.
+// back.
+//
+// Merged FIELD BY FIELD, not year by year. A fresh value wins wherever Yahoo sent one, so
+// restatements propagate (it revised ASML's FY2025 diluted EPS from 26.26 to 24.71 — 26.26
+// implied 366M shares, which ASML does not have). But a field Yahoo did NOT send is kept from
+// the store, which is the only thing protecting backfilled data: Yahoo's per-field windows do
+// not line up, so it will hand back a year carrying EPS alone, and replacing the year wholesale
+// would silently delete the revenue backfill-earnings.js put there.
+//
 // A fetch that comes back empty keeps the old years (an ETF is empty from the start and has
 // nothing to keep; a company that suddenly reports nothing is a Yahoo glitch, not a fact).
 function mergeEarnings(old, fresh) {
     if (!old?.years?.length) return fresh;
     const byDate = new Map(old.years.map(y => [y.date, y]));
-    for (const y of fresh.years) byDate.set(y.date, y);
+    for (const y of fresh.years) {
+        const prev = byDate.get(y.date);
+        byDate.set(y.date, prev ? { ...prev, ...y } : y);
+    }
     return {
         currency: fresh.currency ?? old.currency,
         years: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
     };
 }
 
+// Is this company's NEXT fiscal year overdue? The one we hold ends on a known date, so the next
+// ends about a year later — and results follow a fiscal year end by roughly one to three months.
+//
+// Bounded at both ends on purpose. Before the window there is nothing to ask for; after it, the
+// answer is not coming: NW0.DE has been missing FY2025 for months and must not burn a request a
+// day forever. Outside the window the periodic sweep is the only thing that touches a ticker.
+// A fund (no years at all) is never due — no results will ever arrive.
+const REPORT_WINDOW_DAYS = [30, 210];
+function dueForResults(entry, now) {
+    const years = entry?.years || [];
+    if (!years.length) return false;
+    const last = new Date(years[years.length - 1].date + 'T00:00:00Z');
+    const nextEnd = Date.UTC(last.getUTCFullYear() + 1, last.getUTCMonth(), last.getUTCDate());
+    const age = (now - nextEnd) / 86400e3;
+    return age >= REPORT_WINDOW_DAYS[0] && age <= REPORT_WINDOW_DAYS[1];
+}
+
 // Which tickers need a fundamentals request this run — per-ticker, not all-or-nothing.
 //
-// Everything, if the store aged out or was written by an older shape. Otherwise only the ones
-// with no entry at all: a holding added since the last refresh, or one whose fetch errored and
-// was deliberately NOT cached. That distinction is the whole point — a transient 429 must not
-// be recorded as "this company has no earnings", and retrying it must not drag the other 55
-// tickers along with it.
-function earningsToFetch(store, tickers, now = Date.now()) {
-    const wholeStore = !store.updated
+// Everything, if the store was written by an older shape, or on the slow sweep. Otherwise only:
+//
+//  - tickers with NO entry at all — a holding added since the last refresh, or one whose fetch
+//    errored and was deliberately not cached. That distinction is the whole point: a transient
+//    429 must not be recorded as "this company has no earnings", and retrying it must not drag
+//    the other 62 along with it.
+//  - tickers actually WAITING ON RESULTS (dueForResults), looked at once a day. Nothing else is
+//    asked, because nothing else can have changed: a company whose fiscal year ends in December
+//    has nothing new to say in July.
+//
+// The sweep still exists, at a month rather than a week, because "annual figures never change"
+// is not true — Yahoo restates them (ASML's FY2025 EPS moved 26.26 -> 24.71 after publication,
+// and the old value was wrong). Nothing else would ever catch that. It is also the backstop for
+// anything the due-window logic doesn't anticipate.
+const EARNINGS_DUE_RECHECK_DAYS = 1;
+function isSweepDue(store, now = Date.now()) {
+    return !store.updated
         || store.v !== EARNINGS_V
-        || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_MAX_AGE_DAYS;
-    return wholeStore ? tickers : tickers.filter(t => !(t in store.eps));
+        || (now - Date.parse(store.updated)) / 86400e3 >= EARNINGS_SWEEP_DAYS;
+}
+function earningsToFetch(store, tickers, now = Date.now()) {
+    if (isSweepDue(store, now)) return tickers;
+    return tickers.filter(t => {
+        const e = store.eps[t];
+        if (!e) return true;
+        if (!dueForResults(e, now)) return false;
+        return !e.checked
+            || (now - Date.parse(e.checked)) / 86400e3 >= EARNINGS_DUE_RECHECK_DAYS;
+    });
 }
 
 // Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
@@ -473,13 +523,21 @@ async function main() {
     // be in `rates` — an ADR reports in JPY/CNY while quoting in USD, and without that rate the
     // trough can't be converted (and must not be guessed).
     const store = loadEarnings();
+    // Read BEFORE any fetch: `updated` timestamps the last full sweep, so it must not be touched
+    // by a targeted due-check. If a daily check moved it, the 30-day sweep would never come due
+    // and a restatement would never be seen again.
+    const sweeping = isSweepDue(store);
     const toFetch = auth ? earningsToFetch(store, tickers) : [];
     if (toFetch.length) {
-        console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`);
+        console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`
+            + ` (${sweeping ? 'monthly sweep' : 'awaiting results / new'})`);
         let failed = 0;
         for (const t of toFetch) {
             try {
-                store.eps[t] = mergeEarnings(store.eps[t], await fetchAnnualEps(t, auth));
+                const merged = mergeEarnings(store.eps[t], await fetchAnnualEps(t, auth));
+                // Stamped per ticker so a company that is due but never delivers (NW0.DE) backs
+                // off to one look a day instead of one an hour.
+                store.eps[t] = { ...merged, checked: new Date().toISOString() };
             } catch (e) {
                 // Deliberately leave the key ABSENT. Caching a failure as an empty result is
                 // indistinguishable from a genuine no-earnings ETF, and would freeze the PE Low
@@ -490,7 +548,7 @@ async function main() {
             await sleep();
         }
         store.v = EARNINGS_V;
-        store.updated = new Date().toISOString();
+        if (sweeping) store.updated = new Date().toISOString();
         fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
         console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers`
             + `${failed ? `, ${failed} failed and will retry` : ''})`);
@@ -665,13 +723,17 @@ function selftest() {
 
     // earningsToFetch: per-ticker, not all-or-nothing.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();
-    const old7 = new Date(Date.now() - 9 * 86400e3).toISOString();
+    const old7 = new Date(Date.now() - 40 * 86400e3).toISOString();   // past the monthly sweep
     const ok = { currency: 'USD', years: [] };
     const T = ['A', 'B'];
     const v = EARNINGS_V;
     assert.deepStrictEqual(earningsToFetch({ v, updated: null, eps: {} }, T), T);            // never fetched
     assert.deepStrictEqual(earningsToFetch({ v, updated: old7, eps: { A: ok, B: ok } }, T), T); // aged out
     assert.deepStrictEqual(earningsToFetch({ v, updated: fresh7, eps: { A: ok, B: ok } }, T), []); // nothing to do
+    // A week old is no longer a sweep: annual figures do not change weekly, and new fiscal years
+    // now arrive through the due-window below instead of by re-asking all 63 every 7 days.
+    const week = new Date(Date.now() - 8 * 86400e3).toISOString();
+    assert.deepStrictEqual(earningsToFetch({ v, updated: week, eps: { A: ok, B: ok } }, T), []);
     // Only the ticker with no entry is fetched — a new holding, or one whose last fetch errored
     // and was deliberately not cached. Retrying it must not drag the other 55 along.
     assert.deepStrictEqual(earningsToFetch({ v, updated: fresh7, eps: { A: ok } }, T), ['B']);
@@ -684,6 +746,34 @@ function selftest() {
     assert.deepStrictEqual(earningsToFetch({ v: v - 1, updated: fresh7, eps: { A: ok, B: ok } }, T), T);
     assert.deepStrictEqual(earningsToFetch({ updated: fresh7, eps: { A: ok, B: ok } }, T), T); // unversioned
 
+    // dueForResults: only ask when the next fiscal year is actually overdue.
+    const NOW = Date.UTC(2026, 6, 17);                       // 17 Jul 2026
+    const withYear = date => ({ currency: 'USD', years: [{ date, eps: 1 }] });
+    // FY2025 held, next ends Dec 2026 — nothing to ask for in July.
+    assert.strictEqual(dueForResults(withYear('2025-12-31'), NOW), false);
+    // FY2024 held: next ended Dec 2025, ~200 days ago and still missing. Worth a look.
+    assert.strictEqual(dueForResults(withYear('2024-12-31'), NOW), true);
+    // Just ended — inside the reporting lag, nobody has filed yet.
+    assert.strictEqual(dueForResults(withYear('2025-07-01'), NOW), false);
+    // Given up on: 2 years overdue is not arriving, and must not cost a request a day forever.
+    assert.strictEqual(dueForResults(withYear('2023-12-31'), NOW), false);
+    // A fund has no results to wait for.
+    assert.strictEqual(dueForResults({ currency: null, years: [] }, NOW), false);
+
+    // The due window drives the fetch list, and a daily stamp keeps a stuck ticker cheap.
+    const due = { currency: 'USD', years: [{ date: '2024-12-31', eps: 1 }] };
+    const notDue = { currency: 'USD', years: [{ date: '2025-12-31', eps: 1 }] };
+    const store = u => ({ v, updated: fresh7, eps: { A: due, B: notDue }, ...u });
+    assert.deepStrictEqual(earningsToFetch(store(), ['A', 'B'], NOW), ['A']);
+    // Checked today already: don't ask again this hour.
+    const checkedToday = { ...due, checked: new Date(NOW - 3600e3).toISOString() };
+    assert.deepStrictEqual(
+        earningsToFetch({ v, updated: fresh7, eps: { A: checkedToday, B: notDue } }, ['A', 'B'], NOW), []);
+    // Checked two days ago: look again.
+    const checkedOld = { ...due, checked: new Date(NOW - 2 * 86400e3).toISOString() };
+    assert.deepStrictEqual(
+        earningsToFetch({ v, updated: fresh7, eps: { A: checkedOld, B: notDue } }, ['A', 'B'], NOW), ['A']);
+
     // mergeEarnings: the repo store outlives Yahoo's ~4-year window.
     const y = (date, eps) => ({ date, eps });
     // A year that has rolled off Yahoo's window is kept, so the history grows past 4.
@@ -691,11 +781,26 @@ function selftest() {
         mergeEarnings({ currency: 'USD', years: [y('2021-12-31', 1), y('2022-12-31', 2)] },
             { currency: 'USD', years: [y('2022-12-31', 2), y('2023-12-31', 3)] }),
         { currency: 'USD', years: [y('2021-12-31', 1), y('2022-12-31', 2), y('2023-12-31', 3)] });
-    // A restatement of a year we already hold overwrites it — fresh wins.
+    // A restatement of a year we already hold overwrites it — fresh wins. This is why the
+    // monthly sweep still exists (ASML's FY2025 EPS moved 26.26 -> 24.71 after publication).
     assert.deepStrictEqual(
         mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 9)] },
             { currency: 'USD', years: [y('2022-12-31', 3)] }).years,
         [y('2022-12-31', 3)]);
+    // ...but merged FIELD by field. Yahoo's per-field windows don't line up, so it hands back a
+    // year carrying EPS alone; replacing the year wholesale would delete the revenue the
+    // backfill put there. Fresh eps wins, backfilled rev/nic survive.
+    assert.deepStrictEqual(
+        mergeEarnings(
+            { currency: 'HKD', years: [{ date: '2021-12-31', rev: 100, nic: 10 }] },
+            { currency: 'HKD', years: [{ date: '2021-12-31', eps: 5 }] }).years,
+        [{ date: '2021-12-31', rev: 100, nic: 10, eps: 5 }]);
+    // And the reverse: a backfilled top line lands on a year Yahoo only gave EPS for.
+    assert.deepStrictEqual(
+        mergeEarnings(
+            { currency: 'HKD', years: [{ date: '2025-12-31', eps: 2, ni: 20 }] },
+            { currency: 'HKD', years: [{ date: '2025-12-31', eps: 2.5 }] }).years,
+        [{ date: '2025-12-31', eps: 2.5, ni: 20 }]);
     // An empty fetch never erases history (glitch), but an ETF stays legitimately empty.
     assert.deepStrictEqual(
         mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 2)] }, { currency: null, years: [] }),
