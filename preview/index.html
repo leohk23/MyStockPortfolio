@@ -137,6 +137,12 @@
         /* Each metric's prior-year change sits directly under its value. */
         #deep-fin .yoy { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+        #deep-fin .guidance { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 9px; }
+        #deep-fin .guidance h4 { color: var(--text-primary); font-size: 11px; text-transform: uppercase;
+            letter-spacing: .04em; margin: 0 0 7px; }
+        #deep-fin .guidance h4 span { color: var(--text-muted); font-weight: 400;
+            text-transform: none; letter-spacing: 0; }
+        #deep-fin .guidance a { color: var(--series-port); }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -459,6 +465,8 @@
         let historyPromise = null;
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
         let earningsPromise = null;
+        let GUIDANCE = null;     // manual pilot: company-issued outlook, deep dive only
+        let guidancePromise = null;
         let sort = { key: 'value', dir: -1 };
         // Deliberately not persisted: a filter restored on load would hide rows with no
         // explanation and read as missing data.
@@ -494,6 +502,16 @@
                 .then(r => r.ok ? r.json() : Promise.reject(new Error('earnings ' + r.status)))
                 .then(e => (EARNINGS = e));
             return earningsPromise;
+        }
+
+        // Guidance is optional: a missing pilot file must never hide the filed financials.
+        function loadGuidance() {
+            if (GUIDANCE) return Promise.resolve(GUIDANCE);
+            if (!guidancePromise) guidancePromise = fetch(DATA + 'guidance.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : {})
+                .catch(err => { console.warn('guidance unavailable:', err.message); return {}; })
+                .then(g => (GUIDANCE = g));
+            return guidancePromise;
         }
 
         /* ---------------- deep dive ---------------- */
@@ -559,6 +577,22 @@
             if (el) el.outerHTML = `<span id="deep-peg"${title ? ` title="${title}"` : ''}>${html}</span>`;
         };
 
+        // Literal company figures: do not convert currencies, annualise quarters, or invent
+        // fields a company did not guide. The source stays beside the figures for auditability.
+        const guidanceHTML = g => {
+            const metrics = (g?.metrics || []).filter(m => m?.label && m?.value);
+            if (!metrics.length || !g.period || !g.issued) return '';
+            const source = String(g.source || '');
+            const link = source.startsWith('https://')
+                ? ` · <a href="${escapeHTML(source)}" target="_blank" rel="noopener">official source</a>` : '';
+            return `<section class="guidance" aria-label="Company guidance">
+                <h4>Company guidance <span>— ${escapeHTML(g.period)} · issued ${ymd(escapeHTML(g.issued))}${link}</span></h4>
+                <table><thead><tr>${metrics.map(m => `<th>${escapeHTML(m.label)}</th>`).join('')}</tr></thead>
+                    <tbody><tr>${metrics.map(m => `<td>${escapeHTML(m.value)}</td>`).join('')}</tr></tbody></table>
+                ${g.note ? `<div class="deep-note">${escapeHTML(g.note)} Forward-looking; no estimates derived.</div>` : ''}
+            </section>`;
+        };
+
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
@@ -567,9 +601,10 @@
             dates.innerHTML = '';
             fin.innerHTML = '<span class="deep-note">Loading…</span>';
 
-            loadEarnings().then(store => {
+            Promise.all([loadEarnings(), loadGuidance()]).then(([store, guidanceStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
                 const e = store.eps[leg.yahoo];
+                const guidance = guidanceHTML(guidanceStore[leg.yahoo]);
                 // A fund is not an operating company, and Yahoo will still hand back "revenue"
                 // for one (SPOL.L, an ETF, reports 22.9M of fund income). No EPS in ANY year is
                 // what separates the two: a real company has EPS somewhere, even a loss-making
@@ -593,7 +628,7 @@
                     setPeg('<span class="muted">–</span>');   // no earnings, no growth, no PEG
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
-                        + 'this is a fund, trust or commodity, not an operating company.</span>';
+                        + 'this is a fund, trust or commodity, not an operating company.</span>' + guidance;
                     return;
                 }
 
@@ -691,7 +726,7 @@
                 </table>
                 <div class="deep-note">Net income is attributable to common shareholders (after
                     minorities); shares are diluted. Shares and operating income (and its margin)
-                    cover Yahoo's recent years only. Reported, never FX-converted.</div>`;
+                    cover Yahoo's recent years only. Reported, never FX-converted.</div>${guidance}`;
             }).catch(err => {
                 fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
             });

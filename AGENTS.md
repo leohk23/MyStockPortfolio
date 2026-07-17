@@ -71,6 +71,7 @@ index.html + portfolio.js   all arithmetic in the browser
 | `meta.json` | Per-instrument facts not in the Tradelog: `yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed |
 | `fetch-prices.js` | Yahoo Finance → `prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`). | GitHub Actions hourly + local |
 | `watchlist.json` | Stocks watched but **not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below. | Committed |
+| `guidance.json` | Small manual pilot of company-issued near-term guidance. Literal display values + period, issue date, official source and material assumptions; currently NVDA, TSM and AMZN. | Committed |
 | `backfill-earnings.js` | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Deeper financial history" below). **Manual, one-off — never in CI.** | User's machine only |
 | `portfolio.js` | Pure aggregation shared by page and tests. `build(holdings, rates, quotes, dimension)`. | Browser (`window.portfolioLib`) + node |
 | `index.html` | Dark-only UI: totals, chart, sortable/groupable table. | Browser |
@@ -90,6 +91,14 @@ node extract-portfolio.js --selftest   # yahoo-symbol mapping, group-name cleani
 Every non-trivial JS file has an `assert`-based `--selftest`. **Add to it when you change
 logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc if changing
 `index.html` (see git history for the pattern), then eyeball the rendered SVG.
+
+## Preview-first workflow
+
+New UI and content work goes to `preview/index.html` and is pushed to `main`, which makes it
+reviewable at `/MyStockPortfolio/preview/`. Keep `index.html` unchanged until the owner asks to
+promote it. `npm run promote` copies the reviewed preview over the live page; do not run it by
+inference. Root data files are shared by both pages, so a pilot-only dataset must remain unused
+by `index.html` until promotion.
 
 ## Invariants — do not break these
 
@@ -263,6 +272,16 @@ holdings pay on could 401 the whole EPS/trough pipeline; that's the reason for a
 ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a definitive "no date"
 (cached, so it backs off) rather than a transient error (retried) — otherwise every ETF payer
 would retry daily forever.
+
+## Official company guidance (manual pilot)
+
+`guidance.json` is deliberately separate from Yahoo's filed annual history. Guidance is
+forward-looking, usually quarterly, and each company guides different measures, so the page
+shows the company's values literally beneath the financials table rather than forcing them into
+the annual rows or deriving missing fields. Every entry must carry its period, issue date,
+official investor-relations URL and any material assumption. Never annualise, FX-convert or
+fill a metric the company did not guide. Update it by hand after results; there is no scraper
+until the three-stock pilot proves the maintenance cost is worth automating.
 
 ## When annual figures get fetched
 
