@@ -242,6 +242,28 @@ selftest asserts a holding and a watchlist entry on the same quote agree.
 Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first
 paint). Fine for a dozen; reconsider at 30+.
 
+## Ex-dividend date (`fetchExDiv` / `exDivToFetch`)
+
+Shown as a chip in the deep dive — accented when it's in the future (own by then to collect),
+muted "Last ex-div" when it's the past cycle. Payers only.
+
+Unlike the next-results date (which is **free**, batched into the v7/quote call), the ex-div date
+is **not** in that response — its `exDividendDate` is empty and its `dividendDate` is the pay
+date, stale and missing outside the US. It lives in `quoteSummary?modules=calendarEvents`, which
+is **per-ticker and crumb-gated** — the same endpoint the EPS handshake and PE columns depend on.
+
+So it is **cached in prices.json** (`quote.exDiv` + `quote.exDivChecked`) and `exDivToFetch` only
+looks when there's a reason: no cached date, or the cached one has passed (the next may now be
+announced). A payer with a future date is left alone. And a per-ticker `exDivChecked` caps a
+still-unannounced payer to **one look a day**, or an annual HK/EU name would refetch every run for
+the months its last ex-div sits in the past — the same trap the earnings due-window solves.
+Steady state is **0 lookups a run**. Hammering that gated endpoint 40×/run for a date few of these
+holdings pay on could 401 the whole EPS/trough pipeline; that's the reason for all the caution.
+
+ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a definitive "no date"
+(cached, so it backs off) rather than a transient error (retried) — otherwise every ETF payer
+would retry daily forever.
+
 ## When annual figures get fetched
 
 The hourly job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three

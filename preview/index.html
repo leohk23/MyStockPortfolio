@@ -455,6 +455,7 @@
         const benchOn = new Set();
         const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
         const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
+        const todayISO = () => new Date().toISOString().slice(0, 10);
 
         const rateOf = c => portfolioLib.rateFor(c, STATE.rates);
 
@@ -560,9 +561,18 @@
                 // Six: Yahoo caps at 4, and backfill-earnings.js reaches deeper (SEC EDGAR gives
                 // ~9-19 for US filers, stockanalysis 5 elsewhere). Where a source is refused or
                 // absent this shows what exists — 4 or 5 — rather than padding it.
+                // Ex-div is a quote property, so it applies to a fund payer (VOO, EWJ) too — a
+                // future one is actionable and accented, a past one is last cycle and muted.
+                const exDiv = leg.quote.exDiv;
+                const exChip = exDiv
+                    ? `<span class="date-chip${exDiv >= todayISO() ? ' next' : ''}">`
+                        + `${exDiv >= todayISO() ? 'Ex-div' : 'Last ex-div'} <b>${ymd(exDiv)}</b></span>`
+                    : '';
+
                 const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
                     setPeg('<span class="muted">–</span>');   // no earnings, no growth, no PEG
+                    dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';
                     return;
@@ -583,7 +593,8 @@
                     + (next
                         ? `<span class="date-chip next">Next results <b>${ymd(next.date)}</b>`
                             + `${next.estimate ? ' (est.)' : ''}</span>`
-                        : '<span class="date-chip">Next results <b>not scheduled</b></span>');
+                        : '<span class="date-chip">Next results <b>not scheduled</b></span>')
+                    + exChip;
                 // Diluted share count is Yahoo's own net income ÷ its own EPS — no new field to
                 // fetch. Only the Yahoo years carry both (the deep backfill stored rev+nic only),
                 // so older rows show a blank share cell, same as operating margin.

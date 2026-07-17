@@ -144,6 +144,45 @@ function parseQuotes(json, now = Date.now()) {
     return { eps, earnings };
 }
 
+// Ex-dividend date, from quoteSummary's calendarEvents. NOT in the batch v7/quote response
+// (its exDividendDate is empty and its dividendDate is the pay date, often stale and missing
+// outside the US), so this is a PER-TICKER request against the crumb-gated endpoint — the same
+// one the PE pipeline leans on. That is exactly why it is cached and only fetched for payers
+// whose cached date has passed (see exDivToFetch), not for all 40 payers every run: hammering
+// this endpoint risks 401ing the whole EPS/trough handshake for a date few of these holdings
+// even pay on.
+async function fetchExDiv(ticker, { crumb, cookie }) {
+    const sym = ticker.replace('^', '%5E');
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}`
+        + `?modules=calendarEvents&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    // 404 is a DEFINITIVE "this symbol has no calendarEvents module" — every ETF returns it
+    // (VOO, EWJ, ...). Treat it as "no date", a real answer that gets cached, so those never
+    // retry. Only a genuine transient (429/5xx/network) throws and is retried next run.
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = (await res.json()).quoteSummary?.result?.[0]?.calendarEvents?.exDividendDate?.raw;
+    return typeof raw === 'number' ? new Date(raw * 1000).toISOString().slice(0, 10) : null;
+}
+
+// Which payers need an ex-div lookup this run. The date changes at most a few times a year, so
+// it is cached in prices.json and only refetched when there is a reason to: no cached date, or
+// the cached one has already passed (a new one may now be announced). A payer whose next ex-div
+// is still in the future is left alone — that is the whole point, keeping this off the gated
+// endpoint.
+//
+// The `exDivChecked` throttle matters: an annual HK/EU payer sits for MONTHS with its last
+// ex-div in the past and the next unannounced, so "refetch whenever the cached date is past"
+// alone would hit it every run all that time. Capped to one look a day — the same trap, and the
+// same fix, as the earnings due-window. `today` is a parameter for the selftest.
+function exDivToFetch(prevQuotes, payers, today) {
+    return payers.filter(t => {
+        const q = prevQuotes[t] || {};
+        const needsLook = !q.exDiv || q.exDiv < today;   // ISO dates compare lexically
+        return needsLook && q.exDivChecked !== today;    // ...but not twice in one day
+    });
+}
+
 // Yahoo's fundamentals are in the major currency unit even for tickers whose price
 // quote is in a minor unit (pence) — same GBp quirk rateFor() handles for FX.
 function epsInQuoteUnits(eps, currency) {
@@ -316,6 +355,12 @@ function previousEps() {
             .filter(([, q]) => typeof q.eps === 'number')
             .map(([t, q]) => [t, q.eps]));
     } catch { return {}; }               // no previous file (first run) — nothing to carry
+}
+
+// Last run's quotes, so a cached-but-still-valid ex-div date carries forward without a refetch.
+function previousQuotes() {
+    try { return JSON.parse(fs.readFileSync('prices.json', 'utf8')).quotes || {}; }
+    catch { return {}; }
 }
 
 // Annual EPS is reported four times a year, so re-fetching it hourly for every holding is 56
@@ -536,6 +581,34 @@ async function main() {
     const dated = tickers.filter(t => quotes[t]?.earnings).length;
     console.log(`ok   next results date for ${dated}/${tickers.length} tickers`);
     console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
+
+    // Ex-dividend date, for payers only, and only when there's a reason to refetch (see
+    // exDivToFetch). Every other payer carries its cached date forward. This deliberately keeps
+    // the per-ticker gated calls to a trickle — usually 0-2 a run — rather than 40, because that
+    // endpoint is shared with the EPS handshake the PE columns need.
+    const prevQuotes = previousQuotes();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const t of tickers) {                       // carry cache forward; a refetch overwrites
+        if (!quotes[t]) continue;
+        if (prevQuotes[t]?.exDiv) quotes[t].exDiv = prevQuotes[t].exDiv;
+        if (prevQuotes[t]?.exDivChecked) quotes[t].exDivChecked = prevQuotes[t].exDivChecked;
+    }
+    if (auth) {
+        const payers = tickers.filter(t => quotes[t]?.divYield > 0);
+        const due = exDivToFetch(prevQuotes, payers, today);
+        if (due.length) console.log(`     ex-div lookup for ${due.length}/${payers.length} payer(s)`);
+        for (const t of due) {
+            try {
+                const date = await fetchExDiv(t, auth);
+                if (date) quotes[t].exDiv = date; else delete quotes[t].exDiv;
+                quotes[t].exDivChecked = today;      // looked today — don't look again till tomorrow
+            } catch (e) {
+                console.error(`     ex-div ${t}: ${e.message} — keeping cached`);
+            }
+            await sleep();
+        }
+    }
+    console.log(`ok   ex-div date for ${tickers.filter(t => quotes[t]?.exDiv).length} payer(s)`);
 
     // Annual EPS history: read from the repo, refreshed only when it ages out or a holding is
     // new. Loaded HERE, before the FX block, because each company's REPORTING currency has to
@@ -902,6 +975,23 @@ function selftest() {
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestamp: future, isEarningsDateEstimate: true }] } }, QNOW).earnings,
         { X: { date: '2026-07-30', estimate: true } });
+
+    // exDivToFetch: only look when there's a reason, and never twice a day.
+    const T2 = '2026-07-17';
+    // A future cached date needs no lookup.
+    assert.deepStrictEqual(exDivToFetch({ A: { exDiv: '2026-09-01' } }, ['A'], T2), []);
+    // No cached date at all -> look.
+    assert.deepStrictEqual(exDivToFetch({}, ['A'], T2), ['A']);
+    // A passed date -> look (the next may now be announced)...
+    assert.deepStrictEqual(exDivToFetch({ A: { exDiv: '2026-05-01' } }, ['A'], T2), ['A']);
+    // ...unless already looked today: the annual-payer trap, capped to one look a day.
+    assert.deepStrictEqual(
+        exDivToFetch({ A: { exDiv: '2026-05-01', exDivChecked: T2 } }, ['A'], T2), []);
+    // Checked yesterday -> look again today.
+    assert.deepStrictEqual(
+        exDivToFetch({ A: { exDiv: '2026-05-01', exDivChecked: '2026-07-16' } }, ['A'], T2), ['A']);
+    // Today IS the ex-div date -> not past yet, no lookup.
+    assert.deepStrictEqual(exDivToFetch({ A: { exDiv: T2 } }, ['A'], T2), []);
     // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');
