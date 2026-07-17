@@ -181,6 +181,11 @@ const FIELDS = {                       // Yahoo timeseries key -> our short name
     annualNetIncome: 'ni',
     annualTotalRevenue: 'rev',
     annualNetIncomeCommonStockholders: 'nic',
+    // Operating income, for the operating-margin line. Net income catches one-off tax and FX
+    // noise; operating margin is the cleaner "is the core business improving" signal. Only the
+    // years Yahoo returns carry it (the deep EDGAR/stockanalysis backfill does not), which is
+    // fine — operating margin is a recent-trend read, matching the share-count trend beside it.
+    annualOperatingIncome: 'opinc',
 };
 async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
@@ -332,7 +337,8 @@ const EARNINGS_SWEEP_DAYS = 30;
 // v3 = + revenue and net income to common, for the financials panel.
 // v4 = stopped keying years on EPS, which discarded fiscal years Yahoo HAD sent revenue for
 //      (LVMH's FY2025 was missing for six months). Forces one refetch to recover them.
-const EARNINGS_V = 4;
+// v5 = + operating income (opinc), for the operating-margin line.
+const EARNINGS_V = 5;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
