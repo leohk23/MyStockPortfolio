@@ -136,6 +136,8 @@
             border-bottom: 1px solid var(--line); }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
+        #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
+        #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
         #deep-fin tr.guidance-row td:first-child, #deep-fin tr.guidance-row a { color: var(--series-port); }
         /* Each metric's prior-year change sits directly under its value. */
@@ -763,6 +765,43 @@
                         ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>
                     </tr>` : '';
 
+                // Latest reported QUARTER, at the same granularity as the guidance row below it,
+                // so a quarterly guide can be read against a quarterly actual instead of looming
+                // under full-year rows. Its sub-lines are change vs the SAME quarter a year
+                // earlier — seasonality-free, and the same "smaller line = comparable prior
+                // period" rule the annual rows follow. Only the allowlisted names carry quarters.
+                const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const qLabel = date => { const d = new Date(date + 'T00:00:00Z');
+                    return `Qtr ${MON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`; };
+                // The same quarter a year before `ref`, matched by DATE (±50 days) so a hole in
+                // Yahoo's ~5-point window can't silently pair the wrong quarter. Null if absent.
+                const yearAgoQ = (list, ref) => {
+                    const t = new Date(ref + 'T00:00:00Z'); t.setUTCFullYear(t.getUTCFullYear() - 1);
+                    let best = null, gap = 50 * 864e5;
+                    for (const x of list) { const g = Math.abs(new Date(x.date + 'T00:00:00Z') - t);
+                        if (g < gap) { best = x; gap = g; } }
+                    return best;
+                };
+                // Only quarters with a top line — Yahoo often has the EPS of a just-reported
+                // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
+                // stub first). Same rule the annual rows use: a real reported period has revenue.
+                const qs = (e?.quarters || []).filter(x => x.rev != null);
+                let qrow = '';
+                if (qs.length) {
+                    const L = qs[qs.length - 1], ya = yearAgoQ(qs.filter(x => x !== L), L.date);
+                    const qy = (v, prev) => ya && prev != null ? yoy(v, prev) : null;
+                    qrow = `<tr class="quarter-row">
+                        <td title="Quarter ended ${ymd(L.date)}${ya ? `; change is vs the quarter ended ${ymd(ya.date)}` : ' — no year-ago quarter in range for a comparison'}">${qLabel(L.date)}</td>
+                        ${cell(L.rev, qy(L.rev, ya?.rev))}
+                        ${cell(L.opinc, qy(L.opinc, ya?.opinc))}
+                        ${marginCell(opMargin(L), ya ? opMargin(ya) : null)}
+                        ${cell(L.nic, qy(L.nic, ya?.nic))}
+                        ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
+                        ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
+                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                    </tr>`;
+                }
+
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
                 // can see the number it was divided by rather than taking it on faith.
                 const g = peg(leg.pe, nc);
@@ -779,11 +818,12 @@
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                     </tr></thead>
-                    <tbody>${body}${foot}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
+                    ...(qrow ? ['Quarter: the latest reported quarter, with change vs the same quarter a year earlier — read the guidance row below it like-for-like against that year-ago quarter, not against the full-year rows.'] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;

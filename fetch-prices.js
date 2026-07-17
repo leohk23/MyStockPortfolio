@@ -230,11 +230,30 @@ const FIELDS = {                       // Yahoo timeseries key -> our short name
     // fine — operating margin is a recent-trend read, matching the share-count trend beside it.
     annualOperatingIncome: 'opinc',
 };
+// The same accounts one granularity down, so the panel can set the latest reported QUARTER
+// beside company guidance (which is usually a quarter) at matching granularity. Yahoo exposes a
+// `quarterly*` twin of every annual key, and the timeseries endpoint takes them in the SAME
+// comma-separated `type=` list — so this rides the existing per-ticker request at zero extra
+// cost against the endpoint Yahoo gates hardest.
+const QUARTERLY_FIELDS = {              // Yahoo timeseries key -> our short name
+    quarterlyTotalRevenue: 'rev',
+    quarterlyOperatingIncome: 'opinc',
+    quarterlyNetIncomeCommonStockholders: 'nic',
+    quarterlyNetIncome: 'ni',
+    quarterlyDilutedEPS: 'eps',
+};
+// Example allowlist — prove the quarterly-vs-guidance comparison on a few well-covered names
+// before widening. ponytail: to roll it out, drop the guard and fetch quarters for every
+// operating company (skip nonEquity); the store, merge and panel already handle any ticker.
+const QUARTERLY_TICKERS = new Set(['NVDA', 'NFLX', 'META']);
+
 async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
+    const wantQuarters = QUARTERLY_TICKERS.has(ticker);
+    const types = [...Object.keys(FIELDS), ...(wantQuarters ? Object.keys(QUARTERLY_FIELDS) : [])];
     const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
-        + `?symbol=${sym}&type=${Object.keys(FIELDS).join(',')}`
+        + `?symbol=${sym}&type=${types.join(',')}`
         + `&period1=${now - 8 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
@@ -242,19 +261,23 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const results = (await res.json()).timeseries?.result || [];
-            const rows = {};               // asOfDate -> { eps, ni, rev, nic }
+            const rows = {}, qrows = {};   // asOfDate -> { eps, ni, rev, nic, opinc }
             let currency = null;
-            for (const r of results) {
-                for (const [key, name] of Object.entries(FIELDS)) {
-                    for (const x of r[key] || []) {
-                        if (!x?.asOfDate || typeof x.reportedValue?.raw !== 'number') continue;
-                        (rows[x.asOfDate] ||= {})[name] = x.reportedValue.raw;
-                        // EPS is per-share and revenue is absolute, but both are filed in the
-                        // same reporting currency — any row carrying one settles it.
-                        if (x.currencyCode) currency = x.currencyCode;
+            const collect = (fields, bucket) => {
+                for (const r of results) {
+                    for (const [key, name] of Object.entries(fields)) {
+                        for (const x of r[key] || []) {
+                            if (!x?.asOfDate || typeof x.reportedValue?.raw !== 'number') continue;
+                            (bucket[x.asOfDate] ||= {})[name] = x.reportedValue.raw;
+                            // EPS is per-share and revenue is absolute, but both are filed in the
+                            // same reporting currency — any row carrying one settles it.
+                            if (x.currencyCode) currency = x.currencyCode;
+                        }
                     }
                 }
-            }
+            };
+            collect(FIELDS, rows);
+            if (wantQuarters) collect(QUARTERLY_FIELDS, qrows);
             // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
             // earnings. That gets cached. A thrown error does NOT (see the caller).
             //
@@ -264,9 +287,13 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
             // 2638.HK is the exact reverse. Keying on EPS silently dropped LVMH's FY2025 for six
             // months after it was published. Consumers filter for what they need instead: the
             // financials panel takes years with revenue, troughPe() takes years with positive EPS.
+            const series = bucket => Object.keys(bucket).sort().map(date => ({ date, ...bucket[date] }));
             return {
                 currency,
-                years: Object.keys(rows).sort().map(date => ({ date, ...rows[date] })),
+                years: series(rows),
+                // Yahoo caps quarterly at ~5 points; that is plenty for "latest quarter with a
+                // year-on-year" — the same quarter a year earlier is the 5th one back.
+                ...(wantQuarters ? { quarters: series(qrows).slice(-6) } : {}),
             };
         } catch (e) {
             lastErr = e;
@@ -398,7 +425,9 @@ const EARNINGS_SWEEP_DAYS = 30;
 // v4 = stopped keying years on EPS, which discarded fiscal years Yahoo HAD sent revenue for
 //      (LVMH's FY2025 was missing for six months). Forces one refetch to recover them.
 // v5 = + operating income (opinc), for the operating-margin line.
-const EARNINGS_V = 5;
+// v6 = + quarterly financials (`quarters`) for the QUARTERLY_TICKERS allowlist, to set the
+//      latest reported quarter beside company guidance at matching granularity.
+const EARNINGS_V = 6;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
@@ -419,17 +448,26 @@ function loadEarnings() {
 //
 // A fetch that comes back empty keeps the old years (an ETF is empty from the start and has
 // nothing to keep; a company that suddenly reports nothing is a Yahoo glitch, not a fact).
+function mergeSeries(oldRows, freshRows) {
+    if (!oldRows?.length) return freshRows;
+    const byDate = new Map(oldRows.map(r => [r.date, r]));
+    for (const r of freshRows || []) {
+        const prev = byDate.get(r.date);
+        byDate.set(r.date, prev ? { ...prev, ...r } : r);
+    }
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
 function mergeEarnings(old, fresh) {
     if (!old?.years?.length) return fresh;
-    const byDate = new Map(old.years.map(y => [y.date, y]));
-    for (const y of fresh.years) {
-        const prev = byDate.get(y.date);
-        byDate.set(y.date, prev ? { ...prev, ...y } : y);
-    }
-    return {
+    const merged = {
         currency: fresh.currency ?? old.currency,
-        years: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+        years: mergeSeries(old.years, fresh.years),
     };
+    // Quarters accrete the same way, but bounded — only the last ~6 are ever shown, and unlike
+    // annual history there is no reason to keep a five-year tail of stale quarters.
+    const quarters = mergeSeries(old.quarters, fresh.quarters);
+    if (quarters?.length) merged.quarters = quarters.slice(-6);
+    return merged;
 }
 
 // Is this company's NEXT fiscal year overdue? The one we hold ends on a known date, so the next
@@ -928,6 +966,23 @@ function selftest() {
     assert.deepStrictEqual(
         mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 2)] }, { currency: null, years: [] }),
         { currency: 'USD', years: [y('2022-12-31', 2)] });
+
+    // Quarters accrete and merge field-by-field just like years, but are capped at the last 6.
+    const qtr = (date, rev) => ({ date, rev });
+    const sevenQ = Array.from({ length: 7 }, (_, i) => qtr(`2024-${String(i + 1).padStart(2, '0')}-01`, i));
+    assert.deepStrictEqual(
+        mergeEarnings(
+            { currency: 'USD', years: [y('2024-12-31', 1)], quarters: [qtr('2024-09-30', 40)] },
+            { currency: 'USD', years: [y('2024-12-31', 1)], quarters: [{ date: '2024-09-30', opinc: 8 }, qtr('2024-12-31', 45)] }
+        ).quarters,
+        [{ date: '2024-09-30', rev: 40, opinc: 8 }, qtr('2024-12-31', 45)]);
+    assert.strictEqual(
+        mergeEarnings({ currency: 'USD', years: [y('2024-12-31', 1)], quarters: [] },
+            { currency: 'USD', years: [y('2024-12-31', 1)], quarters: sevenQ }).quarters.length, 6);
+    // A ticker off the quarterly allowlist never grows a quarters key.
+    assert.strictEqual('quarters' in
+        mergeEarnings({ currency: 'USD', years: [y('2024-12-31', 1)] },
+            { currency: 'USD', years: [y('2024-12-31', 1)] }), false);
     assert.deepStrictEqual(
         mergeEarnings({ currency: null, years: [] }, { currency: null, years: [] }),
         { currency: null, years: [] });

@@ -292,6 +292,19 @@ there is no generic scraper because companies publish incompatible measures and 
 `_coverage.checked` and `noMatchingGuidance` current so a blank row means "official sources
 checked, no matching quantitative guidance" rather than "forgotten".
 
+**Latest reported quarter (for the guidance comparison).** Guidance is usually a *quarter*, but
+the reported rows are full fiscal years — so a guided quarter had nothing at matching granularity
+to read against. `fetch-prices.js` now also pulls the `quarterly*` twins of the annual accounts
+(`QUARTERLY_FIELDS`) and stores them as `quarters` on the earnings entry; the panel renders the
+**latest reported quarter** as one row directly above the guidance row, with sub-lines that are
+change vs the **same quarter a year earlier** (date-matched ±50d, seasonality-free — never vs the
+previous quarter). Two deliberate constraints: the row is taken from quarters that carry a top
+line (Yahoo hands back a just-reported quarter as an EPS stub days before the rest — NFLX Q2), and
+this rides the **same** fundamentals request (one longer `type=` list, zero extra gated calls).
+Currently gated to an example allowlist — `QUARTERLY_TICKERS` = {NVDA, NFLX, META} — to prove the
+comparison before widening; to roll out, drop the guard and fetch quarters for every operating
+company. Bumping to `EARNINGS_V` 6 forced the one refetch that populated it.
+
 ## When annual figures get fetched
 
 The hourly job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three
