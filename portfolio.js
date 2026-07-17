@@ -48,16 +48,6 @@ function gainHistory(days, closes, trades, rates, quoteCurrency) {
     return { gains, costs, quantities };
 }
 
-// Values today's shares in a selected company/geography basket across a shared
-// history calendar. Leading pre-listing gaps are held flat at the first close,
-// matching the whole-portfolio NAV proxy.
-function basketHistory(days, closes, legs, rates) {
-    const seeds = Object.fromEntries(legs.map(l => [l.yahoo, closes[l.yahoo]?.find(v => v != null)]));
-    return days.map((_, i) => legs.reduce((total, leg) => {
-        const close = closes[leg.yahoo]?.[i] ?? seeds[leg.yahoo];
-        return total + (close == null ? 0 : leg.qty * close * rateFor(leg.quote.currency, rates));
-    }, 0));
-}
 
 // Signed share change (+buy / -sell) and its external cash flow in USD (today's FX).
 function tradeFlow(t, rates) {
@@ -250,7 +240,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, basketHistory, cohortMV, twr, build, valuation, buildWatchlist, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -313,14 +303,6 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
         [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' }] }],
         { A: [null, 20, null, 22] }, rates, null);
     assert.deepStrictEqual(gap.mv, [200, 200, 200, 220]);
-
-    const basket = basketHistory(
-        ['2026-01-01', '2026-01-02', '2026-01-03'],
-        { A: [10, 11, 12], B: [null, 20, 21] },
-        [{ yahoo: 'A', qty: 2, quote: { currency: 'USD' } }, { yahoo: 'B', qty: 1, quote: { currency: 'HKD' } }],
-        rates,
-    );
-    assert.deepStrictEqual(basket, [22, 24, 26.1]);
 
     // Weighted by value: a $300 leg at +10% and a $100 leg at -10% => +5%.
     const legs = [{ value: 300, quote: { '1y': 0.10 } }, { value: 100, quote: { '1y': -0.10 } }];

@@ -441,32 +441,24 @@ function alignedCloses(tickers, quotes) {
     return { days, closes };
 }
 
-// Portfolio value over the supplied price history.
+// What the portfolio was ACTUALLY worth on each day: the Tradelog replayed against the price
+// history, so the line starts at the first purchase and steps up as money goes in.
 //
-// ponytail: assumes TODAY's share counts and TODAY's FX for every past day. It answers
-// "what would this basket have been worth back then", not "what was my account worth" —
-// buys, sells and FX drift are invisible. Real NAV needs the Tradelog replayed; do that
-// only if this proxy starts misleading you.
+// This used to hold TODAY's share count constant across all history, which answered "what would
+// this basket have been worth back then" rather than "what did I own". The old comment said to
+// replay the Tradelog only once the proxy started misleading — it did: on 2019-12-20 it valued
+// the S&P group at $5,723 when the real figure was $593, because it back-projected 25 VUSA.L
+// shares that were not bought until 2025. A chart of asset value has to be asset value.
+//
+// cohortMV does the replay (and holds price flat across data gaps, which is what the old seed
+// was for). Still today's FX for every past day — see AGENTS.md invariant 2.
 function navHistory(holdings, quotes, rates) {
     const tickers = [...new Set(holdings.map(h => h.yahoo))];
     const { days, closes } = alignedCloses(tickers, quotes);
-
-    // Seed each ticker's leading nulls with its first real close so a recently-listed
-    // line (NW0.DE has ~113 bars) is held flat at its first price instead of counting
-    // as zero — which would fake a ramp. Distortion is bounded by that holding's size.
-    const seed = {};
-    for (const t of tickers) seed[t] = closes[t].find(v => v != null);
-
-    const values = days.map((_, i) => {
-        let total = 0;
-        for (const h of holdings) {
-            const close = closes[h.yahoo][i] ?? seed[h.yahoo];
-            if (close == null) continue;
-            total += h.qty * close * rateFor(quotes[h.yahoo].currency, rates);
-        }
-        return Math.round(total);
-    });
-    return { days, values };
+    const { mv } = cohortMV(days, holdings.map(h => ({
+        yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency,
+    })), closes, rates);
+    return { days, values: mv.map(v => v == null ? null : Math.round(v)) };
 }
 
 const sleep = () => new Promise(r => setTimeout(r, 300)); // ponytail: fixed delay; backoff if Yahoo starts 429ing
@@ -869,19 +861,33 @@ function selftest() {
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');
 
-    // NAV: two holdings, one priced in HKD, over three trading days.
+    // NAV: two holdings, one priced in HKD, over three trading days. Quantity comes from the
+    // TRADES now, not a qty field — navHistory replays the Tradelog rather than back-projecting
+    // today's share count.
     const d = ['2026-01-05', '2026-01-06', '2026-01-07'].map(s => Date.parse(s) / 1000);
+    const buy = (date, qty, price, currency = 'USD') => ({ date, side: 'BUY', qty, price, currency });
     const q = {
         A: { currency: 'USD', series: { timestamps: d, closes: [10, 11, 12] } },
         B: { currency: 'HKD', series: { timestamps: d, closes: [100, 100, 100] } },
     };
-    const hold = [{ yahoo: 'A', qty: 2 }, { yahoo: 'B', qty: 1 }];
+    const hold = [
+        { yahoo: 'A', trades: [buy('2026-01-05', 2, 10)] },
+        { yahoo: 'B', trades: [buy('2026-01-05', 1, 100, 'HKD')] },
+    ];
     const nav = navHistory(hold, q, { USD: 1, HKD: 0.1 });
     assert.deepStrictEqual(nav.values, [30, 32, 34]); // 2*close + 100*0.1
 
+    // The point of the replay: nothing owned yet means nothing on the chart, and the line steps
+    // up when you buy. The old proxy drew today's shares back to the start of history — it put
+    // the S&P group at $5,723 in Dec 2019 when the real figure was $593.
+    const later = navHistory([{ yahoo: 'A', trades: [buy('2026-01-06', 2, 11)] }], q, { USD: 1 });
+    assert.deepStrictEqual(later.values, [0, 22, 24]);
+
     // A gap (holiday) forward-fills rather than dropping the holding to zero.
     const gap = { A: { currency: 'USD', series: { timestamps: d, closes: [10, null, 12] } } };
-    assert.deepStrictEqual(navHistory([{ yahoo: 'A', qty: 1 }], gap, { USD: 1 }).values, [10, 10, 12]);
+    assert.deepStrictEqual(
+        navHistory([{ yahoo: 'A', trades: [buy('2026-01-05', 1, 10)] }], gap, { USD: 1 }).values,
+        [10, 10, 12]);
 
     // A holding whose history starts late is held flat at its first close, so it adds a
     // constant instead of a fake ramp from zero. Full date range is preserved.
@@ -889,7 +895,10 @@ function selftest() {
         A: { currency: 'USD', series: { timestamps: d, closes: [10, 10, 10] } },
         B: { currency: 'USD', series: { timestamps: d.slice(2), closes: [5] } },
     };
-    const back = navHistory([{ yahoo: 'A', qty: 1 }, { yahoo: 'B', qty: 1 }], late, { USD: 1 });
+    const back = navHistory([
+        { yahoo: 'A', trades: [buy('2026-01-05', 1, 10)] },
+        { yahoo: 'B', trades: [buy('2026-01-05', 1, 5)] },
+    ], late, { USD: 1 });
     assert.strictEqual(back.days.length, 3);
     assert.deepStrictEqual(back.values, [15, 15, 15]);
 

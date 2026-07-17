@@ -51,7 +51,7 @@ Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read
 holdings.json          positions, cost basis, geography, group, full trade log  (committed)
       │  node fetch-prices.js        (GitHub Actions, hourly; dependency-free)
       ▼
-prices.json            quotes, FX rates, portfolio NAV series      (committed)
+prices.json            quotes, FX rates, portfolio value series (replayed) (committed)
 history.json           daily + weekly closes, long NAV + benchmarks (committed, ~2MB)
       │
       ▼
@@ -106,11 +106,24 @@ logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc i
    overlay) or use separate charts. Never dual-axis.
 5. **Chart colors are validated.** Series use `--series-port/spx/hsi`, validated against the
    dark surface with the dataviz skill's `validate_palette.js`. Re-validate if you change them.
-6. **NAV / history are proxies.** They value *today's* share counts at past prices with
-   *today's* FX. Not true time-weighted return. Two exceptions replay the Tradelog (both still
-   today's-FX, realized/dividends excluded): stock **Gain/Loss** (balance qty + average cost),
-   and the portfolio **Performance** view (`portfolio.js` `cohortMV`+`twr`) — a genuine
-   time-weighted return with cash flows removed, split into Total / Existing / New-buys cohorts.
+6. **Every series replays the Tradelog. Nothing back-projects today's shares.** All of them
+   still use *today's* FX for every past day, and exclude dividends/realized gains.
+   - **Value** (portfolio and group) = `cohortMV` market value: what you actually held, priced
+     at past closes. The line starts at your first purchase and steps up when you buy, and its
+     endpoint equals the table's Value. It carries **no % headline** — a value line mixes
+     deposits with growth, so a percentage on it would call paying money in a "gain".
+   - **Performance** = `cohortMV` + `twr`: time-weighted return, cash flows removed, split into
+     Total / Existing / New-buys cohorts.
+   - **Benchmarks** = the same TWR versus price indices. It must never be the value series
+     rebased to a percentage: that counts deposits as gains and would beat any index by simply
+     paying money in.
+   - **Stock Gain/Loss** = `gainHistory` (balance qty + average cost).
+
+   The old proxy held today's share count constant across history. It was deleted (with
+   `basketHistory`) because it lied: on 2019-12-20 it valued the S&P group at **$5,723** when
+   the real figure was **$593**, having back-projected 25 VUSA.L shares bought in 2025. It also
+   claimed the portfolio was worth $146,641 a year ago when it was worth $122,993. Do not
+   reintroduce it: a chart of asset value has to be asset value.
 7. Portfolio **All** starts at the earliest recorded trade. Individual Price **All** keeps
    full available price history; Gain/Loss **All** starts at that instrument's first trade.
 8. **Yield is online-only.** `fetch-prices.js` sums Yahoo dividend events over `range=1y`

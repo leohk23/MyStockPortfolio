@@ -664,45 +664,81 @@
             };
         }
 
+        // Where money went in, placed ON the value line (its y is the line's own value that day,
+        // not the trade price — the two aren't on the same scale for a basket). Weekly bars won't
+        // hold every trade date, so a trade lands on the first bar at or after it.
+        function valueMarkers(legs, days, values) {
+            const dayIndex = new Map(days.map((d, i) => [d, i]));
+            const markers = [], byIndex = new Map();
+            for (const leg of legs) {
+                for (const raw of (leg.trades || [])) {
+                    let i = dayIndex.get(raw.date);
+                    if (i == null) { i = days.findIndex(d => d >= raw.date); if (i < 0) continue; }
+                    if (values[i] == null) continue;
+                    // A trade carries no ticker of its own; tag it, or a two-leg group can't say
+                    // which instrument the dot belongs to.
+                    const t = { ...raw, yahoo: leg.yahoo };
+                    markers.push({ i, side: t.side, usd: values[i] * RATES[display], trade: t });
+                    (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
+                }
+            }
+            return { markers, byIndex };
+        }
+
+        // A value chart states what something was worth. It makes no performance claim: the
+        // change in a value line is deposits AND growth mixed together, so a % here would say
+        // you'd "gained" by paying money in. Performance mode answers that question properly.
+        const valueTip = (values, byIndex) => i => {
+            let s = money(values[i] * RATES[display]);
+            for (const t of (byIndex.get(i) || []))
+                s += `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>`
+                    + `${t.side} ${t.qty} ${t.yahoo || ''} @ ${t.price.toLocaleString()} ${t.currency}</div>`;
+            return s;
+        };
+
         function portfolioValueSpec() {
             const nav = longRange ? HISTORY.long.nav : STATE.nav;
             const { days, arrays } = sliceRange(nav.days, [nav.values], longRange && !rangeYears ? STATE.firstTrade : '');
-            const values = arrays[0].map(v => v / RATES[display]);
-            const first = values[0], last = values[values.length - 1];
+            const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
+            const last = lastNonNull(values);
             return {
                 days,
                 series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
                 fmtY: v => money(v * RATES[display]),
-                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
-                    + `<span class="muted">${money((last - first) * RATES[display])}</span>`,
-                sub: `${money(last * RATES[display])} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                headline: money(last * RATES[display]),
+                sub: `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: 'Portfolio value',
-                note: "Today's holdings valued at past prices — trades and FX moves are not replayed.",
-                tip: i => `${money(values[i] * RATES[display])} <span class="${cls((values[i] - first) / first)}">${pct((values[i] - first) / first)}</span>`,
+                note: 'What the portfolio was actually worth: the Tradelog replayed against past prices, at today\'s FX. Switch to Performance for return with cash flows removed.',
+                tip: valueTip(values, new Map()),
             };
         }
 
         function groupValueSpec(group) {
             const history = longRange ? HISTORY.long : HISTORY;
-            const full = portfolioLib.basketHistory(history.days, history.closes, group.legs, STATE.rates);
+            // Replayed, not back-projected: cohortMV walks this group's trades so the line is
+            // what you held on each day. The old basketHistory proxy valued TODAY's shares at
+            // past prices and put the S&P group at $5,723 in Dec 2019 when it was really $593.
+            const { mv } = portfolioLib.cohortMV(
+                history.days, twrHoldings(group.legs), history.closes, STATE.rates);
             const firstTrade = group.legs.flatMap(leg => leg.trades || [])
                 .reduce((first, trade) => !first || trade.date < first ? trade.date : first, '');
             const { days, arrays } = sliceRange(
-                history.days, [full], longRange && !rangeYears ? firstTrade : '',
+                history.days, [mv], longRange && !rangeYears ? firstTrade : '',
             );
-            const values = arrays[0].map(v => v / RATES[display]);
-            const first = values[0], last = values[values.length - 1];
+            const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
+            const last = lastNonNull(values);
             const count = group.legs.length;
+            const { markers, byIndex } = valueMarkers(group.legs, days, values);
             return {
                 days,
                 series: [{ label: group.name, color: PORT_COLOR, values, area: true }],
+                markers, markersByIndex: byIndex,
                 fmtY: v => money(v * RATES[display]),
-                headline: `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
-                    + `<span class="muted">${money((last - first) * RATES[display])}</span>`,
-                sub: `${money(last * RATES[display])} · ${count} instrument${count === 1 ? '' : 's'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
-                title: `${group.name} NAV`,
-                note: "Today's holdings in this group valued at past prices — trades and FX moves are not replayed.",
-                tip: i => `${money(values[i] * RATES[display])} <span class="${cls((values[i] - first) / first)}">${pct((values[i] - first) / first)}</span>`,
+                headline: money(last * RATES[display]),
+                sub: `Asset value · ${count} instrument${count === 1 ? '' : 's'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                title: `${group.name} value`,
+                note: 'What this group was actually worth: your trades replayed against past prices, at today\'s FX. ▲ buy · ▼ sell. Switch to Performance for return with cash flows removed.',
+                tip: valueTip(values, byIndex),
             };
         }
 
@@ -712,29 +748,33 @@
             return arr.map(v => v == null || base == null ? null : (v - base) / base);
         }
 
+        // Portfolio vs indices. The portfolio line is the TIME-WEIGHTED return, not the value
+        // series rebased to a percentage: nav is now what the account was actually worth, so
+        // rebasing it would count every deposit as a gain and beat any index you like simply by
+        // paying money in. TWR strips the cash flows out, which is the only thing an index is
+        // comparable to. Sliced before twr() so it reads 0% at the left edge like the others.
         function benchmarkSpec() {
             const history = longRange ? HISTORY.long : HISTORY;
-            // Portfolio value keyed by date, read along the history calendar so every
-            // series shares one x-axis before rebasing to % change.
-            const nav = longRange ? HISTORY.long.nav : STATE.nav;
-            const navByDay = new Map(nav.days.map((d, i) => [d, nav.values[i]]));
-            const full = history.days.map(d => navByDay.get(d) ?? null);
-            const seriesRaw = [{ label: 'Portfolio', color: PORT_COLOR, sym: null, raw: full }];
-            for (const sym of ['^GSPC', '^HSI']) {
-                if (benchOn.has(sym) && history.closes[sym])
-                    seriesRaw.push({ label: HISTORY.benchmarks[sym].name, color: BENCH_COLOR[sym], sym, raw: history.closes[sym] });
-            }
-            const sliced = sliceRange(history.days, seriesRaw.map(s => s.raw), longRange && !rangeYears ? STATE.firstTrade : '');
-            const series = seriesRaw.map((s, k) => ({ label: s.label, color: s.color, values: rebase(sliced.arrays[k]) }));
+            const { mv, flow } = portfolioLib.cohortMV(
+                history.days, twrHoldings(STATE.holdings), history.closes, STATE.rates);
+            const benches = ['^GSPC', '^HSI'].filter(s => benchOn.has(s) && history.closes[s]);
+            const sliced = sliceRange(history.days, [mv, flow, ...benches.map(s => history.closes[s])],
+                longRange && !rangeYears ? STATE.firstTrade : '');
+            const series = [
+                { label: 'Portfolio', color: PORT_COLOR, values: portfolioLib.twr(sliced.arrays[0], sliced.arrays[1]) },
+                ...benches.map((s, k) => ({
+                    label: HISTORY.benchmarks[s].name, color: BENCH_COLOR[s],
+                    values: rebase(sliced.arrays[2 + k]),
+                })),
+            ];
             const days = sliced.days;
-            const port = series[0].values;
             return {
                 days, series, percent: true, zero: true,
                 fmtY: v => pct(v),
                 headline: series.map(s => `<span style="color:${s.color}">${pct(lastNonNull(s.values))}</span>`).join(' <span class="muted">·</span> '),
-                sub: `Indexed to ${ymd(days[0])} = 0%`,
+                sub: `Time-weighted return vs price indices · indexed to ${ymd(days[0])} = 0%`,
                 title: 'Portfolio vs benchmarks',
-                note: 'Each line rebased to 0% at the start of the range. Benchmarks are price indices (no dividends).',
+                note: 'Portfolio is time-weighted (cash in/out removed) so it is comparable to an index. Benchmarks are price indices (no dividends).',
                 tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
             };
         }
