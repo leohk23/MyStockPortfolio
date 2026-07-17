@@ -471,10 +471,12 @@ function earningsToFetch(store, tickers, now = Date.now()) {
     });
 }
 
-// Fresh Yahoo EPS wins and is scaled into the quote's unit. A carried-forward value is
+// A checked manual override wins. Otherwise fresh Yahoo EPS is scaled into the quote's unit.
+// A carried-forward value is
 // ALREADY in quote units (it was scaled when written), so scaling it again would multiply
 // a pence ticker by 100 a second time.
-function resolveEps(fresh, carried, currency) {
+function resolveEps(manual, fresh, carried, currency) {
+    if (typeof manual === 'number') return manual;
     if (typeof fresh === 'number') return epsInQuoteUnits(fresh, currency);
     return typeof carried === 'number' ? carried : undefined;
 }
@@ -563,6 +565,8 @@ async function main() {
     // the price write, and never throws past this point. Anything Yahoo doesn't hand us
     // (blocked handshake, or a symbol it has no EPS for) falls back to the last run's value.
     const carried = previousEps();
+    const manualEps = Object.fromEntries([...holdings, ...watchlist]
+        .filter(x => typeof x.eps === 'number').map(x => [x.yahoo, x.eps]));
     let fresh = {}, earningsDates = {}, quoteTypes = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
@@ -583,7 +587,7 @@ async function main() {
         // Not carried forward like EPS: a stale results date is worse than none, and this one
         // is cheap to refetch (it comes with the EPS request every run anyway).
         if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
-        const eps = resolveEps(fresh[t], carried[t], quotes[t].currency);
+        const eps = resolveEps(manualEps[t], fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
         fresh[t] != null ? live++ : stale++;
@@ -822,12 +826,12 @@ function selftest() {
     assert.strictEqual(epsInQuoteUnits(0.12, 'GBp'), 12);
     assert.strictEqual(epsInQuoteUnits(3.1, 'USD'), 3.1);
 
-    // resolveEps: fresh Yahoo EPS wins and gets scaled; a carried-forward value is already
+    // resolveEps: a checked manual override wins; fresh Yahoo EPS gets scaled; carried is already
     // in quote units and must NOT be scaled again (that would 100x a pence ticker twice).
-    assert.strictEqual(resolveEps(0.12, 999, 'GBp'), 12);      // fresh wins, scaled once
-    assert.strictEqual(resolveEps(undefined, 12, 'GBp'), 12);  // carried used as-is
-    assert.strictEqual(resolveEps(undefined, 3.1, 'USD'), 3.1);
-    assert.strictEqual(resolveEps(undefined, undefined, 'USD'), undefined); // no data anywhere
+    assert.strictEqual(resolveEps(0.98, 9, 8, 'USD'), 0.98);               // manual wins
+    assert.strictEqual(resolveEps(undefined, 0.12, 999, 'GBp'), 12);       // fresh, scaled once
+    assert.strictEqual(resolveEps(undefined, undefined, 12, 'GBp'), 12);   // carried as-is
+    assert.strictEqual(resolveEps(undefined, undefined, undefined, 'USD'), undefined);
 
     // earningsToFetch: per-ticker, not all-or-nothing.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();

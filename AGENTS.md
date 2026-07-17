@@ -148,8 +148,8 @@ by `index.html` until promotion.
 
 Two optional `meta.json` fields per instrument drive the PE columns:
 
-- `eps` — manual trailing EPS override, used only when Yahoo's auto-fetch (below) has no
-  data for that symbol. Native quote currency.
+- `eps` — checked manual trailing EPS override. It takes precedence over Yahoo when present;
+  use it only for a known bad/missing Yahoo figure. Native quote currency.
 - `specialEps` / `specialEpsLabel` — a stock- or industry-appropriate earnings figure that
   isn't plain trailing EPS (FFO/share for a REIT, adjusted/core EPS for a bank, a normalized
   multi-year average for a cyclical, ...) and a short label shown in the column's tooltip.
@@ -208,8 +208,8 @@ business. Most trustworthy where the business hasn't structurally changed.
 holding in one batched request. That endpoint (unlike `v8/finance/chart`) requires a
 crumb+cookie handshake (`getCrumb()`) — Yahoo's anti-scraping measure, not something this repo
 controls, so it can start failing without a code change on our side. A failure there is always
-silent and non-fatal (logs `skip eps: ...` and moves on): PE columns just fall back to
-`meta.json`'s manual `eps`, or show `–` if neither source has a number. Check the Action's log
+silent and non-fatal (logs `skip eps: ...` and moves on): PE columns use a checked
+`meta.json` manual override first, then Yahoo/current carried data, or show `–`. Check the Action's log
 line (`ok   eps for N/M tickers`) if PE looks stale.
 
 ## Watchlist (stocks not held)
