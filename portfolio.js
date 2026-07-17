@@ -191,8 +191,14 @@ function build(holdings, rates, quotes, dimension = 'company') {
         }
         const value = h.qty * quote.priceUSD;
 
+        // Average cost per share, converted into the QUOTE's currency so it can sit beside the
+        // price on the same scale. The purchase currency is not always the quote's — CSUK is
+        // bought in GBP and quoted in GBp — and putting 12.34 next to 1234 would be a 100x lie.
+        const quoteRate = rateFor(quote.currency, rates);
+        const avgQuote = h.avgPrice > 0 && quoteRate ? h.avgPrice * rate / quoteRate : null;
+
         const leg = {
-            ...h, quote, since, ...valuation(h, quote),
+            ...h, quote, since, ...valuation(h, quote), avgQuote,
             cost: h.costLC * rate,
             value,
             realized: (h.realizedLC || 0) * rate,
@@ -225,6 +231,9 @@ function build(holdings, rates, quotes, dimension = 'company') {
             pe: single ? single.pe : null,
             specialPe: single ? single.specialPe : null,
             specialEpsLabel: single ? single.specialEpsLabel || null : null,
+            // Same single-instrument rule as the price above: two legs can be in different
+            // currencies (CSUK trades in both GBP and GBp), so a blended average has no unit.
+            avgPrice: single ? single.avgQuote : null,
             // Same single-instrument rule as PE: a basket has no meaningful trough multiple.
             peLow: single ? single.peLow : null,
             implied: single ? single.implied : null,
@@ -434,6 +443,24 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(inst.length, 3);
     assert.ok(inst.every(r => r.legs.length === 1));
     assert.ok(inst.every(r => r.price != null));
+
+    // avgQuote: average cost expressed in the QUOTE's currency, so it compares to the price.
+    // Same currency both sides: nothing to convert.
+    const sameCcy = build([{ yahoo: 'A', currency: 'USD', qty: 1, costLC: 10, avgPrice: 10, group: 'A', geography: 'US' }],
+        rates, { A: { price: 12, currency: 'USD', priceUSD: 12 } }, 'instrument')[0];
+    assert.strictEqual(sameCcy.avgPrice, 10);
+    // Bought in pounds, quoted in pence — the CSUK case. 160.94 GBP must read as 16094 GBp,
+    // not sit next to a 19820p price looking like a 99% loss.
+    const penceAvg = build([{ yahoo: 'C', currency: 'GBP', qty: 1, costLC: 160.94, avgPrice: 160.94, group: 'C', geography: 'Europe' }],
+        rates, { C: { price: 19820, currency: 'GBp', priceUSD: 396.4 } }, 'instrument')[0];
+    assert.ok(Math.abs(penceAvg.avgPrice - 16094) < 0.01, `expected ~16094 GBp, got ${penceAvg.avgPrice}`);
+    // A basket has no single unit, so no average — same rule as price and PE.
+    const twoLegs = build([
+        { yahoo: 'C', currency: 'GBP', qty: 1, costLC: 160.94, avgPrice: 160.94, group: 'C', geography: 'Europe' },
+        { yahoo: 'C2', currency: 'GBp', qty: 1, costLC: 16094, avgPrice: 16094, group: 'C', geography: 'Europe' },
+    ], rates, { C: { price: 19820, currency: 'GBp', priceUSD: 396.4 }, C2: { price: 19820, currency: 'GBp', priceUSD: 396.4 } }, 'company')[0];
+    assert.strictEqual(twoLegs.avgPrice, null);
+    assert.strictEqual(twoLegs.price, null);
 
     // valuation: derived from the quote alone, so it needs no position at all.
     const q = { price: 100, eps: 5, peLow: 8, lowPrice: 40, lowEps: 5, lowDate: '2022-10-28', currency: 'USD' };

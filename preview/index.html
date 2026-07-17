@@ -72,6 +72,10 @@
         .grid { stroke: var(--line); stroke-width: 1; }
         .axis-label { fill: var(--text-muted); font-size: 10px; }
         .zero { stroke: var(--text-muted); stroke-width: 1; opacity: .5; }
+        /* Average cost: dashed so it never reads as data, and distinct from the trade guide
+           (which is transient and only appears under the cursor). */
+        .hline { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 5 4; opacity: .75; }
+        .hlabel { fill: var(--text-secondary); }
         .sline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
         .sarea { opacity: .10; }
         .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
@@ -308,6 +312,7 @@
                 <tr>
                     <th data-sort="name">Position</th>
                     <th data-sort="price">Price</th>
+                    <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
                     <th data-sort="specialPe" title="Price ÷ a stock-tailored earnings figure set in meta.json (FFO, adjusted EPS, ...). Falls back to the normal PE when unset.">Special PE</th>
                     <th data-sort="peLow" title="Cheapest multiple in the last ~4 fiscal years: the lowest weekly close in each year ÷ that year's own EPS. Derived online — nothing to maintain.">PE Low</th>
@@ -763,11 +768,20 @@
             const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
             const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
             const gainPct = lastCostUSD ? last * RATES[display] / lastCostUSD : null;
+
+            // Average cost, on the same scale as the price line: converted from the PURCHASE
+            // currency (not the quote's — they differ for CSUK) to USD, then to the display
+            // currency exactly as `values` was. Price mode only: in gain/loss mode the series is
+            // already measured from cost, so the line would just be the zero line again. A
+            // watched stock has no cost, and gets none.
+            const avgUSD = !gainMode && holding?.avgPrice > 0
+                ? holding.avgPrice * rateOf(holding.currency) : null;
             return {
                 days,
                 series: [{ label: name, color: PORT_COLOR, values, area: !gainMode }],
                 markers, markersByIndex: byIndex,
                 zero: gainMode,
+                hline: avgUSD ? { value: avgUSD / RATES[display], label: 'avg cost' } : null,
                 fmtY: v => formatValue(v * RATES[display]),
                 headline: gainMode
                     ? `<span class="${cls(last)}">${money(last * RATES[display])}</span> <span class="muted">${pct(gainPct)}</span>`
@@ -808,9 +822,11 @@
                 ? series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')
                 : '';
 
-            // y-domain across all series; include 0 in percent mode so the zero line shows.
+            // y-domain across all series; include 0 in percent mode so the zero line shows, and
+            // the average-cost line so it can't sit off-chart when you're deep in profit.
             let vals = series.flatMap(s => s.values).filter(v => v != null);
             if (spec.zero) vals = vals.concat(0);
+            if (spec.hline) vals = vals.concat(spec.hline.value);
             let lo = Math.min(...vals), hi = Math.max(...vals);
             const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.02 || 1;
             lo -= pad; hi += pad;
@@ -823,6 +839,15 @@
                 `<text class="axis-label" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${spec.fmtY(v)}</text>`
             ).join('');
             const zeroEl = spec.zero && lo < 0 && hi > 0 ? `<line class="zero" x1="${L}" y1="${y(0).toFixed(1)}" x2="${W - R}" y2="${y(0).toFixed(1)}"/>` : '';
+            // Average cost: a reference line, not a series — it has no per-day value to hover.
+            const hlineEl = !spec.hline ? '' : (() => {
+                const hy = y(spec.hline.value);
+                // The label flips under the line when it would otherwise clip the top edge.
+                const ly = hy - T < 12 ? hy + 12 : hy - 4;
+                return `<line class="hline" x1="${L}" y1="${hy.toFixed(1)}" x2="${W - R}" y2="${hy.toFixed(1)}"/>`
+                    + `<text class="axis-label hlabel" x="${W - R}" y="${ly.toFixed(1)}" text-anchor="end">`
+                    + `${spec.hline.label} ${spec.fmtY(spec.hline.value)}</text>`;
+            })();
             const dateEls = [0, Math.floor((days.length - 1) / 2), days.length - 1].map((i, k) =>
                 `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${ymd(days[i])}</text>`
             ).join('');
@@ -851,7 +876,7 @@
 
             svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
             svg.setAttribute('height', H);
-            svg.innerHTML = `${gridEls}${zeroEl}${dateEls}${lineEls}
+            svg.innerHTML = `${gridEls}${zeroEl}${hlineEl}${dateEls}${lineEls}
                 <line class="trade-guide" id="trade-guide" x1="${L}" x2="${W - R}" style="display:none"/>
                 ${markerEls}
                 <line class="crosshair" id="cross" y1="${T}" y2="${H - B}" style="display:none"/>
@@ -1028,6 +1053,7 @@
                         : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency)}</td>
+                    <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
                     <td>${peCell(r.pe)}</td>
                     <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
                     <td>${peCell(r.peLow)}</td>
@@ -1056,6 +1082,7 @@
                     el.innerHTML = `
                         <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
                         <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
+                        <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
                         <td>${peCell(leg.pe)}</td>
                         <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
                         <td>${peCell(leg.peLow)}</td>
@@ -1081,7 +1108,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="24">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="25">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
