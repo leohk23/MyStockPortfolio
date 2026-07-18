@@ -401,9 +401,9 @@
     <div class="table-responsive" id="watch" hidden>
         <table id="watchlist">
             <thead><tr>
-                <th>Stock</th><th>Price</th><th>P/E</th><th>P/E Low</th>
-                <th>Low date</th><th>Implied</th><th>vs Low</th>
-                <th>7D</th><th>1M</th><th>3M</th><th>6M</th><th>1Y</th><th>YTD</th>
+                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th><th data-sort="pe">P/E</th><th data-sort="peLow">P/E Low</th>
+                <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
+                <th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -470,6 +470,9 @@
         let GUIDANCE = null;     // manual company-issued outlook, deep dive only
         let guidancePromise = null;
         let sort = { key: 'value', dir: -1 };
+        // The watchlist is a separate flat table with no 'value'/grouping, so it keeps its own
+        // sort state. Default A–Z by name, matching how buildWatchlist first orders it.
+        let watchSort = { key: 'name', dir: 1 };
         // Deliberately not persisted: a filter restored on load would hide rows with no
         // explanation and read as missing data.
         let filterText = '';
@@ -1338,6 +1341,24 @@
             });
         }
 
+        // Sort keys map to the same field each watchlist cell shows, so the order always
+        // matches the displayed numbers — price stays native (as in the holdings table)
+        // rather than silently reordering by USD. Movement periods live on the quote.
+        const watchSortValue = (w, key) =>
+            portfolioLib.PERIODS.includes(key) ? w.quote[key]
+                : key === 'price' ? w.quote.price
+                    : w[key];
+        function sortedWatch() {
+            return [...visibleWatch()].sort((a, b) => {
+                const x = watchSortValue(a, watchSort.key), y = watchSortValue(b, watchSort.key);
+                if (x == null && y == null) return 0;
+                if (x == null) return 1;
+                if (y == null) return -1;
+                if (typeof x === 'string') return watchSort.dir * x.localeCompare(y);
+                return watchSort.dir * (x - y);
+            });
+        }
+
         function renderTotals() {
             const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
             const value = STATE.total, gain = value - cost;
@@ -1539,7 +1560,7 @@
         function renderWatchlist() {
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
-            for (const w of visibleWatch()) {
+            for (const w of sortedWatch()) {
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
@@ -1643,6 +1664,15 @@
                 document.querySelectorAll('#portfolio th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', sort.dir === 1 ? 'ascending' : 'descending');
                 renderTable();
+            }));
+
+        document.querySelectorAll('#watchlist th[data-sort]').forEach(th =>
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                watchSort = watchSort.key === key ? { key, dir: -watchSort.dir } : { key, dir: key === 'name' ? 1 : -1 };
+                document.querySelectorAll('#watchlist th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
+                th.setAttribute('aria-sort', watchSort.dir === 1 ? 'ascending' : 'descending');
+                renderWatchlist();
             }));
 
         /* ---------------- boot ---------------- */
