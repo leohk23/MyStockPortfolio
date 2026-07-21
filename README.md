@@ -135,13 +135,25 @@ instrument keyed by its Tradelog symbol:
 
 ## After you trade
 
+Record the trade in the Tradelog tab, save the workbook, then:
+
 ```sh
 npm install         # once, for the xlsx reader (dev-only)
-npm run extract     # workbook -> holdings.json
-git commit -am "positions" && git push
+git checkout main   # publish commits to the CURRENT branch — see below
+npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
 ```
 
-The hourly Action picks it up from there.
+That is the whole routine. The hourly Action re-prices and redeploys from there;
+nothing else needs running.
+
+⚠️ **Be on `main` first.** `npm run publish` commits to whichever branch is checked
+out. Land it on a feature branch and the live site never sees it — the site serves
+`main` only. Recover with `git checkout main && git cherry-pick <commit>`.
+
+Sanity-check the run: it prints `wrote holdings.json: N instruments`, and the new
+trade should appear with the right date, quantity and average cost. Dates are read
+as calendar days from the workbook — if one looks a day off, that is a bug, not
+rounding (see `ymdLocal` in `extract-portfolio.js`).
 
 ## Adding a holding
 

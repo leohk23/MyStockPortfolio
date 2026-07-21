@@ -92,6 +92,28 @@ Every non-trivial JS file has an `assert`-based `--selftest`. **Add to it when y
 logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc if changing
 `index.html` (see git history for the pattern), then eyeball the rendered SVG.
 
+## After the owner updates the Tradelog
+
+The whole routine, on the owner's machine, on `main`:
+
+```sh
+npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
+```
+
+Do not hand-edit `holdings.json`, and do not reconstruct trades by hand — the workbook
+is the source of truth and `extract-portfolio.js` is the only thing that reads it.
+
+- **Check the branch first.** `publish.js` commits to the current branch. Off `main`, the
+  live site never sees it (Pages serves `main`). Fix: `git checkout main && git cherry-pick <sha>`.
+- **`Tradelog.xlsx` is local-only** (gitignored), so this cannot run in a cloud session —
+  there is no workbook there. Everything else can.
+- **Writing to the workbook is the owner's job.** It is an Excel Table with ~5k formulas,
+  external links and a data connection; SheetJS round-trips drop all three. If a row must be
+  added, give the owner the input-column values (C,D,E,F,G,H,I,P,X — the rest are formulas)
+  rather than writing the file. Excel COM works but is flaky here (locale/link quirks).
+- Verify after: the new trade's date, quantity and average cost, and that `Bal Qty` closed
+  out if it was a full exit.
+
 ## Preview-first workflow
 
 New UI and content work goes to `preview/index.html` and is pushed to `main`, which makes it
