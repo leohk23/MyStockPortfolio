@@ -122,6 +122,27 @@ promote it. `npm run promote` copies the reviewed preview over the live page; do
 inference. Root data files are shared by both pages, so a pilot-only dataset must remain unused
 by `index.html` until promotion.
 
+## After the owner updates the Tradelog
+
+One command, on `main`, from the owner's machine:
+
+```sh
+git checkout main && npm run publish   # extract -> commit holdings.json -> rebase -> push
+```
+
+Do not hand-edit `holdings.json`, and do not reimplement the steps — `publish.js` already
+chains them. The hourly Action re-prices and redeploys; nothing further is needed.
+
+- **`publish.js` commits to the CURRENT branch.** It has no branch guard. Publishing from a
+  feature branch silently strands the update, because Pages serves `main`. Check the branch
+  before running it; recover with `git cherry-pick` onto `main`.
+- **Writing to `Tradelog.xlsx` is the owner's job.** It is an Excel Table with ~5k formulas,
+  external links and a Cognos connection; SheetJS round-trips drop all three, and Excel COM
+  automation on it is flaky (null objects, `RPC_E_CALL_REJECTED`). Give the owner the row
+  values to type instead — faster than automating, and it cannot corrupt the master file.
+- Verify after: `wrote holdings.json: N instruments`, then confirm the new trade's date,
+  quantity and average cost. Dates come from the workbook as calendar days (`ymdLocal`).
+
 ## Invariants — do not break these
 
 1. **Public repo.** Tradelog comments are intentionally exported beside expanded trades at
