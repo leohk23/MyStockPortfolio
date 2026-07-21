@@ -50,6 +50,12 @@ function localPriceScale(sheet, row, recordedCurrency) {
 // through as a string, which Math.abs() would silently turn into NaN and publish. Adj Qty and
 // Gain/(Loss) reach through an external-workbook link, so this is a live risk, not a
 // hypothetical: lose the link and every quantity in the app goes quietly wrong.
+// A trade date is a calendar day, not an instant. xlsx (cellDates) builds it at LOCAL
+// midnight, so toISOString() would shift it into the previous day anywhere east of UTC
+// (BST put 2026-07-21 back to the 20th). Read the local parts it was built from.
+const ymdLocal = d =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 function parseTrade(r, row, local = null) {
     const date = r[TRADE.date];
     if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null || r[TRADE.adjQty] == null) return null;
@@ -67,7 +73,7 @@ function parseTrade(r, row, local = null) {
     const k = local ? local.scale : 1;   // USD -> the price's real currency (see LOCAL_PRICE)
     return {
         symbol: String(r[TRADE.symbol]),
-        date: date.toISOString().slice(0, 10),
+        date: ymdLocal(date),
         side: String(r[TRADE.side] || '').toUpperCase().startsWith('S') ? 'SELL' : 'BUY',
         qty: Math.abs(r[TRADE.adjQty] || 0),
         price: r[TRADE.adjPrice] * k,
@@ -229,7 +235,9 @@ function selftest() {
     // parseTrade: side/qty/date normalisation, platform + comment optional.
     const row = [];
     row[TRADE.side] = 'SELL'; row[TRADE.symbol] = 'NVDA';
-    row[TRADE.date] = new Date('2025-01-22T00:00:00Z'); row[TRADE.adjPrice] = 147.27;
+    // Local midnight, exactly as xlsx hands dates over — a UTC instant here would pass in
+    // London and fail in New York, hiding the very bug ymdLocal exists to prevent.
+    row[TRADE.date] = new Date(2025, 0, 22); row[TRADE.adjPrice] = 147.27;
     row[TRADE.adjQty] = -5; row[TRADE.balanceQty] = 115;
     row[TRADE.avgPrice] = 13.267; row[TRADE.currency] = 'USD';
     row[TRADE.platform] = 'IB'; row[TRADE.comment] = 'Trim & review';
@@ -267,7 +275,7 @@ function selftest() {
     // currency follows the recovered one rather than the workbook's "USD".
     const jp = [];
     jp[TRADE.side] = 'BUY'; jp[TRADE.symbol] = '5332';
-    jp[TRADE.date] = new Date('2025-02-21T00:00:00Z');
+    jp[TRADE.date] = new Date(2025, 1, 21);
     jp[TRADE.adjPrice] = 3976 / 162.39; jp[TRADE.adjQty] = 100;
     jp[TRADE.balanceQty] = 100; jp[TRADE.avgPrice] = 3979.18 / 162.39;
     jp[TRADE.currency] = 'USD';
