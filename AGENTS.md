@@ -111,8 +111,9 @@ is the source of truth and `extract-portfolio.js` is the only thing that reads i
   external links and a data connection; SheetJS round-trips drop all three. If a row must be
   added, give the owner the input-column values (C,D,E,F,G,H,I,P,X — the rest are formulas)
   rather than writing the file. Excel COM works but is flaky here (locale/link quirks).
-- Verify after: the new trade's date, quantity and average cost, and that `Bal Qty` closed
-  out if it was a full exit.
+- Verify after: `wrote holdings.json: N instruments`, then the new trade's date, quantity and
+  average cost, and that `Bal Qty` closed out if it was a full exit. Dates are calendar days
+  read straight off the workbook (`ymdLocal`) — a date one day out is a bug, not rounding.
 
 ## Preview-first workflow
 
@@ -121,27 +122,6 @@ reviewable at `/MyStockPortfolio/preview/`. Keep `index.html` unchanged until th
 promote it. `npm run promote` copies the reviewed preview over the live page; do not run it by
 inference. Root data files are shared by both pages, so a pilot-only dataset must remain unused
 by `index.html` until promotion.
-
-## After the owner updates the Tradelog
-
-One command, on `main`, from the owner's machine:
-
-```sh
-git checkout main && npm run publish   # extract -> commit holdings.json -> rebase -> push
-```
-
-Do not hand-edit `holdings.json`, and do not reimplement the steps — `publish.js` already
-chains them. The hourly Action re-prices and redeploys; nothing further is needed.
-
-- **`publish.js` commits to the CURRENT branch.** It has no branch guard. Publishing from a
-  feature branch silently strands the update, because Pages serves `main`. Check the branch
-  before running it; recover with `git cherry-pick` onto `main`.
-- **Writing to `Tradelog.xlsx` is the owner's job.** It is an Excel Table with ~5k formulas,
-  external links and a Cognos connection; SheetJS round-trips drop all three, and Excel COM
-  automation on it is flaky (null objects, `RPC_E_CALL_REJECTED`). Give the owner the row
-  values to type instead — faster than automating, and it cannot corrupt the master file.
-- Verify after: `wrote holdings.json: N instruments`, then confirm the new trade's date,
-  quantity and average cost. Dates come from the workbook as calendar days (`ymdLocal`).
 
 ## Invariants — do not break these
 
@@ -279,6 +259,27 @@ to move a number that reports how you are actually doing. Hence:
   strictly `priced` (= holdings). Keep it that way.
 - On the page, `WATCH` is separate from `STATE`, and a name already held is dropped from it
   (once you own it, the holdings table is the truth).
+
+### After the owner edits `watchlist.json`
+
+Hand-maintained, not derived — so **`npm run extract` has nothing to do with it** (that reads
+the Tradelog only). Entries are `{ yahoo, name, geography }`.
+
+```sh
+npm run fetch    # only when ADDING a name — it needs a quote before it can render
+git add watchlist.json prices.json history.json && git commit -m "watchlist" && git push
+```
+
+- **Removing/renaming a name, or editing `geography`** — just commit and push; the page reads
+  `watchlist.json` directly.
+- **Adding a name** — it stays invisible until `prices.json` carries its quote. Either run
+  `npm run fetch` first, or push and let the hourly Action fill it in within the hour.
+- **A wrong `yahoo` symbol fails silently.** `fetch-prices.js` and `buildWatchlist()` both
+  filter on `quotes[w.yahoo]`, so a typo just doesn't appear — no error, no placeholder.
+  Unlike `meta.json`, which `extract-portfolio.js` guards by pinging Yahoo, **there is no
+  guard here**. Always confirm a newly added name actually renders in the Watchlist view.
+- **Keep `geography` filled in** even though the table now shows the ticker beside the name:
+  the search box still matches on `name`, `yahoo` and `geography`.
 
 `valuation()` in `portfolio.js` is shared by `build()` and `buildWatchlist()` — valuation is a
 property of the *stock*, not of owning it, so both paths run one formula and cannot drift. A

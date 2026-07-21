@@ -172,6 +172,27 @@ rounding (see `ymdLocal` in `extract-portfolio.js`).
 So a typo in `yahoo` fails the extract with a clear message instead of dropping the row
 from the live site.
 
+## Changing the watchlist
+
+`watchlist.json` (stocks you're weighing but don't own) is hand-maintained, so **`npm run
+extract` plays no part** — that reads the Tradelog only. Entries are
+`{ "yahoo": …, "name": …, "geography": … }`.
+
+```sh
+npm run fetch   # only when ADDING a name — it needs a quote before it can appear
+git add watchlist.json prices.json history.json
+git commit -m "watchlist" && git push
+```
+
+Removing a name, renaming it, or editing `geography` needs no fetch — commit and push. When
+**adding**, the name stays invisible until `prices.json` has its quote, so either run
+`npm run fetch` yourself or push and let the hourly Action pick it up within the hour.
+
+⚠️ **A mistyped `yahoo` symbol fails silently here.** Unlike `meta.json`, the watchlist has no
+guard — the row is simply filtered out, with no error. After adding a name, check it actually
+shows up in the Watchlist view. Keep `geography` filled in too: the table shows the ticker
+beside the name now, but the search box still matches on it.
+
 ## Local
 
 ```sh
