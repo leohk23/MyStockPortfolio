@@ -403,6 +403,7 @@
             <thead><tr>
                 <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th><th data-sort="pe">P/E</th><th data-sort="peLow">P/E Low</th>
                 <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
+                <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
                 <th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
             </tr></thead>
             <tbody></tbody>
@@ -1344,10 +1345,9 @@
         // Sort keys map to the same field each watchlist cell shows, so the order always
         // matches the displayed numbers — price stays native (as in the holdings table)
         // rather than silently reordering by USD. Movement periods live on the quote.
+        const QUOTE_KEYS = new Set(['price', 'divYield']);   // columns read off the quote, not the row
         const watchSortValue = (w, key) =>
-            portfolioLib.PERIODS.includes(key) ? w.quote[key]
-                : key === 'price' ? w.quote.price
-                    : w[key];
+            portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
         function sortedWatch() {
             return [...visibleWatch()].sort((a, b) => {
                 const x = watchSortValue(a, watchSort.key), y = watchSortValue(b, watchSort.key);
@@ -1571,6 +1571,7 @@
                     <td>${lowDateCell(w.lowDate)}</td>
                     <td>${impliedCell(w)}</td>
                     <td>${vsLowCell(w.vsLow)}</td>
+                    <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}`;
                 tr.addEventListener('click', () => selectChart(w.yahoo));
                 tbody.appendChild(tr);
