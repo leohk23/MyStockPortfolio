@@ -289,10 +289,11 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
             return {
                 currency,
                 years: series(rows),
-                // Yahoo caps quarterly at ~5 points; that is plenty for "latest quarter with a
-                // year-on-year" — the same quarter a year earlier is the 5th one back. Empty for
-                // a company Yahoo has no quarterly statements for; the panel filters on rev.
-                quarters: series(qrows).slice(-6),
+                // Yahoo caps quarterly at ~5 points per fetch; the store accretes to 8 so the
+                // panel can show four quarters each against the same quarter a year earlier (the
+                // oldest of the four needs the 8th one back). Empty for a company Yahoo has no
+                // quarterly statements for; the panel filters on rev.
+                quarters: series(qrows).slice(-8),
             };
         } catch (e) {
             lastErr = e;
@@ -467,7 +468,7 @@ function mergeEarnings(old, fresh) {
     // Quarters accrete the same way, but bounded — only the last ~6 are ever shown, and unlike
     // annual history there is no reason to keep a five-year tail of stale quarters.
     const quarters = mergeSeries(old.quarters, fresh.quarters);
-    if (quarters?.length) merged.quarters = quarters.slice(-6);
+    if (quarters?.length) merged.quarters = quarters.slice(-8);
     return merged;
 }
 
@@ -479,13 +480,33 @@ function mergeEarnings(old, fresh) {
 // day forever. Outside the window the periodic sweep is the only thing that touches a ticker.
 // A fund (no years at all) is never due — no results will ever arrive.
 const REPORT_WINDOW_DAYS = [30, 210];
+// A quarter's results land sooner than a year's (~1 month vs ~3), and stop being worth asking
+// for after ~3. Same bounded-window shape as the annual check.
+const QUARTER_WINDOW_DAYS = [25, 100];
+
+// Is the NEXT quarter overdue for a company that actually reports quarterly? Guarded on real
+// cadence: the last two stored quarters must be ~a quarter apart. Semi-annual reporters (most
+// HK names — CKA, HK Electric) have ~180-day gaps and must NOT be projected a phantom quarter,
+// or they would sit "due" every three months waiting for results that never come.
+function nextQuarterOverdue(entry, now) {
+    const q = entry?.quarters || [];
+    if (q.length < 2) return false;                        // can't tell cadence from one point
+    const t = q.map(x => Date.parse(x.date + 'T00:00:00Z'));
+    if ((t[t.length - 1] - t[t.length - 2]) / 86400e3 > 100) return false;   // not quarterly
+    const last = new Date(t[t.length - 1]);
+    const nextEnd = Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + 3, last.getUTCDate());
+    const age = (now - nextEnd) / 86400e3;
+    return age >= QUARTER_WINDOW_DAYS[0] && age <= QUARTER_WINDOW_DAYS[1];
+}
+
 function dueForResults(entry, now) {
     const years = entry?.years || [];
     if (!years.length) return false;
     const last = new Date(years[years.length - 1].date + 'T00:00:00Z');
     const nextEnd = Date.UTC(last.getUTCFullYear() + 1, last.getUTCMonth(), last.getUTCDate());
     const age = (now - nextEnd) / 86400e3;
-    return age >= REPORT_WINDOW_DAYS[0] && age <= REPORT_WINDOW_DAYS[1];
+    if (age >= REPORT_WINDOW_DAYS[0] && age <= REPORT_WINDOW_DAYS[1]) return true;
+    return nextQuarterOverdue(entry, now);                 // else: a quarter may be overdue
 }
 
 // Which tickers need a fundamentals request this run — per-ticker, not all-or-nothing.
@@ -922,6 +943,20 @@ function selftest() {
     // A fund has no results to wait for.
     assert.strictEqual(dueForResults({ currency: null, years: [] }, NOW), false);
 
+    // Quarter-aware: FY held and not annually due, but a quarterly reporter whose next quarter
+    // (Mar->Jun 30) is now ~1mo overdue IS due. Same name without the quarter cadence is not.
+    // Last REPORTED quarter is Mar 2026, so the next (Jun 30) is what we wait on. Annual is not
+    // due at any of these dates (FY2025 held, next ends Dec 2026), isolating the quarter path.
+    const qEntry = (...ds) => ({ currency: 'USD', years: [{ date: '2025-12-31', eps: 1 }], quarters: ds.map(d => ({ date: d })) });
+    const quarterly = qEntry('2025-12-31', '2026-03-31');
+    assert.strictEqual(dueForResults(quarterly, Date.UTC(2026, 6, 10)), false);  // 10 Jul — inside lag
+    assert.strictEqual(dueForResults(quarterly, Date.UTC(2026, 7, 15)), true);   // 15 Aug — overdue
+    assert.strictEqual(dueForResults(quarterly, Date.UTC(2026, 10, 1)), false);  // 01 Nov — given up
+    // Semi-annual reporter (~180-day gap): no phantom quarter projected, ever.
+    assert.strictEqual(dueForResults(qEntry('2025-06-30', '2025-12-31'), Date.UTC(2026, 7, 15)), false);
+    // One quarter only: cadence unknown, quarter path stays silent.
+    assert.strictEqual(dueForResults(qEntry('2026-03-31'), Date.UTC(2026, 7, 15)), false);
+
     // The due window drives the fetch list, and a daily stamp keeps a stuck ticker cheap.
     const due = { currency: 'USD', years: [{ date: '2024-12-31', eps: 1 }] };
     const notDue = { currency: 'USD', years: [{ date: '2025-12-31', eps: 1 }] };
@@ -968,9 +1003,9 @@ function selftest() {
         mergeEarnings({ currency: 'USD', years: [y('2022-12-31', 2)] }, { currency: null, years: [] }),
         { currency: 'USD', years: [y('2022-12-31', 2)] });
 
-    // Quarters accrete and merge field-by-field just like years, but are capped at the last 6.
+    // Quarters accrete and merge field-by-field just like years, but are capped at the last 8.
     const qtr = (date, rev) => ({ date, rev });
-    const sevenQ = Array.from({ length: 7 }, (_, i) => qtr(`2024-${String(i + 1).padStart(2, '0')}-01`, i));
+    const nineQ = Array.from({ length: 9 }, (_, i) => qtr(`2024-${String(i + 1).padStart(2, '0')}-01`, i));
     assert.deepStrictEqual(
         mergeEarnings(
             { currency: 'USD', years: [y('2024-12-31', 1)], quarters: [qtr('2024-09-30', 40)] },
@@ -979,7 +1014,7 @@ function selftest() {
         [{ date: '2024-09-30', rev: 40, opinc: 8 }, qtr('2024-12-31', 45)]);
     assert.strictEqual(
         mergeEarnings({ currency: 'USD', years: [y('2024-12-31', 1)], quarters: [] },
-            { currency: 'USD', years: [y('2024-12-31', 1)], quarters: sevenQ }).quarters.length, 6);
+            { currency: 'USD', years: [y('2024-12-31', 1)], quarters: nineQ }).quarters.length, 8);
     // mergeEarnings never invents a quarters key when neither side has one (a company Yahoo
     // has no quarterly statements for stays keyless, even though fetch now asks for quarters).
     assert.strictEqual('quarters' in
