@@ -138,8 +138,13 @@ function twr(mv, flow) {
 function valuation(h, quote) {
     const eps = quote.eps ?? h.eps ?? null;
     const pe = eps > 0 ? quote.price / eps : null;
-    const specialEps = h.specialEps ?? eps;
+    // Special P/E denominator, in order: a manual meta.json override (FFO, bank-adjusted, ...);
+    // else the recurring EPS fetch-prices derives from normalized income (headline minus one-offs
+    // — see normEpsFrom); else plain headline, leaving Special P/E equal to the normal one.
+    const specialEps = h.specialEps ?? quote.normEps ?? eps;
     const specialPe = specialEps > 0 ? quote.price / specialEps : null;
+    const specialEpsLabel = h.specialEps != null ? (h.specialEpsLabel ?? null)
+        : quote.normEps != null ? 'Recurring' : null;
 
     const peLow = quote.peLow ?? (h.lowPrice > 0 && h.lowEps > 0 ? h.lowPrice / h.lowEps : null);
     const lowDate = quote.lowDate ?? h.lowDate ?? null;
@@ -148,7 +153,7 @@ function valuation(h, quote) {
     const implied = peLow != null && eps > 0 ? peLow * eps : null;
     const vsLow = implied > 0 ? (quote.price - implied) / implied : null;
 
-    return { eps, pe, specialPe, peLow, implied, vsLow, lowDate, lowPrice, lowEps };
+    return { eps, pe, specialPe, specialEpsLabel, peLow, implied, vsLow, lowDate, lowPrice, lowEps };
 }
 
 // watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
@@ -467,6 +472,18 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     // meta.json overrides only fill gaps; a live quote always wins.
     assert.strictEqual(valuation({ eps: 99 }, { price: 100, eps: 5, currency: 'USD' }).pe, 20);
     assert.strictEqual(valuation({ eps: 4 }, { price: 100, currency: 'USD' }).pe, 25);
+
+    // Special P/E precedence: manual override > recurring (normEps) > headline.
+    const rec = valuation({}, { price: 100, eps: 5, normEps: 4, currency: 'USD' });
+    assert.strictEqual(rec.pe, 20);                    // headline unchanged
+    assert.strictEqual(rec.specialPe, 25);             // 100 / recurring 4
+    assert.strictEqual(rec.specialEpsLabel, 'Recurring');
+    const manual = valuation({ specialEps: 2, specialEpsLabel: 'FFO' }, { price: 100, eps: 5, normEps: 4, currency: 'USD' });
+    assert.strictEqual(manual.specialPe, 50);          // manual 2 beats normEps
+    assert.strictEqual(manual.specialEpsLabel, 'FFO');
+    const plain = valuation({}, { price: 100, eps: 5, currency: 'USD' });
+    assert.strictEqual(plain.specialPe, 20);           // no normEps -> Special == normal
+    assert.strictEqual(plain.specialEpsLabel, null);
 
     // buildWatchlist drops names with no quote rather than rendering a blank row.
     assert.strictEqual(buildWatchlist([{ yahoo: 'NOPE', name: 'Nope' }], { X: q }).length, 0);

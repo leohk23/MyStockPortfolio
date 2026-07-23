@@ -229,6 +229,10 @@ const FIELDS = {                       // Yahoo timeseries key -> our short name
     // years Yahoo returns carry it (the deep EDGAR/stockanalysis backfill does not), which is
     // fine — operating margin is a recent-trend read, matching the share-count trend beside it.
     annualOperatingIncome: 'opinc',
+    // Net income with one-off items (asset sales, and crucially unrealized marks on equity
+    // stakes — the thing that makes Alphabet's headline EPS swing) stripped out, after tax.
+    // Drives the recurring-earnings Special P/E: see normEpsFrom().
+    annualNormalizedIncome: 'norm',
 };
 // The same accounts one granularity down, so the panel can set the latest reported QUARTER
 // beside company guidance (which is usually a quarter) at matching granularity. Yahoo exposes a
@@ -429,7 +433,8 @@ const EARNINGS_SWEEP_DAYS = 30;
 //      latest reported quarter beside company guidance at matching granularity.
 // v7 = quarters for EVERY operating company, not just the allowlist. Forces one refetch so
 //      names already stored pick up their quarters instead of waiting on the monthly sweep.
-const EARNINGS_V = 7;
+// v8 = + normalized (one-off-stripped) net income, for the recurring-earnings Special P/E.
+const EARNINGS_V = 8;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
@@ -540,6 +545,20 @@ function earningsToFetch(store, tickers, now = Date.now()) {
         return !e.checked
             || (now - Date.parse(e.checked)) / 86400e3 >= EARNINGS_DUE_RECHECK_DAYS;
     });
+}
+
+// Recurring EPS: the trailing headline EPS scaled by the latest fiscal year's
+// normalized/reported ratio — i.e. headline with its one-offs removed, on the SAME trailing
+// period as the headline P/E, so the Special P/E differs from the normal one by exactly the
+// one-off adjustment and nothing else. Null unless both the year and the quote are cleanly
+// positive (a loss-maker has no meaningful multiple either way), and the ratio is sane.
+function normEpsFrom(entry, eps) {
+    const years = entry?.years || [];
+    const y = [...years].reverse().find(x => x.norm > 0 && x.ni > 0);
+    if (!y || !(eps > 0)) return null;
+    const ratio = y.norm / y.ni;
+    if (ratio < 0.2 || ratio > 5) return null;             // guard against a freak year
+    return Number((eps * ratio).toPrecision(6));
 }
 
 // A checked manual override wins. Otherwise fresh Yahoo EPS is scaled into the quote's unit.
@@ -838,6 +857,13 @@ async function main() {
         });
         troughOk++;
     }
+    // Recurring EPS for the Special P/E, from the same store. Separate loop so a ticker with no
+    // trough (thin price history) still gets one where its earnings support it.
+    for (const t of tickers) {
+        if (!quotes[t]) continue;
+        const ne = normEpsFrom(store.eps[t], quotes[t].eps);
+        if (ne != null) quotes[t].normEps = ne;
+    }
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
@@ -903,6 +929,15 @@ function selftest() {
     assert.strictEqual(resolveEps(undefined, 0.12, 999, 'GBp'), 12);       // fresh, scaled once
     assert.strictEqual(resolveEps(undefined, undefined, 12, 'GBp'), 12);   // carried as-is
     assert.strictEqual(resolveEps(undefined, undefined, undefined, 'USD'), undefined);
+
+    // normEpsFrom: headline EPS scaled by the latest year's normalized/reported ratio.
+    const normEntry = { years: [{ date: '2024-12-31', norm: 90, ni: 100 }, { date: '2025-12-31', norm: 112, ni: 132 }] };
+    assert.ok(Math.abs(normEpsFrom(normEntry, 10.81) - 10.81 * 112 / 132) < 1e-4);  // GOOG-like: below headline
+    assert.strictEqual(normEpsFrom(normEntry, 0), null);                 // no headline EPS -> no recurring
+    assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', norm: -5, ni: -4 }] }, 3), null); // loss year skipped
+    assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', ni: 100 }] }, 5), null);          // no norm field
+    assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', norm: 5, ni: 100 }] }, 5), null); // ratio 0.05 too extreme
+    assert.strictEqual(normEpsFrom({ years: [] }, 5), null);
 
     // earningsToFetch: per-ticker, not all-or-nothing.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();

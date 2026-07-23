@@ -361,7 +361,7 @@
                     <th data-sort="price">Price</th>
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
-                    <th data-sort="specialPe" title="Price ÷ a stock-tailored earnings figure set in meta.json (FFO, adjusted EPS, ...). Falls back to the normal PE when unset.">Special PE</th>
+                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet isn't flattered by investment gains. A manual meta.json figure (FFO, adjusted EPS) overrides it; falls back to the normal PE where Yahoo has no normalized figure.">Special PE</th>
                     <th data-sort="peLow" title="Cheapest the market has priced published earnings: each weekly close ÷ the latest annual EPS already reported by that date (fiscal end + 90 days), minimum over ~4-5y. Point-in-time — never earnings the market hadn't seen yet. Derived online — nothing to maintain.">PE Low</th>
                     <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
                     <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
