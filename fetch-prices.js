@@ -242,16 +242,14 @@ const QUARTERLY_FIELDS = {              // Yahoo timeseries key -> our short nam
     quarterlyNetIncome: 'ni',
     quarterlyDilutedEPS: 'eps',
 };
-// Example allowlist — prove the quarterly-vs-guidance comparison on a few well-covered names
-// before widening. ponytail: to roll it out, drop the guard and fetch quarters for every
-// operating company (skip nonEquity); the store, merge and panel already handle any ticker.
-const QUARTERLY_TICKERS = new Set(['NVDA', 'NFLX', 'META']);
-
+// Quarters are fetched for every operating company: the caller only ever hands this function
+// non-nonEquity tickers (ETFs/indices are filtered out in main), so there is nothing left to
+// gate on. The store, merge and panel already handle any ticker. A company Yahoo has no
+// quarters for simply comes back with an empty set.
 async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     const now = Math.floor(Date.now() / 1000);
     const sym = ticker.replace('^', '%5E');
-    const wantQuarters = QUARTERLY_TICKERS.has(ticker);
-    const types = [...Object.keys(FIELDS), ...(wantQuarters ? Object.keys(QUARTERLY_FIELDS) : [])];
+    const types = [...Object.keys(FIELDS), ...Object.keys(QUARTERLY_FIELDS)];
     const url = `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${sym}`
         + `?symbol=${sym}&type=${types.join(',')}`
         + `&period1=${now - 8 * 365 * DAY}&period2=${now}&crumb=${encodeURIComponent(crumb)}`;
@@ -277,7 +275,7 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
                 }
             };
             collect(FIELDS, rows);
-            if (wantQuarters) collect(QUARTERLY_FIELDS, qrows);
+            collect(QUARTERLY_FIELDS, qrows);
             // A successful response with no rows is a real answer — ETFs, gold, bitcoin have no
             // earnings. That gets cached. A thrown error does NOT (see the caller).
             //
@@ -292,8 +290,9 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
                 currency,
                 years: series(rows),
                 // Yahoo caps quarterly at ~5 points; that is plenty for "latest quarter with a
-                // year-on-year" — the same quarter a year earlier is the 5th one back.
-                ...(wantQuarters ? { quarters: series(qrows).slice(-6) } : {}),
+                // year-on-year" — the same quarter a year earlier is the 5th one back. Empty for
+                // a company Yahoo has no quarterly statements for; the panel filters on rev.
+                quarters: series(qrows).slice(-6),
             };
         } catch (e) {
             lastErr = e;
@@ -427,7 +426,9 @@ const EARNINGS_SWEEP_DAYS = 30;
 // v5 = + operating income (opinc), for the operating-margin line.
 // v6 = + quarterly financials (`quarters`) for the QUARTERLY_TICKERS allowlist, to set the
 //      latest reported quarter beside company guidance at matching granularity.
-const EARNINGS_V = 6;
+// v7 = quarters for EVERY operating company, not just the allowlist. Forces one refetch so
+//      names already stored pick up their quarters instead of waiting on the monthly sweep.
+const EARNINGS_V = 7;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
@@ -979,7 +980,8 @@ function selftest() {
     assert.strictEqual(
         mergeEarnings({ currency: 'USD', years: [y('2024-12-31', 1)], quarters: [] },
             { currency: 'USD', years: [y('2024-12-31', 1)], quarters: sevenQ }).quarters.length, 6);
-    // A ticker off the quarterly allowlist never grows a quarters key.
+    // mergeEarnings never invents a quarters key when neither side has one (a company Yahoo
+    // has no quarterly statements for stays keyless, even though fetch now asks for quarters).
     assert.strictEqual('quarters' in
         mergeEarnings({ currency: 'USD', years: [y('2024-12-31', 1)] },
             { currency: 'USD', years: [y('2024-12-31', 1)] }), false);
