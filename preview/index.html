@@ -749,7 +749,7 @@
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
-                        ${cell(recEps(y), null, false, num2)}
+                        ${cell(recEps(y), p ? yoy(recEps(y), recEps(p)) : null, false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -822,7 +822,7 @@
                         ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
                         ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
-                        ${cell(null, null)}
+                        ${cell(recEps(L), ya ? qy(recEps(L), recEps(ya)) : null, false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -841,7 +841,7 @@
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
-                        <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Yahoo's recent years only; blank where it has no normalized figure, and for quarters (not fetched quarterly).">Recurring EPS</th>
+                        <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                     </tr></thead>
                     <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
                 </table>

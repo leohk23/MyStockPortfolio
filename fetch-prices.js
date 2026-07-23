@@ -245,6 +245,7 @@ const QUARTERLY_FIELDS = {              // Yahoo timeseries key -> our short nam
     quarterlyNetIncomeCommonStockholders: 'nic',
     quarterlyNetIncome: 'ni',
     quarterlyDilutedEPS: 'eps',
+    quarterlyNormalizedIncome: 'norm',   // recurring EPS on the quarter rows (GOOG's Q1'26 was 5.11 filed, 2.67 recurring)
 };
 // Quarters are fetched for every operating company: the caller only ever hands this function
 // non-nonEquity tickers (ETFs/indices are filtered out in main), so there is nothing left to
@@ -434,7 +435,8 @@ const EARNINGS_SWEEP_DAYS = 30;
 // v7 = quarters for EVERY operating company, not just the allowlist. Forces one refetch so
 //      names already stored pick up their quarters instead of waiting on the monthly sweep.
 // v8 = + normalized (one-off-stripped) net income, for the recurring-earnings Special P/E.
-const EARNINGS_V = 8;
+// v9 = + quarterly normalized income, for recurring EPS on the quarter rows.
+const EARNINGS_V = 9;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
