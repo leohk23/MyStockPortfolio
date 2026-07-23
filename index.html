@@ -131,9 +131,13 @@
            portfolio table — without it this 4-column table is forced to 1280px and scrolls. */
         #deep-fin table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px;
             font-variant-numeric: tabular-nums; }
-        #deep-fin th, #deep-fin td { padding: 4px 6px; text-align: right; white-space: nowrap; }
+        #deep-fin th, #deep-fin td { padding: 5px 8px; text-align: right; }
+        #deep-fin td { white-space: nowrap; }   /* numbers never wrap mid-value */
+        /* Headers DO wrap ("Operating income" -> two lines), so long labels stop forcing wide
+           columns; bottom-aligned so a one- and a two-line header share a baseline. */
         #deep-fin th { font-size: 11px; color: var(--text-muted); font-weight: 600;
-            border-bottom: 1px solid var(--line); }
+            border-bottom: 1px solid var(--line); white-space: normal; line-height: 1.2;
+            vertical-align: bottom; }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
@@ -622,11 +626,11 @@
             const values = pe ? [
                 range('revenue', big), range('operatingIncome', big), range('opMargin', plain),
                 range('netIncome', big), range('netMargin', plain), big(pe.shares),
-                range('quarterlyEps', num2),
+                range('quarterlyEps', num2), null,
             ] : [
                 metric('Revenue', 'Net sales'), metric('Operating income'),
                 metric('Operating margin', 'Op margin'), metric('Net income'),
-                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'),
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null,
             ];
             const source = String(g.source || '');
             const label = `${g.period.replace('FY20', 'FY')}E`;
@@ -714,6 +718,9 @@
                 // fetch. Only the Yahoo years carry both (the deep backfill stored rev+nic only),
                 // so older rows show a blank share cell, same as operating income.
                 const shares = y => y.ni && y.eps ? y.ni / y.eps : null;
+                // Recurring EPS = filed EPS on the normalized/reported income ratio, i.e. EPS with
+                // one-offs removed. Same recent-years coverage as opinc/shares (needs Yahoo's norm).
+                const recEps = y => y.norm != null && y.ni && y.eps != null ? y.norm * y.eps / y.ni : null;
                 const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
                 const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
 
@@ -742,6 +749,7 @@
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
+                        ${cell(recEps(y), p ? yoy(recEps(y), recEps(p)) : null, false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -762,11 +770,19 @@
                 // A share count that shrank compounds NEGATIVE; cagr() only handles growth, so do
                 // the ratio directly and let it be negative (a buyback).
                 const scagr = sspan > 0 ? (shares(sl) / shares(sf)) ** (1 / sspan) - 1 : null;
+                // Recurring-EPS growth, over the years that carry it (recent Yahoo years, like
+                // shares). Direct ratio so a decline compounds negative, and it may span fewer
+                // years than the header's CAGR — a title spells out the actual span.
+                const withRec = years.filter(y => recEps(y) > 0);
+                const ref = withRec[0], rel = withRec[withRec.length - 1];
+                const rspan = ref && rel ? fy(rel) - fy(ref) : 0;
+                const reccagr = rspan > 0 ? (recEps(rel) / recEps(ref)) ** (1 / rspan) - 1 : null;
                 const cagrCell = (v, invert) => `<td>${v == null ? '–' :
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
-                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>${reccagr == null ? '<td>–</td>'
+                            : `<td title="${rspan}y CAGR of recurring EPS"><span class="yoy ${cls(reccagr)}">${pct(reccagr)}</span></td>`}
                     </tr>` : '';
 
                 // Latest reported QUARTER, at the same granularity as the guidance row below it,
@@ -806,6 +822,7 @@
                         ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
                         ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                        ${cell(recEps(L), ya ? qy(recEps(L), recEps(ya)) : null, false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -824,12 +841,14 @@
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
+                        <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                     </tr></thead>
                     <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
+                    'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
