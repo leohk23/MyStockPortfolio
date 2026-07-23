@@ -131,9 +131,13 @@
            portfolio table — without it this 4-column table is forced to 1280px and scrolls. */
         #deep-fin table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px;
             font-variant-numeric: tabular-nums; }
-        #deep-fin th, #deep-fin td { padding: 4px 6px; text-align: right; white-space: nowrap; }
+        #deep-fin th, #deep-fin td { padding: 5px 8px; text-align: right; }
+        #deep-fin td { white-space: nowrap; }   /* numbers never wrap mid-value */
+        /* Headers DO wrap ("Operating income" -> two lines), so long labels stop forcing wide
+           columns; bottom-aligned so a one- and a two-line header share a baseline. */
         #deep-fin th { font-size: 11px; color: var(--text-muted); font-weight: 600;
-            border-bottom: 1px solid var(--line); }
+            border-bottom: 1px solid var(--line); white-space: normal; line-height: 1.2;
+            vertical-align: bottom; }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
@@ -766,11 +770,19 @@
                 // A share count that shrank compounds NEGATIVE; cagr() only handles growth, so do
                 // the ratio directly and let it be negative (a buyback).
                 const scagr = sspan > 0 ? (shares(sl) / shares(sf)) ** (1 / sspan) - 1 : null;
+                // Recurring-EPS growth, over the years that carry it (recent Yahoo years, like
+                // shares). Direct ratio so a decline compounds negative, and it may span fewer
+                // years than the header's CAGR — a title spells out the actual span.
+                const withRec = years.filter(y => recEps(y) > 0);
+                const ref = withRec[0], rel = withRec[withRec.length - 1];
+                const rspan = ref && rel ? fy(rel) - fy(ref) : 0;
+                const reccagr = rspan > 0 ? (recEps(rel) / recEps(ref)) ** (1 / rspan) - 1 : null;
                 const cagrCell = (v, invert) => `<td>${v == null ? '–' :
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
-                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td><td></td>
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>${reccagr == null ? '<td>–</td>'
+                            : `<td title="${rspan}y CAGR of recurring EPS"><span class="yoy ${cls(reccagr)}">${pct(reccagr)}</span></td>`}
                     </tr>` : '';
 
                 // Latest reported QUARTER, at the same granularity as the guidance row below it,
