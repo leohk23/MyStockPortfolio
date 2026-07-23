@@ -790,11 +790,14 @@
                 // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
                 // stub first). Same rule the annual rows use: a real reported period has revenue.
                 const qs = (e?.quarters || []).filter(x => x.rev != null);
-                let qrow = '';
-                if (qs.length) {
-                    const L = qs[qs.length - 1], ya = yearAgoQ(qs.filter(x => x !== L), L.date);
+                // Up to the last four quarters, oldest→newest, each still compared to the SAME
+                // quarter a year earlier (seasonality-free) rather than to the quarter beside it.
+                // The year-ago match is drawn from the whole stored set, so a shown quarter can
+                // pair with one that is itself off the bottom of the four.
+                const qrow = qs.slice(-4).map(L => {
+                    const ya = yearAgoQ(qs.filter(x => x !== L), L.date);
                     const qy = (v, prev) => ya && prev != null ? yoy(v, prev) : null;
-                    qrow = `<tr class="quarter-row">
+                    return `<tr class="quarter-row">
                         <td title="Quarter ended ${ymd(L.date)}${ya ? `; change is vs the quarter ended ${ymd(ya.date)}` : ' — no year-ago quarter in range for a comparison'}">${qLabel(L.date)}</td>
                         ${cell(L.rev, qy(L.rev, ya?.rev))}
                         ${cell(L.opinc, qy(L.opinc, ya?.opinc))}
@@ -804,7 +807,7 @@
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
                         ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
                     </tr>`;
-                }
+                }).join('');
 
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
                 // can see the number it was divided by rather than taking it on faith.
@@ -827,7 +830,7 @@
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
-                    ...(qrow ? ['Quarter: the latest reported quarter, with change vs the same quarter a year earlier — read the guidance row below it like-for-like against that year-ago quarter, not against the full-year rows.'] : []),
+                    ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
