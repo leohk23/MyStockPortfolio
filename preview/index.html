@@ -140,6 +140,8 @@
             vertical-align: bottom; }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
+        #deep-fin tr.ttm-row td { border-top: 1px solid var(--line); font-weight: 600; }
+        #deep-fin tr.ttm-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
@@ -558,13 +560,19 @@
             const rows = [
                 ['Price', px(q.price)],
                 ['EPS (trailing)', px(q.eps)],
+                // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
+                // recurring/filed ratio (the deep dive has the quarters the table row does not).
+                ['Recurring EPS', '<span id="deep-rec-eps" class="muted">…</span>'],
                 ['P/E (trailing)', leg.pe == null ? '–' : num2(leg.pe) + '×',
                     ' class="valuation-group-start"'],
                 // Filled only where guidance.json carries enough inputs to derive it.
                 ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
                     ' id="deep-guidance-pe-row" hidden'],
-                leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
+                // Manual meta.json override (FFO, adjusted, ...) keeps its own row; the automatic
+                // recurring case is the P/E (recurring) row below, on trailing quarterly earnings.
+                leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
+                ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
                 ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
                 ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
@@ -691,6 +699,8 @@
                 const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
                     setPeg('<span class="muted">–</span>');   // no earnings, no growth, no PEG
+                    ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
+                        if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';
@@ -826,6 +836,70 @@
                     </tr>`;
                 }).join('');
 
+                // Trailing 12 months = the last four CONSECUTIVE reported quarters. Flows (revenue,
+                // income, EPS) sum; margins are summed income over summed revenue, never a sum of
+                // ratios; a share count does not sum at all. Guarded on span so a gap in Yahoo's
+                // ~5-point window can't quietly total four quarters that don't add up to a year.
+                // Growth is vs the four quarters before those (needs the store's full eight).
+                const four = end => {
+                    if (end < 3) return null;
+                    const s = qs.slice(end - 3, end + 1);
+                    const days = (Date.parse(s[3].date) - Date.parse(s[0].date)) / 864e5;
+                    return days >= 250 && days <= 290 ? s : null;   // ~9 months across 4 quarter-ends
+                };
+                const ttmQ = four(qs.length - 1);
+                const priorQ = ttmQ ? four(qs.length - 5) : null;
+                const qsum = (arr, f) => arr.every(x => f(x) != null) ? arr.reduce((a, x) => a + f(x), 0) : null;
+                const ttmM = f => {
+                    const v = ttmQ ? qsum(ttmQ, f) : null;
+                    const prev = priorQ ? qsum(priorQ, f) : null;
+                    return { v, g: v != null && prev != null ? yoy(v, prev) : null };
+                };
+                const tRev = ttmM(x => x.rev), tOp = ttmM(x => x.opinc), tNic = ttmM(x => x.nic),
+                    tEps = ttmM(x => x.eps), tRec = ttmM(recEps);
+                const ratio = (n, d) => n != null && d ? n / d : null;
+                const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
+                const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
+                const ttmRow = ttmQ ? `<tr class="ttm-row">
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM</td>
+                        ${cell(tRev.v, tRev.g)}
+                        ${cell(tOp.v, tOp.g)}
+                        ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
+                        ${cell(tNic.v, tNic.g)}
+                        ${marginCell(ratio(tNic.v, tRev.v), pNetM)}
+                        <td></td>
+                        ${cell(tEps.v, tEps.g, false, num2)}
+                        ${cell(tRec.v, tRec.g, false, num2)}
+                    </tr>` : '';
+
+                // Trailing recurring EPS + its P/E for the Valuation panel. Currency-safe: the
+                // quarterly recurring/filed ratio is unitless, so applying it to the quote-currency
+                // trailing EPS and P/E needs no FX. Falls back to the annual normalized proxy the
+                // table's Special P/E uses when four trailing quarters aren't yet in the store.
+                const recEl = document.getElementById('deep-rec-eps');
+                const recPeEl = document.getElementById('deep-rec-pe');
+                if (recEl && recPeEl) {
+                    const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
+                    let recEps = null, recPe = null, note = '';
+                    if (recRatio != null && leg.quote.eps != null) {
+                        recEps = leg.quote.eps * recRatio;
+                        recPe = leg.pe == null ? null : leg.pe / recRatio;
+                        // Trailing EPS is Yahoo's (may already carry a newer quarter); the recurring
+                        // SHARE comes from the last four filed statements, so name that window.
+                        note = `Trailing EPS on the recurring share of the four quarters ended ${ymd(ttmQ[3].date)}`;
+                    } else if (leg.quote.normEps != null) {
+                        recEps = leg.quote.normEps;
+                        recPe = leg.specialPe;
+                        note = 'Latest fiscal year (four trailing quarters not yet in range)';
+                    }
+                    recEl.className = recEps == null ? 'muted' : '';
+                    recEl.textContent = recEps == null ? '–' : `${leg.quote.currency} ${num2(recEps)}`;
+                    recEl.title = note;
+                    recPeEl.className = recPe == null ? 'muted' : '';
+                    recPeEl.textContent = recPe == null ? '–' : `${num2(recPe)}×`;
+                    recPeEl.title = note;
+                }
+
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
                 // can see the number it was divided by rather than taking it on faith.
                 const g = peg(leg.pe, nc);
@@ -843,7 +917,7 @@
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                     </tr></thead>
-                    <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${foot}${qrow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
