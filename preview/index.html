@@ -622,11 +622,11 @@
             const values = pe ? [
                 range('revenue', big), range('operatingIncome', big), range('opMargin', plain),
                 range('netIncome', big), range('netMargin', plain), big(pe.shares),
-                range('quarterlyEps', num2),
+                range('quarterlyEps', num2), null,
             ] : [
                 metric('Revenue', 'Net sales'), metric('Operating income'),
                 metric('Operating margin', 'Op margin'), metric('Net income'),
-                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'),
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null,
             ];
             const source = String(g.source || '');
             const label = `${g.period.replace('FY20', 'FY')}E`;
@@ -714,6 +714,9 @@
                 // fetch. Only the Yahoo years carry both (the deep backfill stored rev+nic only),
                 // so older rows show a blank share cell, same as operating income.
                 const shares = y => y.ni && y.eps ? y.ni / y.eps : null;
+                // Recurring EPS = filed EPS on the normalized/reported income ratio, i.e. EPS with
+                // one-offs removed. Same recent-years coverage as opinc/shares (needs Yahoo's norm).
+                const recEps = y => y.norm != null && y.ni && y.eps != null ? y.norm * y.eps / y.ni : null;
                 const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
                 const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
 
@@ -742,6 +745,7 @@
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
+                        ${cell(recEps(y), null, false, num2)}
                     </tr>`;
                 }).join('');
 
@@ -766,7 +770,7 @@
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
-                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>
+                        ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td><td></td>
                     </tr>` : '';
 
                 // Latest reported QUARTER, at the same granularity as the guidance row below it,
@@ -806,6 +810,7 @@
                         ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
                         ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                        ${cell(null, null)}
                     </tr>`;
                 }).join('');
 
@@ -824,12 +829,14 @@
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
+                        <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Yahoo's recent years only; blank where it has no normalized figure, and for quarters (not fetched quarterly).">Recurring EPS</th>
                     </tr></thead>
                     <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
+                    'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
