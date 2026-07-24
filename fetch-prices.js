@@ -520,8 +520,10 @@ function mergeEarnings(old, fresh) {
 // A fund (no years at all) is never due — no results will ever arrive.
 const REPORT_WINDOW_DAYS = [30, 210];
 // A quarter's results land sooner than a year's (~1 month vs ~3), and stop being worth asking
-// for after ~3. Same bounded-window shape as the annual check.
-const QUARTER_WINDOW_DAYS = [25, 100];
+// for after ~3. Same bounded-window shape as the annual check. The floor is 20, not 25, because
+// Yahoo had GOOG's Q2 2026 statements 24 days after the quarter end — a 25-day floor sat out the
+// one day that mattered, and the recurring multiple is only as current as the newest filed quarter.
+const QUARTER_WINDOW_DAYS = [20, 100];
 
 // Is the NEXT quarter overdue for a company that actually reports quarterly? Guarded on real
 // cadence: the last two stored quarters must be ~a quarter apart. Semi-annual reporters (most

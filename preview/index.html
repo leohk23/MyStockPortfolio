@@ -902,31 +902,54 @@
                         ${cell(tRec.v, tRec.g, false, num2)}
                     </tr>` : '';
 
-                // Trailing recurring EPS + its P/E for the Valuation panel. Currency-safe: the
-                // quarterly recurring/filed ratio is unitless, so applying it to the quote-currency
-                // trailing EPS and P/E needs no FX. Falls back to the annual normalized proxy the
-                // table's Special P/E uses when four trailing quarters aren't yet in the store.
+                // Trailing recurring EPS + its P/E for the Valuation panel.
+                //
+                // Sum the four filed quarters OUTRIGHT wherever the statements are in the price's
+                // currency. The old code always scaled Yahoo's reported TTM EPS by the filed
+                // recurring/filed ratio, and that silently mixed windows: GOOG's reported TTM ran
+                // through Q2'26 (which carried a $6.26/share investment gain) while the ratio came
+                // from the older, far cleaner Q2'25-Q1'26 window. It read 21.6x when the recurring
+                // multiple was ~31x — the one number that would have said "not cheap".
+                //
+                // Ratio-scaling survives only for the case it was actually written for: an ADR whose
+                // statements are in another currency (TSM files TWD, quotes USD), where a unitless
+                // ratio is the only FX-safe route — and then only when the windows genuinely line up,
+                // which quote.mrq (the reported TTM's through-quarter) now lets us check.
                 const recEl = document.getElementById('deep-rec-eps');
                 const recPeEl = document.getElementById('deep-rec-pe');
                 if (recEl && recPeEl) {
+                    const sameCcy = e.currency && e.currency === leg.quote.currency;
                     const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
-                    let recEps = null, recPe = null, note = '';
-                    if (recRatio != null && leg.quote.eps != null) {
+                    const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
+                    let recEps = null, recPe = null, note = '', tag = '';
+                    if (tRec.v != null && sameCcy) {
+                        recEps = tRec.v;
+                        // A loss-making recurring year has no meaningful multiple — same rule
+                        // troughPe uses. Show the negative EPS, withhold the P/E.
+                        recPe = tRec.v > 0 ? leg.quote.price / tRec.v : null;
+                        note = `Sum of the recurring EPS of the four filed quarters ended ${ymd(ttmQ[3].date)}, `
+                            + `against today's price. One-off items (investment gains, asset sales) removed.`;
+                        tag = `filed · ${qShort(ttmQ[3].date)}`;
+                    } else if (recRatio != null && aligned && leg.quote.eps != null) {
                         recEps = leg.quote.eps * recRatio;
                         recPe = leg.pe == null ? null : leg.pe / recRatio;
-                        // TTM EPS is Yahoo's reported (may already carry a newer quarter); the recurring
-                        // SHARE comes from the last four filed statements, so name that window.
-                        note = `Reported TTM EPS × the recurring share of the four filed quarters ended ${ymd(ttmQ[3].date)}`;
+                        note = `Reported TTM EPS × the recurring share of the same four quarters `
+                            + `(ended ${ymd(ttmQ[3].date)}). Statements are filed in ${e.currency}, so the `
+                            + `unitless ratio is used rather than the sum.`;
+                        tag = `reported · ${qShort(ttmQ[3].date)}`;
                     } else if (leg.quote.normEps != null) {
                         recEps = leg.quote.normEps;
                         recPe = leg.specialPe;
-                        note = 'Latest fiscal year (four trailing quarters not yet in range)';
+                        note = 'Latest fiscal year — four filed quarters not yet in range, or the filed '
+                            + 'window is behind the reported one and the statements are in another currency.';
+                        tag = 'annual';
                     }
+                    const mark = tag ? ` <span class="tag" title="${note}">${tag}</span>` : '';
                     recEl.className = recEps == null ? 'muted' : '';
-                    recEl.textContent = recEps == null ? '–' : `${leg.quote.currency} ${num2(recEps)}`;
+                    recEl.innerHTML = recEps == null ? '–' : `${leg.quote.currency} ${num2(recEps)}${mark}`;
                     recEl.title = note;
                     recPeEl.className = recPe == null ? 'muted' : '';
-                    recPeEl.textContent = recPe == null ? '–' : `${num2(recPe)}×`;
+                    recPeEl.innerHTML = recPe == null ? '–' : `${num2(recPe)}×${mark}`;
                     recPeEl.title = note;
                 }
 
