@@ -187,6 +187,38 @@ function exDivToFetch(prevQuotes, payers, today) {
     });
 }
 
+// Most-recent-quarter end, from quoteSummary's defaultKeyStatistics. This is the quarter the
+// REPORTED trailing EPS (the batch quote's epsTrailingTwelveMonths) runs through — and it leads
+// the filed fundamentals: for GOOG it reads 2026-06-30 while the timeseries statements still stop
+// at Q1'26. Surfaced on the page so the "reported" TTM tag can name its through-quarter. Same
+// crumb-gated per-ticker endpoint as ex-div, so it is cached and gated the same way.
+async function fetchMrq(ticker, { crumb, cookie }) {
+    const sym = ticker.replace('^', '%5E');
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}`
+        + `?modules=defaultKeyStatistics&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    if (res.status === 404) return null;                 // no such module — a real, cacheable "none"
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = (await res.json()).quoteSummary?.result?.[0]?.defaultKeyStatistics?.mostRecentQuarter?.raw;
+    return typeof raw === 'number' ? new Date(raw * 1000).toISOString().slice(0, 10) : null;
+}
+
+// A quarter end older than this may have been superseded by a newer report, so it's worth a look.
+// ~91 days is a quarter; the grace past that covers the reporting lag (results land 1-3 months
+// after quarter end). Below it, nothing new can exist — leave the cached value alone.
+const MRQ_STALE_DAYS = 120;
+// Cold start (no ticker has a cached mrq) would otherwise fire one gated call for every equity in
+// a single run — the burst AGENTS.md warns can 401 the whole handshake. Cap it; the daily throttle
+// carries the rest to later runs, and steady state is a trickle of 0-2 around earnings.
+const MRQ_MAX_PER_RUN = 8;
+function mrqToFetch(prevQuotes, equities, today) {
+    return equities.filter(t => {
+        const q = prevQuotes[t] || {};
+        const stale = !q.mrq || (Date.parse(today) - Date.parse(q.mrq)) / 864e5 > MRQ_STALE_DAYS;
+        return stale && q.mrqChecked !== today;          // ...but not twice in one day
+    }).slice(0, MRQ_MAX_PER_RUN);
+}
+
 // Yahoo's fundamentals are in the major currency unit even for tickers whose price
 // quote is in a minor unit (pence) — same GBp quirk rateFor() handles for FX.
 function epsInQuoteUnits(eps, currency) {
@@ -735,6 +767,8 @@ async function main() {
         if (!quotes[t]) continue;
         if (prevQuotes[t]?.exDiv) quotes[t].exDiv = prevQuotes[t].exDiv;
         if (prevQuotes[t]?.exDivChecked) quotes[t].exDivChecked = prevQuotes[t].exDivChecked;
+        if (prevQuotes[t]?.mrq) quotes[t].mrq = prevQuotes[t].mrq;
+        if (prevQuotes[t]?.mrqChecked) quotes[t].mrqChecked = prevQuotes[t].mrqChecked;
     }
     if (auth) {
         // Payers, minus funds: an ETF distribution is not in calendarEvents (it 404s), so there
@@ -755,6 +789,25 @@ async function main() {
         }
     }
     console.log(`ok   ex-div date for ${tickers.filter(t => quotes[t]?.exDiv).length} payer(s)`);
+
+    // Most-recent-quarter end (the through-quarter of the reported trailing EPS), for equities
+    // only and only when the cached one has aged out — same trickle discipline as ex-div.
+    if (auth) {
+        const equities = tickers.filter(t => quotes[t] && !nonEquity.has(t));
+        const due = mrqToFetch(prevQuotes, equities, today);
+        if (due.length) console.log(`     mrq lookup for ${due.length}/${equities.length} equit(ies)`);
+        for (const t of due) {
+            try {
+                const date = await fetchMrq(t, auth);
+                if (date) quotes[t].mrq = date; else delete quotes[t].mrq;
+                quotes[t].mrqChecked = today;
+            } catch (e) {
+                console.error(`     mrq ${t}: ${e.message} — keeping cached`);
+            }
+            await sleep();
+        }
+    }
+    console.log(`ok   most-recent-quarter for ${tickers.filter(t => quotes[t]?.mrq).length} equit(ies)`);
 
     // Annual EPS history: read from the repo, refreshed only when it ages out or a holding is
     // new. Loaded HERE, before the FX block, because each company's REPORTING currency has to
@@ -1249,6 +1302,18 @@ function selftest() {
         exDivToFetch({ A: { exDiv: '2026-05-01', exDivChecked: '2026-07-16' } }, ['A'], T2), ['A']);
     // Today IS the ex-div date -> not past yet, no lookup.
     assert.deepStrictEqual(exDivToFetch({ A: { exDiv: T2 } }, ['A'], T2), []);
+
+    // mrqToFetch: look only when the cached quarter has aged past the reporting-lag grace, once a
+    // day, and never more than the cold-start cap in one run.
+    const M = '2026-07-24';
+    assert.deepStrictEqual(mrqToFetch({}, ['A'], M), ['A']);                          // no cache -> look
+    assert.deepStrictEqual(mrqToFetch({ A: { mrq: '2026-06-30' } }, ['A'], M), []);   // 24 days old -> fresh, skip
+    assert.deepStrictEqual(mrqToFetch({ A: { mrq: '2026-03-01' } }, ['A'], M), ['A']); // 145 days old -> stale, look
+    assert.deepStrictEqual(                                                            // ...but not twice a day
+        mrqToFetch({ A: { mrq: '2026-03-01', mrqChecked: M } }, ['A'], M), []);
+    assert.deepStrictEqual(                                                            // checked yesterday -> look again
+        mrqToFetch({ A: { mrq: '2026-03-01', mrqChecked: '2026-07-23' } }, ['A'], M), ['A']);
+    assert.strictEqual(mrqToFetch({}, Array.from({ length: 20 }, (_, i) => 'T' + i), M).length, MRQ_MAX_PER_RUN); // burst cap
     // Exchanges timestamp the same weekly bar on different UTC days; align both to Friday.
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-11') / 1000)), '2021-07-16');
     assert.strictEqual(isoDay(weekEnd(Date.parse('2021-07-12') / 1000)), '2021-07-16');

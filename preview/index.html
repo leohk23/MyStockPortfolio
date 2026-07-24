@@ -467,6 +467,9 @@
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
         })[c]);
         const ymd = isoDay => isoDay.replace(/-/g, '/');            // 2026-07-10 -> 2026/07/10
+        const QMON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const qShort = iso => { const d = new Date(iso + 'T00:00:00Z');   // 2026-06-30 -> Jun '26
+            return `${QMON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`; };
         const p2 = n => String(n).padStart(2, '0');
         const stamp = iso => { const d = new Date(iso);
             return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())}, ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
@@ -568,7 +571,7 @@
                 ['Price', px(q.price)],
                 ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
-                    : ' <span class="tag" title="Yahoo\'s reported trailing 12-month EPS — includes the latest released quarter, which the filed statements in the table below may not carry yet. That is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported</span>')],
+                    : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],
                 // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
                 // recurring/filed ratio (the deep dive has the quarters the table row does not).
                 ['Recurring EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
@@ -888,7 +891,7 @@
                 const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
                 const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
                 const ttmRow = ttmQ ? `<tr class="ttm-row">
-                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${ymd(ttmQ[3].date)}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">filed</span></td>
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">filed · ${qShort(ttmQ[3].date)}</span></td>
                         ${cell(tRev.v, tRev.g)}
                         ${cell(tOp.v, tOp.g)}
                         ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
