@@ -126,6 +126,10 @@
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
         #deep-val .derived { font-size: 11px; color: var(--text-secondary);
             border-bottom: 1px dotted var(--text-secondary); cursor: help; }
+        /* Source remark (reported / filed) — which feed a TTM figure comes from. */
+        #deep-val .tag, #deep-fin .tag { font-size: 10px; text-transform: uppercase;
+            letter-spacing: .04em; color: var(--text-muted); margin-left: 5px;
+            border-bottom: 1px dotted var(--text-muted); cursor: help; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -562,13 +566,13 @@
             const px = n => n == null ? '–' : c + ' ' + num2(n);
             const rows = [
                 ['Price', px(q.price)],
-                ['EPS (trailing)', px(q.eps) + (q.epsDerived
+                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
-                    : '')],
+                    : ' <span class="tag" title="Yahoo\'s reported trailing 12-month EPS — includes the latest released quarter, which the filed statements in the table below may not carry yet. That is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported</span>')],
                 // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
                 // recurring/filed ratio (the deep dive has the quarters the table row does not).
-                ['Recurring EPS', '<span id="deep-rec-eps" class="muted">…</span>'],
-                ['P/E (trailing)', leg.pe == null ? '–' : num2(leg.pe) + '×',
+                ['Recurring EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
+                ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×',
                     ' class="valuation-group-start"'],
                 // Filled only where guidance.json carries enough inputs to derive it.
                 ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
@@ -580,7 +584,7 @@
                 ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
                 ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
-                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['PEG (TTM)', '<span id="deep-peg" class="muted">…</span>'],
                 ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
                 ['Implied price', px(leg.implied)],
                 ['vs implied', leg.vsLow == null ? '–'
@@ -884,7 +888,7 @@
                 const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
                 const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
                 const ttmRow = ttmQ ? `<tr class="ttm-row">
-                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM</td>
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${ymd(ttmQ[3].date)}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">filed</span></td>
                         ${cell(tRev.v, tRev.g)}
                         ${cell(tOp.v, tOp.g)}
                         ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
@@ -907,9 +911,9 @@
                     if (recRatio != null && leg.quote.eps != null) {
                         recEps = leg.quote.eps * recRatio;
                         recPe = leg.pe == null ? null : leg.pe / recRatio;
-                        // Trailing EPS is Yahoo's (may already carry a newer quarter); the recurring
+                        // TTM EPS is Yahoo's reported (may already carry a newer quarter); the recurring
                         // SHARE comes from the last four filed statements, so name that window.
-                        note = `Trailing EPS on the recurring share of the four quarters ended ${ymd(ttmQ[3].date)}`;
+                        note = `Reported TTM EPS × the recurring share of the four filed quarters ended ${ymd(ttmQ[3].date)}`;
                     } else if (leg.quote.normEps != null) {
                         recEps = leg.quote.normEps;
                         recPe = leg.specialPe;
