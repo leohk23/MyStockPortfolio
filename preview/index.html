@@ -372,13 +372,12 @@
                 <tr>
                     <th data-sort="name">Position</th>
                     <th data-sort="price">Price</th>
-                    <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
-                    <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
-                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet isn't flattered by investment gains. A manual meta.json figure (FFO, adjusted EPS) overrides it; falls back to the normal PE where Yahoo has no normalized figure.">Special PE</th>
-                    <th data-sort="peLow" title="Cheapest the market has priced published earnings: each weekly close ÷ the latest annual EPS already reported by that date (fiscal end + 90 days), minimum over ~4-5y. Point-in-time — never earnings the market hadn't seen yet. Derived online — nothing to maintain.">PE Low</th>
-                    <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
-                    <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
-                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
+                    <th data-sort="7d">7D</th>
+                    <th data-sort="1m">1M</th>
+                    <th data-sort="3m">3M</th>
+                    <th data-sort="6m">6M</th>
+                    <th data-sort="1y">1Y</th>
+                    <th data-sort="ytd">YTD</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <th data-sort="cost">Cost</th>
@@ -389,12 +388,13 @@
                     <th data-sort="value">Mix</th>
                     <th data-sort="yield" title="Yahoo trailing 12-month dividends divided by current price">Yield TTM</th>
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
-                    <th data-sort="7d">7D</th>
-                    <th data-sort="1m">1M</th>
-                    <th data-sort="3m">3M</th>
-                    <th data-sort="6m">6M</th>
-                    <th data-sort="1y">1Y</th>
-                    <th data-sort="ytd">YTD</th>
+                    <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
+                    <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
+                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet isn't flattered by investment gains. A manual meta.json figure (FFO, adjusted EPS) overrides it; falls back to the normal PE where Yahoo has no normalized figure.">Special PE</th>
+                    <th data-sort="peLow" title="Cheapest the market has priced published earnings: each weekly close ÷ the latest annual EPS already reported by that date (fiscal end + 90 days), minimum over ~4-5y. Point-in-time — never earnings the market hadn't seen yet. Derived online — nothing to maintain.">PE Low</th>
+                    <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
+                    <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
+                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -1549,13 +1549,7 @@
                         : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency)}</td>
-                    <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
-                    <td>${peCell(r.pe)}</td>
-                    <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
-                    <td>${peCell(r.peLow)}</td>
-                    <td>${lowDateCell(r.lowDate)}</td>
-                    <td>${impliedCell(r)}</td>
-                    <td>${vsLowCell(r.vsLow)}</td>
+                    ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${money(r.cost)}</td>
@@ -1566,7 +1560,13 @@
                     <td>${plain(r.value / total)}</td>
                     <td class="muted">${r.yield ? plain(r.yield) : '–'}</td>
                     <td>${incomeCell(r.income)}</td>
-                    ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}`;
+                    <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
+                    <td>${peCell(r.pe)}</td>
+                    <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
+                    <td>${peCell(r.peLow)}</td>
+                    <td>${lowDateCell(r.lowDate)}</td>
+                    <td>${impliedCell(r)}</td>
+                    <td>${vsLowCell(r.vsLow)}</td>`;
                 tbody.appendChild(tr);
 
                 // Only multi-instrument rows have constituents to expand.
@@ -1578,13 +1578,7 @@
                     el.innerHTML = `
                         <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
                         <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
-                        <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
-                        <td>${peCell(leg.pe)}</td>
-                        <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
-                        <td>${peCell(leg.peLow)}</td>
-                        <td>${lowDateCell(leg.lowDate)}</td>
-                        <td>${impliedCell(leg)}</td>
-                        <td>${vsLowCell(leg.vsLow)}</td>
+                        ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td>${money(leg.cost)}</td>
@@ -1595,7 +1589,13 @@
                         <td>${plain(leg.value / total)}</td>
                         <td class="muted">${leg.quote.divYield ? plain(leg.quote.divYield) : '–'}</td>
                         <td>${incomeCell(leg.income)}</td>
-                        ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}`;
+                        <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
+                        <td>${peCell(leg.pe)}</td>
+                        <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
+                        <td>${peCell(leg.peLow)}</td>
+                        <td>${lowDateCell(leg.lowDate)}</td>
+                        <td>${impliedCell(leg)}</td>
+                        <td>${vsLowCell(leg.vsLow)}</td>`;
                     el.addEventListener('click', () => selectChart(leg.yahoo));
                     tbody.appendChild(el);
                     return el;
@@ -1634,26 +1634,37 @@
             const gain = shownValue - cost;
             const realized = shown.reduce((a, r) => a + r.realized, 0);
             const income = shown.reduce((a, r) => a + r.income, 0);
-            // Blank every column up to Cost, counted FROM THE HEADER rather than hardcoded.
-            // Price, PE, PE Low, Implied, vs Low and the rest are per-instrument figures with no
-            // meaningful portfolio aggregate (a basket has no PE — see AGENTS.md invariant 9),
-            // and Last trade / Since don't sum either. This used to be three literal <td>s, so
-            // adding the six valuation columns silently shifted every total six cells left.
-            const leadCols = [...document.querySelectorAll('#portfolio thead th')]
-                .findIndex(th => th.dataset.sort === 'cost');
-            document.querySelector('#portfolio tfoot').innerHTML = `<tr>
-                <td>${searchTerms().length ? 'Filtered' : 'Total'}</td>${'<td></td>'.repeat(Math.max(0, leadCols - 1))}
-                <td>${money(cost)}</td><td>${money(shownValue)}</td>
-                <td class="${cls(gain)}">${money(gain)}</td>
-                <td class="${realizedCls(realized)}">${money(realized)}</td>
-                <td class="${cls(gain)}">${pct(cost ? gain / cost : null)}</td>
-                <td>${total ? plain(shownValue / total) : '–'}</td>
-                <td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>
-                <td>${money(income)}</td>
-                ${portfolioLib.PERIODS.map(p => {
-                    const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
-                    return `<td class="${cls(move)}">${pct(move)}</td>`;
-                }).join('')}</tr>`;
+            // Each total is placed BY ITS HEADER'S POSITION, not emitted in a fixed sequence. The
+            // aggregate columns are no longer one contiguous run — the period moves sit right after
+            // Price and the valuation columns trail the table — so any hardcoded order silently
+            // shifts every total the moment a column moves. It already happened once: adding the
+            // six valuation columns pushed every total six cells left.
+            //
+            // Anything left blank is blank on purpose. Price, Avg cost, PE, Special PE, PE Low,
+            // Low date, Implied and vs Low are per-instrument figures with no meaningful portfolio
+            // aggregate (a basket has no PE — see AGENTS.md invariant 9); Last trade and Since
+            // don't sum either.
+            const ths = [...document.querySelectorAll('#portfolio thead th')];
+            const keys = ths.map(th => th.dataset.sort);
+            const cells = ths.map(() => '<td></td>');
+            const put = (k, html) => { const i = keys.indexOf(k); if (i >= 0) cells[i] = html; };
+            put('name', `<td>${searchTerms().length ? 'Filtered' : 'Total'}</td>`);
+            put('cost', `<td>${money(cost)}</td>`);
+            put('value', `<td>${money(shownValue)}</td>`);
+            put('gain', `<td class="${cls(gain)}">${money(gain)}</td>`);
+            put('realized', `<td class="${realizedCls(realized)}">${money(realized)}</td>`);
+            put('gainPct', `<td class="${cls(gain)}">${pct(cost ? gain / cost : null)}</td>`);
+            // Mix deliberately shares data-sort="value" with the Value column (clicking Mix sorts
+            // by value), so it is the LAST 'value' header, not the first.
+            const mix = keys.lastIndexOf('value');
+            if (mix >= 0) cells[mix] = `<td>${total ? plain(shownValue / total) : '–'}</td>`;
+            put('yield', `<td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>`);
+            put('income', `<td>${money(income)}</td>`);
+            for (const p of portfolioLib.PERIODS) {
+                const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
+                put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
+            }
+            document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
             updateSearchCount();
             markSelectedRow();
             buildTotalFloat();
