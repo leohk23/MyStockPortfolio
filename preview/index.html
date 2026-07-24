@@ -1346,6 +1346,7 @@
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
             renderDeep();
+            syncURL();
             if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
@@ -1714,6 +1715,27 @@
             drawChart();
         }
 
+        // Mirror the current view into the URL hash so a refresh — or a shared link — lands on the
+        // same tab, sort and selected stock. replaceState (not push) so every click doesn't stack a
+        // history entry. Only non-default values are written, keeping the plain view a clean URL.
+        function syncURL() {
+            if (!STATE) return;
+            const p = new URLSearchParams();
+            if (STATE.dim !== 'company') p.set('g', STATE.dim);
+            if (sort.key !== 'value' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
+            if (watchSort.key !== 'name' || watchSort.dir !== 1) { p.set('ws', watchSort.key); p.set('wd', watchSort.dir); }
+            if (chartSel) p.set('sel', chartSel);
+            const h = p.toString();
+            history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+        }
+        // Move the aria-sort marker to the restored column (the header click handler does this too).
+        function markSort(sel, s) {
+            const ths = document.querySelectorAll(sel);
+            ths.forEach(o => o.removeAttribute('aria-sort'));
+            const th = [...ths].find(o => o.dataset.sort === s.key);
+            if (th) th.setAttribute('aria-sort', s.dir === 1 ? 'ascending' : 'descending');
+        }
+
         /* ---------------- controls ---------------- */
         document.querySelectorAll('#ranges button').forEach(b =>
             b.addEventListener('click', () => {
@@ -1784,6 +1806,7 @@
                 document.querySelectorAll('#portfolio th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', sort.dir === 1 ? 'ascending' : 'descending');
                 renderTable();
+                syncURL();
             }));
 
         document.querySelectorAll('#watchlist th[data-sort]').forEach(th =>
@@ -1793,6 +1816,7 @@
                 document.querySelectorAll('#watchlist th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', watchSort.dir === 1 ? 'ascending' : 'descending');
                 renderWatchlist();
+                syncURL();
             }));
 
         /* ---------------- boot ---------------- */
@@ -1812,14 +1836,27 @@
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
             const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : [])];
+            // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
+            // where it points; otherwise fall back to the last tab this browser used.
+            const url = new URLSearchParams(location.hash.slice(1));
             const saved = localStorage.getItem('dim');
-            const dim = views.includes(saved) ? saved : 'company';
+            const dim = views.includes(url.get('g')) ? url.get('g')
+                : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
             STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
+            // Restore sort before the first paint so the table comes up in the saved order.
+            if (url.get('s')) sort = { key: url.get('s'), dir: Number(url.get('d')) === 1 ? 1 : -1 };
+            if (url.get('ws')) watchSort = { key: url.get('ws'), dir: Number(url.get('wd')) === 1 ? 1 : -1 };
+            markSort('#portfolio th[data-sort]', sort);
+            markSort('#watchlist th[data-sort]', watchSort);
             rebuildRows();
             renderAll();
+            // Restore a selected stock last: selectChart loads its history, charts it and opens the
+            // deep panel — safe only once STATE.rows exist. Ignore a symbol no longer on the page.
+            const sel = url.get('sel');
+            if (sel && legOf(sel)) selectChart(sel);
             document.getElementById('updated').textContent =
                 `Prices as of ${stamp(updated)} · click a row to chart it · click the chevron to expand`;
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));
