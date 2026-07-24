@@ -124,6 +124,12 @@
             padding-top: 7px; }
         #deep-val dt { color: var(--text-secondary); }
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
+        #deep-val .derived { font-size: 11px; color: var(--text-secondary);
+            border-bottom: 1px dotted var(--text-secondary); cursor: help; }
+        /* Source remark (reported / filed) — which feed a TTM figure comes from. */
+        #deep-val .tag, #deep-fin .tag { font-size: 10px; text-transform: uppercase;
+            letter-spacing: .04em; color: var(--text-muted); margin-left: 5px;
+            border-bottom: 1px dotted var(--text-muted); cursor: help; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -140,6 +146,9 @@
             vertical-align: bottom; }
         #deep-fin th:first-child, #deep-fin td:first-child { text-align: left; }
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
+        #deep-fin tr.ttm-row td { border-top: 1px solid var(--line); font-weight: 600; }
+        #deep-fin tr.ttm-row td:first-child { color: var(--text-secondary); }
+        #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
@@ -458,6 +467,9 @@
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
         })[c]);
         const ymd = isoDay => isoDay.replace(/-/g, '/');            // 2026-07-10 -> 2026/07/10
+        const QMON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const qShort = iso => { const d = new Date(iso + 'T00:00:00Z');   // 2026-06-30 -> Jun '26
+            return `${QMON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`; };
         const p2 = n => String(n).padStart(2, '0');
         const stamp = iso => { const d = new Date(iso);
             return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())}, ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
@@ -557,17 +569,25 @@
             const px = n => n == null ? '–' : c + ' ' + num2(n);
             const rows = [
                 ['Price', px(q.price)],
-                ['EPS (trailing)', px(q.eps)],
-                ['P/E (trailing)', leg.pe == null ? '–' : num2(leg.pe) + '×',
+                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
+                    ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
+                    : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],
+                // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
+                // recurring/filed ratio (the deep dive has the quarters the table row does not).
+                ['Recurring EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
+                ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×',
                     ' class="valuation-group-start"'],
                 // Filled only where guidance.json carries enough inputs to derive it.
                 ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
                     ' id="deep-guidance-pe-row" hidden'],
-                leg.specialEpsLabel ? [`P/E (${leg.specialEpsLabel})`,
+                // Manual meta.json override (FFO, adjusted, ...) keeps its own row; the automatic
+                // recurring case is the P/E (recurring) row below, on trailing quarterly earnings.
+                leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
+                ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
                 ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
-                ['PEG (trailing)', '<span id="deep-peg" class="muted">…</span>'],
+                ['PEG (TTM)', '<span id="deep-peg" class="muted">…</span>'],
                 ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
                 ['Implied price', px(leg.implied)],
                 ['vs implied', leg.vsLow == null ? '–'
@@ -691,6 +711,8 @@
                 const years = isOperating ? (e?.years || []).filter(y => y.rev != null).slice(-6) : [];
                 if (!years.length) {
                     setPeg('<span class="muted">–</span>');   // no earnings, no growth, no PEG
+                    ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
+                        if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
                     fin.innerHTML = '<span class="deep-note">No reported financials — '
                         + 'this is a fund, trust or commodity, not an operating company.</span>';
@@ -726,8 +748,12 @@
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
-                const cell = (v, g, invert, format = big) => `<td>${v == null ? '<span class="muted">–</span>' : format(v)}${g == null ? '' :
-                    `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
+                const cell = (v, g, invert, format = big, derived) => {
+                    const val = v == null ? '<span class="muted">–</span>'
+                        : derived ? `<span class="derived" title="Reconstructed: annual EPS minus the other three quarters — Yahoo omits this quarter's per-share figure for this filer">${format(v)}</span>`
+                        : format(v);
+                    return `<td>${val}${g == null ? '' : `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
+                };
                 // Margin changes are percentage points, not relative growth: 10% to 12% is
                 // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
                 const marginCell = (v, prev) => {
@@ -806,6 +832,20 @@
                 // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
                 // stub first). Same rule the annual rows use: a real reported period has revenue.
                 const qs = (e?.quarters || []).filter(x => x.rev != null);
+                // Yahoo omits the year-end quarter's per-share EPS for some filers (Korean names:
+                // it stores the audited annual instead). Reconstruct that one quarter — annual
+                // minus the three quarters already in its fiscal year — so the EPS column, the TTM
+                // and recurring rows aren't left with a hole. Marked derived. Only fires when a
+                // fiscal year has exactly four quarters with exactly one EPS missing.
+                for (const y of (e?.years || [])) {
+                    if (y.eps == null) continue;
+                    const lo = new Date(y.date); lo.setUTCFullYear(lo.getUTCFullYear() - 1);
+                    const fyq = qs.filter(x => x.date > lo.toISOString().slice(0, 10) && x.date <= y.date);
+                    const gap = fyq.filter(x => x.eps == null);
+                    if (fyq.length !== 4 || gap.length !== 1) continue;
+                    gap[0].eps = Number((y.eps - fyq.reduce((a, x) => a + (x.eps || 0), 0)).toPrecision(6));
+                    gap[0].epsDerived = true;
+                }
                 // Up to the last four quarters, oldest→newest, each still compared to the SAME
                 // quarter a year earlier (seasonality-free) rather than to the quarter beside it.
                 // The year-ago match is drawn from the whole stored set, so a shown quarter can
@@ -821,10 +861,97 @@
                         ${cell(L.nic, qy(L.nic, ya?.nic))}
                         ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
-                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2, L.epsDerived)}
                         ${cell(recEps(L), ya ? qy(recEps(L), recEps(ya)) : null, false, num2)}
                     </tr>`;
                 }).join('');
+
+                // Trailing 12 months = the last four CONSECUTIVE reported quarters. Flows (revenue,
+                // income, EPS) sum; margins are summed income over summed revenue, never a sum of
+                // ratios; a share count does not sum at all. Guarded on span so a gap in Yahoo's
+                // ~5-point window can't quietly total four quarters that don't add up to a year.
+                // Growth is vs the four quarters before those (needs the store's full eight).
+                const four = end => {
+                    if (end < 3) return null;
+                    const s = qs.slice(end - 3, end + 1);
+                    const days = (Date.parse(s[3].date) - Date.parse(s[0].date)) / 864e5;
+                    return days >= 250 && days <= 290 ? s : null;   // ~9 months across 4 quarter-ends
+                };
+                const ttmQ = four(qs.length - 1);
+                const priorQ = ttmQ ? four(qs.length - 5) : null;
+                const qsum = (arr, f) => arr.every(x => f(x) != null) ? arr.reduce((a, x) => a + f(x), 0) : null;
+                const ttmM = f => {
+                    const v = ttmQ ? qsum(ttmQ, f) : null;
+                    const prev = priorQ ? qsum(priorQ, f) : null;
+                    return { v, g: v != null && prev != null ? yoy(v, prev) : null };
+                };
+                const tRev = ttmM(x => x.rev), tOp = ttmM(x => x.opinc), tNic = ttmM(x => x.nic),
+                    tEps = ttmM(x => x.eps), tRec = ttmM(recEps);
+                const ratio = (n, d) => n != null && d ? n / d : null;
+                const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
+                const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
+                const ttmRow = ttmQ ? `<tr class="ttm-row">
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">filed · ${qShort(ttmQ[3].date)}</span></td>
+                        ${cell(tRev.v, tRev.g)}
+                        ${cell(tOp.v, tOp.g)}
+                        ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
+                        ${cell(tNic.v, tNic.g)}
+                        ${marginCell(ratio(tNic.v, tRev.v), pNetM)}
+                        <td></td>
+                        ${cell(tEps.v, tEps.g, false, num2)}
+                        ${cell(tRec.v, tRec.g, false, num2)}
+                    </tr>` : '';
+
+                // Trailing recurring EPS + its P/E for the Valuation panel.
+                //
+                // Sum the four filed quarters OUTRIGHT wherever the statements are in the price's
+                // currency. The old code always scaled Yahoo's reported TTM EPS by the filed
+                // recurring/filed ratio, and that silently mixed windows: GOOG's reported TTM ran
+                // through Q2'26 (which carried a $6.26/share investment gain) while the ratio came
+                // from the older, far cleaner Q2'25-Q1'26 window. It read 21.6x when the recurring
+                // multiple was ~31x — the one number that would have said "not cheap".
+                //
+                // Ratio-scaling survives only for the case it was actually written for: an ADR whose
+                // statements are in another currency (TSM files TWD, quotes USD), where a unitless
+                // ratio is the only FX-safe route — and then only when the windows genuinely line up,
+                // which quote.mrq (the reported TTM's through-quarter) now lets us check.
+                const recEl = document.getElementById('deep-rec-eps');
+                const recPeEl = document.getElementById('deep-rec-pe');
+                if (recEl && recPeEl) {
+                    const sameCcy = e.currency && e.currency === leg.quote.currency;
+                    const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
+                    const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
+                    let recEps = null, recPe = null, note = '', tag = '';
+                    if (tRec.v != null && sameCcy) {
+                        recEps = tRec.v;
+                        // A loss-making recurring year has no meaningful multiple — same rule
+                        // troughPe uses. Show the negative EPS, withhold the P/E.
+                        recPe = tRec.v > 0 ? leg.quote.price / tRec.v : null;
+                        note = `Sum of the recurring EPS of the four filed quarters ended ${ymd(ttmQ[3].date)}, `
+                            + `against today's price. One-off items (investment gains, asset sales) removed.`;
+                        tag = `filed · ${qShort(ttmQ[3].date)}`;
+                    } else if (recRatio != null && aligned && leg.quote.eps != null) {
+                        recEps = leg.quote.eps * recRatio;
+                        recPe = leg.pe == null ? null : leg.pe / recRatio;
+                        note = `Reported TTM EPS × the recurring share of the same four quarters `
+                            + `(ended ${ymd(ttmQ[3].date)}). Statements are filed in ${e.currency}, so the `
+                            + `unitless ratio is used rather than the sum.`;
+                        tag = `reported · ${qShort(ttmQ[3].date)}`;
+                    } else if (leg.quote.normEps != null) {
+                        recEps = leg.quote.normEps;
+                        recPe = leg.specialPe;
+                        note = 'Latest fiscal year — four filed quarters not yet in range, or the filed '
+                            + 'window is behind the reported one and the statements are in another currency.';
+                        tag = 'annual';
+                    }
+                    const mark = tag ? ` <span class="tag" title="${note}">${tag}</span>` : '';
+                    recEl.className = recEps == null ? 'muted' : '';
+                    recEl.innerHTML = recEps == null ? '–' : `${leg.quote.currency} ${num2(recEps)}${mark}`;
+                    recEl.title = note;
+                    recPeEl.className = recPe == null ? 'muted' : '';
+                    recPeEl.innerHTML = recPe == null ? '–' : `${num2(recPe)}×${mark}`;
+                    recPeEl.title = note;
+                }
 
                 // PEG, on the very bottom-line growth the table above is showing — so the reader
                 // can see the number it was divided by rather than taking it on faith.
@@ -843,7 +970,7 @@
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                     </tr></thead>
-                    <tbody>${body}${foot}${qrow}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${foot}${qrow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
@@ -1249,6 +1376,7 @@
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
             renderDeep();
+            syncURL();
             if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
@@ -1617,6 +1745,27 @@
             drawChart();
         }
 
+        // Mirror the current view into the URL hash so a refresh — or a shared link — lands on the
+        // same tab, sort and selected stock. replaceState (not push) so every click doesn't stack a
+        // history entry. Only non-default values are written, keeping the plain view a clean URL.
+        function syncURL() {
+            if (!STATE) return;
+            const p = new URLSearchParams();
+            if (STATE.dim !== 'company') p.set('g', STATE.dim);
+            if (sort.key !== 'value' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
+            if (watchSort.key !== 'name' || watchSort.dir !== 1) { p.set('ws', watchSort.key); p.set('wd', watchSort.dir); }
+            if (chartSel) p.set('sel', chartSel);
+            const h = p.toString();
+            history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+        }
+        // Move the aria-sort marker to the restored column (the header click handler does this too).
+        function markSort(sel, s) {
+            const ths = document.querySelectorAll(sel);
+            ths.forEach(o => o.removeAttribute('aria-sort'));
+            const th = [...ths].find(o => o.dataset.sort === s.key);
+            if (th) th.setAttribute('aria-sort', s.dir === 1 ? 'ascending' : 'descending');
+        }
+
         /* ---------------- controls ---------------- */
         document.querySelectorAll('#ranges button').forEach(b =>
             b.addEventListener('click', () => {
@@ -1687,6 +1836,7 @@
                 document.querySelectorAll('#portfolio th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', sort.dir === 1 ? 'ascending' : 'descending');
                 renderTable();
+                syncURL();
             }));
 
         document.querySelectorAll('#watchlist th[data-sort]').forEach(th =>
@@ -1696,6 +1846,7 @@
                 document.querySelectorAll('#watchlist th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
                 th.setAttribute('aria-sort', watchSort.dir === 1 ? 'ascending' : 'descending');
                 renderWatchlist();
+                syncURL();
             }));
 
         /* ---------------- boot ---------------- */
@@ -1715,14 +1866,27 @@
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
             const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : [])];
+            // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
+            // where it points; otherwise fall back to the last tab this browser used.
+            const url = new URLSearchParams(location.hash.slice(1));
             const saved = localStorage.getItem('dim');
-            const dim = views.includes(saved) ? saved : 'company';
+            const dim = views.includes(url.get('g')) ? url.get('g')
+                : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
             STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
+            // Restore sort before the first paint so the table comes up in the saved order.
+            if (url.get('s')) sort = { key: url.get('s'), dir: Number(url.get('d')) === 1 ? 1 : -1 };
+            if (url.get('ws')) watchSort = { key: url.get('ws'), dir: Number(url.get('wd')) === 1 ? 1 : -1 };
+            markSort('#portfolio th[data-sort]', sort);
+            markSort('#watchlist th[data-sort]', watchSort);
             rebuildRows();
             renderAll();
+            // Restore a selected stock last: selectChart loads its history, charts it and opens the
+            // deep panel — safe only once STATE.rows exist. Ignore a symbol no longer on the page.
+            const sel = url.get('sel');
+            if (sel && legOf(sel)) selectChart(sel);
             document.getElementById('updated').textContent =
                 `Prices as of ${stamp(updated)} · click a row to chart it · click the chevron to expand`;
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));

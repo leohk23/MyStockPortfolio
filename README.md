@@ -2,7 +2,7 @@
 
 Static portfolio dashboard on GitHub Pages. No server, no runtime dependencies.
 
-<https://leohk23.github.io/MyStockPortfolio/>
+[https://leohk23.github.io/MyStockPortfolio/](https://leohk23.github.io/MyStockPortfolio/)
 
 A personal decision tool with one reader. The goal is **substance over surface**: it
 exists to answer "buy, hold or sell?", so the effort goes into figures that can be
@@ -75,6 +75,7 @@ or a 2Y/5Y/All range, so the first paint stays light.
   is allowed — not an old low over *today's* EPS (NVDA's 2022 low on its 2026 earnings would
   look absurdly cheap), and not a low over its own year's EPS, which wasn't public until
   months after the low.
+
   - **PE Low** — the cheapest multiple the market ever paid for its published earnings.
   - **Low date** — when that happened.
   - **Implied** — `PE Low × current EPS`: what the price would be at that cheapest-ever
@@ -174,9 +175,7 @@ from the live site.
 
 ## Changing the watchlist
 
-`watchlist.json` (stocks you're weighing but don't own) is hand-maintained, so **`npm run
-extract` plays no part** — that reads the Tradelog only. Entries are
-`{ "yahoo": …, "name": …, "geography": … }`.
+`watchlist.json` (stocks you're weighing but don't own) is hand-maintained, so **`npm run extract` plays no part** — that reads the Tradelog only. Entries are `{ "yahoo": …, "name": …, "geography": … }`.
 
 ```sh
 npm run fetch   # only when ADDING a name — it needs a quote before it can appear
