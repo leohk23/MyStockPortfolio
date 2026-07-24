@@ -144,6 +144,7 @@
         #deep-fin tr.cagr td { border-top: 1px solid var(--line); color: var(--text-secondary); }
         #deep-fin tr.ttm-row td { border-top: 1px solid var(--line); font-weight: 600; }
         #deep-fin tr.ttm-row td:first-child { color: var(--text-secondary); }
+        #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
@@ -740,8 +741,12 @@
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
-                const cell = (v, g, invert, format = big) => `<td>${v == null ? '<span class="muted">–</span>' : format(v)}${g == null ? '' :
-                    `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
+                const cell = (v, g, invert, format = big, derived) => {
+                    const val = v == null ? '<span class="muted">–</span>'
+                        : derived ? `<span class="derived" title="Reconstructed: annual EPS minus the other three quarters — Yahoo omits this quarter's per-share figure for this filer">${format(v)}</span>`
+                        : format(v);
+                    return `<td>${val}${g == null ? '' : `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
+                };
                 // Margin changes are percentage points, not relative growth: 10% to 12% is
                 // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
                 const marginCell = (v, prev) => {
@@ -820,6 +825,20 @@
                 // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
                 // stub first). Same rule the annual rows use: a real reported period has revenue.
                 const qs = (e?.quarters || []).filter(x => x.rev != null);
+                // Yahoo omits the year-end quarter's per-share EPS for some filers (Korean names:
+                // it stores the audited annual instead). Reconstruct that one quarter — annual
+                // minus the three quarters already in its fiscal year — so the EPS column, the TTM
+                // and recurring rows aren't left with a hole. Marked derived. Only fires when a
+                // fiscal year has exactly four quarters with exactly one EPS missing.
+                for (const y of (e?.years || [])) {
+                    if (y.eps == null) continue;
+                    const lo = new Date(y.date); lo.setUTCFullYear(lo.getUTCFullYear() - 1);
+                    const fyq = qs.filter(x => x.date > lo.toISOString().slice(0, 10) && x.date <= y.date);
+                    const gap = fyq.filter(x => x.eps == null);
+                    if (fyq.length !== 4 || gap.length !== 1) continue;
+                    gap[0].eps = Number((y.eps - fyq.reduce((a, x) => a + (x.eps || 0), 0)).toPrecision(6));
+                    gap[0].epsDerived = true;
+                }
                 // Up to the last four quarters, oldest→newest, each still compared to the SAME
                 // quarter a year earlier (seasonality-free) rather than to the quarter beside it.
                 // The year-ago match is drawn from the whole stored set, so a shown quarter can
@@ -835,7 +854,7 @@
                         ${cell(L.nic, qy(L.nic, ya?.nic))}
                         ${marginCell(netMargin(L), ya ? netMargin(ya) : null)}
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
-                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2)}
+                        ${cell(L.eps, qy(L.eps, ya?.eps), false, num2, L.epsDerived)}
                         ${cell(recEps(L), ya ? qy(recEps(L), recEps(ya)) : null, false, num2)}
                     </tr>`;
                 }).join('');
