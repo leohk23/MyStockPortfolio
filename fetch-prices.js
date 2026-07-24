@@ -634,6 +634,35 @@ function trailingEpsFromQuarters(entry, currency) {
     return Number(ttm.toPrecision(6));
 }
 
+// Recurring EPS over the last four FILED quarters, summed outright. Preferred over normEpsFrom's
+// annual proxy because that one mixes windows: it applies the latest fiscal YEAR's normalized
+// ratio to the reported TTM EPS, and the two rarely cover the same quarters. GOOG showed the cost
+// — FY2025's comparatively clean ratio against a TTM window carrying a $6.26/share equity gain
+// priced it at 18.9x when the recurring multiple was ~31x.
+//
+// Reporting currency must equal the quote currency: this is an absolute sum, not a unitless ratio,
+// so an ADR filing in TWD against a USD price has to fall back to the proxy. Null unless all four
+// quarters carry the inputs and span ~a year.
+function recurringTtmFrom(entry, currency) {
+    if (!entry || entry.currency !== currency) return null;
+    const q = (entry.quarters || []).filter(x => x.date && x.rev != null)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    if (q.length < 4) return null;
+    const last4 = q.slice(-4);
+    const days = (Date.parse(last4[3].date) - Date.parse(last4[0].date)) / 864e5;
+    if (days < 250 || days > 290) return null;
+    const rec = last4.map(x => x.norm != null && x.ni && x.eps != null ? x.norm * x.eps / x.ni : null);
+    if (rec.some(v => v == null)) return null;
+    const sum = rec.reduce((a, v) => a + v, 0);
+    return sum > 0 ? Number(sum.toPrecision(6)) : null;   // a loss has no meaningful multiple
+}
+
+// The quarter the filed recurring sum runs through — surfaced so the page can name the window.
+const lastQuarterDate = entry => {
+    const q = (entry?.quarters || []).filter(x => x.date && x.rev != null).map(x => x.date).sort();
+    return q.length ? q[q.length - 1] : null;
+};
+
 // A checked manual override wins. Otherwise fresh Yahoo EPS is scaled into the quote's unit.
 // A carried-forward value is
 // ALREADY in quote units (it was scaled when written), so scaling it again would multiply
@@ -954,20 +983,35 @@ async function main() {
     // Names Yahoo gives no trailing EPS (Korean locals) get one summed from the last four
     // quarterly filings, so their trailing P/E and Implied stop reading "–". Runs before the
     // recurring loop below so the derived EPS also seeds a recurring figure where the store allows.
+    // Gated on what YAHOO sent, not on whether quotes[t].eps is filled: by this point a derived
+    // value from a previous run has already been carried forward as `eps`, so an "is it empty?"
+    // test would skip the ticker and quietly drop the epsDerived flag with it — the number would
+    // stay on the page but stop admitting where it came from. Recomputing is free (no network).
     let derivedEps = 0;
     for (const t of tickers) {
-        if (!quotes[t] || quotes[t].eps != null) continue;
+        if (!quotes[t] || fresh[t] != null || manualEps[t] != null) continue;
         const te = trailingEpsFromQuarters(store.eps[t], quotes[t].currency);
         if (te != null) { quotes[t].eps = te; quotes[t].epsDerived = true; derivedEps++; }
     }
     if (derivedEps) console.log(`ok   trailing EPS summed from quarters for ${derivedEps} ticker(s)`);
     // Recurring EPS for the Special P/E, from the same store. Separate loop so a ticker with no
     // trough (thin price history) still gets one where its earnings support it.
+    //
+    // The four filed quarters summed outright come first; the annual proxy is the fallback for
+    // what that can't cover (an ADR reporting in another currency, or a company whose quarters
+    // aren't all in the store yet). This is the SAME rule the deep dive's P/E (recurring) applies,
+    // so the table's Special PE and the panel cannot show two different recurring multiples for
+    // one stock — which is exactly what they did while the annual proxy stood alone.
+    let recFiled = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
+        const rec = recurringTtmFrom(store.eps[t], quotes[t].currency);
+        if (rec != null) { quotes[t].normEps = rec; quotes[t].normEpsThru = lastQuarterDate(store.eps[t]); recFiled++; continue; }
         const ne = normEpsFrom(store.eps[t], quotes[t].eps);
         if (ne != null) quotes[t].normEps = ne;
     }
+    console.log(`ok   recurring EPS: ${recFiled} from filed quarters, `
+        + `${tickers.filter(t => quotes[t]?.normEps != null).length - recFiled} from the annual proxy`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
@@ -1042,6 +1086,24 @@ function selftest() {
     assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', ni: 100 }] }, 5), null);          // no norm field
     assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', norm: 5, ni: 100 }] }, 5), null); // ratio 0.05 too extreme
     assert.strictEqual(normEpsFrom({ years: [] }, 5), null);
+
+    // recurringTtmFrom: the four filed quarters summed outright, GOOG's real shape. Yahoo's annual
+    // proxy priced this at 18.9x; the filed sum is what gets it to ~31x.
+    const goog = { currency: 'USD', quarters: [
+        { date: '2025-09-30', rev: 1, eps: 2.87, ni: 34979000000, norm: 26462165000 },
+        { date: '2025-12-31', rev: 1, eps: 2.82, ni: 34455000000, norm: 32438805123 },
+        { date: '2026-03-31', rev: 1, eps: 5.11, ni: 62578000000, norm: 32708508190 },
+        { date: '2026-06-30', rev: 1, eps: 9.11, ni: 112193000000, norm: 32232249000 }] };
+    assert.ok(Math.abs(recurringTtmFrom(goog, 'USD') - 10.11) < 0.02);   // vs 10.47 from SEC filings
+    assert.strictEqual(recurringTtmFrom(goog, 'TWD'), null);             // ADR: absolute sum needs one currency
+    assert.strictEqual(lastQuarterDate(goog), '2026-06-30');
+    const short = { currency: 'USD', quarters: goog.quarters.slice(1) };
+    assert.strictEqual(recurringTtmFrom(short, 'USD'), null);            // only three quarters
+    const holed = JSON.parse(JSON.stringify(goog)); delete holed.quarters[2].norm;
+    assert.strictEqual(recurringTtmFrom(holed, 'USD'), null);            // a quarter with no norm -> "–"
+    const loss = JSON.parse(JSON.stringify(goog));
+    loss.quarters.forEach(x => { x.norm = -x.norm; });
+    assert.strictEqual(recurringTtmFrom(loss, 'USD'), null);             // loss-making: no multiple
 
     // trailingEpsFromQuarters: sum four clean quarters, in the quote's currency only.
     const q4 = c => ({ currency: c, quarters: [
