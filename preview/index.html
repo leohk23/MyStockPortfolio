@@ -124,6 +124,8 @@
             padding-top: 7px; }
         #deep-val dt { color: var(--text-secondary); }
         #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
+        #deep-val .derived { font-size: 11px; color: var(--text-secondary);
+            border-bottom: 1px dotted var(--text-secondary); cursor: help; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -559,7 +561,9 @@
             const px = n => n == null ? '–' : c + ' ' + num2(n);
             const rows = [
                 ['Price', px(q.price)],
-                ['EPS (trailing)', px(q.eps)],
+                ['EPS (trailing)', px(q.eps) + (q.epsDerived
+                    ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
+                    : '')],
                 // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
                 // recurring/filed ratio (the deep dive has the quarters the table row does not).
                 ['Recurring EPS', '<span id="deep-rec-eps" class="muted">…</span>'],

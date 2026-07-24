@@ -563,6 +563,43 @@ function normEpsFrom(entry, eps) {
     return Number((eps * ratio).toPrecision(6));
 }
 
+// Trailing EPS summed from the last four quarterly filings — the fallback for names Yahoo hands
+// no epsTrailingTwelveMonths (Korean locals: 000660.KS, 005930.KS). Summed only when all four
+// quarters carry EPS and span ~a year, and only when the store's reporting currency matches the
+// quote's: the store is in reporting currency, so an ADR whose filings are TWD/KRW must never be
+// summed against a USD price. Returns null (honest "–") the moment any quarter's EPS is missing.
+function trailingEpsFromQuarters(entry, currency) {
+    if (!entry || entry.currency !== currency) return null;
+    const q = (entry.quarters || []).filter(x => x.date).sort((a, b) => a.date.localeCompare(b.date));
+    if (q.length < 4) return null;
+    const last4 = q.slice(-4);
+    const days = (Date.parse(last4[3].date) - Date.parse(last4[0].date)) / 864e5;
+    if (days < 250 || days > 290) return null;                 // the four must span ~one year
+
+    // Easy path: every quarter carries EPS, just add them up.
+    if (last4.every(x => typeof x.eps === 'number'))
+        return Number(last4.reduce((a, x) => a + x.eps, 0).toPrecision(6));
+
+    // A quarter's EPS is missing — Yahoo carries no standalone Q4 EPS for Korean filers (SK
+    // Hynix, Samsung): it stores the audited ANNUAL instead. Roll that annual forward instead of
+    // summing four quarters:
+    //     TTM = annual − {earliest n quarters of that fiscal year} + {n quarters past the annual}
+    // The `annual − earliest` part reconstructs the missing quarter implicitly, and every term is
+    // a Yahoo-reported EPS — no share-count guessing. Only when all the terms it needs have EPS.
+    const years = (entry.years || []).filter(y => y.date).sort((a, b) => a.date.localeCompare(b.date));
+    const ann = years[years.length - 1];
+    if (!ann || typeof ann.eps !== 'number') return null;
+    const post = q.filter(x => x.date > ann.date);             // quarters after the annual
+    const n = post.length;
+    if (n < 1 || n > 3) return null;                           // a full year past → a newer annual should exist
+    if (last4[3].date !== post[n - 1].date) return null;       // the annual must be recent (L is its last post-quarter)
+    const lead = q.filter(x => x.date <= ann.date).slice(-4).slice(0, n);  // the n quarters rolling out
+    const terms = [ann, ...post, ...lead];
+    if (lead.length !== n || !terms.every(x => typeof x.eps === 'number')) return null;
+    const ttm = ann.eps + post.reduce((a, x) => a + x.eps, 0) - lead.reduce((a, x) => a + x.eps, 0);
+    return Number(ttm.toPrecision(6));
+}
+
 // A checked manual override wins. Otherwise fresh Yahoo EPS is scaled into the quote's unit.
 // A carried-forward value is
 // ALREADY in quote units (it was scaled when written), so scaling it again would multiply
@@ -859,6 +896,16 @@ async function main() {
         });
         troughOk++;
     }
+    // Names Yahoo gives no trailing EPS (Korean locals) get one summed from the last four
+    // quarterly filings, so their trailing P/E and Implied stop reading "–". Runs before the
+    // recurring loop below so the derived EPS also seeds a recurring figure where the store allows.
+    let derivedEps = 0;
+    for (const t of tickers) {
+        if (!quotes[t] || quotes[t].eps != null) continue;
+        const te = trailingEpsFromQuarters(store.eps[t], quotes[t].currency);
+        if (te != null) { quotes[t].eps = te; quotes[t].epsDerived = true; derivedEps++; }
+    }
+    if (derivedEps) console.log(`ok   trailing EPS summed from quarters for ${derivedEps} ticker(s)`);
     // Recurring EPS for the Special P/E, from the same store. Separate loop so a ticker with no
     // trough (thin price history) still gets one where its earnings support it.
     for (const t of tickers) {
@@ -940,6 +987,28 @@ function selftest() {
     assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', ni: 100 }] }, 5), null);          // no norm field
     assert.strictEqual(normEpsFrom({ years: [{ date: '2025-12-31', norm: 5, ni: 100 }] }, 5), null); // ratio 0.05 too extreme
     assert.strictEqual(normEpsFrom({ years: [] }, 5), null);
+
+    // trailingEpsFromQuarters: sum four clean quarters, in the quote's currency only.
+    const q4 = c => ({ currency: c, quarters: [
+        { date: '2025-03-31', eps: 10 }, { date: '2025-06-30', eps: 20 },
+        { date: '2025-09-30', eps: 30 }, { date: '2025-12-31', eps: 40 }] });
+    assert.strictEqual(trailingEpsFromQuarters(q4('KRW'), 'KRW'), 100);           // four quarters summed
+    assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD'), null);          // ADR: reporting != quote, refuse
+    const hole = q4('KRW'); delete hole.quarters[2].eps;
+    assert.strictEqual(trailingEpsFromQuarters(hole, 'KRW'), null);               // missing a quarter's EPS -> "–"
+    assert.strictEqual(trailingEpsFromQuarters({ currency: 'KRW', quarters: q4('KRW').quarters.slice(1) }, 'KRW'), null); // only 3
+    const wide = q4('KRW'); wide.quarters[3].date = '2026-06-30';
+    assert.strictEqual(trailingEpsFromQuarters(wide, 'KRW'), null);               // span too long -> not a trailing year
+
+    // Roll the annual forward when a quarter's EPS is missing (real SK Hynix shape: no Q4 EPS).
+    const hynix = { currency: 'KRW', years: [{ date: '2025-12-31', eps: 60378 }], quarters: [
+        { date: '2025-03-31', eps: 11411 }, { date: '2025-06-30', eps: 9580 },
+        { date: '2025-09-30', eps: 17850 }, { date: '2025-12-31' /* no eps */ },
+        { date: '2026-03-31', eps: 56670 }] };
+    assert.strictEqual(trailingEpsFromQuarters(hynix, 'KRW'), 105637);            // 60378 - 11411 + 56670
+    assert.strictEqual(trailingEpsFromQuarters({ ...hynix, years: [] }, 'KRW'), null); // no annual to roll -> "–"
+    const staleAnn = { ...hynix, years: [{ date: '2024-12-31', eps: 28419 }] };   // annual a full year behind
+    assert.strictEqual(trailingEpsFromQuarters(staleAnn, 'KRW'), null);           // 5 quarters past -> refuse, not a clean roll
 
     // earningsToFetch: per-ticker, not all-or-nothing.
     const fresh7 = new Date(Date.now() - 3 * 86400e3).toISOString();
