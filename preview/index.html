@@ -372,6 +372,7 @@
                 <tr>
                     <th data-sort="name">Position</th>
                     <th data-sort="price">Price</th>
+                    <th data-sort="1d" title="Change since the previous session close">1D</th>
                     <th data-sort="7d">7D</th>
                     <th data-sort="1m">1M</th>
                     <th data-sort="3m">3M</th>
@@ -417,7 +418,7 @@
                 <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th><th data-sort="pe">P/E</th><th data-sort="peLow">P/E Low</th>
                 <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
                 <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
-                <th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
+                <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -1604,7 +1605,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="25">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="26">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
