@@ -2,8 +2,12 @@ name: Refresh prices
 
 on:
   schedule:
-    # Hourly. Cron is UTC; this spans the US, HK, and European sessions.
-    - cron: '17 * * * *'
+    # Every 15 min on weekdays (UTC). Your holdings span Tokyo/Korea (opens 00:00 UTC),
+    # Hong Kong, London/Europe, and US (+ after-hours to ~00:00) — so on any weekday a market
+    # is live almost continuously 00:00–21:00 UTC. Weekends every exchange is shut (IBIT/GBTC
+    # are US ETFs, not spot crypto), so Mon–Fri only; weekend runs would just re-fetch unchanged
+    # prices. GitHub cron is best-effort and may lag under load, so 15 min is approximate.
+    - cron: '*/15 * * * 1-5'
   workflow_dispatch:
   push:
     branches: [main]
