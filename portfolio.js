@@ -156,6 +156,54 @@ function valuation(h, quote) {
     return { eps, pe, specialPe, specialEpsLabel, peLow, implied, vsLow, lowDate, lowPrice, lowEps };
 }
 
+// Yahoo's quarterly series sometimes drops a quarter outright — BYD's Sep '25 is simply absent,
+// while the quarters either side are there. That hole costs more than one row: the remaining
+// quarters no longer span a year, so the TTM guard (rightly) refuses to total them, and the whole
+// trailing row disappears. Left alone it would have summed Mar '25 + Jun '25 + Dec '25 + Mar '26 —
+// double-counting a first quarter and omitting the third.
+//
+// When a fiscal year is complete except for ONE quarter, the hole is not a guess: the audited
+// annual MINUS the three filed quarters IS the missing quarter, exactly. Fill only then; two holes
+// are not determinable from one equation, and zero needs nothing.
+//
+// FLOWS only. Revenue, operating income, net income and normalized income accumulate over the year,
+// so they subtract cleanly. Never EPS and never a share count: a per-share figure needs that
+// quarter's own share base, and a bonus issue or buyback inside the year would make an imputed EPS
+// fiction — BYD's diluted shares roughly doubled during FY2025 (EPS 9.22 -> 3.58 on net income down
+// only 19%). A blank EPS is the honest output; `derivedQuarter` lets the page label the row.
+const QUARTER_FLOWS = ['rev', 'opinc', 'ni', 'nic', 'norm'];
+
+// The four quarter-ends of the fiscal year ending `fyEnd`, newest first. Built as month-ends
+// (day 0 of the following month) so a December year-end yields Sep 30, not an overflowed Sep 31.
+function quarterEnds(fyEnd) {
+    const d = new Date(fyEnd + 'T00:00:00Z');
+    return [0, 1, 2, 3].map(k =>
+        new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1 - 3 * k, 0)).toISOString().slice(0, 10));
+}
+
+function fillMissingQuarters(quarters, years) {
+    const out = [...(quarters || [])];
+    for (const y of years || []) {
+        const ends = quarterEnds(y.date);
+        // Match by proximity, not equality: a 52/53-week filer's quarter can land a few days off
+        // the calendar month-end. Searching `out` means an already-derived quarter is never
+        // re-derived on a second pass.
+        const found = ends.map(end =>
+            out.find(x => Math.abs(Date.parse(x.date + 'T00:00:00Z') - Date.parse(end + 'T00:00:00Z')) <= 10 * 864e5));
+        if (found.filter(x => !x).length !== 1) continue;
+        const known = found.filter(Boolean);
+        const q = { date: ends[found.findIndex(x => !x)], derivedQuarter: true };
+        for (const f of QUARTER_FLOWS) {
+            if (y[f] == null || known.some(x => x[f] == null)) continue;
+            q[f] = Number((y[f] - known.reduce((a, x) => a + x[f], 0)).toPrecision(12));
+        }
+        // No top line means the page would filter the row out anyway — don't add a stub.
+        if (q.rev == null) continue;
+        out.push(q);
+    }
+    return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
 //
 // Kept out of build() and out of holdings.json on purpose. Totals, TWR, cohorts and the NAV
@@ -248,7 +296,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -487,6 +535,44 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
 
     // buildWatchlist drops names with no quote rather than rendering a blank row.
     assert.strictEqual(buildWatchlist([{ yahoo: 'NOPE', name: 'Nope' }], { X: q }).length, 0);
+
+    // quarterEnds walks back in three-month steps and lands on real month-ends: a December
+    // year-end must give Sep 30, not an overflowed "Sep 31" (and a March one crosses the year).
+    assert.deepStrictEqual(quarterEnds('2025-12-31'), ['2025-12-31', '2025-09-30', '2025-06-30', '2025-03-31']);
+    assert.deepStrictEqual(quarterEnds('2026-03-31'), ['2026-03-31', '2025-12-31', '2025-09-30', '2025-06-30']);
+
+    // fillMissingQuarters, on BYD's real FY2025 hole: Sep '25 is absent from Yahoo's series
+    // while the three around it are filed. The annual minus those three IS the missing quarter.
+    const bydYear = { date: '2025-12-31', rev: 803964958000, opinc: 38516936000, ni: 32619022000, nic: 32619022000 };
+    const bydQ = [
+        { date: '2025-03-31', rev: 170360448000, opinc: 8899868000, ni: 9154985000, nic: 9154985000, eps: 2.0782 },
+        { date: '2025-06-30', rev: 200920500000, opinc: 6198055000, ni: 6355548000, nic: 6355548000 },
+        { date: '2025-12-31', rev: 237699412000, opinc: 13228268000, ni: 9285849000, nic: 9285849000 },
+    ];
+    const filled = fillMissingQuarters(bydQ, [bydYear]);
+    assert.strictEqual(filled.length, 4);
+    const sep = filled.find(x => x.date === '2025-09-30');
+    assert.ok(sep && sep.derivedQuarter);
+    assert.strictEqual(sep.rev, 194984598000);          // 803.96B - (170.36 + 200.92 + 237.70)B
+    assert.strictEqual(sep.nic, 7822640000);
+    assert.strictEqual(sep.opinc, 10190745000);
+    // Never a per-share figure: the quarter's own share base is unknown, and a bonus issue
+    // inside the year (BYD's shares doubled in FY2025) would make an imputed EPS fiction.
+    assert.strictEqual(sep.eps, undefined);
+    // The point of the fill: four quarters now span a year, so the TTM guard accepts them.
+    const span = (Date.parse(filled[3].date) - Date.parse(filled[0].date)) / 864e5;
+    assert.ok(span >= 250 && span <= 290, `four filled quarters span ${span}d, outside the TTM window`);
+
+    // Two holes are not determinable from one equation — leave both alone rather than guess.
+    assert.strictEqual(fillMissingQuarters(bydQ.slice(0, 2), [bydYear]).length, 2);
+    // A complete year needs nothing added, and must not be disturbed.
+    assert.strictEqual(fillMissingQuarters(filled, [bydYear]).length, 4);
+    // Idempotent: a second pass re-derives nothing (the derived quarter is matched, not replaced).
+    assert.strictEqual(fillMissingQuarters(fillMissingQuarters(bydQ, [bydYear]), [bydYear]).length, 4);
+    // A year with no quarters at all (Nintendo's ADR) stays empty — four holes, not one.
+    assert.deepStrictEqual(fillMissingQuarters([], [bydYear]), []);
+    // A missing quarter with no derivable top line is not added as a stub.
+    assert.strictEqual(fillMissingQuarters(bydQ.map(({ rev, ...r }) => r), [{ date: '2025-12-31', nic: 1 }]).length, 3);
 
     console.log('selftest ok');
 }
