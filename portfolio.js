@@ -20,7 +20,7 @@ function weightedMove(legs, period) {
     return den ? num / den : null;
 }
 
-const PERIODS = ['7d', '1m', '3m', '6m', '1y', 'ytd'];
+const PERIODS = ['1d', '7d', '1m', '3m', '6m', '1y', 'ytd'];
 
 // How to bucket holdings into rows. 'company' is Grouping1 from the workbook
 // (VOO + VUSA.L -> "S&P 500"); 'geography' its region; 'instrument' one row each.
