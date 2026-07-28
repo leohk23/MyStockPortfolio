@@ -24,6 +24,26 @@ function pctFrom(timestamps, closes, cutoffTs, current) {
     return null;
 }
 
+// "% change today": current price vs the previous regular-session close. A one-day move needs a
+// precise base — pctFrom's date-cutoff is too coarse (a Monday's cutoff would skip Friday). Yahoo's
+// meta.previousClose IS that prior-day close (the number driving its own quote page); fall back to
+// the last completed daily bar — skipping the final live/today bar — for the rare symbol that omits
+// it. Rounded to 4dp like every other movement; a fraction (0.012 = +1.2%).
+function prevSessionClose(meta, closes) {
+    if (meta.previousClose > 0) return meta.previousClose;
+    let skippedLive = false;
+    for (let i = closes.length - 1; i >= 0; i--) {
+        if (closes[i] == null) continue;
+        if (!skippedLive) { skippedLive = true; continue; } // the final bar is today's/live price
+        return closes[i];
+    }
+    return null;
+}
+function dailyMove(meta, closes, current) {
+    const prev = prevSessionClose(meta, closes);
+    return prev > 0 ? Math.round(((current - prev) / prev) * 1e4) / 1e4 : null;
+}
+
 function movements(timestamps, closes, current, now = Date.now() / 1000) {
     const jan1 = Math.floor(Date.UTC(new Date(now * 1000).getUTCFullYear(), 0, 1) / 1000);
     return {
@@ -69,6 +89,7 @@ function shape(r) {
         currency: r.meta.currency || 'USD',
         divTTM: Number(divTTM.toPrecision(6)),
         divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
+        '1d': dailyMove(r.meta, closes, price),
         ...movements(timestamps, closes, price),
         series: { timestamps, closes }, // stripped before writing; only used to build NAV history
     };
@@ -1310,12 +1331,23 @@ function selftest() {
     // No FX rate for the reporting currency -> null, never a wrong multiple.
     assert.strictEqual(troughPe({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, days, px, 'USD', fx), null);
     const shaped = shape({
-        meta: { regularMarketPrice: 100, currency: 'USD' }, timestamp: [],
+        meta: { regularMarketPrice: 100, currency: 'USD', previousClose: 96 }, timestamp: [],
         indicators: { quote: [{ close: [] }] },
         events: { dividends: { a: { amount: 1.25 }, b: { amount: 0.75 } } },
     });
     assert.strictEqual(shaped.divTTM, 2);
     assert.strictEqual(shaped.divYield, 0.02);
+    // Daily move: current vs meta.previousClose = (100 - 96) / 96, a fraction rounded to 4dp.
+    assert.strictEqual(shaped['1d'], 0.0417);
+    // Prefer meta.previousClose when present...
+    assert.strictEqual(dailyMove({ previousClose: 96 }, [90, 95, 100], 100), 0.0417);
+    // ...otherwise fall back to the last completed bar (skip the final live/today bar): base 95.
+    assert.strictEqual(dailyMove({}, [90, 95, 100], 100), Math.round((5 / 95) * 1e4) / 1e4);
+    // Trailing nulls (interior gap) don't confuse the fallback; still skips only the live bar.
+    assert.strictEqual(dailyMove({}, [90, 95, null], 95), Math.round((5 / 90) * 1e4) / 1e4);
+    // No usable base -> null, never a bogus 0%.
+    assert.strictEqual(dailyMove({}, [100], 100), null);
+    assert.strictEqual(dailyMove({}, [], 100), null);
 
     // parseQuotes skips symbols with no EPS (indices, some ETFs) rather than writing null.
     const QNOW = Date.UTC(2026, 6, 17);
