@@ -832,7 +832,11 @@
                 // Only quarters with a top line — Yahoo often has the EPS of a just-reported
                 // quarter days before the rest of the statement (NFLX's Q2 arrives as an EPS
                 // stub first). Same rule the annual rows use: a real reported period has revenue.
-                const qs = (e?.quarters || []).filter(x => x.rev != null);
+                // Fill a fiscal year's one missing quarter from the annual before anything reads
+                // the series (see fillMissingQuarters): Yahoo drops a quarter outright for some
+                // filers, and the hole otherwise takes the TTM row down with it.
+                const qs = portfolioLib.fillMissingQuarters(
+                    (e?.quarters || []).filter(x => x.rev != null), e?.years || []);
                 // Yahoo omits the year-end quarter's per-share EPS for some filers (Korean names:
                 // it stores the audited annual instead). Reconstruct that one quarter — annual
                 // minus the three quarters already in its fiscal year — so the EPS column, the TTM
@@ -855,7 +859,7 @@
                     const ya = yearAgoQ(qs.filter(x => x !== L), L.date);
                     const qy = (v, prev) => ya && prev != null ? yoy(v, prev) : null;
                     return `<tr class="quarter-row">
-                        <td title="Quarter ended ${ymd(L.date)}${ya ? `; change is vs the quarter ended ${ymd(ya.date)}` : ' — no year-ago quarter in range for a comparison'}">${qLabel(L.date)}</td>
+                        <td title="Quarter ended ${ymd(L.date)}${ya ? `; change is vs the quarter ended ${ymd(ya.date)}` : ' — no year-ago quarter in range for a comparison'}">${qLabel(L.date)}${L.derivedQuarter ? ' <span class="derived" title="Yahoo has no statement for this quarter. Reconstructed exactly: the audited fiscal year minus the three filed quarters. Flows only — no EPS or share count, which would need this quarter&#39;s own share base.">derived</span>' : ''}</td>
                         ${cell(L.rev, qy(L.rev, ya?.rev))}
                         ${cell(L.opinc, qy(L.opinc, ya?.opinc))}
                         ${marginCell(opMargin(L), ya ? opMargin(ya) : null)}
@@ -892,7 +896,7 @@
                 const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
                 const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
                 const ttmRow = ttmQ ? `<tr class="ttm-row">
-                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">filed · ${qShort(ttmQ[3].date)}</span></td>
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}${ttmQ.some(x => x.derivedQuarter) ? '. Includes a quarter reconstructed from the annual — the total still ties to the filed accounts.' : ''}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}${ttmQ.some(x => x.derivedQuarter) ? ', with one quarter reconstructed from the audited annual' : ''}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">${ttmQ.some(x => x.derivedQuarter) ? 'part-derived' : 'filed'} · ${qShort(ttmQ[3].date)}</span></td>
                         ${cell(tRev.v, tRev.g)}
                         ${cell(tOp.v, tOp.g)}
                         ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
@@ -978,6 +982,7 @@
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
                     'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
+                    ...(qs.some(x => x.derivedQuarter) ? ['Derived quarter: Yahoo omits a quarter this filer did report, so it is reconstructed as the audited fiscal year minus the three filed quarters — exact for revenue and income, which accumulate over the year. That quarter carries no EPS or share count: those need its own share base, and a bonus issue or buyback inside the year would make an imputed per-share figure fiction.'] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
