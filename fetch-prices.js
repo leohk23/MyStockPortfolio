@@ -156,19 +156,38 @@ function parseQuotes(json, now = Date.now()) {
         // what lets the caller skip the per-ticker gated fundamentals fetches (annual EPS,
         // ex-div) for anything that isn't an operating company — see nonEquity in main().
         if (r.quoteType) types[r.symbol] = r.quoteType;
-        // Is this price live or last night's close? The stored price is always Yahoo's
-        // REGULAR-session price (the chart call never asks for pre/post), so it is either a live
-        // last trade or a frozen official close — and nothing else in the file distinguishes them.
-        // prices.json's `updated` is when the FETCH ran, not when the stock last traded: on a
-        // Sunday it reads Sunday while every price is Friday's. marketState and regularMarketTime
-        // settle it PER SYMBOL, which is what a book spanning Tokyo, Hong Kong, London and the US
-        // needs — at any moment some rows are live and others shut. Both ride this batch call, so
-        // they cost no extra request.
-        const state = r.marketState, at = r.regularMarketTime;
-        if (typeof state === 'string' || typeof at === 'number') {
+        // How FRESH is the price, and has the stock already moved since it was struck?
+        //
+        // Everything in this app is the REGULAR-session price — the chart call never asks for
+        // pre/post data, and it must stay that way: value, gain, P/E, the 1D column and the whole
+        // NAV history are all built on regular closes, so quietly substituting an after-hours
+        // print would shift every derived number against a history that never had one.
+        //
+        // The risk that leaves is a price that is already WRONG: a company reports after the bell,
+        // drops 8% in extended trading, and the table still shows yesterday's close with nothing
+        // to say so. Yahoo hands back the extended-hours print in this same batch call, so it is
+        // recorded ALONGSIDE the price (never instead of it) purely as a warning flag.
+        //
+        // An extended print only counts when it is stamped LATER than the regular close — that
+        // one rule covers both directions (pre- and post-market) and drops the stale figures Yahoo
+        // keeps returning long after a session ends, without depending on marketState semantics.
+        // Mostly a US phenomenon: Hong Kong, Tokyo and London have no extended-hours feed.
+        const at = typeof r.regularMarketTime === 'number' ? r.regularMarketTime : null;
+        // Yahoo reports these as whole percents (2.5 = +2.5%). Everything in this repo is a
+        // FRACTION (0.025), and shipping the raw figure would read as +250% — the exact bug
+        // AGENTS.md invariant 3 was written about. Convert once, here.
+        const ext = [
+            { kind: 'post', price: r.postMarketPrice, pct: r.postMarketChangePercent, at: r.postMarketTime },
+            { kind: 'pre', price: r.preMarketPrice, pct: r.preMarketChangePercent, at: r.preMarketTime },
+        ].filter(x => typeof x.price === 'number' && typeof x.at === 'number' && (at == null || x.at > at))
+            .sort((a, b) => b.at - a.at)[0];
+        if (at != null || ext) {
             session[r.symbol] = {
-                ...(typeof state === 'string' ? { state } : {}),
-                ...(typeof at === 'number' ? { at } : {}),   // epoch seconds; the page localises it
+                ...(at != null ? { at } : {}),          // epoch seconds; the page localises it
+                ...(ext ? { ext: {
+                    kind: ext.kind, price: ext.price, at: ext.at,
+                    ...(typeof ext.pct === 'number' ? { pct: Math.round((ext.pct / 100) * 1e4) / 1e4 } : {}),
+                } } : {}),
             };
         }
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
@@ -815,11 +834,11 @@ async function main() {
         // Not carried forward like EPS: a stale results date is worse than none, and this one
         // is cheap to refetch (it comes with the EPS request every run anyway).
         if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
-        // Same reasoning: never carried forward from the previous run. A market state is only
-        // true at the moment it was read, so a stale one would assert "live" long after the close.
-        // Absent (handshake failed) means the page simply shows no freshness marker.
-        if (sessions[t]?.state) quotes[t].state = sessions[t].state;
+        // Same reasoning: never carried forward from the previous run. An after-hours move is only
+        // true at the moment it was read — a stale one would keep warning about a swing that has
+        // long since been absorbed into a new regular session. Absent means no marker, not "flat".
         if (sessions[t]?.at) quotes[t].at = sessions[t].at;
+        if (sessions[t]?.ext) quotes[t].ext = sessions[t].ext;
         const eps = resolveEps(manualEps[t], fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
@@ -1377,20 +1396,36 @@ function selftest() {
         { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {} }
     );
 
-    // Session state: is a price live or a frozen close? Captured per symbol from the same batch
-    // call, so a book spanning several timezones can say which rows are trading right now.
+    // Freshness: when was the price struck, and has the stock moved since? The extended-hours
+    // print is recorded beside the price, never instead of it.
+    const CLOSE = 1785280000, AFTER = CLOSE + 7200, BEFORE = CLOSE - 7200;
     const sess = parseQuotes({ quoteResponse: { result: [
-        { symbol: 'AAPL', marketState: 'REGULAR', regularMarketTime: 1785280000 },
-        { symbol: '1211.HK', marketState: 'CLOSED', regularMarketTime: 1785200000 },
-        { symbol: 'NOSTATE' },                       // Yahoo omitted both -> no entry at all
-        { symbol: 'TIMEONLY', regularMarketTime: 1785000000 },
-        { symbol: 'STATEONLY', marketState: 'POST' },
+        // Reported after the bell and fell 8%: the table's price is already wrong, and says so.
+        { symbol: 'AAPL', regularMarketTime: CLOSE, postMarketPrice: 92, postMarketChangePercent: -8, postMarketTime: AFTER },
+        // No extended-hours feed at all (Hong Kong, Tokyo, London) — a timestamp, nothing more.
+        { symbol: '1211.HK', regularMarketTime: CLOSE },
+        // Yahoo keeps handing back LAST session's post-market print; older than the close = ignored.
+        { symbol: 'STALE', regularMarketTime: CLOSE, postMarketPrice: 50, postMarketChangePercent: 3, postMarketTime: BEFORE },
+        // Pre-market counts under the identical rule — later than the close is all that matters.
+        { symbol: 'PREMKT', regularMarketTime: CLOSE, preMarketPrice: 110, preMarketChangePercent: 4.5, preMarketTime: AFTER },
+        { symbol: 'NOTHING' },                        // neither field -> no entry at all
     ] } }, QNOW).session;
-    assert.deepStrictEqual(sess.AAPL, { state: 'REGULAR', at: 1785280000 });
-    assert.deepStrictEqual(sess['1211.HK'], { state: 'CLOSED', at: 1785200000 });
-    assert.strictEqual(sess.NOSTATE, undefined);     // absent, not a half-empty object
-    assert.deepStrictEqual(sess.TIMEONLY, { at: 1785000000 });
-    assert.deepStrictEqual(sess.STATEONLY, { state: 'POST' });
+    // Whole percent -> FRACTION (invariant 3). -8 must become -0.08, never ship as -800%.
+    assert.deepStrictEqual(sess.AAPL, { at: CLOSE, ext: { kind: 'post', price: 92, at: AFTER, pct: -0.08 } });
+    assert.deepStrictEqual(sess['1211.HK'], { at: CLOSE });
+    assert.deepStrictEqual(sess.STALE, { at: CLOSE });          // stale print dropped, time kept
+    assert.strictEqual(sess.PREMKT.ext.kind, 'pre');
+    assert.strictEqual(sess.PREMKT.ext.pct, 0.045);
+    assert.strictEqual(sess.NOTHING, undefined);                // absent, not a half-empty object
+    // Both present: the LATER print wins, so a pre-market quote supersedes last night's.
+    const both = parseQuotes({ quoteResponse: { result: [{ symbol: 'X', regularMarketTime: CLOSE,
+        postMarketPrice: 1, postMarketChangePercent: 1, postMarketTime: AFTER,
+        preMarketPrice: 2, preMarketChangePercent: 2, preMarketTime: AFTER + 60 }] } }, QNOW).session;
+    assert.strictEqual(both.X.ext.kind, 'pre');
+    // A price with no regular timestamp still reports its extended print rather than dropping it.
+    const noReg = parseQuotes({ quoteResponse: { result: [{ symbol: 'Y',
+        postMarketPrice: 9, postMarketChangePercent: -1.5, postMarketTime: AFTER }] } }, QNOW).session;
+    assert.deepStrictEqual(noReg.Y, { ext: { kind: 'post', price: 9, at: AFTER, pct: -0.015 } });
     // quoteType rides along, used to skip fundamentals for non-equities. Even a bogus ETF EPS
     // (VOO reports one) is captured, so the caller keys "operating company?" on type, not EPS.
     assert.deepStrictEqual(
