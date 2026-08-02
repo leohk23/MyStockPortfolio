@@ -190,6 +190,11 @@
         th:first-child, td:first-child { text-align: left; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
+        /* A material extended-hours move the displayed price does NOT include. Small and set in
+           the gain/loss colours, so it reads as "this number has already moved" without competing
+           with the price itself. Absent is the normal case and means no material move — or, for
+           Hong Kong/Tokyo/London, no extended-hours feed at all. */
+        .ext { font-size: 10px; vertical-align: middle; opacity: .85; }
         .muted { color: var(--text-muted); }
 
         th[data-sort] { cursor: pointer; user-select: none; }
@@ -1432,8 +1437,41 @@
         // A holding that pays nothing gets a dash, matching the Yield column. /usr/bin/bash reads like a
         // real zero payout; the dash says 'this one doesn't pay', which is what you want to see.
         const incomeCell = usd => usd ? money(usd) : '<span class="muted">–</span>';
-        const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
-            : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
+        // Is the price shown already out of date? Every figure in this app is the REGULAR-session
+        // price, deliberately: value, gain, P/E, 1D and the whole NAV history are built on regular
+        // closes, so swapping in an after-hours print would move every derived number against a
+        // history that never had one. The gap that leaves is a price that is quietly WRONG — a
+        // company reports after the bell, falls 8%, and the row still shows yesterday's close.
+        //
+        // So the extended-hours move is shown BESIDE the price, never folded into it: the numbers
+        // stay internally consistent, and the flag says "there is a move this doesn't capture".
+        // Only surfaced past a threshold, because a few basis points of after-hours drift is noise
+        // and would put a badge on half the US book every evening. The tooltip always carries the
+        // detail, so "no badge" never has to be read as "no data".
+        const EXT_MATERIAL = 0.005;                     // 0.5% — below this it isn't worth a mark
+        const extLabel = { post: 'after hours', pre: 'pre-market' };
+        const freshness = q => {
+            if (!q || (!q.at && !q.ext)) return { mark: '', title: '' };    // no data: claim nothing
+            const traded = q.at ? `Last traded ${stamp(new Date(q.at * 1000).toISOString())}` : '';
+            const e = q.ext;
+            const moved = e && e.pct != null
+                ? `${extLabel[e.kind] || e.kind} ${pct(e.pct)} to ${e.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                    + ` (${stamp(new Date(e.at * 1000).toISOString())}) — not reflected in this price or any figure derived from it`
+                : e ? `${extLabel[e.kind] || e.kind} price ${e.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '';
+            const big = e && e.pct != null && Math.abs(e.pct) >= EXT_MATERIAL;
+            return {
+                mark: big ? ` <span class="ext ${cls(e.pct)}">${pct(e.pct)}</span>` : '',
+                title: [traded, moved].filter(Boolean).join(' · '),
+            };
+        };
+        // `quote` is optional and passed only for a LIVE price — never for Avg cost, which is a
+        // historical figure and has no session.
+        const priceCell = (native, ccy, quote) => {
+            if (native == null) return '<span class="muted">–</span>';
+            const { mark, title } = freshness(quote);
+            const num = `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>${mark}`;
+            return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
+        };
         // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
         // loss-making company isn't a meaningful multiple), so this only ever formats positives.
         const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
@@ -1554,7 +1592,7 @@
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
                         : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
-                    <td>${priceCell(r.price, r.priceCurrency)}</td>
+                    <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
@@ -1583,7 +1621,7 @@
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
                         <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
-                        <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
+                        <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
@@ -1732,7 +1770,7 @@
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
                     <td>${w.name} <span class="muted">${w.yahoo}</span></td>
-                    <td>${priceCell(w.quote.price, w.quote.currency)}</td>
+                    <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     <td>${peCell(w.pe)}</td>
                     <td>${peCell(w.peLow)}</td>
                     <td>${lowDateCell(w.lowDate)}</td>
