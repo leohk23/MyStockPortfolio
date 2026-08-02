@@ -150,12 +150,27 @@ async function getCrumb() {
 // results" date; a past one is dropped rather than displayed as if it were upcoming. `now` is a
 // parameter so this stays testable.
 function parseQuotes(json, now = Date.now()) {
-    const eps = {}, earnings = {}, types = {};
+    const eps = {}, earnings = {}, types = {}, session = {};
     for (const r of json.quoteResponse?.result || []) {
         // EQUITY vs ETF/INDEX/MUTUALFUND/CRYPTOCURRENCY. Rides this batch call for free, and is
         // what lets the caller skip the per-ticker gated fundamentals fetches (annual EPS,
         // ex-div) for anything that isn't an operating company — see nonEquity in main().
         if (r.quoteType) types[r.symbol] = r.quoteType;
+        // Is this price live or last night's close? The stored price is always Yahoo's
+        // REGULAR-session price (the chart call never asks for pre/post), so it is either a live
+        // last trade or a frozen official close — and nothing else in the file distinguishes them.
+        // prices.json's `updated` is when the FETCH ran, not when the stock last traded: on a
+        // Sunday it reads Sunday while every price is Friday's. marketState and regularMarketTime
+        // settle it PER SYMBOL, which is what a book spanning Tokyo, Hong Kong, London and the US
+        // needs — at any moment some rows are live and others shut. Both ride this batch call, so
+        // they cost no extra request.
+        const state = r.marketState, at = r.regularMarketTime;
+        if (typeof state === 'string' || typeof at === 'number') {
+            session[r.symbol] = {
+                ...(typeof state === 'string' ? { state } : {}),
+                ...(typeof at === 'number' ? { at } : {}),   // epoch seconds; the page localises it
+            };
+        }
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
         const ts = r.earningsTimestamp ?? r.earningsTimestampStart;
         if (typeof ts === 'number' && ts * 1000 > now) {
@@ -166,7 +181,7 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
     }
-    return { eps, earnings, types };
+    return { eps, earnings, types, session };
 }
 
 // Ex-dividend date, from quoteSummary's calendarEvents. NOT in the batch v7/quote response
@@ -780,11 +795,11 @@ async function main() {
     const carried = previousEps();
     const manualEps = Object.fromEntries([...holdings, ...watchlist]
         .filter(x => typeof x.eps === 'number').map(x => [x.yahoo, x.eps]));
-    let fresh = {}, earningsDates = {}, quoteTypes = {};
+    let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
         auth = await getCrumb();
-        ({ eps: fresh, earnings: earningsDates, types: quoteTypes } = await fetchEps(tickers, auth));
+        ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions } = await fetchEps(tickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
@@ -800,6 +815,11 @@ async function main() {
         // Not carried forward like EPS: a stale results date is worse than none, and this one
         // is cheap to refetch (it comes with the EPS request every run anyway).
         if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
+        // Same reasoning: never carried forward from the previous run. A market state is only
+        // true at the moment it was read, so a stale one would assert "live" long after the close.
+        // Absent (handshake failed) means the page simply shows no freshness marker.
+        if (sessions[t]?.state) quotes[t].state = sessions[t].state;
+        if (sessions[t]?.at) quotes[t].at = sessions[t].at;
         const eps = resolveEps(manualEps[t], fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
@@ -1354,8 +1374,23 @@ function selftest() {
     const future = Date.UTC(2026, 6, 30) / 1000, past = Date.UTC(2026, 4, 20) / 1000;
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }, QNOW),
-        { eps: { AAPL: 6.5 }, earnings: {}, types: {} }
+        { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {} }
     );
+
+    // Session state: is a price live or a frozen close? Captured per symbol from the same batch
+    // call, so a book spanning several timezones can say which rows are trading right now.
+    const sess = parseQuotes({ quoteResponse: { result: [
+        { symbol: 'AAPL', marketState: 'REGULAR', regularMarketTime: 1785280000 },
+        { symbol: '1211.HK', marketState: 'CLOSED', regularMarketTime: 1785200000 },
+        { symbol: 'NOSTATE' },                       // Yahoo omitted both -> no entry at all
+        { symbol: 'TIMEONLY', regularMarketTime: 1785000000 },
+        { symbol: 'STATEONLY', marketState: 'POST' },
+    ] } }, QNOW).session;
+    assert.deepStrictEqual(sess.AAPL, { state: 'REGULAR', at: 1785280000 });
+    assert.deepStrictEqual(sess['1211.HK'], { state: 'CLOSED', at: 1785200000 });
+    assert.strictEqual(sess.NOSTATE, undefined);     // absent, not a half-empty object
+    assert.deepStrictEqual(sess.TIMEONLY, { at: 1785000000 });
+    assert.deepStrictEqual(sess.STATEONLY, { state: 'POST' });
     // quoteType rides along, used to skip fundamentals for non-equities. Even a bogus ETF EPS
     // (VOO reports one) is captured, so the caller keys "operating company?" on type, not EPS.
     assert.deepStrictEqual(

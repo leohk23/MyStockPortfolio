@@ -190,6 +190,10 @@
         th:first-child, td:first-child { text-align: left; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
+        /* Market-open marker on a live price. Deliberately tiny and un-animated: it marks which
+           rows are still moving, and must not compete with the numbers. Absent = last close,
+           which is the normal state for most rows most of the time. */
+        .live { color: var(--good); font-size: 8px; vertical-align: middle; }
         .muted { color: var(--text-muted); }
 
         th[data-sort] { cursor: pointer; user-select: none; }
@@ -1432,8 +1436,33 @@
         // A holding that pays nothing gets a dash, matching the Yield column. /usr/bin/bash reads like a
         // real zero payout; the dash says 'this one doesn't pay', which is what you want to see.
         const incomeCell = usd => usd ? money(usd) : '<span class="muted">–</span>';
-        const priceCell = (native, ccy) => native == null ? '<span class="muted">–</span>'
-            : `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>`;
+        // Is this price moving right now, or is it a completed session's close? The stored price
+        // is ALWAYS Yahoo's regular-session price (the fetch never asks for pre/post data), so
+        // only marketState REGULAR means live — PRE, POST and CLOSED all mean the last official
+        // close. Worth saying out loud because prices.json's `updated` is when the fetch ran, not
+        // when the stock traded: on a Sunday it reads Sunday while every price is Friday's. With
+        // holdings across Tokyo, Hong Kong, London and the US, some rows are live and others shut
+        // at any given moment, so this is per-row, never a page-wide banner.
+        const SESSION_TEXT = { REGULAR: 'open', PRE: 'pre-market — showing the last close',
+            POST: 'after hours — showing the official close', POSTPOST: 'closed — showing the official close',
+            CLOSED: 'closed', PREPRE: 'closed' };
+        const freshness = q => {
+            if (!q || (!q.state && !q.at)) return { dot: '', title: '' };   // no data: claim nothing
+            const traded = q.at ? `Last traded ${stamp(new Date(q.at * 1000).toISOString())}` : '';
+            const market = q.state ? `market ${SESSION_TEXT[q.state] || q.state.toLowerCase()}` : '';
+            return {
+                dot: q.state === 'REGULAR' ? ' <span class="live" aria-label="market open">●</span>' : '',
+                title: [traded, market].filter(Boolean).join(' · '),
+            };
+        };
+        // `quote` is optional and passed only for a LIVE price — never for Avg cost, which is a
+        // historical figure and has no session.
+        const priceCell = (native, ccy, quote) => {
+            if (native == null) return '<span class="muted">–</span>';
+            const { dot, title } = freshness(quote);
+            const num = `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>${dot}`;
+            return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
+        };
         // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
         // loss-making company isn't a meaningful multiple), so this only ever formats positives.
         const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
@@ -1554,7 +1583,7 @@
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
                         : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
-                    <td>${priceCell(r.price, r.priceCurrency)}</td>
+                    <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
@@ -1583,7 +1612,7 @@
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
                         <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
-                        <td>${priceCell(leg.quote.price, leg.quote.currency)}</td>
+                        <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
@@ -1732,7 +1761,7 @@
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
                     <td>${w.name} <span class="muted">${w.yahoo}</span></td>
-                    <td>${priceCell(w.quote.price, w.quote.currency)}</td>
+                    <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     <td>${peCell(w.pe)}</td>
                     <td>${peCell(w.peLow)}</td>
                     <td>${lowDateCell(w.lowDate)}</td>
