@@ -61,7 +61,9 @@ function movements(timestamps, closes, current, now = Date.now() / 1000) {
 // and a single hiccup would otherwise silently drop a holding from the dashboard.
 async function fetchTicker(ticker, attempts = 3) {
     // Index symbols start with a caret (^GSPC); encode it so the URL stays valid.
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d&events=div`;
+    // `split` rides along free with the dividends already asked for. It is what tells us whether
+    // to trust the consensus forward EPS: see recentSplit() below.
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?range=1y&interval=1d&events=div,split`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
@@ -78,6 +80,13 @@ async function fetchTicker(ticker, attempts = 3) {
     throw lastErr;
 }
 
+// Did this ticker split inside the window the chart covers (~1y)? Yahoo restates the PRICE for a
+// split immediately but leaves the analyst consensus on the old share count for weeks, so
+// epsForward silently reads N× too high — 7012.T after its 5-for-1 showed a forward EPS of 570
+// against a trailing 129, a "forward P/E" of 4.7x when the honest figure is ~23x. A split in the
+// window is the one condition under which that number is not to be believed.
+const hasSplit = splits => Object.keys(splits || {}).length > 0;
+
 function shape(r) {
     const price = r.meta.regularMarketPrice;
     const timestamps = r.timestamp || [];
@@ -89,6 +98,7 @@ function shape(r) {
         currency: r.meta.currency || 'USD',
         divTTM: Number(divTTM.toPrecision(6)),
         divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
+        splitRecently: hasSplit(r.events?.splits),
         '1d': dailyMove(r.meta, closes, price),
         ...movements(timestamps, closes, price),
         series: { timestamps, closes }, // stripped before writing; only used to build NAV history
@@ -150,7 +160,7 @@ async function getCrumb() {
 // results" date; a past one is dropped rather than displayed as if it were upcoming. `now` is a
 // parameter so this stays testable.
 function parseQuotes(json, now = Date.now()) {
-    const eps = {}, earnings = {}, types = {}, session = {};
+    const eps = {}, earnings = {}, types = {}, session = {}, epsFwd = {};
     for (const r of json.quoteResponse?.result || []) {
         // EQUITY vs ETF/INDEX/MUTUALFUND/CRYPTOCURRENCY. Rides this batch call for free, and is
         // what lets the caller skip the per-ticker gated fundamentals fetches (annual EPS,
@@ -191,6 +201,11 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
+        // Analyst consensus for the next twelve months, in the quote's own currency and per the
+        // quoted unit (so an ADR's is per ADR — no FX or ratio to apply). Only positive figures:
+        // a consensus loss has no meaningful multiple, same rule the trough uses. Whether it can
+        // be BELIEVED is decided in main(), where the split flag is known.
+        if (typeof r.epsForward === 'number' && r.epsForward > 0) epsFwd[r.symbol] = r.epsForward;
         const ts = r.earningsTimestamp ?? r.earningsTimestampStart;
         if (typeof ts === 'number' && ts * 1000 > now) {
             earnings[r.symbol] = {
@@ -200,7 +215,7 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
     }
-    return { eps, earnings, types, session };
+    return { eps, earnings, types, session, epsFwd };
 }
 
 // Ex-dividend date, from quoteSummary's calendarEvents. NOT in the batch v7/quote response
@@ -814,11 +829,12 @@ async function main() {
     const carried = previousEps();
     const manualEps = Object.fromEntries([...holdings, ...watchlist]
         .filter(x => typeof x.eps === 'number').map(x => [x.yahoo, x.eps]));
-    let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {};
+    let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {}, freshFwd = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
         auth = await getCrumb();
-        ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions } = await fetchEps(tickers, auth));
+        ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions, epsFwd: freshFwd }
+            = await fetchEps(tickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
@@ -839,11 +855,21 @@ async function main() {
         // long since been absorbed into a new regular session. Absent means no marker, not "flat".
         if (sessions[t]?.at) quotes[t].at = sessions[t].at;
         if (sessions[t]?.ext) quotes[t].ext = sessions[t].ext;
+        // Consensus forward EPS, but NOT across a split. Yahoo restates the price the day a split
+        // takes effect and leaves the consensus on the old share count, so the two disagree by the
+        // split factor for weeks. Publishing that gives a forward P/E several times too cheap on
+        // exactly the names most likely to be looked at. Dropped, not guessed at.
+        if (freshFwd[t] != null && !quotes[t].splitRecently) quotes[t].epsFwd = freshFwd[t];
+        delete quotes[t].splitRecently;              // a working flag, not something the page needs
         const eps = resolveEps(manualEps[t], fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
         fresh[t] != null ? live++ : stale++;
     }
+    const fwdCount = tickers.filter(t => quotes[t]?.epsFwd != null).length;
+    const splitSkipped = tickers.filter(t => freshFwd[t] != null && quotes[t] && quotes[t].epsFwd == null).length;
+    console.log(`ok   consensus forward EPS for ${fwdCount}/${tickers.length} tickers`
+        + (splitSkipped ? ` (${splitSkipped} dropped: split inside the window)` : ''));
     const dated = tickers.filter(t => quotes[t]?.earnings).length;
     console.log(`ok   next results date for ${dated}/${tickers.length} tickers`);
     console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
@@ -1062,9 +1088,20 @@ async function main() {
     // aren't all in the store yet). This is the SAME rule the deep dive's P/E (recurring) applies,
     // so the table's Special PE and the panel cannot show two different recurring multiples for
     // one stock — which is exactly what they did while the annual proxy stood alone.
-    let recFiled = 0;
+    let recFiled = 0, fwdDropped = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
+        // Consensus forward EPS is only comparable to the price when the statements are in the
+        // price's own currency. Where they are not, Yahoo states the consensus per ORDINARY share
+        // in the reporting currency while quoting an ADR — a different unit against a different
+        // money. Nintendo priced at 5.5x forward against 28.9x on its own guidance; MKS.L, whose
+        // statements are GBP against a pence quote, came out at 1148x. Same currency test the
+        // recurring sum uses, and for the same reason.
+        if (quotes[t].epsFwd != null && store.eps[t]?.currency
+            && store.eps[t].currency !== quotes[t].currency) {
+            delete quotes[t].epsFwd;
+            fwdDropped++;
+        }
         const rec = recurringTtmFrom(store.eps[t], quotes[t].currency);
         if (rec != null) { quotes[t].normEps = rec; quotes[t].normEpsThru = lastQuarterDate(store.eps[t]); recFiled++; continue; }
         const ne = normEpsFrom(store.eps[t], quotes[t].eps);
@@ -1072,6 +1109,8 @@ async function main() {
     }
     console.log(`ok   recurring EPS: ${recFiled} from filed quarters, `
         + `${tickers.filter(t => quotes[t]?.normEps != null).length - recFiled} from the annual proxy`);
+    if (fwdDropped) console.log(`     consensus forward EPS dropped for ${fwdDropped} ticker(s): `
+        + `statements not in the price's currency`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
@@ -1393,7 +1432,7 @@ function selftest() {
     const future = Date.UTC(2026, 6, 30) / 1000, past = Date.UTC(2026, 4, 20) / 1000;
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }, QNOW),
-        { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {} }
+        { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {}, epsFwd: {} }
     );
 
     // Freshness: when was the price struck, and has the stock moved since? The extended-hours
@@ -1435,6 +1474,21 @@ function selftest() {
             { symbol: '^GSPC', quoteType: 'INDEX' },
         ] } }, QNOW).types,
         { AAPL: 'EQUITY', VOO: 'ETF', '^GSPC': 'INDEX' });
+
+    // Consensus forward EPS: captured when positive, dropped when absent or a loss (no multiple).
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [
+            { symbol: 'GOOG', epsForward: 14.78 },
+            { symbol: 'KWHIY' },                      // Yahoo has none for this ADR
+            { symbol: 'X', epsForward: -1.2 },        // consensus loss
+        ] } }, QNOW).epsFwd,
+        { GOOG: 14.78 });
+    // hasSplit: any split event inside the chart window disqualifies the consensus figure, because
+    // Yahoo restates the price for a split long before the analyst estimates catch up.
+    assert.strictEqual(hasSplit(undefined), false);
+    assert.strictEqual(hasSplit({}), false);
+    assert.strictEqual(hasSplit({ '1774403200': { splitRatio: '5:1' } }), true);
+
     // A future date is the next results date...
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', earningsTimestamp: future }] } }, QNOW).earnings,
