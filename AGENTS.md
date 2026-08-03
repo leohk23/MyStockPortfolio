@@ -32,7 +32,7 @@ Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read
       │  node extract-portfolio.js   (needs the xlsx dev-dep; user runs it)
       ▼
 holdings.json          positions, cost basis, geography, group, full trade log  (committed)
-      │  node fetch-prices.js        (GitHub Actions, hourly; dependency-free)
+      │  node fetch-prices.js        (GitHub Actions, every 15 min Mon-Fri; dependency-free)
       ▼
 prices.json            quotes, FX rates, portfolio value series (replayed) (committed)
 history.json           daily + weekly closes, long NAV + benchmarks (committed, ~2MB)
@@ -42,7 +42,7 @@ index.html + portfolio.js   all arithmetic in the browser
 ```
 
 - **prices.json** loads on every page view (small). **history.json** is **lazy-loaded** only for a stock, benchmark, or 2Y/5Y/All range — keep it that way.
-- Committing prices.json/history.json re-triggers the Pages build, so the site follows the hourly refresh automatically.
+- Committing prices.json/history.json re-triggers the Pages build, so the site follows each scheduled refresh automatically.
 
 ## Files
 
@@ -50,22 +50,24 @@ index.html + portfolio.js   all arithmetic in the browser
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
 | `extract-portfolio.js`         | Reads the Tradelog tab +`meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`.                                                                                                        | User's machine only (`npm run extract`) |
 | `meta.json`                    | Per-instrument facts not in the Tradelog:`yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed                                 |
-| `fetch-prices.js`              | Yahoo Finance →`prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`).                                                            | GitHub Actions hourly + local             |
+| `fetch-prices.js`              | Yahoo Finance →`prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`).                                                            | GitHub Actions (15 min, Mon-Fri) + local  |
 | `watchlist.json`               | Stocks watched but**not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below.                                                                  | Committed                                 |
 | `guidance.json`                | Manual company-issued guidance for operating-company holdings/watchlist names. Literal display values + period, issue date, official source and material assumptions;`_coverage` records names checked with no matching quantitative guidance.             | Committed                                 |
 | `backfill-earnings.js`         | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Deeper financial history" below). **Manual, one-off — never in CI.**                                                                                       | User's machine only                       |
-| `portfolio.js`                 | Pure aggregation shared by page and tests.`build(holdings, rates, quotes, dimension)`.                                                                                                                                                                     | Browser (`window.portfolioLib`) + node  |
+| `portfolio.js`                 | Pure aggregation shared by page and tests.`build(holdings, rates, quotes, dimension)`, `valuation`, `buildWatchlist`, `fillMissingQuarters`. Anything selftestable lives here rather than in the page.                                                        | Browser (`window.portfolioLib`) + node  |
 | `index.html`                   | Dark-only UI: totals, chart, sortable/groupable table.                                                                                                                                                                                                       | Browser                                   |
 | `publish.js`                   | `npm run publish`: extract → commit holdings.json → rebase → push.                                                                                                                                                                                      | User's machine                            |
-| `.github/workflows/prices.yml` | Hourly cron; runs selftests, fetches, commits.                                                                                                                                                                                                               | GitHub                                    |
+| `.github/workflows/prices.yml` | `*/15 * * * 1-5` cron; runs selftests, fetches, commits. Weekdays only — every exchange in the book is shut at weekends. Public repo, so the runs are free.                                                                                                                                                                                                               | GitHub                                    |
 
 ## How to run / test
 
 ```sh
 npm install          # dev-deps: xlsx (extract), jsdom (only for manual page tests)
-npm test             # selftests: fetch-prices, portfolio, extract-portfolio
-node fetch-prices.js --selftest    # movement math, NAV fill/backfill, alignedCloses
-node portfolio.js  --selftest      # grouping, weighting, since-last-trade, dimensions
+npm test             # selftests: fetch-prices, portfolio, extract-portfolio, backfill-earnings
+node fetch-prices.js --selftest    # movement math incl. 1d, NAV fill/backfill, alignedCloses,
+                                   #   trough PE, quote parsing (EPS, session freshness)
+node portfolio.js  --selftest      # grouping, weighting, since-last-trade, dimensions,
+                                   #   valuation, watchlist, fillMissingQuarters
 node extract-portfolio.js --selftest   # yahoo-symbol mapping, group-name cleaning
 ```
 
@@ -115,6 +117,23 @@ New UI and content work goes to `preview/index.html` and is pushed to `main`, wh
 8. **Yield is online-only.** `fetch-prices.js` sums Yahoo dividend events over `range=1y` and divides by current price. Never use the workbook dividend field for table yield.
 9. **PE is single-instrument only, computed in native currency.** `pe` = price ÷ trailing EPS; `specialPe` = price ÷ a stock-tailored earnings figure. Both are `null` on a multi-leg Company/Geography row (see Grouping below) — there's no well-defined "PE of a basket" without earnings-weighting, so don't invent one. EPS itself, from either source, must be in the same currency as the Yahoo-quoted price (e.g. pence for a `GBp` quote) — PE is a ratio, so mixing currencies silently produces a meaningless number, not an error.
 
+10. **The price is always the REGULAR session.** The chart call never asks for pre/post data, and must not start: value, gain, PE, the `1d` column and the whole NAV history are built on regular closes, so substituting an extended-hours print would move every derived figure against a history that never had one. An after-hours move is recorded **beside** the price (`quote.ext`) and only ever displayed as a flag — never folded into `price`.
+
+## Price freshness
+
+`prices.json`'s top-level `updated` is when the **fetch ran**, not when a stock **traded**: on a Sunday it reads Sunday while every price is Friday's close. Two per-quote fields settle it, both captured from the `v7/quote` batch call already made every run for EPS — **no extra requests**:
+
+- `at` — `regularMarketTime`, epoch seconds. The moment the displayed price was struck. Present for every quote.
+- `ext` — `{ kind: 'post'|'pre', price, at, pct }`, the extended-hours print. **Only recorded when its timestamp is later than `at`.** That one rule covers pre- and post-market alike and discards the stale figures Yahoo keeps returning after a session ends, without depending on `marketState` semantics (which is why `marketState` is deliberately *not* used).
+
+`pct` is a **fraction** — Yahoo sends whole percents (`-8` for −8%) and they are divided by 100 on the way in, per invariant 3. Getting this wrong ships −800%.
+
+Neither field is ever carried forward from the previous run. A stale `ext` would keep warning about a swing long since absorbed into a new regular session; a missing one means "no data", which the page renders as no marker rather than as "flat".
+
+**Coverage is US-only in practice.** A live run captured `at` for 71/71 quotes but `ext` for 34 — every one of them US/ADR, none from Hong Kong, Tokyo, London, Paris or Korea, which have no extended-hours feed. It self-heals across a weekend: Friday's post-market print stays valid until Monday's regular session prints, at which point `at` advances past it and the later-than rule drops it automatically.
+
+⚠️ **The 0.5% display threshold is the weak part.** The page only shows a marker past `EXT_MATERIAL`, so a blank cell currently means *either* "no material move" *or* "no extended-hours feed at all" — 21 rows and 37 rows respectively on the run measured. Those are very different states, and conflating them undercuts the one question the feature exists to answer. It is also inconsistent with every other movement column, which renders regardless of magnitude, and 0.5% is an invented constant sitting near the median move (0.32%). Prefer removing it, or rendering small moves muted rather than hiding them.
+
 ## PE / valuation hint
 
 Two optional `meta.json` fields per instrument drive the PE columns:
@@ -137,9 +156,9 @@ The idea (ported from the workbook's old Portfolio!BA:BM block, now fully derive
 | **Implied**  | `PE Low × current EPS` — the price at its cheapest-ever multiple, on today's earnings |
 | **vs Low**   | `(price − Implied) / Implied` — the premium you pay over that baseline                |
 
-**`earnings.json` (committed) caches the annual EPS.** Earnings are reported 4×/year, so fetching them hourly for 56 tickers is 56 wasted requests an hour against the one endpoint Yahoo rate-limits hardest. `fetch-prices.js` refreshes it only when it ages out (`EARNINGS_MAX_AGE_DAYS`) or a new holding appears. **The trough itself is still recomputed every run** from the stored EPS plus fresh weekly closes — free, and a new low is picked up the hour it prints.
+**`earnings.json` (committed) caches the annual EPS.** Earnings are reported 4×/year, so fetching them every run for 56 tickers is 56 wasted requests every 15 minutes against the one endpoint Yahoo rate-limits hardest. `fetch-prices.js` refreshes it only when it ages out (`EARNINGS_MAX_AGE_DAYS`) or a new holding appears. **The trough itself is still recomputed every run** from the stored EPS plus fresh weekly closes — free, and a new low is picked up on the next run after it prints.
 
-⚠️ A ticker Yahoo has no fundamentals for must be stored as `[]`, not left absent — `earningsStale` treats a missing key as "new holding" and would refetch all 56 every hour.
+⚠️ A ticker Yahoo has no fundamentals for must be stored as `[]`, not left absent — `earningsStale` treats a missing key as "new holding" and would refetch all 56 every run.
 
 **PE Low is a ratio, so it is currency- and ADR-agnostic.** Implied comes out in the quote's own currency because EPS is native; no FX belongs in any of it. EPS arrives in Yahoo's major unit, so `epsInQuoteUnits` scales it for pence tickers before dividing — the same GBp trap.
 
@@ -172,7 +191,7 @@ git add watchlist.json prices.json history.json && git commit -m "watchlist" && 
 ```
 
 - **Removing/renaming a name, or editing `geography`** — just commit and push; the page reads `watchlist.json` directly.
-- **Adding a name** — it stays invisible until `prices.json` carries its quote. Either run `npm run fetch` first, or push and let the hourly Action fill it in within the hour.
+- **Adding a name** — it stays invisible until `prices.json` carries its quote. Either run `npm run fetch` first, or push and let the scheduled Action fill it in on its next run.
 - **A wrong `yahoo` symbol fails silently.** `fetch-prices.js` and `buildWatchlist()` both filter on `quotes[w.yahoo]`, so a typo just doesn't appear — no error, no placeholder. Unlike `meta.json`, which `extract-portfolio.js` guards by pinging Yahoo, **there is no guard here**. Always confirm a newly added name actually renders in the Watchlist view.
 - **Keep `geography` filled in** even though the table now shows the ticker beside the name: the search box still matches on `name`, `yahoo` and `geography`.
 
@@ -201,9 +220,17 @@ ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a defin
 
 **Latest reported quarter (for the guidance comparison).** Guidance is usually a *quarter*, but the reported rows are full fiscal years — so a guided quarter had nothing at matching granularity to read against. `fetch-prices.js` now also pulls the `quarterly*` twins of the annual accounts (`QUARTERLY_FIELDS`) and stores them as `quarters` on the earnings entry; the panel renders the **latest reported quarter** as one row directly above the guidance row, with sub-lines that are change vs the **same quarter a year earlier** (date-matched ±50d, seasonality-free — never vs the previous quarter). Two deliberate constraints: the row is taken from quarters that carry a top line (Yahoo hands back a just-reported quarter as an EPS stub days before the rest — NFLX Q2), and this rides the **same** fundamentals request (one longer `type=` list, zero extra gated calls). Currently gated to an example allowlist — `QUARTERLY_TICKERS` = {NVDA, NFLX, META} — to prove the comparison before widening; to roll out, drop the guard and fetch quarters for every operating company. Bumping to `EARNINGS_V` 6 forced the one refetch that populated it.
 
+**A missing quarter is reconstructed, not left as a hole.** Yahoo drops a quarter outright for some filers — BYD's Sep '25 is simply absent while the quarters either side are filed. That costs more than one row: the remaining quarters no longer span a year, so the TTM guard (four quarter-ends inside 250–290 days) rightly refuses to total them and the trailing row disappears entirely. Left unguarded it would have summed Mar '25 + Jun '25 + Dec '25 + Mar '26 — double-counting a first quarter and omitting the third.
+
+`portfolio.js` `fillMissingQuarters(quarters, years)` fills a fiscal year that is complete except for **one** quarter: the audited annual **minus** the three filed quarters *is* that quarter, exactly. Two holes are not determinable from one equation, so it declines rather than guesses.
+
+**Flows only** — `rev`, `opinc`, `ni`, `nic`, `norm` accumulate over the year and subtract cleanly. **Never EPS or a share count**: those need the quarter's own share base, and a bonus issue or buyback inside the year makes an imputed per-share figure fiction (BYD's diluted shares roughly doubled during FY2025 — EPS 9.22 → 3.58 on net income down only 19%). A blank EPS is the honest output. Derived quarters carry `derivedQuarter: true`; the page labels the row `derived` and tags a TTM containing one **`part-derived`** rather than `filed`.
+
+Validated against an outside figure: the same code reconstructs Apple's missing Dec '24 quarter at **$124.3B revenue**, its actual reported FQ1 2025. Ten tickers currently gain a quarter — for most it predates the four displayed and only deepens the year-ago comparisons.
+
 ## When annual figures get fetched
 
-The hourly job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three ways:
+The scheduled job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three ways:
 
 1. **No entry at all** → fetch. A new holding, or one whose last fetch errored and was deliberately not cached (a transient 429 must never be stored as "this company has no earnings").
 2. **Awaiting results** (`dueForResults`) → one look a day. A company is due when its *next* fiscal year ended 30–210 days ago and still hasn't landed. Nothing else is asked, because nothing else can have changed — a December year-end has nothing new to say in July. Today that is typically **1 ticker out of 63**.
@@ -238,7 +265,7 @@ So **never filter fiscal years on one field's presence.** `fetchAnnualEps` used 
 
 The deep-dive panel's revenue / net-income table comes from `earnings.json`. Yahoo **hard-caps annual fundamentals at 4 fiscal years** — a 15-year window returns the same four, on both the timeseries and quoteSummary endpoints. It is not a widenable parameter. Don't spend time trying; it has been probed.
 
-`earnings.json` is the store of record and `mergeEarnings()` keeps banked years forever, so history **accretes**: the hourly job merges Yahoo's 4 on top and older years persist. That gets the 5th and 6th year over time, but could not produce them on day one — hence the backfill.
+`earnings.json` is the store of record and `mergeEarnings()` keeps banked years forever, so history **accretes**: the scheduled job merges Yahoo's 4 on top and older years persist. That gets the 5th and 6th year over time, but could not produce them on day one — hence the backfill.
 
 **Two sources, tried deepest first.**
 
@@ -290,7 +317,7 @@ Tab name `Tradelog` must not be renamed. Per-instrument display facts (yahoo/gro
 
 - `fetch-prices.js` must stay dependency-free — CI installs nothing. Don't `require` a package.
 - Index symbols (`^GSPC`, `^HSI`) need the caret URL-encoded (`%5E`); `fetchTicker` does this.
-- The hourly bot commits to `main`, so local pushes need `git pull --rebase` first (`publish.js` does it). On conflict in prices.json/history.json, the bot's/your newer generated file wins — regenerate rather than hand-merge.
+- The price bot commits to `main` on every scheduled run, so local pushes need `git pull --rebase` first (`publish.js` does it). On conflict in prices.json/history.json, the bot's/your newer generated file wins — regenerate rather than hand-merge.
 - Windows shell here is PowerShell; a Bash tool exists too. `.xlsx` reads need `xlsx` installed (`npm install`), which is dev-only and absent in CI by design.
 
 ## Tradelog.xlsx external link (a live fragility)

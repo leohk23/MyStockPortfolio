@@ -15,7 +15,7 @@ Tradelog.xlsx                 (gitignored — never leaves your machine; only th
         │  npm run extract     you run this after trading
         ▼
    holdings.json              positions, cost basis, full trade log   (committed)
-        │  fetch-prices.js     GitHub Actions, hourly
+        │  fetch-prices.js     GitHub Actions, every 15 min on weekdays
         ▼
    prices.json                quotes, FX rates, portfolio NAV series  (committed)
    history.json               per-stock daily closes + benchmarks     (committed)
@@ -24,7 +24,7 @@ Tradelog.xlsx                 (gitignored — never leaves your machine; only th
    index.html + portfolio.js  arithmetic in the browser
 ```
 
-Committing the price files re-triggers the Pages build, so the live site follows the hourly refresh on its own. Pages and the workflow's write permission are already configured. `history.json` is loaded by the page only when you click a stock, a benchmark, or a 2Y/5Y/All range, so the first paint stays light.
+Committing the price files re-triggers the Pages build, so the live site follows each scheduled refresh on its own. Pages and the workflow's write permission are already configured. `history.json` is loaded by the page only when you click a stock, a benchmark, or a 2Y/5Y/All range, so the first paint stays light.
 
 ## What the dashboard shows
 
@@ -33,7 +33,7 @@ Committing the price files re-triggers the Pages build, so the live site follows
 - **Benchmark toggle** — overlay the portfolio against **S&P 500** and **HSI**, all rebased to 0% at the start of the range (indexed, single axis — never dual).
 - **Group by Stock / Company / Geography** — the table re-buckets live. "Company" is the workbook's `Grouping1`; a multi-instrument row (e.g. BYD = HK line + ADR) shows a chevron at the end of its name to expand. In Stock view, the chevron expands the full split-adjusted trade history with running balance and average cost. Multi-instrument Company rows and Geography totals chart aggregate NAV; a one-stock Company row keeps the individual Price/Gain-Loss views.
 - **Click any row** to filter the chart to that stock, switch between **Price / Gain/Loss**, and see your **buy/sell trades plotted** on the line (▲ buy, ▼ sell). Gain/Loss replays the Tradelog quantity and average cost; realized gains are excluded.
-- **Sortable columns**, a **USD / GBP / HKD** display toggle, current and realized gain/loss, and a current **Price** column per position. **Since** = the price move since your last trade on that position (current price vs. that trade's price, both in USD). **Yield TTM** comes from Yahoo's trailing-12-month dividend events divided by current price; the workbook dividend field is not exported or used. **Income TTM** multiplies those online dividends per share by today's position quantity.
+- **Sortable columns** (the Watchlist table sorts too, on its own independent state — sorting one table never disturbs the other), a **USD / GBP / HKD** display toggle, current and realized gain/loss, and a current **Price** column per position. **1D** is the move since the previous session's close, sitting beside the 7D/1M/3M/6M/1Y/YTD periods. **Since** = the price move since your last trade on that position (current price vs. that trade's price, both in USD). **Yield TTM** comes from Yahoo's trailing-12-month dividend events divided by current price; the workbook dividend field is not exported or used. **Income TTM** multiplies those online dividends per share by today's position quantity.
 - **PE and Special PE** (single-instrument rows only). **PE** is price ÷ trailing 12-month EPS, fetched from Yahoo automatically where available. **Special PE** lets you swap in whatever earnings figure actually fits that stock or its industry — FFO/share for a REIT, adjusted EPS for a bank, a normalized multi-year average for a cyclical — by setting `specialEps` (and an optional `specialEpsLabel` shown as a tooltip) in `meta.json`. Leave it unset and Special PE just mirrors the normal PE. Both show `–` when there's no earnings figure from any source, or on a multi-instrument Company/Geography row.
 - **PE Low / Low date / Implied / vs Low** — the "is it cheap?" columns, derived online with **nothing to maintain**. Point-in-time: each weekly close is divided by the latest annual EPS *already published* by that date (fiscal end + 90 days, every market's statutory deadline); the cheapest ratio in history is the trough multiple. Neither form of hindsight is allowed — not an old low over *today's* EPS (NVDA's 2022 low on its 2026 earnings would look absurdly cheap), and not a low over its own year's EPS, which wasn't public until months after the low.
 
@@ -44,9 +44,14 @@ Committing the price files re-triggers the Pages build, so the live site follows
   - **vs Low** — how far above (red) or below (green) that baseline you're paying. Colour is
     deliberately inverted from the rest of the table: cheap is the good news here.
 
-  Annual EPS is cached in `earnings.json` (refreshed weekly, not hourly — earnings only print 4×/year), but the trough is recomputed every run, so a **new low shows up within the hour**. Limited to ~4 fiscal years because that's all the earnings history Yahoo gives away.
+  Annual EPS is cached in `earnings.json` (refreshed weekly, not every run — earnings only print 4×/year), but the trough is recomputed every run, so a **new low shows up on the next refresh**. Limited to ~4 fiscal years because that's all the earnings history Yahoo gives away.
 
   ⚠️ This is **context, not a signal**. A trough multiple is one data point from one bad moment. A company that has genuinely grown into its earnings will read as permanently expensive against a low set in 2022 — NVDA at +380% isn't a sell, it's telling you its 2022 trough earnings bear little relation to today's business.
+
+- **Click a stock for the deep dive** — filed annual and quarterly financials, with a trailing-twelve-month row. Where Yahoo omits a quarter a company did report, it is reconstructed as *the audited fiscal year minus the three filed quarters* and labelled **`derived`**; a TTM containing one reads **`part-derived`** rather than `filed`. Only revenue and income are reconstructed that way — never EPS, which would need that quarter's own share base (BYD's shares roughly doubled mid-FY2025, so an imputed per-share figure would be fiction). Without this a single missing quarter silently removed the whole TTM row.
+- **Price freshness.** Every figure here is the **regular-session** price, deliberately — value, gain, PE, 1D and the whole NAV history are built on regular closes, so folding an after-hours print into the price would move every derived number against a history that never had one. The risk that leaves is a price that is quietly *wrong*: a company reports after the bell, drops 8%, and the row still shows yesterday's close. So the extended-hours move is shown **beside** the price, never inside it — `308.91 USD −8.2%` means the last close was 308.91 and it has since traded 8.2% lower. Hovering any price gives the last-traded time and the full detail.
+
+  Practically this is US-only: Hong Kong, Tokyo, London and Paris have no extended-hours feed, so those rows never carry the marker and their freshness is the last-traded time in the tooltip. A marker currently appears only past **0.5%**, so a blank cell means either "no material move" or "no feed at all" — see [AGENTS.md](AGENTS.md#price-freshness) for why that threshold is worth revisiting.
 
 For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
 
@@ -83,7 +88,7 @@ git checkout main   # publish commits to the CURRENT branch — see below
 npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
 ```
 
-That is the whole routine. The hourly Action re-prices and redeploys from there; nothing else needs running.
+That is the whole routine. The scheduled Action re-prices and redeploys from there; nothing else needs running.
 
 ⚠️ **Be on `main` first.** `npm run publish` commits to whichever branch is checked out. Land it on a feature branch and the live site never sees it — the site serves `main` only. Recover with `git checkout main && git cherry-pick <commit>`.
 
@@ -111,7 +116,7 @@ git add watchlist.json prices.json history.json
 git commit -m "watchlist" && git push
 ```
 
-Removing a name, renaming it, or editing `geography` needs no fetch — commit and push. When **adding**, the name stays invisible until `prices.json` has its quote, so either run `npm run fetch` yourself or push and let the hourly Action pick it up within the hour.
+Removing a name, renaming it, or editing `geography` needs no fetch — commit and push. When **adding**, the name stays invisible until `prices.json` has its quote, so either run `npm run fetch` yourself or push and let the scheduled Action pick it up on its next run.
 
 ⚠️ **A mistyped `yahoo` symbol fails silently here.** Unlike `meta.json`, the watchlist has no guard — the row is simply filtered out, with no error. After adding a name, check it actually shows up in the Watchlist view. Keep `geography` filled in too: the table shows the ticker beside the name now, but the search box still matches on it.
 
