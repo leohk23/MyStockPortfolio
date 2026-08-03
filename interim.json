@@ -1,0 +1,32 @@
+{
+ "_note": {
+  "what": "Half-year (interim) results, typed by hand from the company's own results announcement. Yahoo publishes NOTHING sub-annual for semi-annual reporters — not on the local line, not on the OTC ADR, not in any quoteSummary module — so without this file those names sit on a figure up to twelve months old.",
+  "who": "Companies that report twice a year rather than four times: the HK Main Board issuers (HKEx requires interim + annual, not quarterly) plus the French and UK names and Nintendo. Run `npm run interim` for the current list and what is missing.",
+  "shape": "One array per Yahoo symbol, oldest first. Amounts are in the company's REPORTING currency, as filed, in full units (not millions) — the same convention as earnings.json, which is what the page compares them against.",
+  "fields": {
+   "end": "Period end, YYYY-MM-DD (the H1 balance date, e.g. 2026-06-30).",
+   "published": "Date the results were announced, YYYY-MM-DD.",
+   "source": "Direct https link to the announcement or results PDF.",
+   "currency": "Reporting currency; must match this ticker's currency in earnings.json.",
+   "rev": "Revenue for the six months.",
+   "opinc": "Operating income for the six months (omit if the company does not report one).",
+   "nic": "Net income attributable to shareholders for the six months.",
+   "eps": "Basic or diluted EPS for the six months, per share, in the reporting currency."
+  },
+  "example": {
+   "0001.HK": [
+    {
+     "end": "2026-06-30",
+     "published": "2026-08-14",
+     "source": "https://www1.hkexnews.hk/listedco/listconews/sehk/...",
+     "currency": "HKD",
+     "rev": 0,
+     "opinc": 0,
+     "nic": 0,
+     "eps": 0
+    }
+   ]
+  },
+  "rule": "Never estimate a missing figure. Omit the field, or omit the period. A blank cell is a fact; an invented one is not. `npm run interim` refuses entries whose revenue exceeds the filed full year, which is what a units slip (millions typed as units) looks like."
+ }
+}

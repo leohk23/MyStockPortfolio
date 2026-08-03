@@ -149,6 +149,8 @@
         #deep-fin tr.ttm-row td { border-top: 1px solid var(--line); font-weight: 600; }
         #deep-fin tr.ttm-row td:first-child { color: var(--text-secondary); }
         #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
+        #deep-fin tr.interim-row td { border-top: 1px solid var(--line); }
+        #deep-fin tr.interim-row td:first-child, #deep-fin tr.interim-row a { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
@@ -492,6 +494,8 @@
         let earningsPromise = null;
         let GUIDANCE = null;     // manual company-issued outlook, deep dive only
         let guidancePromise = null;
+        let INTERIM = null;      // manual half-year results for semi-annual reporters
+        let interimPromise = null;
         let sort = { key: 'value', dir: -1 };
         // The watchlist is a separate flat table with no 'value'/grouping, so it keeps its own
         // sort state. Default A–Z by name, matching how buildWatchlist first orders it.
@@ -540,6 +544,19 @@
                 .catch(err => { console.warn('guidance unavailable:', err.message); return {}; })
                 .then(g => (GUIDANCE = g));
             return guidancePromise;
+        }
+
+        // Half-year results, same optional treatment. Yahoo publishes nothing sub-annual for a
+        // semi-annual reporter, so for those names this file is the only thing between the page
+        // and a figure up to a year old — but a missing or empty file must still leave the filed
+        // annuals intact.
+        function loadInterim() {
+            if (INTERIM) return Promise.resolve(INTERIM);
+            if (!interimPromise) interimPromise = fetch(DATA + 'interim.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : {})
+                .catch(err => { console.warn('interim unavailable:', err.message); return {}; })
+                .then(i => (INTERIM = i));
+            return interimPromise;
         }
 
         /* ---------------- deep dive ---------------- */
@@ -752,7 +769,7 @@
             dates.innerHTML = '';
             fin.innerHTML = '<span class="deep-note">Loading…</span>';
 
-            Promise.all([loadEarnings(), loadGuidance()]).then(([store, guidanceStore]) => {
+            Promise.all([loadEarnings(), loadGuidance(), loadInterim()]).then(([store, guidanceStore, interimStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
                 const e = store.eps[leg.yahoo];
                 const gRaw = guidanceStore[leg.yahoo];
@@ -994,6 +1011,54 @@
                         ${cell(tRec.v, tRec.g, false, num2)}
                     </tr>` : '';
 
+                // Half-year rows, for companies that report twice a year rather than four times.
+                // Yahoo has nothing sub-annual for them, so these come from interim.json, typed by
+                // hand off the company's own announcement (`npm run interim` says what is missing
+                // and refuses figures that don't reconcile against the filed annual).
+                //
+                // Compared to the SAME half a year earlier, never to the half beside it: for a
+                // retailer or a luxury house H1 and H2 are not alike, and the year-on-year pair is
+                // the only honest comparison. Shares and recurring EPS stay blank — neither is in
+                // the announcement, and deriving them would be inventing.
+                const interims = (Array.isArray(interimStore?.[leg.yahoo]) ? interimStore[leg.yahoo] : [])
+                    .filter(r => r && r.end && r.rev != null)
+                    .sort((a, b) => a.end.localeCompare(b.end));
+                const hLabel = end => {
+                    const d = new Date(end + 'T00:00:00Z');
+                    return `H1 ${d.getUTCFullYear()}`;
+                };
+                const interimRow = interims.slice(-2).map(r => {
+                    // The same half one year back, matched by date within 50 days.
+                    const prior = interims.find(x => Math.abs(
+                        (Date.parse(r.end) - Date.parse(x.end)) / 864e5 - 365) < 50);
+                    const g = (v, p) => prior && v != null && p != null ? yoy(v, p) : null;
+                    const m = (n, d) => n != null && d > 0 ? n / d : null;
+                    return `<tr class="interim-row">
+                        <td title="Half year ended ${ymd(r.end)}${r.published ? `, announced ${ymd(r.published)}` : ''}${prior ? `; change is vs the half ended ${ymd(prior.end)}` : ' — no year-ago half on file for a comparison'}">${
+                            r.source ? `<a href="${escapeHTML(String(r.source))}" target="_blank" rel="noopener">${hLabel(r.end)}</a>` : hLabel(r.end)}</td>
+                        ${cell(r.rev, g(r.rev, prior?.rev))}
+                        ${cell(r.opinc, g(r.opinc, prior?.opinc))}
+                        ${marginCell(m(r.opinc, r.rev), prior ? m(prior.opinc, prior.rev) : null)}
+                        ${cell(r.nic, g(r.nic, prior?.nic))}
+                        ${marginCell(m(r.nic, r.rev), prior ? m(prior.nic, prior.rev) : null)}
+                        <td></td>
+                        ${cell(r.eps, g(r.eps, prior?.eps), false, num2)}
+                        <td></td>
+                    </tr>`;
+                }).join('');
+
+                // A company with no quarters anywhere in the store reports twice a year (HK Main
+                // Board, the French houses, Nintendo) or once. Name the cadence and the age of the
+                // newest figure, so an annual-only table is not read as though it were current.
+                const newest = [...(e?.years || []).map(y => y.date), ...qs.map(x => x.date),
+                    ...interims.map(r => r.end)].sort().pop();
+                const ageDays = newest ? Math.round((Date.now() - Date.parse(newest)) / 864e5) : null;
+                const cadenceNote = !qs.length && newest
+                    ? `Reporting cadence: this company does not publish quarterly figures, so the newest `
+                        + `period here ended ${ymd(newest)} — ${ageDays} days ago. Nothing is missing; there `
+                        + `is simply nothing more recent filed.`
+                    : null;
+
                 // Trailing recurring EPS + its P/E for the Valuation panel.
                 //
                 // Sum the four filed quarters OUTRIGHT wherever the statements are in the price's
@@ -1062,7 +1127,7 @@
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                     </tr></thead>
-                    <tbody>${body}${foot}${qrow}${ttmRow}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
                 <ul class="deep-note">${[
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
@@ -1070,6 +1135,12 @@
                     'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     ...(qs.some(x => x.derivedQuarter) ? ['Derived quarter: Yahoo omits a quarter this filer did report, so it is reconstructed as the audited fiscal year minus the three filed quarters — exact for revenue and income, which accumulate over the year. That quarter carries no EPS or share count: those need its own share base, and a bonus issue or buyback inside the year would make an imputed per-share figure fiction.'] : []),
+                    ...(interimRow ? ['Half years: typed from the company\'s own interim announcement (the row label links to it), because no data feed carries sub-annual figures for a semi-annual reporter. Compared to the same half a year earlier, never to the half beside it. Shares and recurring EPS are blank because the announcement does not give them.'] : []),
+                    // Say the reporting cadence out loud where it is twice a year, and say how old
+                    // the newest figure is. Without this an annual-only table reads as current when
+                    // it can be eleven months stale — the reader cannot tell the difference between
+                    // "nothing has happened" and "nothing has been published since".
+                    ...(cadenceNote ? [cadenceNote] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
