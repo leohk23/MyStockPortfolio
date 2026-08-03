@@ -190,10 +190,10 @@
         th:first-child, td:first-child { text-align: left; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
-        /* A material extended-hours move the displayed price does NOT include. Small and set in
-           the gain/loss colours, so it reads as "this number has already moved" without competing
-           with the price itself. Absent is the normal case and means no material move — or, for
-           Hong Kong/Tokyo/London, no extended-hours feed at all. */
+        /* An extended-hours move the displayed price does NOT include. Small and set in the
+           gain/loss colours, so it reads as "this number has already moved" without competing with
+           the price itself. Absent means one thing only: no extended-hours data for that listing
+           (Hong Kong, Tokyo, London and Paris have no such feed). */
         .ext { font-size: 10px; vertical-align: middle; opacity: .85; }
         .muted { color: var(--text-muted); }
 
@@ -1445,10 +1445,12 @@
         //
         // So the extended-hours move is shown BESIDE the price, never folded into it: the numbers
         // stay internally consistent, and the flag says "there is a move this doesn't capture".
-        // Only surfaced past a threshold, because a few basis points of after-hours drift is noise
-        // and would put a badge on half the US book every evening. The tooltip always carries the
-        // detail, so "no badge" never has to be read as "no data".
-        const EXT_MATERIAL = 0.005;                     // 0.5% — below this it isn't worth a mark
+        //
+        // Shown WHENEVER there is one, at any size. An earlier version hid moves under 0.5%, which
+        // made a blank cell mean either "barely moved" or "this venue has no extended-hours feed
+        // at all" — two very different things, and the second is exactly what the column exists to
+        // tell you. It also made this the only movement column with a size filter; 1D through YTD
+        // all render whatever they are. Blank now means one thing: no extended-hours data.
         const extLabel = { post: 'after hours', pre: 'pre-market' };
         const freshness = q => {
             if (!q || (!q.at && !q.ext)) return { mark: '', title: '' };    // no data: claim nothing
@@ -1458,9 +1460,8 @@
                 ? `${extLabel[e.kind] || e.kind} ${pct(e.pct)} to ${e.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                     + ` (${stamp(new Date(e.at * 1000).toISOString())}) — not reflected in this price or any figure derived from it`
                 : e ? `${extLabel[e.kind] || e.kind} price ${e.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '';
-            const big = e && e.pct != null && Math.abs(e.pct) >= EXT_MATERIAL;
             return {
-                mark: big ? ` <span class="ext ${cls(e.pct)}">${pct(e.pct)}</span>` : '',
+                mark: e && e.pct != null ? ` <span class="ext ${cls(e.pct)}">${pct(e.pct)}</span>` : '',
                 title: [traded, moved].filter(Boolean).join(' · '),
             };
         };
