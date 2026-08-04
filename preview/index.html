@@ -230,19 +230,31 @@
            needs its OWN opaque background or the scrolled columns show straight through it —
            hence every row state has to repaint it: default, hover, leg, and selected (whose
            translucent blue is re-composited over the row colour beneath it). */
-        th:first-child, td:first-child { position: sticky; left: 0; border-right: 1px solid var(--line); }
-        td:first-child { background: var(--surface-1); z-index: 1; }
+        /* Three pinned columns: the name, the price and the day's move. The offsets can't be
+           written in CSS because the name column is content-width — pinColumns() measures the
+           live header and sets --pin2/--pin3. Until it runs they are 0, which stacks the three
+           harmlessly rather than scattering them. */
+        th:first-child, td:first-child { position: sticky; left: 0; }
+        th:nth-child(2), td:nth-child(2) { position: sticky; left: var(--pin2, 0); }
+        th:nth-child(3), td:nth-child(3) { position: sticky; left: var(--pin3, 0); }
+        /* Only the LAST pinned column carries the divider, so the group reads as one block. */
+        th:nth-child(3), td:nth-child(3) { border-right: 1px solid var(--line); }
+        td:first-child, td:nth-child(2), td:nth-child(3) { background: var(--surface-1); z-index: 1; }
         th { z-index: 2; }                  /* header row sits above the pinned body cells */
-        th:first-child { z-index: 3; }      /* ...and the top-left corner above both */
-        tr.group:hover td:first-child { background: var(--surface-2); }
-        tr.leg td:first-child { background: var(--surface-3); }
-        tr.leg:hover td:first-child { background: var(--surface-2); }
-        tr.sel td:first-child, tr.sel:hover td:first-child {
+        th:first-child, th:nth-child(2), th:nth-child(3) { z-index: 3; }   /* ...corners above both */
+        tr.group:hover td:first-child, tr.group:hover td:nth-child(2), tr.group:hover td:nth-child(3) { background: var(--surface-2); }
+        tr.leg td:first-child, tr.leg td:nth-child(2), tr.leg td:nth-child(3) { background: var(--surface-3); }
+        tr.leg:hover td:first-child, tr.leg:hover td:nth-child(2), tr.leg:hover td:nth-child(3) { background: var(--surface-2); }
+        tr.sel td:first-child, tr.sel:hover td:first-child,
+        tr.sel td:nth-child(2), tr.sel:hover td:nth-child(2),
+        tr.sel td:nth-child(3), tr.sel:hover td:nth-child(3) {
             background: linear-gradient(rgba(57,135,229,.16), rgba(57,135,229,.16)), var(--surface-1);
         }
-        tr.leg.sel td:first-child {
+        tr.leg.sel td:first-child, tr.leg.sel td:nth-child(2), tr.leg.sel td:nth-child(3) {
             background: linear-gradient(rgba(57,135,229,.16), rgba(57,135,229,.16)), var(--surface-3);
         }
+        /* tfoot is opaque in its own right, but the pinned cells still need repainting. */
+        tfoot td:first-child, tfoot td:nth-child(2), tfoot td:nth-child(3) { background: var(--surface-2); }
         /* The expanded trade row is a single cell spanning every column. Pinning it would drag
            its whole text along with the horizontal scroll, so it opts out. */
         tr.trade-detail td { position: static; background: var(--surface-3); border-right: 0; }
@@ -1744,7 +1756,10 @@
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
-                        : trades.length ? ` <span class="muted">(${trades.length} trades)</span>` : ''}
+                        // Stock view is one row per instrument, so the bracket says what you hold
+                        // rather than how many times you traded to get there — the position is the
+                        // fact you want at a glance; the trade count is still in the expanded rows.
+                        : trades.length ? ` <span class="muted" title="${trades.length} trade${trades.length === 1 ? '' : 's'}">(${num2(r.legs[0].qty)} sh)</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
@@ -1865,6 +1880,7 @@
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
             updateSearchCount();
             markSelectedRow();
+            pinColumns();       // before the float clone: it copies the header widths this reads
             buildTotalFloat();
         }
 
@@ -1873,6 +1889,23 @@
         // than moved so sorting, filtering and the currency toggle all flow through the one real
         // render path — the float never holds state of its own.
         let floatSyncing = false;
+        // Pin Position / Price / 1D. Their left offsets are the widths of the columns before them,
+        // and the name column is content-width — it changes with the currency toggle, the grouping
+        // and the viewport — so the offsets are measured from the live header rather than guessed.
+        // Called after every render and on resize; cheap (two reads, two writes, no layout thrash
+        // beyond what the render already forced).
+        function pinColumns() {
+            for (const id of ['portfolio', 'watchlist']) {
+                const table = document.getElementById(id);
+                const head = table?.tHead?.rows[0];
+                if (!head || head.cells.length < 3) continue;
+                const w1 = head.cells[0].getBoundingClientRect().width;
+                const w2 = head.cells[1].getBoundingClientRect().width;
+                table.style.setProperty('--pin2', `${w1}px`);
+                table.style.setProperty('--pin3', `${w1 + w2}px`);
+            }
+        }
+
         function buildTotalFloat() {
             const el = document.getElementById('total-float');
             const wrap = document.getElementById('holdings-table');
@@ -1936,6 +1969,10 @@
                 tbody.appendChild(tr);
             }
             markSelectedRow();
+            // Column widths follow the rows just written (the table sizes to its content), so the
+            // pinned offsets have to be re-measured here and not only from renderTotals — which
+            // runs BEFORE this and would otherwise measure an empty watchlist.
+            pinColumns();
         }
 
         // The watchlist takes the holdings table's place rather than sitting beneath it.
@@ -2114,7 +2151,7 @@
             link(wrap, floatEl);
             link(floatEl, wrap);
             window.addEventListener('scroll', updateTotalFloat, { passive: true });
-            window.addEventListener('resize', buildTotalFloat);
+            window.addEventListener('resize', () => { pinColumns(); buildTotalFloat(); });
         }).catch(err => {
             document.getElementById('updated').textContent = `Could not load data: ${err.message}`;
             console.error(err);
