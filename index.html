@@ -160,6 +160,19 @@
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
         ul.deep-note { padding-left: 17px; margin-bottom: 0; }
         ul.deep-note li + li { margin-top: 3px; }
+        /* Collapsed notes. The summary reads as one more muted line until you want it, and the
+           marker rotates so open/closed is obvious without adding a second control. */
+        .deep-notes { margin-top: 8px; }
+        .deep-notes > summary {
+            font-size: 11px; color: var(--text-muted); cursor: pointer; list-style: none;
+            user-select: none; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .deep-notes > summary::-webkit-details-marker { display: none; }  /* Safari's own triangle */
+        .deep-notes > summary::before { content: '▸'; font-size: 9px; }
+        .deep-notes[open] > summary::before { content: '▾'; }
+        .deep-notes > summary:hover { color: var(--text-secondary); }
+        .deep-notes > summary:focus-visible { outline: 1px solid var(--text-muted); outline-offset: 2px; }
+        .deep-notes > ul.deep-note { margin-top: 4px; }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -761,6 +774,18 @@
             return { row: `<tr class="guidance-row"><td>${first}</td>${cells}</tr>`, notes, pe };
         };
 
+        // The notes explain how each figure is derived — the "show your workings" the whole panel
+        // is built on — but there can be nine of them, and read once they are mostly settled
+        // knowledge that then buries the table under a wall of small print. Native <details>, so
+        // it costs no JS and stays keyboard- and screen-reader-navigable. Collapsed on every
+        // render by design: the numbers are what you came for, the derivations are there when a
+        // figure looks wrong. The count on the summary shows there is more here on some stocks
+        // than others (a derived quarter or a half-year row each add one).
+        const notesBlock = notes => notes.length
+            ? `<details class="deep-notes"><summary>Notes (${notes.length})</summary>`
+                + `<ul class="deep-note">${notes.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul></details>`
+            : '';
+
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
@@ -1129,7 +1154,7 @@
                     </tr></thead>
                     <tbody>${body}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
-                <ul class="deep-note">${[
+                ${notesBlock([
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
                     'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
@@ -1143,7 +1168,7 @@
                     ...(cadenceNote ? [cadenceNote] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
-                ].map(note => `<li>${escapeHTML(note)}</li>`).join('')}</ul>`;
+                ])}`;
             }).catch(err => {
                 fin.innerHTML = `<span class="deep-note">Financials unavailable: ${escapeHTML(err.message)}</span>`;
             });
