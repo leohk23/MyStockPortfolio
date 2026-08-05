@@ -1547,6 +1547,43 @@
             else drawChart();
         }
 
+        // Keep the row you clicked exactly where it was on screen.
+        //
+        // The deep-dive panel and the chart's control rows sit ABOVE the table, so selecting a
+        // stock inserts height above every row and the one you just clicked slides down out of
+        // view — you lose your place in a 56-row table. Deselecting does the reverse. Fix: note
+        // where the row sat in the viewport, and scroll by however far it moved.
+        //
+        // One correction is not enough. The panel settles in waves: `#deep` un-hides
+        // synchronously, then grows again when the earnings and guidance fetches resolve and when
+        // the chart redraws off lazily-loaded history. A ResizeObserver keeps re-correcting until
+        // it stops moving.
+        //
+        // It stops early on any real scroll input — after a click the user owns the scroll
+        // position, and an observer that outlived that would yank the page back under them.
+        function pinRow(row) {
+            if (!row || typeof ResizeObserver === 'undefined') return () => {};
+            const want = row.getBoundingClientRect().top;
+            const fix = () => {
+                const drift = row.getBoundingClientRect().top - want;
+                if (Math.abs(drift) > 0.5) window.scrollBy(0, drift);
+            };
+            const ro = new ResizeObserver(fix);
+            for (const id of ['deep', 'chart-card']) {
+                const el = document.getElementById(id);
+                if (el) ro.observe(el);
+            }
+            const stop = () => {
+                ro.disconnect();
+                window.removeEventListener('wheel', stop);
+                window.removeEventListener('touchmove', stop);
+            };
+            window.addEventListener('wheel', stop, { passive: true });
+            window.addEventListener('touchmove', stop, { passive: true });
+            setTimeout(stop, 1500);      // the async panel work has landed well inside this
+            return fix;
+        }
+
         function selectChart(yahoo) {
             const same = !chartGroup && chartSel === yahoo;
             chartGroup = null;
@@ -1794,7 +1831,7 @@
                         <td>${lowDateCell(leg.lowDate)}</td>
                         <td>${impliedCell(leg)}</td>
                         <td>${vsLowCell(leg.vsLow)}</td>`;
-                    el.addEventListener('click', () => selectChart(leg.yahoo));
+                    el.addEventListener('click', () => { const fix = pinRow(el); selectChart(leg.yahoo); fix(); });
                     tbody.appendChild(el);
                     return el;
                 }) : [];
@@ -1819,7 +1856,9 @@
                 });
                 tr.addEventListener('click', () => {
                     const individual = STATE.dim === 'instrument' || (STATE.dim === 'company' && r.legs.length === 1);
+                    const fix = pinRow(tr);
                     individual ? selectChart(r.primaryYahoo) : selectGroup(r);
+                    fix();
                 });
             }
             // The Total row totals THE ROWS SHOWN. With a filter active it must not keep
@@ -1932,7 +1971,7 @@
                     <td>${vsLowCell(w.vsLow)}</td>
                     <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}`;
-                tr.addEventListener('click', () => selectChart(w.yahoo));
+                tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(w.yahoo); fix(); });
                 tbody.appendChild(tr);
             }
             markSelectedRow();
