@@ -204,6 +204,33 @@ function fillMissingQuarters(quarters, years) {
     return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// An ADR is a claim on a FRACTION of a share, and Yahoo scales per-share figures to the receipt
+// while reporting revenue and income at company level. That leaves one column of the financials
+// table on a different basis from every other: Kawasaki's filed FY2026 reads 51.76 per ADR where
+// the company's own accounts — and its guidance PDF — say 129.41 per ordinary share. Both are
+// correct; they are simply different units sharing a column.
+//
+// The statements belong to the COMPANY, so the table shows them as filed: per ordinary share.
+// `perAdr` is the ordinary shares one ADR represents (0.25 = a quarter of a share), so dividing
+// by it converts receipt -> share. Only `eps` is rescaled; the share count (ni/eps) and recurring
+// EPS (norm*eps/ni) are derived from it and follow automatically.
+//
+// The Valuation panel deliberately does NOT use this: it divides by the ADR's own market price,
+// so its EPS must stay per receipt or the multiple would be wrong by exactly this ratio.
+//
+// Verified against sources outside Yahoo: Nintendo at 0.25 reproduces its Frankfurt line (which
+// trades 1:1 with the ordinary) to the cent — 91.1275 / 0.25 = 364.51 — and Kawasaki at 0.4
+// reproduces the figure in the company's own statement, 129.41.
+function onUnderlying(entry, perAdr) {
+    if (!entry || !(perAdr > 0) || perAdr === 1) return entry;
+    const scale = row => row.eps == null ? row : { ...row, eps: row.eps / perAdr };
+    return {
+        ...entry,
+        years: (entry.years || []).map(scale),
+        quarters: (entry.quarters || []).map(scale),
+    };
+}
+
 // watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
 //
 // Kept out of build() and out of holdings.json on purpose. Totals, TWR, cohorts and the NAV
@@ -296,7 +323,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -535,6 +562,29 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
 
     // buildWatchlist drops names with no quote rather than rendering a blank row.
     assert.strictEqual(buildWatchlist([{ yahoo: 'NOPE', name: 'Nope' }], { X: q }).length, 0);
+
+    // onUnderlying: an ADR's per-share figures are Yahoo-scaled to the RECEIPT while revenue and
+    // income stay company-level. Dividing by the ordinary-shares-per-ADR ratio puts the filed
+    // statements back on the company's own basis. Real figures: Kawasaki's FY2026.
+    const adrEntry = { currency: 'JPY', years: [{ date: '2026-03-31', nic: 108157000000, eps: 51.764, ni: 108157000000, norm: 108157000000 }],
+                  quarters: [{ date: '2025-06-30', eps: 2.0312 }] };
+    const ord = onUnderlying(adrEntry, 0.4);
+    assert.ok(Math.abs(ord.years[0].eps - 129.41) < 1e-9, 'KWHIY 51.764 / 0.4 must be the filed 129.41');
+    assert.strictEqual(ord.years[0].nic, 108157000000);      // income is company-level; never rescaled
+    assert.ok(Math.abs(ord.quarters[0].eps - 5.078) < 1e-9); // quarters follow the same scaling
+    // The derived columns fall out of the rescaled EPS rather than needing their own conversion.
+    assert.ok(Math.abs(ord.years[0].nic / ord.years[0].eps / 1e6 - 835.8) < 0.5, 'share count becomes the ordinary count');
+    // Nintendo at 0.25 must reproduce its Frankfurt line, which trades 1:1 with the ordinary.
+    assert.ok(Math.abs(onUnderlying({ years: [{ date: '2026-03-31', eps: 91.1275 }] }, 0.25).years[0].eps - 364.51) < 1e-9);
+    // Not an ADR, or no ratio known: returned untouched rather than guessed at.
+    assert.strictEqual(onUnderlying(adrEntry, undefined), adrEntry);
+    assert.strictEqual(onUnderlying(adrEntry, 1), adrEntry);
+    assert.strictEqual(onUnderlying(adrEntry, 0), adrEntry);
+    assert.strictEqual(onUnderlying(null, 0.4), null);
+    // A row with no EPS is passed through, not turned into NaN.
+    assert.deepStrictEqual(onUnderlying({ years: [{ date: '2024-03-31', nic: 5 }] }, 0.4).years[0], { date: '2024-03-31', nic: 5 });
+    // The source entry is never mutated — the Valuation panel still needs the per-receipt figures.
+    assert.strictEqual(adrEntry.years[0].eps, 51.764);
 
     // quarterEnds walks back in three-month steps and lands on real month-ends: a December
     // year-end must give Sep 30, not an overflowed "Sep 31" (and a March one crosses the year).

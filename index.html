@@ -796,7 +796,10 @@
 
             Promise.all([loadEarnings(), loadGuidance(), loadInterim()]).then(([store, guidanceStore, interimStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
-                const e = store.eps[leg.yahoo];
+                // Per RECEIPT, as Yahoo returns it — what the Valuation panel needs, because it
+                // divides by the ADR's own price. The table below wants the company's own basis.
+                const eRaw = store.eps[leg.yahoo];
+                const e = portfolioLib.onUnderlying(eRaw, leg.adrShares);
                 const gRaw = guidanceStore[leg.yahoo];
                 const guidance = guidanceView(gRaw, leg.quote.price);
                 const guidePe = document.getElementById('deep-guidance-pe');
@@ -805,7 +808,7 @@
                 // runRatePe annualises a guided QUARTER from revenue/margin/opex inputs; everyone
                 // else with a full-year forecast goes through guided net income. Prefer the
                 // company's own full-year number where both somehow exist.
-                const gy = guidedEpsPe(gRaw, leg, e);
+                const gy = guidedEpsPe(gRaw, leg, eRaw);   // per receipt: it is priced against the ADR
                 const range = (lo, hi, unit) => lo == null ? null
                     : Math.abs(hi / lo - 1) < 0.005 ? num2(lo) + unit : `${num2(lo)}–${num2(hi)}${unit}`;
                 if (gy && guideEps && guidePe) {
@@ -1166,6 +1169,7 @@
                     // it can be eleven months stale — the reader cannot tell the difference between
                     // "nothing has happened" and "nothing has been published since".
                     ...(cadenceNote ? [cadenceNote] : []),
+                    ...(leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ])}`;

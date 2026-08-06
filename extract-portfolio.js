@@ -134,6 +134,11 @@ function buildHoldings(meta, bySymbol, realized) {
             eps: m.eps,
             specialEps: m.specialEps,
             specialEpsLabel: m.specialEpsLabel,
+            // Ordinary shares represented by ONE ADR (0.25 = 1 ADR is a quarter of a share).
+            // Yahoo scales per-share figures to the ADR while reporting revenue and income at
+            // company level, so the deep dive uses this to put the filed statements back on the
+            // underlying's basis. Set it only for a true depositary receipt.
+            adrShares: m.adrShares,
             // Trough-multiple valuation: the cheapest this traded in living memory, and what
             // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
             lowPrice: m.lowPrice,
