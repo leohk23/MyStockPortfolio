@@ -1682,10 +1682,25 @@
         };
         // `quote` is optional and passed only for a LIVE price — never for Avg cost, which is a
         // historical figure and has no session.
+        // The quote's own currency as a sign in front of the number — "$356.65" is read at a
+        // glance in a column you scan vertically, where a trailing code is not.
+        //
+        // GBp is the trap, and it is a correctness one rather than a cosmetic one. It means PENCE,
+        // and BOTH appear in this book: VUSA.L quotes in GBP, MKS.L and SPOL.L in GBp. Rendering
+        // 2,843 GBp as "£2,843" would overstate the price a hundredfold — exactly the silently
+        // wrong number invariant 2 exists to prevent — so pence takes the London convention of a
+        // trailing "p" and never a pound sign. A currency with no sign here keeps its code rather
+        // than being guessed at; showing the wrong unit is worse than showing a longer one.
+        const CCY_SIGN = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', HKD: 'HK$', KRW: '₩' };
+        const nativePrice = (n, ccy) => {
+            const v = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            if (ccy === 'GBp' || ccy === 'Gbpence') return `${v}p`;
+            return CCY_SIGN[ccy] ? `${CCY_SIGN[ccy]}${v}` : `${v} <span class="muted">${ccy}</span>`;
+        };
         const priceCell = (native, ccy, quote) => {
             if (native == null) return '<span class="muted">–</span>';
             const { mark, title } = freshness(quote);
-            const num = `${native.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="muted">${ccy}</span>${mark}`;
+            const num = `${nativePrice(native, ccy)}${mark}`;
             return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
         };
         // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
