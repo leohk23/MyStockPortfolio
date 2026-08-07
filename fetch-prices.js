@@ -798,8 +798,31 @@ function normEpsFrom(entry, eps) {
 // quarters carry EPS and span ~a year, and only when the store's reporting currency matches the
 // quote's: the store is in reporting currency, so an ADR whose filings are TWD/KRW must never be
 // summed against a USD price. Returns null (honest "–") the moment any quarter's EPS is missing.
-function trailingEpsFromQuarters(entry, currency) {
-    if (!entry || entry.currency !== currency) return null;
+// What to multiply a per-share figure by to move it from the store's REPORTING currency into the
+// quote's. 1 when they already match (the common case, and no rates needed). Null when either rate
+// is missing — an unconvertible figure is "–", never a raw number in the wrong money.
+//
+// This does NOT fix a per-share BASIS mismatch, only a currency one, so it must not be reached for
+// on Yahoo's consensus forward EPS: that is quoted per ORDINARY share against an ADR price, which
+// no exchange rate can reconcile (Nintendo read 5.5x forward against 28.9x on its own guidance).
+// Quarterly EPS in the store is on the same basis as the store's own annuals — ADR-basis for an
+// ADR — so summing and converting it is sound where converting the consensus is not.
+function epsToQuote(entry, currency, rates) {
+    const from = entry?.currency;
+    if (!from || from === currency) return 1;
+    const a = rateFor(from, rates || {}), b = rateFor(currency, rates || {});
+    return a > 0 && b > 0 ? a / b : null;
+}
+
+function trailingEpsFromQuarters(entry, currency, rates) {
+    if (!entry) return null;
+    // The sum happens in the REPORTING currency — every quarter is filed in it, so adding them is
+    // always sound — and the result is then converted into the quote's, exactly as troughPe does.
+    // Refusing on a currency mismatch (the old rule) confused "cannot add these up" with "cannot
+    // compare this to the price": only the second was ever true, and it cost every ADR its summed
+    // trailing EPS. Going through rateFor on BOTH sides carries the GBp/pence case for free.
+    const fx = epsToQuote(entry, currency, rates);
+    if (fx == null) return null;
     const q = (entry.quarters || []).filter(x => x.date).sort((a, b) => a.date.localeCompare(b.date));
     if (q.length < 4) return null;
     const last4 = q.slice(-4);
@@ -808,7 +831,7 @@ function trailingEpsFromQuarters(entry, currency) {
 
     // Easy path: every quarter carries EPS, just add them up.
     if (last4.every(x => typeof x.eps === 'number'))
-        return Number(last4.reduce((a, x) => a + x.eps, 0).toPrecision(6));
+        return Number((last4.reduce((a, x) => a + x.eps, 0) * fx).toPrecision(6));
 
     // A quarter's EPS is missing — Yahoo carries no standalone Q4 EPS for Korean filers (SK
     // Hynix, Samsung): it stores the audited ANNUAL instead. Roll that annual forward instead of
@@ -827,7 +850,7 @@ function trailingEpsFromQuarters(entry, currency) {
     const terms = [ann, ...post, ...lead];
     if (lead.length !== n || !terms.every(x => typeof x.eps === 'number')) return null;
     const ttm = ann.eps + post.reduce((a, x) => a + x.eps, 0) - lead.reduce((a, x) => a + x.eps, 0);
-    return Number(ttm.toPrecision(6));
+    return Number((ttm * fx).toPrecision(6));
 }
 
 // Recurring EPS over the last four FILED quarters, summed outright. Preferred over normEpsFrom's
@@ -836,11 +859,13 @@ function trailingEpsFromQuarters(entry, currency) {
 // — FY2025's comparatively clean ratio against a TTM window carrying a $6.26/share equity gain
 // priced it at 18.9x when the recurring multiple was ~31x.
 //
-// Reporting currency must equal the quote currency: this is an absolute sum, not a unitless ratio,
-// so an ADR filing in TWD against a USD price has to fall back to the proxy. Null unless all four
-// quarters carry the inputs and span ~a year.
-function recurringTtmFrom(entry, currency) {
-    if (!entry || entry.currency !== currency) return null;
+// Summed in the reporting currency and converted into the quote's (see epsToQuote), so an ADR
+// filing in JPY against a USD price gets a real figure instead of falling back to the proxy. Null
+// unless all four quarters carry the inputs, span ~a year, and both FX rates are known.
+function recurringTtmFrom(entry, currency, rates) {
+    if (!entry) return null;
+    const fx = epsToQuote(entry, currency, rates);
+    if (fx == null) return null;
     const q = (entry.quarters || []).filter(x => x.date && x.rev != null)
         .sort((a, b) => a.date.localeCompare(b.date));
     if (q.length < 4) return null;
@@ -849,7 +874,7 @@ function recurringTtmFrom(entry, currency) {
     if (days < 250 || days > 290) return null;
     const rec = last4.map(x => x.norm != null && x.ni && x.eps != null ? x.norm * x.eps / x.ni : null);
     if (rec.some(v => v == null)) return null;
-    const sum = rec.reduce((a, v) => a + v, 0);
+    const sum = rec.reduce((a, v) => a + v, 0) * fx;
     return sum > 0 ? Number(sum.toPrecision(6)) : null;   // a loss has no meaningful multiple
 }
 
@@ -1210,7 +1235,8 @@ async function main() {
         troughOk++;
     }
     // Names Yahoo gives no trailing EPS (Korean locals) get one summed from the last four
-    // quarterly filings, so their trailing P/E and Implied stop reading "–". Runs before the
+    // quarterly filings (converted into the quote's currency), so their trailing P/E and Implied stop
+// reading "–". Runs before the
     // recurring loop below so the derived EPS also seeds a recurring figure where the store allows.
     // Gated on what YAHOO sent, not on whether quotes[t].eps is filled: by this point a derived
     // value from a previous run has already been carried forward as `eps`, so an "is it empty?"
@@ -1219,7 +1245,7 @@ async function main() {
     let derivedEps = 0;
     for (const t of tickers) {
         if (!quotes[t] || fresh[t] != null || manualEps[t] != null) continue;
-        const te = trailingEpsFromQuarters(store.eps[t], quotes[t].currency);
+        const te = trailingEpsFromQuarters(store.eps[t], quotes[t].currency, rates);
         if (te != null) { quotes[t].eps = te; quotes[t].epsDerived = true; derivedEps++; }
     }
     if (derivedEps) console.log(`ok   trailing EPS summed from quarters for ${derivedEps} ticker(s)`);
@@ -1245,7 +1271,7 @@ async function main() {
             delete quotes[t].epsFwd;
             fwdDropped++;
         }
-        const rec = recurringTtmFrom(store.eps[t], quotes[t].currency);
+        const rec = recurringTtmFrom(store.eps[t], quotes[t].currency, rates);
         if (rec != null) { quotes[t].normEps = rec; quotes[t].normEpsThru = lastQuarterDate(store.eps[t]); recFiled++; continue; }
         const ne = normEpsFrom(store.eps[t], quotes[t].eps);
         if (ne != null) quotes[t].normEps = ne;
@@ -1337,7 +1363,10 @@ function selftest() {
         { date: '2026-03-31', rev: 1, eps: 5.11, ni: 62578000000, norm: 32708508190 },
         { date: '2026-06-30', rev: 1, eps: 9.11, ni: 112193000000, norm: 32232249000 }] };
     assert.ok(Math.abs(recurringTtmFrom(goog, 'USD') - 10.11) < 0.02);   // vs 10.47 from SEC filings
-    assert.strictEqual(recurringTtmFrom(goog, 'TWD'), null);             // ADR: absolute sum needs one currency
+    // A different quote currency is now converted, not refused — but only with a rate for both.
+    assert.ok(Math.abs(recurringTtmFrom(goog, 'TWD', { USD: 1, TWD: 32 }) - 10.11 / 32) < 0.001);
+    assert.strictEqual(recurringTtmFrom(goog, 'TWD', { USD: 1 }), null);  // no TWD rate -> "–", not a wrong number
+    assert.strictEqual(recurringTtmFrom(goog, 'TWD'), null);              // no rates at all -> "–"
     assert.strictEqual(lastQuarterDate(goog), '2026-06-30');
     const short = { currency: 'USD', quarters: goog.quarters.slice(1) };
     assert.strictEqual(recurringTtmFrom(short, 'USD'), null);            // only three quarters
@@ -1419,7 +1448,19 @@ function selftest() {
         { date: '2025-03-31', eps: 10 }, { date: '2025-06-30', eps: 20 },
         { date: '2025-09-30', eps: 30 }, { date: '2025-12-31', eps: 40 }] });
     assert.strictEqual(trailingEpsFromQuarters(q4('KRW'), 'KRW'), 100);           // four quarters summed
-    assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD'), null);          // ADR: reporting != quote, refuse
+    // An ADR is summed in its reporting currency and converted, rather than refused outright.
+    // Kawasaki's own numbers: 57.23 JPY per ADR at 157.745 JPY/USD is 0.3628 USD against a $7.10
+    // price -> 19.6x, where the unconverted annual left it reading 21.5x.
+    const kwhiy = { currency: 'JPY', quarters: [
+        { date: '2025-09-30', eps: 8.54063 }, { date: '2025-12-31', eps: 20.9455 },
+        { date: '2026-03-31', eps: 20.2448 }, { date: '2026-06-30', eps: 7.49632 }] };
+    const usdEps = trailingEpsFromQuarters(kwhiy, 'USD', { USD: 1, JPY: 1 / 157.745 });
+    assert.ok(Math.abs(usdEps - 0.362783) < 1e-5);
+    assert.ok(Math.abs(7.1 / usdEps - 19.57) < 0.1);
+    // GBp falls out of rateFor for free: a GBP-reported EPS is 100x in a pence-quoted price.
+    assert.strictEqual(trailingEpsFromQuarters(q4('GBP'), 'GBp', { GBP: 1 }), 10000);
+    assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD', { USD: 1 }), null);   // no TWD rate -> "–"
+    assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD'), null);               // no rates -> "–"
     const hole = q4('KRW'); delete hole.quarters[2].eps;
     assert.strictEqual(trailingEpsFromQuarters(hole, 'KRW'), null);               // missing a quarter's EPS -> "–"
     assert.strictEqual(trailingEpsFromQuarters({ currency: 'KRW', quarters: q4('KRW').quarters.slice(1) }, 'KRW'), null); // only 3

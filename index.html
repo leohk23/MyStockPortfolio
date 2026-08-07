@@ -60,6 +60,10 @@
         /* ---- chart ---- */
         #chart-card { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 8px; margin-bottom: 22px; }
         #chart-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; margin-bottom: 8px; }
+        /* The back button stacks directly above the chart title with nothing between them. Margin
+           rather than a gap on the parent, because [hidden] takes it out of flow entirely — so the
+           portfolio view, where the button is not shown, keeps its spacing exactly as it was. */
+        #clear-wrap { margin-bottom: 8px; }
         #chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
         #chart-change { font-size: 18px; font-weight: 600; margin: 2px 0; }
         #chart-sub { font-size: 12px; color: var(--text-muted); }
@@ -1159,16 +1163,23 @@
                 const recEl = document.getElementById('deep-rec-eps');
                 const recPeEl = document.getElementById('deep-rec-pe');
                 if (recEl && recPeEl) {
-                    const sameCcy = e.currency && e.currency === leg.quote.currency;
+                    // Every quarter is filed in the company's ONE reporting currency, so summing
+                    // them is always sound and only the comparison to the price needs FX. Mirrors
+                    // recurringTtmFrom in fetch-prices.js — they must agree, or the table's Special
+                    // PE and this panel show two different recurring multiples for one stock.
+                    const fxRep = rateOf(e.currency), fxQuote = rateOf(leg.quote.currency);
+                    const fx = !e.currency || e.currency === leg.quote.currency ? 1
+                        : (fxRep > 0 && fxQuote > 0 ? fxRep / fxQuote : null);
                     const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
                     const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
                     let recEps = null, recPe = null, note = '', tag = '';
-                    if (tRec.v != null && sameCcy) {
-                        recEps = tRec.v;
+                    if (tRec.v != null && fx != null) {
+                        recEps = tRec.v * fx;
                         // A loss-making recurring year has no meaningful multiple — same rule
                         // troughPe uses. Show the negative EPS, withhold the P/E.
-                        recPe = tRec.v > 0 ? leg.quote.price / tRec.v : null;
+                        recPe = recEps > 0 ? leg.quote.price / recEps : null;
                         note = `Sum of the recurring EPS of the four filed quarters ended ${ymd(ttmQ[3].date)}, `
+                            + (fx === 1 ? '' : `converted from ${e.currency} into ${leg.quote.currency}, `)
                             + `against today's price. One-off items (investment gains, asset sales) removed.`;
                         tag = `filed · ${qShort(ttmQ[3].date)}`;
                     } else if (recRatio != null && aligned && leg.quote.eps != null) {
