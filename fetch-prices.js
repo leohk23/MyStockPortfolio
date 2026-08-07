@@ -410,6 +410,130 @@ async function fetchAnnualEps(ticker, { crumb, cookie }, attempts = 3) {
     throw lastErr;
 }
 
+// ---- quarterly statements, second source ------------------------------------------------
+//
+// fundamentals-timeseries is the only quarterly source above, and for most non-US filers it
+// holds almost nothing: every Japanese name in this book comes back with exactly ONE quarter
+// (Toto, Donki, Itochu, Kawasaki, Tokio Marine, Capcom, Ajinomoto, Shin-Etsu, Mitsubishi Heavy),
+// leaving the Financials panel a year stale and the trailing multiple stuck on the last annual.
+// Asking for the local line instead of the ADR does not help — both symbols return byte-identical
+// results — and neither does splitting annual and quarterly into separate requests. The data is
+// simply not on that endpoint.
+//
+// quoteSummary's incomeStatementHistoryQuarterly has four fresh quarters for those same names, so
+// it runs as a FALLBACK: only when the first source came back thin, and only for what it actually
+// carries. Of its twenty-odd fields exactly two are real — totalRevenue and netIncome. The rest
+// are either absent or a placeholder ZERO (costOfRevenue, grossProfit, ebit, incomeTaxExpense all
+// read 0 for companies that plainly have them), so storing them would put fabricated zeroes on the
+// page. Operating income is not available at all; those quarters keep an empty Op income cell.
+const QUARTER_FALLBACK_MODULES = 'incomeStatementHistoryQuarterly,earningsHistory';
+
+async function fetchQuarterlyFallback(ticker, { crumb, cookie }, attempts = 2) {
+    const sym = encodeURIComponent(ticker);
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}`
+        + `?modules=${QUARTER_FALLBACK_MODULES}&crumb=${encodeURIComponent(crumb)}`;
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const r = (await res.json()).quoteSummary?.result?.[0] || {};
+            const num = v => (typeof v?.raw === 'number' ? v.raw : null);
+            const rows = (r.incomeStatementHistoryQuarterly?.incomeStatementHistory || [])
+                .map(x => ({ date: x.endDate?.fmt, rev: num(x.totalRevenue), ni: num(x.netIncome) }))
+                .filter(x => x.date);
+            // Filed per-share EPS, where Yahoo has it. Populated on local lines and empty on every
+            // ADR in this book, which is why derivation below is not optional.
+            const eps = {};
+            for (const h of r.earningsHistory?.history || [])
+                if (h.quarter?.fmt && typeof h.epsActual?.raw === 'number') eps[h.quarter.fmt] = h.epsActual.raw;
+            return { rows, eps };
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
+}
+
+// Turn a fallback response into quarter rows fit to merge — or into nothing at all.
+//
+// Pure, so every guard below is selftested. Each one is here because a real ticker failed it:
+//
+//  - MKS.L answers with quarters ending 2022-03-31..2023-03-31 while its filed annuals run to
+//    2026. A feed three years behind must not be merged as if it were current, so a whole set
+//    whose newest quarter does not beat the latest filed year is refused outright.
+//  - MC.PA, OR.PA and RMS.PA return quarterly revenue with net income NULL — correct, because
+//    they publish revenue quarterly and profit half-yearly. Those quarters keep their revenue
+//    and simply have no net income, rather than being dropped or zero-filled.
+//  - A quarter cannot out-earn its own fiscal year. Revenue above the filed annual is the shape
+//    a units slip takes, and it kills the whole set rather than one row.
+//
+// EPS is taken filed-first and derived only otherwise, as ni x (annualEps / annualNi) — the same
+// rebasing normaliseEps already does, and it lands on the store's OWN basis, so an ADR gets ADR
+// EPS with no ratio to apply and nothing to mis-map. Checked against Kawasaki's filed figures:
+// derived 18.74 / 52.41 / 21.30 against filed 18.74 / 52.362 / 21.354.
+const FALLBACK_REV_TOLERANCE = 1.05;   // a quarter may not exceed its own filed year, +5% slack
+// How far behind its own filed year end a company's newest quarter may sit before the feed is
+// stale rather than merely between results. A quarterly reporter reaches its year end within one
+// cycle, so ~2 quarters of slack separates the two cases cleanly: Tokio Marine's newest quarter
+// lands exactly ON its year end (0 days — a real, complete set worth taking), while M&S is 1096
+// days behind (three years of 2022-23 figures that must never reach the page). Requiring the
+// newest quarter to BEAT the filed year looks tighter but throws Tokio Marine away and then
+// re-asks for it every sweep, forever.
+const FALLBACK_STALE_DAYS = 200;
+const quartersStale = (newest, latestYear) =>
+    (Date.parse(latestYear) - Date.parse(newest)) / 864e5 > FALLBACK_STALE_DAYS;
+
+function fallbackQuarters(fresh, entry) {
+    const years = (entry?.years || []).filter(y => y.date);
+    if (!years.length) return [];                       // no filed basis to check or rebase against
+    const latestYear = years[years.length - 1].date;
+    const rows = (fresh?.rows || []).filter(r => r.rev > 0).sort((a, b) => a.date.localeCompare(b.date));
+    if (!rows.length) return [];
+    if (quartersStale(rows[rows.length - 1].date, latestYear)) return [];        // MKS.L
+
+    // Its fiscal year is the first year end at or after the quarter — the same rule check-interim
+    // uses. A quarter PAST the last filed year has no such year, and that is exactly the quarter
+    // this fallback exists to add, so it falls back to the latest filed year rather than going
+    // unchecked: one quarter still cannot out-earn a full year, whichever year you pick.
+    for (const r of rows) {
+        const fy = years.find(y => y.date >= r.date) || years[years.length - 1];
+        if (fy?.rev > 0 && r.rev > fy.rev * FALLBACK_REV_TOLERANCE) return [];
+    }
+
+    // Rebase anchor: the newest year carrying both a positive EPS and a positive net income.
+    const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
+    // Yahoo's quarterly netIncome is total net income. Only mirror it into `nic` (what the panel
+    // shows) for companies whose filed annuals report the two identically — true for every name
+    // this fallback serves, false in general, and guessing would misstate a minority interest.
+    const sameNi = years.every(y => y.ni == null || y.nic == null || y.ni === y.nic)
+        && years.some(y => y.ni != null && y.nic != null);
+
+    return rows.map(r => {
+        const q = { date: r.date, rev: r.rev };
+        if (r.ni != null && r.ni !== 0) {
+            q.ni = r.ni;
+            if (sameNi) q.nic = r.ni;
+            const filed = fresh.eps?.[r.date];
+            if (typeof filed === 'number') q.eps = filed;
+            else if (anchor) { q.eps = Number((r.ni * anchor.eps / anchor.ni).toPrecision(6)); q.epsDerived = true; }
+        }
+        return q;
+    });
+}
+
+// Worth a second request? Only when the first source left this company short of the four quarters
+// the panel compares, or left its newest quarter behind its own filed year. A name Yahoo serves
+// properly (every US holding) never triggers it.
+function needsQuarterFallback(entry) {
+    const q = (entry?.quarters || []).filter(x => x.date);
+    if (!(entry?.years || []).length) return false;                 // a fund has no quarters to want
+    if (q.length < 4) return true;
+    // Same staleness test the merge uses, so a name that has been filled stops being asked.
+    return quartersStale(q[q.length - 1].date, entry.years[entry.years.length - 1].date);
+}
+
 // Put every year's EPS on the LATEST year's share basis — the same basis Yahoo's split-adjusted
 // price series uses.
 //
@@ -538,7 +662,9 @@ const EARNINGS_SWEEP_DAYS = 30;
 //      names already stored pick up their quarters instead of waiting on the monthly sweep.
 // v8 = + normalized (one-off-stripped) net income, for the recurring-earnings Special P/E.
 // v9 = + quarterly normalized income, for recurring EPS on the quarter rows.
-const EARNINGS_V = 9;
+// v10 = + quarters from quoteSummary where fundamentals-timeseries has none (every Japanese
+//       filer, Nintendo included). Forces one sweep so those names fill in immediately.
+const EARNINGS_V = 10;
 
 function loadEarnings() {
     try { return JSON.parse(fs.readFileSync(EARNINGS, 'utf8')); }
@@ -942,10 +1068,26 @@ async function main() {
     if (toFetch.length) {
         console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`
             + ` (${sweeping ? 'monthly sweep' : 'awaiting results / new'})`);
-        let failed = 0;
+        let failed = 0, filled = 0;
         for (const t of toFetch) {
             try {
                 const merged = mergeEarnings(store.eps[t], await fetchAnnualEps(t, auth));
+                // Second source, only for the names the first one left short — see
+                // needsQuarterFallback. A failure here is not fatal: the annual figures just
+                // fetched are still worth storing, so it warns and moves on.
+                if (needsQuarterFallback(merged)) {
+                    try {
+                        await sleep();
+                        const extra = fallbackQuarters(await fetchQuarterlyFallback(t, auth), merged);
+                        if (extra.length) {
+                            const before = (merged.quarters || []).length;
+                            merged.quarters = mergeSeries(merged.quarters, extra).slice(-8);
+                            if (merged.quarters.length > before) filled++;
+                        }
+                    } catch (e2) {
+                        console.error(`     quarterly fallback ${t}: ${e2.message} — annual figures kept`);
+                    }
+                }
                 // Stamped per ticker so a company that is due but never delivers (NW0.DE) backs
                 // off to one look a day instead of one an hour.
                 store.eps[t] = { ...merged, checked: new Date().toISOString() };
@@ -962,6 +1104,7 @@ async function main() {
         if (sweeping) store.updated = new Date().toISOString();
         fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
         console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers`
+            + `${filled ? `, ${filled} filled quarters from quoteSummary` : ''}`
             + `${failed ? `, ${failed} failed and will retry` : ''})`);
     } else {
         console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
@@ -1203,6 +1346,73 @@ function selftest() {
     const loss = JSON.parse(JSON.stringify(goog));
     loss.quarters.forEach(x => { x.norm = -x.norm; });
     assert.strictEqual(recurringTtmFrom(loss, 'USD'), null);             // loss-making: no multiple
+
+    // ---- quarterly fallback (quoteSummary) ----
+    // Kawasaki's real numbers: FY2026 net income 108.157B against EPS 129.41 per ordinary share.
+    const kawa = {
+        currency: 'JPY',
+        years: [{ date: '2025-03-31', rev: 2129321e6, ni: 88001e6, nic: 88001e6, eps: 105.088 },
+                { date: '2026-03-31', rev: 2311267e6, ni: 108157e6, nic: 108157e6, eps: 129.41 }],
+    };
+    const kawaFresh = {
+        rows: [{ date: '2025-09-30', rev: 507800e6, ni: 17800e6 },
+               { date: '2025-12-31', rev: 565100e6, ni: 43800e6 },
+               { date: '2026-03-31', rev: 749800e6, ni: 42300e6 },
+               { date: '2026-06-30', rev: 543576e6, ni: 15663e6 }],
+        eps: { '2026-06-30': 18.74 },                        // filed for one quarter, absent for the rest
+    };
+    const kq = fallbackQuarters(kawaFresh, kawa);
+    assert.strictEqual(kq.length, 4);
+    assert.strictEqual(kq[3].eps, 18.74);                    // filed EPS wins
+    assert.strictEqual(kq[3].epsDerived, undefined);         // ...and is not marked derived
+    assert.ok(kq[1].epsDerived);                             // the rest are derived from net income
+    assert.ok(Math.abs(kq[1].eps - 52.362) / 52.362 < 0.01); // ...to within 1% of what was filed
+    assert.strictEqual(kq[0].nic, 17800e6);                  // ni mirrored: this filer reports them equal
+    assert.strictEqual(kq[0].rev, 507800e6);
+
+    // Derivation lands on the STORE's basis, so an ADR needs no ratio applied: the same net income
+    // against KWHIY's ADR-basis annual EPS (51.764 = 129.41 x 0.4) yields ADR-basis quarters.
+    const kawaAdr = { currency: 'JPY', years: kawa.years.map(y => ({ ...y, eps: y.eps * 0.4 })) };
+    const aq = fallbackQuarters({ rows: kawaFresh.rows, eps: {} }, kawaAdr);
+    assert.ok(Math.abs(aq[3].eps - 18.74 * 0.4) < 0.01);
+
+    // MKS.L: quarters three years behind the filed annuals — the whole set is refused.
+    assert.deepStrictEqual(fallbackQuarters(
+        { rows: [{ date: '2022-12-31', rev: 3.6e9, ni: 1e8 }, { date: '2023-03-31', rev: 2.8e9, ni: 1e8 }], eps: {} },
+        { years: [{ date: '2026-03-31', rev: 17.3e9, ni: 3e8, eps: 10 }] }), []);
+    // TKOMY: newest quarter lands exactly ON the filed year end. Complete, not stale — taken.
+    const tkomy = fallbackQuarters(
+        { rows: [{ date: '2025-09-30', rev: 2e12, ni: 3e11 }, { date: '2026-03-31', rev: 2e12, ni: 3e11 }], eps: {} },
+        { years: [{ date: '2026-03-31', rev: 8e12, ni: 1.1e12, nic: 1.1e12, eps: 100 }] });
+    assert.strictEqual(tkomy.length, 2);
+    assert.strictEqual(needsQuarterFallback({ years: [{ date: '2026-03-31', rev: 8e12, ni: 1e12, eps: 100 }],
+        quarters: ['2025-06-30', '2025-09-30', '2025-12-31', '2026-03-31'].map(date => ({ date })) }), false);
+    // MC.PA: quarterly revenue, no quarterly profit. Revenue is kept; nothing is invented.
+    const lvmh = fallbackQuarters(
+        { rows: [{ date: '2026-06-30', rev: 19.5e9, ni: null }], eps: {} },
+        { years: [{ date: '2025-12-31', rev: 80.8e9, ni: 10.9e9, nic: 10.9e9, eps: 21 }] });
+    assert.strictEqual(lvmh.length, 1);
+    assert.strictEqual(lvmh[0].rev, 19.5e9);
+    assert.strictEqual(lvmh[0].eps, undefined);
+    assert.strictEqual(lvmh[0].ni, undefined);
+    // A units slip — a quarter out-earning its own year — kills the set rather than one row.
+    assert.deepStrictEqual(fallbackQuarters(
+        { rows: [{ date: '2026-06-30', rev: 2311267e9, ni: 15663e6 }], eps: {} }, kawa), []);
+    // No filed annuals: nothing to check against or rebase through, so nothing is taken.
+    assert.deepStrictEqual(fallbackQuarters(kawaFresh, { years: [] }), []);
+    // ni is NOT mirrored into nic for a filer that reports them differently.
+    const minority = fallbackQuarters({ rows: [{ date: '2026-06-30', rev: 1e9, ni: 1e8 }], eps: {} },
+        { years: [{ date: '2026-03-31', rev: 9e9, ni: 9e8, nic: 8e8, eps: 5 }] });
+    assert.strictEqual(minority[0].ni, 1e8);
+    assert.strictEqual(minority[0].nic, undefined);
+
+    // Who gets a second request: short of four quarters, or newest quarter behind the filed year.
+    assert.strictEqual(needsQuarterFallback(kawa), true);                        // no quarters at all
+    assert.strictEqual(needsQuarterFallback({ ...kawa, quarters: kq }), false);  // four fresh ones
+    assert.strictEqual(needsQuarterFallback({ years: [] }), false);              // a fund is never short
+    assert.strictEqual(needsQuarterFallback({ ...kawa,
+        quarters: ['2024-06-30', '2024-09-30', '2024-12-31', '2025-03-31'].map(date => ({ date })) }),
+        true);                                                                   // four, but all stale
 
     // trailingEpsFromQuarters: sum four clean quarters, in the quote's currency only.
     const q4 = c => ({ currency: c, quarters: [

@@ -1,7 +1,7 @@
 {
  "_note": {
   "what": "Half-year (interim) results, typed by hand from the company's own results announcement. Yahoo publishes NOTHING sub-annual for semi-annual reporters — not on the local line, not on the OTC ADR, not in any quoteSummary module — so without this file those names sit on a figure up to twelve months old.",
-  "who": "Companies that report twice a year rather than four times: the HK Main Board issuers (HKEx requires interim + annual, not quarterly) plus the French and UK names and Nintendo. Run `npm run interim` for the current list and what is missing.",
+  "who": "Companies that report twice a year rather than four times: the HK Main Board issuers (HKEx requires interim + annual, not quarterly) plus M&S. Run `npm run interim` for the current list and what is missing — it is derived from the store, never a hardcoded list, so a name drops off by itself once quarters appear for it. Nintendo and the French names were on this list until quoteSummary started supplying their quarters; absence of quarterly data in one Yahoo endpoint is NOT evidence a company reports semi-annually, which is why the list is worth re-reading rather than trusting from memory.",
   "shape": "One array per Yahoo symbol, oldest first. Amounts are in the company's REPORTING currency, as filed, in full units (not millions) — the same convention as earnings.json, which is what the page compares them against.",
   "fields": {
    "end": "Period end, YYYY-MM-DD (the H1 balance date, e.g. 2026-06-30).",
