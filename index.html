@@ -277,6 +277,22 @@
            its whole text along with the horizontal scroll, so it opts out. */
         tr.trade-detail td { position: static; background: var(--surface-3); border-right: 0; }
 
+        /* ---- position size as a bar in the name cell ----
+           The Mix column already carries the exact number; this makes the SHAPE of the portfolio
+           scannable without reading 53 percentages.
+           Along the bottom edge rather than as a full-height wash: the muted "(3 trades)" text
+           sits at 4.6:1 on this surface, so any tint behind it drops it under 4.5:1, while a
+           bottom bar costs no contrast at all.
+           Width is relative to the LARGEST visible row, not to 100% of the portfolio — the top
+           holding is ~11%, so an absolute scale would render every row as a stub and the bottom
+           thirty as nothing. It encodes rank and relative size, which is the question the bar
+           answers; the Mix column answers "how much". */
+        #portfolio tr.group td:first-child::after,
+        #portfolio tr.leg td:first-child::after {
+            content: ''; position: absolute; left: 0; bottom: 0; height: 3px;
+            width: var(--mix, 0); background: var(--series-port); pointer-events: none;
+        }
+
         /* Chevron at the END of the position name. */
         .chev { font: inherit; color: var(--text-muted); background: none; border: 0; padding: 0;
             margin-left: 6px; display: inline-block; width: 14px; cursor: pointer; }
@@ -430,7 +446,7 @@
                     <th data-sort="gain">Gain/Loss</th>
                     <th data-sort="realized">Realized</th>
                     <th data-sort="gainPct">%</th>
-                    <th data-sort="value">Mix</th>
+                    <th data-sort="value" title="Share of the whole portfolio by value. The bar under each position name shows the same thing relative to the largest row on screen — a full bar is the biggest holding, not 100%.">Mix</th>
                     <th data-sort="yield" title="Yahoo trailing 12-month dividends divided by current price">Yield TTM</th>
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
@@ -1867,6 +1883,10 @@
         function renderTable() {
             const total = STATE.total;          // Mix is always a share of the WHOLE portfolio
             const shown = sortedRows();
+            // The name-cell bar is scaled to the biggest row on screen, so it always uses the full
+            // width whatever is filtered in. Recomputed per render because search changes the set.
+            const maxV = Math.max(0, ...shown.map(r => r.value));
+            const bar = v => (maxV > 0 && v > 0 ? `${(v / maxV * 100).toFixed(2)}%` : '0');
             const tbody = document.querySelector('#portfolio tbody');
             tbody.innerHTML = '';
             for (const r of shown) {
@@ -1875,6 +1895,7 @@
                 const expandable = multi || trades.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = 'group';
+                tr.style.setProperty('--mix', bar(r.value));
                 tr.dataset.yahoo = r.primaryYahoo;
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
@@ -1907,6 +1928,7 @@
                 const legRows = multi ? r.legs.map(leg => {
                     const el = document.createElement('tr');
                     el.className = 'leg';
+                    el.style.setProperty('--mix', bar(leg.value));
                     el.dataset.yahoo = leg.yahoo;
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
