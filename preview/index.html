@@ -419,6 +419,7 @@
                     <th data-sort="ytd">YTD</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
+                    <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
                     <th data-sort="cost">Cost</th>
                     <th data-sort="value" aria-sort="descending">Value</th>
                     <th data-sort="gain">Gain/Loss</th>
@@ -1803,6 +1804,9 @@
         const sortValue = (row, key) => {
             if (portfolioLib.PERIODS.includes(key)) return row.moves[key];
             if (key === 'tradeDate') return row.lastTrade ? row.lastTrade.date : '';
+            // Shares only add up within one listing — an ADR and its local line count different
+            // things — so a multi-leg row has no share count, and sorts to the bottom like a blank.
+            if (key === 'qty') return row.legs.length === 1 ? row.legs[0].qty : null;
             return row[key];
         };
         function sortedRows() {
@@ -1870,15 +1874,13 @@
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
-                        // Stock view is one row per instrument, so the bracket says what you hold
-                        // rather than how many times you traded to get there — the position is the
-                        // fact you want at a glance; the trade count is still in the expanded rows.
-                        : trades.length ? ` <span class="muted" title="${trades.length} trade${trades.length === 1 ? '' : 's'}">(${num2(r.legs[0].qty)} sh)</span>` : ''}
+                        : trades.length ? ` <span class="muted">(${trades.length} trade${trades.length === 1 ? '' : 's'})</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
+                    <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? num2(r.legs[0].qty) : '–'}</td>
                     <td>${money(r.cost)}</td>
                     <td>${money(r.value)}</td>
                     <td class="${cls(r.gain)}">${money(r.gain)}</td>
@@ -1908,6 +1910,7 @@
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
+                        <td>${num2(leg.qty)}</td>
                         <td>${money(leg.cost)}</td>
                         <td>${money(leg.value)}</td>
                         <td class="${cls(gain)}">${money(gain)}</td>
@@ -1931,7 +1934,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="26">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="27">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
