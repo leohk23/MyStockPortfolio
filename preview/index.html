@@ -306,6 +306,12 @@
     <section id="chart-card">
         <div id="chart-head">
             <div>
+                <!-- Only way back to the whole portfolio used to be clicking the selected row a
+                     second time, which means scrolling down to find it again once you are up here
+                     reading the chart. That row toggle is unchanged; this is a second way in. -->
+                <div class="btns" id="clear-wrap" hidden>
+                    <button id="clear-sel" type="button" title="Back to the whole portfolio (Esc)">← Portfolio</button>
+                </div>
                 <div id="chart-title">Portfolio value</div>
                 <div id="chart-change">–</div>
                 <div id="chart-sub">–</div>
@@ -1584,6 +1590,7 @@
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
+            document.getElementById('clear-wrap').hidden = !selected;
             renderDeep();
             syncURL();
             if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
@@ -1633,6 +1640,16 @@
             const same = !chartGroup && chartSel === yahoo;
             chartGroup = null;
             chartSel = same ? null : yahoo; // click again to return to portfolio
+            markSelectedRow();
+            updateChart();
+        }
+        // Leave the individual view without hunting for the row again. Deliberately ADDITIVE:
+        // clicking the selected row a second time still deselects exactly as before, so the habit
+        // that already works keeps working — this just removes the scroll back down to use it.
+        function clearSelection() {
+            if (!chartSel && !chartGroup) return;
+            chartSel = null;
+            chartGroup = null;
             markSelectedRow();
             updateChart();
         }
@@ -2136,6 +2153,15 @@
                 renderWatchlist();
                 updateChart();
             }));
+
+        document.getElementById('clear-sel').addEventListener('click', clearSelection);
+        // Esc is what a reader already expects for "close this and give me the overview", and it
+        // costs nothing on top of the button. Ignored while typing in the filter box, where Esc
+        // belongs to the search input's own clear.
+        document.addEventListener('keydown', ev => {
+            if (ev.key !== 'Escape' || ev.target.id === 'search') return;
+            clearSelection();
+        });
 
         document.querySelectorAll('#portfolio th[data-sort]').forEach(th =>
             th.addEventListener('click', () => {
