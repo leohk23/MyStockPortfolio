@@ -60,6 +60,10 @@
         /* ---- chart ---- */
         #chart-card { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 8px; margin-bottom: 22px; }
         #chart-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; margin-bottom: 8px; }
+        /* The back button stacks directly above the chart title with nothing between them. Margin
+           rather than a gap on the parent, because [hidden] takes it out of flow entirely — so the
+           portfolio view, where the button is not shown, keeps its spacing exactly as it was. */
+        #clear-wrap { margin-bottom: 8px; }
         #chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
         #chart-change { font-size: 18px; font-weight: 600; margin: 2px 0; }
         #chart-sub { font-size: 12px; color: var(--text-muted); }
