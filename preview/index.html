@@ -734,8 +734,23 @@
             }
             if (!(lo > 0)) return null;
             return { epsLo: lo, epsHi: hi, peLo: price / hi, peHi: price / lo, basis,
-                issued: g.issued, period: g.period, asIssued: metric('EPS', 'Diluted EPS') };
+                issued: g.issued, period: g.period, periodEnd: g.periodEnd, asIssued: metric('EPS', 'Diluted EPS') };
         };
+
+        // Reported rows are labelled by the year the fiscal year ENDS: 2026-03-31 becomes "2026".
+        // Japanese companies label a forecast by the year it BEGINS, so Kawasaki's own "FY2026" is
+        // the year ending March 2027 — which rendered as "FY26E" directly beneath the reported 2026
+        // row and read as the same period restated, when it is in fact the year after. Nine names in
+        // this book do that. Where guidance.json records the period's END date, label from that so
+        // the two conventions cannot collide; the company's own label stays in the file, and in the
+        // tooltip, so any figure can still be traced back to its statement.
+        const periodLabel = g => g?.periodEnd
+            ? `FY${g.periodEnd.slice(2, 4)}E`
+            : `${String(g?.period || '').replace('FY20', 'FY')}E`;
+        // Say so explicitly wherever the company's label and the displayed one disagree.
+        const periodAka = g => g?.periodEnd && periodLabel(g) !== `${String(g.period || '').replace('FY20', 'FY')}E`
+            ? ` The company labels this ${g.period}, counting the year from its April start; it ends ${ymd(g.periodEnd)}.`
+            : '';
 
         // Fit guidance into the filed-financials columns. Missing company-guided accounts stay
         // blank; only NVIDIA's explicit runRatePe inputs derive the absent accounts.
@@ -755,14 +770,15 @@
                 metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null,
             ];
             const source = String(g.source || '');
-            const label = `${g.period.replace('FY20', 'FY')}E`;
+            const label = periodLabel(g);
+            const issuedTitle = `Official guidance issued ${ymd(escapeHTML(g.issued))}.${periodAka(g)}`;
             const first = source.startsWith('https://')
-                ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="Official guidance issued ${ymd(escapeHTML(g.issued))}">${escapeHTML(label)}</a>`
-                : escapeHTML(label);
+                ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="${escapeHTML(issuedTitle)}">${escapeHTML(label)}</a>`
+                : `<span title="${escapeHTML(issuedTitle)}">${escapeHTML(label)}</span>`;
             const cells = values.map(v => `<td>${v == null ? '<span class="muted">–</span>' : escapeHTML(v)}</td>`).join('');
             const horizon = /^Q\d/.test(g.period)
                 ? `${g.period} is one quarter; reported rows are full fiscal years.`
-                : `${g.period} is a full-year forecast.`;
+                : `${label.replace(/E$/, '')} is a full-year forecast${g.periodEnd ? `, for the year ending ${ymd(g.periodEnd)}` : ''}.${periodAka(g)}`;
             const notes = [
                 `Guidance: ${horizon}`,
                 ...(g.note ? [`Assumption: ${g.note}`] : []),
@@ -796,7 +812,10 @@
 
             Promise.all([loadEarnings(), loadGuidance(), loadInterim()]).then(([store, guidanceStore, interimStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
-                const e = store.eps[leg.yahoo];
+                // Per RECEIPT, as Yahoo returns it — what the Valuation panel needs, because it
+                // divides by the ADR's own price. The table below wants the company's own basis.
+                const eRaw = store.eps[leg.yahoo];
+                const e = portfolioLib.onUnderlying(eRaw, leg.adrShares);
                 const gRaw = guidanceStore[leg.yahoo];
                 const guidance = guidanceView(gRaw, leg.quote.price);
                 const guidePe = document.getElementById('deep-guidance-pe');
@@ -805,13 +824,13 @@
                 // runRatePe annualises a guided QUARTER from revenue/margin/opex inputs; everyone
                 // else with a full-year forecast goes through guided net income. Prefer the
                 // company's own full-year number where both somehow exist.
-                const gy = guidedEpsPe(gRaw, leg, e);
+                const gy = guidedEpsPe(gRaw, leg, eRaw);   // per receipt: it is priced against the ADR
                 const range = (lo, hi, unit) => lo == null ? null
                     : Math.abs(hi / lo - 1) < 0.005 ? num2(lo) + unit : `${num2(lo)}–${num2(hi)}${unit}`;
                 if (gy && guideEps && guidePe) {
                     document.getElementById('deep-guidance-eps-row').hidden = false;
                     document.getElementById('deep-guidance-pe-row').hidden = false;
-                    const label = String(gy.period || '').replace('FY20', 'FY') + 'E';
+                    const label = periodLabel(gy);   // same end-year convention as the table
                     const tag = `<span class="tag" title="${escapeHTML(leg.quote.currency)} per ${escapeHTML(leg.quote.currency === (e?.currency || '') ? 'share' : 'quoted unit')}, from ${escapeHTML(gy.basis)}. The company's own figure as issued is ${escapeHTML(gy.asIssued || 'not given per share')}, which is stated per ordinary share and in the reporting currency — not directly comparable to this price.">${escapeHTML(label)}</span>`;
                     guideEps.innerHTML = `${leg.quote.currency} ${range(gy.epsLo, gy.epsHi, '')} ${tag}`;
                     guidePe.innerHTML = `${range(gy.peLo, gy.peHi, '×')} ${tag}`;
@@ -1166,6 +1185,7 @@
                     // it can be eleven months stale — the reader cannot tell the difference between
                     // "nothing has happened" and "nothing has been published since".
                     ...(cadenceNote ? [cadenceNote] : []),
+                    ...(leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ])}`;
