@@ -243,18 +243,23 @@
            needs its OWN opaque background or the scrolled columns show straight through it —
            hence every row state has to repaint it: default, hover, leg, and selected (whose
            translucent blue is re-composited over the row colour beneath it). */
-        /* Three pinned columns: the name, the price and the day's move. The offsets can't be
-           written in CSS because the name column is content-width — pinColumns() measures the
-           live header and sets --pin2/--pin3. Until it runs they are 0, which stacks the three
-           harmlessly rather than scattering them. */
         th:first-child, td:first-child { position: sticky; left: 0; }
-        th:nth-child(2), td:nth-child(2) { position: sticky; left: var(--pin2, 0); }
-        th:nth-child(3), td:nth-child(3) { position: sticky; left: var(--pin3, 0); }
-        /* Only the LAST pinned column carries the divider, so the group reads as one block. */
-        th:nth-child(3), td:nth-child(3) { border-right: 1px solid var(--line); }
-        td:first-child, td:nth-child(2), td:nth-child(3) { background: var(--surface-1); z-index: 1; }
+        td:first-child { background: var(--surface-1); z-index: 1; }
         th { z-index: 2; }                  /* header row sits above the pinned body cells */
-        th:first-child, th:nth-child(2), th:nth-child(3) { z-index: 3; }   /* ...corners above both */
+        th:first-child { z-index: 3; }      /* ...corner above both */
+
+        /* The price and the day's move pin too, but ONLY on the two wide tables — hence .pinned.
+           Every other table on the page (Financials, the quarter table, the floating Total clone)
+           is narrow, never scrolls sideways and has no --pin2/--pin3, so unscoped these rules
+           pinned its first three columns at left:0 on top of each other and drew a divider down
+           the middle of it. The offsets can't be written in CSS because the name column is
+           content-width — pinColumns() measures the live header and sets --pin2/--pin3. Until it
+           runs they are 0, which stacks the three harmlessly rather than scattering them. */
+        .pinned th:nth-child(2), .pinned td:nth-child(2) { position: sticky; left: var(--pin2, 0); }
+        .pinned th:nth-child(3), .pinned td:nth-child(3) { position: sticky; left: var(--pin3, 0);
+            border-right: 1px solid var(--line); }   /* only the LAST pinned column carries it */
+        .pinned td:nth-child(2), .pinned td:nth-child(3) { background: var(--surface-1); z-index: 1; }
+        .pinned th:nth-child(2), .pinned th:nth-child(3) { z-index: 3; }
         tr.group:hover td:first-child, tr.group:hover td:nth-child(2), tr.group:hover td:nth-child(3) { background: var(--surface-2); }
         tr.leg td:first-child, tr.leg td:nth-child(2), tr.leg td:nth-child(3) { background: var(--surface-3); }
         tr.leg:hover td:first-child, tr.leg:hover td:nth-child(2), tr.leg:hover td:nth-child(3) { background: var(--surface-2); }
@@ -267,7 +272,7 @@
             background: linear-gradient(rgba(57,135,229,.16), rgba(57,135,229,.16)), var(--surface-3);
         }
         /* tfoot is opaque in its own right, but the pinned cells still need repainting. */
-        tfoot td:first-child, tfoot td:nth-child(2), tfoot td:nth-child(3) { background: var(--surface-2); }
+        tfoot td:first-child, .pinned tfoot td:nth-child(2), .pinned tfoot td:nth-child(3) { background: var(--surface-2); }
         /* The expanded trade row is a single cell spanning every column. Pinning it would drag
            its whole text along with the horizontal scroll, so it opts out. */
         tr.trade-detail td { position: static; background: var(--surface-3); border-right: 0; }
@@ -405,7 +410,7 @@
     </div>
 
     <div class="table-responsive" id="holdings-table">
-        <table id="portfolio">
+        <table id="portfolio" class="pinned">
             <thead>
                 <tr>
                     <th data-sort="name">Position</th>
@@ -452,7 +457,7 @@
          the columns that mean something without a position — no cost, value, gain or weight.
          Clicking a row charts it and opens the same deep-dive panel as a holding. -->
     <div class="table-responsive" id="watch" hidden>
-        <table id="watchlist">
+        <table id="watchlist" class="pinned">
             <thead><tr>
                 <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th><th data-sort="pe">P/E</th><th data-sort="peLow">P/E Low</th>
                 <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
@@ -2014,9 +2019,9 @@
         // Called after every render and on resize; cheap (two reads, two writes, no layout thrash
         // beyond what the render already forced).
         function pinColumns() {
-            for (const id of ['portfolio', 'watchlist']) {
-                const table = document.getElementById(id);
-                const head = table?.tHead?.rows[0];
+            // Driven by the same .pinned class the CSS keys off, so the two can't drift apart.
+            for (const table of document.querySelectorAll('table.pinned')) {
+                const head = table.tHead?.rows[0];
                 if (!head || head.cells.length < 3) continue;
                 const w1 = head.cells[0].getBoundingClientRect().width;
                 const w2 = head.cells[1].getBoundingClientRect().width;
