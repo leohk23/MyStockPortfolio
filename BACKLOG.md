@@ -22,6 +22,14 @@ Xiaomi appears as both `XIACY` and `1810.HK`. The portfolio table de-duplicates 
 Quarters filled from `quoteSummary` ([fetch-prices.js](fetch-prices.js), `fallbackQuarters`) carry revenue and net income only — Yahoo's `incomeStatementHistoryQuarterly` returns `operatingIncome` as absent and several other fields as a placeholder zero. So Op income and Op margin are blank on those rows for every Japanese name.
 Not fixable from this endpoint. It would need a different source, and a blank cell is the correct rendering of "we do not know" in the meantime.
 
+### Point-in-time report dates for HK, beyond the latest period
+`npm run hkdates` now records each HK name's **latest** annual and interim announcement date from webb-database.com, and `check-interim` uses the interim lag instead of a flat 60-day window. What it does **not** give is history: the reporting-speed table carries one row per company, and the per-company pages carry no results dates at all.
+So `REPORT_LAG_DAYS = 90` in [fetch-prices.js](fetch-prices.js) is still a flat guess everywhere, including in `troughPe`, where a wrong date means a low is priced against earnings the market could not yet see. Real per-year dates for HK names would need the SQL dump at [github.com/renavondata/webbsite](https://github.com/renavondata/webbsite) — a bigger job than an HTML fetch, and worth sizing before starting.
+Actual HK lags for reference: **annual 57–89 days** (mean 78, against our assumed 90), **interim 43–60 days**.
+
+### CLP's interim row is anomalous
+webb-database reports 0002.HK's latest interim as period end **2026-01-31**, announced 2026-08-06, a 187-day lag — against a December year end, where the half-year should be 30 June. `check-interim` rejects it via `LAG_SANE` and falls back to the flat window, so nothing downstream is wrong. But it is unexplained: either a quirk in the source or something real about CLP's reporting that is worth understanding before relying on that row.
+
 ## Deliberate shortcuts already marked in the code
 
 These are `ponytail:` comments, not bugs — each names its own ceiling and upgrade path.

@@ -18,7 +18,28 @@ const read = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 // Results follow a period end by roughly one to three months; nothing is "late" before that.
 // Same shape of bounded window as the earnings due-check in fetch-prices.js.
+//
+// A fallback, now — the flat number is only used for a company we have no observed lag for. Where
+// `hk-results.json` records when a name ACTUALLY announced its last interim, that is used instead.
+//
+// The gain is accuracy, not earliness. Our HK names ran 43-60 days on H1 2025, so a per-company
+// window lands within a fortnight of the flat 60 in both directions: HK Electric (43d) is chased
+// three days sooner, BYD (60d) a fortnight later. What it removes is a guess that was three weeks
+// wrong at the fast end and nagging at the slow end.
 const DUE_AFTER_DAYS = 60;
+// Grace on top of a company's own observed lag before it counts as late. A filer that took 45 days
+// last year is not late on day 46.
+const LAG_GRACE_DAYS = 14;
+// An observed lag outside this is not a cadence, it is a data quirk — CLP comes back with a
+// 187-day interim against a period end that is not a half-year — so it falls back to the flat rule
+// rather than making a name look overdue (or immortal) on one bad row.
+const LAG_SANE = [20, 120];
+
+function observedDueDays(hk, ticker) {
+    const d = hk?.results?.[ticker]?.interim?.days;
+    if (!Number.isFinite(d) || d < LAG_SANE[0] || d > LAG_SANE[1]) return null;
+    return d + LAG_GRACE_DAYS;
+}
 
 const days = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 const addMonths = (iso, n) => {
@@ -53,14 +74,14 @@ function semiAnnualReporters(store, tracked) {
 //
 //   due      - past the reporting window AND newer than the last filed annual. Type these in.
 //   optional - superseded by an annual we already have. Adds a half-yearly trend, nothing more.
-function expectedInterims(entry, today) {
+function expectedInterims(entry, today, dueAfter = DUE_AFTER_DAYS) {
     const ends = (entry.years || []).map(y => y.date).sort();
     if (!ends.length) return { due: [], optional: [] };
     const latestFiled = ends[ends.length - 1];
     const all = new Set();
     for (const fy of ends.slice(-3)) all.add(addMonths(fy, -6));       // half-year of each filed year
     all.add(addMonths(addMonths(latestFiled, 12), -6));                // ...and of the year in progress
-    const ready = [...all].filter(d => days(today, d) >= DUE_AFTER_DAYS).sort();
+    const ready = [...all].filter(d => days(today, d) >= dueAfter).sort();
     return {
         due: ready.filter(d => d > latestFiled),
         optional: ready.filter(d => d <= latestFiled),
@@ -75,30 +96,43 @@ function main() {
     const tracked = [...new Set([...held, ...watched])];
     const today = new Date().toISOString().slice(0, 10);
 
+    // Optional: real announcement dates from webb-database.com (npm run hkdates). Absent is fine —
+    // every company then falls back to the flat window.
+    let hk = null;
+    try { hk = read('hk-results.json'); } catch { /* not fetched yet */ }
+
     const names = semiAnnualReporters(store, tracked);
+    const observed = names.filter(t => observedDueDays(hk, t) != null).length;
     console.log(`${names.length} semi-annual reporter(s) tracked. A company gets ${DUE_AFTER_DAYS} days `
-        + `after a half-year end before its interim counts as due.\n`);
+        + `after a half-year end before its interim counts as due`
+        + (observed ? `, or its OWN observed lag + ${LAG_GRACE_DAYS}d where webb-database.com has one `
+            + `(${observed} of them)` : '') + `.\n`);
 
     let missing = 0, optional = 0, have = 0, problems = [];
     for (const t of names) {
         const e = store[t];
         const rows = Array.isArray(interim[t]) ? interim[t] : [];
-        const want = expectedInterims(e, today);
+        const dueAfter = observedDueDays(hk, t) ?? DUE_AFTER_DAYS;
+        const want = expectedInterims(e, today, dueAfter);
         const got = new Set(rows.map(r => r.end));
         const gaps = want.due.filter(d => !got.has(d));
         const extras = want.optional.filter(d => !got.has(d));
         const latestFiled = e.years[e.years.length - 1].date;
 
+        const seen = hk?.results?.[t]?.interim;
         const flag = gaps.length ? 'NEEDS H1' : rows.length ? 'ok' : 'nothing due';
         console.log(`${t.padEnd(10)} ${(e.currency || '?').padEnd(4)} annual to ${latestFiled} `
-            + `(${days(today, latestFiled)}d old)  ${flag}`);
+            + `(${days(today, latestFiled)}d old)  ${flag}`
+            + (seen ? `   [last interim ${seen.end} announced ${seen.announced}, ${seen.days}d]` : ''));
         if (gaps.length) {
             missing += gaps.length;
             console.log(`           type in: ${gaps.join(', ')}   <- makes this name fresher`);
         } else if (!rows.length) {
             // Say WHEN it will be worth coming back, rather than leaving a silent "nothing to do".
             const nextEnd = addMonths(addMonths(latestFiled, 12), -6);
-            console.log(`           next H1 ends ${nextEnd}, due from ${addMonths(nextEnd, 2)}`);
+            const dueDate = new Date(Date.parse(nextEnd) + dueAfter * 864e5).toISOString().slice(0, 10);
+            console.log(`           next H1 ends ${nextEnd}, due from ${dueDate}`
+                + (observedDueDays(hk, t) != null ? '  (from its own last announcement)' : ''));
         }
         optional += extras.length;
 
@@ -151,6 +185,14 @@ if (require.main === module) {
         // HKEx gives Main Board issuers two months to announce, so nothing is chased inside that
         // window: 34 days past the 2026 half-year is not late...
         assert.deepStrictEqual(expectedInterims(e, '2026-08-03').due, []);
+        // A company's OWN observed lag replaces the flat window, moving the threshold in either
+        // direction. HK Electric announced H1 2025 in 43 days, so 43+14=57 chases it sooner; BYD
+        // took 60, so 60+14=74 stops nagging it early.
+        assert.deepStrictEqual(expectedInterims(e, '2026-08-29', 57).due, ['2026-06-30']);
+        assert.deepStrictEqual(expectedInterims(e, '2026-08-29', 74).due, []);
+        assert.strictEqual(observedDueDays({ results: { X: { interim: { days: 45 } } } }, 'X'), 59);
+        assert.strictEqual(observedDueDays({ results: { X: { interim: { days: 187 } } } }, 'X'), null);
+        assert.strictEqual(observedDueDays(null, 'X'), null);
         // ...77 days is, and that one IS newer than the last filed annual, so it earns its place.
         assert.deepStrictEqual(expectedInterims(e, '2026-09-15').due, ['2026-06-30']);
         // A quarterly reporter is not on the list; a fund (no EPS anywhere) is not either.

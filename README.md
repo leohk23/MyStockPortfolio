@@ -106,6 +106,12 @@ Sanity-check the run: it prints `wrote holdings.json: N instruments`, and the ne
 
 So a typo in `yahoo` fails the extract with a clear message instead of dropping the row from the live site.
 
+## Hong Kong results dates
+
+`npm run hkdates` records when each Hong Kong name last announced its annual and interim results, into `hk-results.json`. `npm run interim` then chases each company on its own observed cadence instead of a flat 60-day window. Run it by hand every few months — never from CI, which must not depend on a third party's HTML.
+
+Data from [webb-database.com](https://webb-database.com/dbpub/reportspeed.asp), which continues the **Webb-site Database** built by **David M Webb (1965–2026)** and released by him under **CC-BY 4.0**. Attribution is a condition of that licence. The original webb-site.com server closed on 31 October 2025. The source carries announcement *dates* only — no revenue, profit or EPS — so it does not fill the HK interim figures, which `interim.json` still takes by hand.
+
 ## Changing the watchlist
 
 `watchlist.json` (stocks you're weighing but don't own) is hand-maintained, so **`npm run extract` plays no part** — that reads the Tradelog only. Entries are `{ "yahoo": …, "name": …, "geography": … }`.

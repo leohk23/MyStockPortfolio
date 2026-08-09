@@ -11,7 +11,8 @@
     "start": "npx --yes serve .",
     "promote": "node -e \"require('fs').copyFileSync('preview/index.html','index.html')\" && echo \"promoted preview -> live\"",
     "preview": "npx --yes serve .",
-    "interim": "node check-interim.js"
+    "interim": "node check-interim.js",
+    "hkdates": "node fetch-hk-dates.js"
   },
   "repository": {
     "type": "git",
