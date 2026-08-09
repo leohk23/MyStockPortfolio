@@ -181,6 +181,77 @@ function quarterEnds(fyEnd) {
         new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1 - 3 * k, 0)).toISOString().slice(0, 10));
 }
 
+// How long has this money actually been in the position?
+//
+// NOT the first purchase date. 43 of the 57 positions in this book were built with more than one
+// buy, and 13 would have their age overstated by more than a year if measured from the first one.
+// BYD is the extreme: first bought in 2018, but sold down and re-entered, so "held 8.6 years" is
+// true of the ticker and false of the money — the open lots average about one year.
+//
+// So: match sells against buys FIFO, keep the lots still open, and average their age weighted by
+// what each one COST. Cost rather than share count because a group can hold two listings of one
+// company (an ADR and its local line) whose share counts are not comparable — cost in one currency
+// always is. For a single-price position the two weightings agree.
+//
+// Returns null when nothing is open or no trade carries a date. `rate` converts a trade's currency
+// into the common one; pass () => 1 to weight in native money.
+function holdingAge(trades, asOf, rate = () => 1) {
+    const ordered = [...(trades || [])].filter(t => t && t.date).sort((a, b) => a.date.localeCompare(b.date));
+    const open = [];
+    for (const t of ordered) {
+        if (t.side === 'SELL') {
+            // Oldest lots go first — the same convention as the tax treatment of a part sale, and
+            // the only one that lets a re-entry read as recent rather than as the original purchase.
+            let n = t.qty;
+            while (n > 0 && open.length) {
+                const take = Math.min(n, open[0].qty);
+                open[0].qty -= take;
+                n -= take;
+                if (open[0].qty <= 1e-9) open.shift();
+            }
+        } else if (t.qty > 0) {
+            open.push({ date: t.date, qty: t.qty, price: t.price || 0, currency: t.currency });
+        }
+    }
+    let num = 0, den = 0, first = null;
+    for (const l of open) {
+        const w = l.qty * l.price * (rate(l.currency) || 0);
+        if (!(w > 0)) continue;
+        num += w * (Date.parse(asOf) - Date.parse(l.date)) / 864e5;
+        den += w;
+        if (!first || l.date < first) first = l.date;
+    }
+    if (!(den > 0)) return null;
+    return { days: num / den, firstOpen: first, lots: open.length };
+}
+
+// Which fiscal quarter is this calendar period end, for a company whose year does not end in
+// December? Disney's year ends late September, so its Apr-Jun quarter — the one this app labels
+// "Qtr Jun '26" — is the Q3 FY26 your broker's earnings notice names. Both labels are right; they
+// just count from different places, and only one of them matches the notice in your inbox.
+//
+// Returns null for a December filer (where "Qtr Jun '26" already IS Q2 2026 and a second label
+// would be noise) and null when the years give no usable year end.
+//
+// `years` is earnings.json's filed annual list. The fiscal year END MONTH comes from the data
+// rather than a table of companies: a filer that shifts its year end starts labelling correctly by
+// itself, and nothing has to be maintained.
+function fiscalQuarter(date, years) {
+    const ends = (years || []).map(y => y && y.date).filter(Boolean).sort();
+    if (!ends.length || !date) return null;
+    const fyEndMonth = new Date(ends[ends.length - 1] + 'T00:00:00Z').getUTCMonth() + 1;
+    if (fyEndMonth === 12) return null;                       // calendar filer: nothing to add
+    const d = new Date(date + 'T00:00:00Z');
+    const m = d.getUTCMonth() + 1;
+    // Months elapsed since the fiscal year began; a quarter landing ON the year end is Q4, not Q0.
+    const elapsed = ((m - fyEndMonth + 12) % 12) || 12;
+    if (elapsed % 3) return null;                             // not on a quarter boundary — say nothing
+    const q = elapsed / 3;
+    // The fiscal year is the one ENDING on or after this quarter, named by the year it ends in.
+    const fyYear = m > fyEndMonth ? d.getUTCFullYear() + 1 : d.getUTCFullYear();
+    return { q, fy: fyYear, label: `Q${q} FY${String(fyYear).slice(2)}` };
+}
+
 function fillMissingQuarters(quarters, years) {
     const out = [...(quarters || [])];
     for (const y of years || []) {
@@ -248,7 +319,8 @@ function buildWatchlist(watchlist, quotes) {
 
 // holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
 // Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
-function build(holdings, rates, quotes, dimension = 'company') {
+// `asOf` is a parameter only so holding ages are testable without freezing the clock.
+function build(holdings, rates, quotes, dimension = 'company', asOf = new Date().toISOString().slice(0, 10)) {
     const field = DIMENSIONS[dimension] || DIMENSIONS.company;
     const groups = new Map();
     for (const h of holdings) {
@@ -299,6 +371,11 @@ function build(holdings, rates, quotes, dimension = 'company') {
             moves: Object.fromEntries(PERIODS.map(p => [p, weightedMove(g.legs, p)])),
             lastTrade: recent ? recent.lastTrade : null,
             since: recent ? recent.since : null,
+            // How long the money has been in this row, cost-weighted across every open lot of
+            // every leg (see holdingAge). Pooling the legs' trades is right precisely because
+            // cost is the weight: an ADR and its local line contribute in one common currency.
+            held: holdingAge(g.legs.flatMap(l => l.trades || []), asOf,
+                c => rateFor(c === 'Gbpence' ? 'GBp' : c, rates)),
             // Current price per share only makes sense for a single instrument; shown native.
             price: single ? single.quote.price : null,
             priceCurrency: single ? single.quote.currency : null,
@@ -323,7 +400,7 @@ function build(holdings, rates, quotes, dimension = 'company') {
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -623,6 +700,72 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(fillMissingQuarters([], [bydYear]), []);
     // A missing quarter with no derivable top line is not added as a stub.
     assert.strictEqual(fillMissingQuarters(bydQ.map(({ rev, ...r }) => r), [{ date: '2025-12-31', nic: 1 }]).length, 3);
+
+    // holdingAge: how long the MONEY has been in, not how long the ticker has been on the sheet.
+    const usd = () => 1;
+    // One lot, one year.
+    assert.strictEqual(Math.round(holdingAge(
+        [{ date: '2025-08-09', side: 'BUY', qty: 10, price: 100, currency: 'USD' }], '2026-08-09', usd).days), 365);
+    // Two equal-cost lots, four and two years old -> three years.
+    const twoLots = holdingAge([
+        { date: '2022-08-09', side: 'BUY', qty: 10, price: 100, currency: 'USD' },
+        { date: '2024-08-09', side: 'BUY', qty: 10, price: 100, currency: 'USD' }], '2026-08-09', usd);
+    assert.ok(Math.abs(twoLots.days - 3 * 365) < 2);
+    assert.strictEqual(twoLots.lots, 2);
+    // Weighted by COST, not by lot count: a 9x bigger recent buy pulls the average to the recent one.
+    const skewed = holdingAge([
+        { date: '2016-08-09', side: 'BUY', qty: 1, price: 100, currency: 'USD' },
+        { date: '2025-08-09', side: 'BUY', qty: 9, price: 100, currency: 'USD' }], '2026-08-09', usd);
+    assert.ok(Math.abs(skewed.days - (10 * 365 * 0.1 + 365 * 0.9)) < 2);
+    // FIFO: selling the old lot leaves the RECENT one, so the position reads new — the BYD case,
+    // where measuring from the first-ever buy would claim 2018 for money that went in last year.
+    const reentry = holdingAge([
+        { date: '2018-01-22', side: 'BUY', qty: 10, price: 100, currency: 'USD' },
+        { date: '2024-01-22', side: 'SELL', qty: 10, price: 200, currency: 'USD' },
+        { date: '2025-08-09', side: 'BUY', qty: 5, price: 300, currency: 'USD' }], '2026-08-09', usd);
+    assert.strictEqual(Math.round(reentry.days), 365);
+    assert.strictEqual(reentry.firstOpen, '2025-08-09');
+    // A partial sell consumes the oldest lot first and leaves the remainder of it open.
+    const partial = holdingAge([
+        { date: '2020-08-09', side: 'BUY', qty: 10, price: 100, currency: 'USD' },
+        { date: '2026-08-09', side: 'SELL', qty: 4, price: 200, currency: 'USD' }], '2026-08-09', usd);
+    assert.strictEqual(Math.round(partial.days), 6 * 365 + 1);      // one leap day (2024) in the window
+    assert.strictEqual(partial.lots, 1);
+    // Fully closed, or nothing usable: null rather than a misleading zero.
+    assert.strictEqual(holdingAge([
+        { date: '2020-08-09', side: 'BUY', qty: 10, price: 100, currency: 'USD' },
+        { date: '2026-08-09', side: 'SELL', qty: 10, price: 200, currency: 'USD' }], '2026-08-09', usd), null);
+    assert.strictEqual(holdingAge([], '2026-08-09', usd), null);
+    assert.strictEqual(holdingAge(null, '2026-08-09', usd), null);
+    // Different currencies are weighted through the rate, so one leg cannot dominate by denomination.
+    const fxAge = holdingAge([
+        { date: '2016-08-09', side: 'BUY', qty: 1, price: 100, currency: 'JPY' },     // ~$1 of cost
+        { date: '2025-08-09', side: 'BUY', qty: 1, price: 100, currency: 'USD' }],    // $100 of cost
+        '2026-08-09', c => (c === 'JPY' ? 0.01 : 1));
+    assert.ok(Math.abs(fxAge.days - (10 * 365 * (1 / 101) + 365 * (100 / 101))) < 3);
+    // build() surfaces it per row, pooling the legs of a multi-listing group.
+    const heldRows = build([
+        { yahoo: 'A', group: 'G', geography: 'US', currency: 'USD', qty: 1, costLC: 100,
+          trades: [{ date: '2024-08-09', side: 'BUY', qty: 1, price: 100, currency: 'USD' }] }],
+        { USD: 1 }, { A: { priceUSD: 120, price: 120, currency: 'USD' } }, 'company', '2026-08-09');
+    assert.ok(Math.abs(heldRows[0].held.days - 2 * 365) < 2);
+
+    // fiscalQuarter: the label a broker's earnings notice uses, for off-calendar filers.
+    // Disney's year ends late September, so the quarter this app calls "Qtr Jun '26" is the
+    // "Q3 '26" its notice names — the mismatch that prompted this.
+    const disneyYears = [{ date: '2024-09-30' }, { date: '2025-09-30' }];
+    assert.strictEqual(fiscalQuarter('2025-12-31', disneyYears).label, 'Q1 FY26');
+    assert.strictEqual(fiscalQuarter('2026-03-31', disneyYears).label, 'Q2 FY26');
+    assert.strictEqual(fiscalQuarter('2026-06-30', disneyYears).label, 'Q3 FY26');
+    assert.strictEqual(fiscalQuarter('2026-09-30', disneyYears).label, 'Q4 FY26');  // ON the year end is Q4, not Q0
+    // A March filer: Jun is Q1 of the year ending the following March.
+    assert.strictEqual(fiscalQuarter('2025-06-30', [{ date: '2026-03-31' }]).label, 'Q1 FY26');
+    assert.strictEqual(fiscalQuarter('2026-03-31', [{ date: '2026-03-31' }]).label, 'Q4 FY26');
+    // A December filer needs no second label — "Qtr Jun '26" already is Q2 2026.
+    assert.strictEqual(fiscalQuarter('2026-06-30', [{ date: '2025-12-31' }]), null);
+    // Nothing to derive from, or a period end off the quarter grid: say nothing.
+    assert.strictEqual(fiscalQuarter('2026-06-30', []), null);
+    assert.strictEqual(fiscalQuarter('2026-05-31', [{ date: '2025-09-30' }]), null);
 
     console.log('selftest ok');
 }

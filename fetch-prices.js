@@ -1331,19 +1331,27 @@ async function main() {
     // aren't all in the store yet). This is the SAME rule the deep dive's P/E (recurring) applies,
     // so the table's Special PE and the panel cannot show two different recurring multiples for
     // one stock — which is exactly what they did while the annual proxy stood alone.
-    let recFiled = 0, fwdDropped = 0;
+    let recFiled = 0, fwdDropped = 0, fwdConverted = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
-        // Consensus forward EPS is only comparable to the price when the statements are in the
-        // price's own currency. Where they are not, Yahoo states the consensus per ORDINARY share
-        // in the reporting currency while quoting an ADR — a different unit against a different
-        // money. Nintendo priced at 5.5x forward against 28.9x on its own guidance; MKS.L, whose
-        // statements are GBP against a pence quote, came out at 1148x. Same currency test the
-        // recurring sum uses, and for the same reason.
-        if (quotes[t].epsFwd != null && store.eps[t]?.currency
-            && store.eps[t].currency !== quotes[t].currency) {
-            delete quotes[t].epsFwd;
-            fwdDropped++;
+        // Consensus forward EPS needs the same UNIT as the price, and there are two different ways
+        // it can fail to have one — which is why they get two different answers.
+        //
+        //  - A depositary receipt: Yahoo states the consensus per ORDINARY share while quoting the
+        //    receipt. Nintendo read 5.5x forward against 28.9x on its own guidance. No exchange
+        //    rate fixes a per-share BASIS mismatch, so this one is still dropped.
+        //  - Pounds against pence: MKS.L files in GBP and quotes in GBp — the SAME money written
+        //    two ways, which is exactly what rateFor exists to reconcile. Dropping it cost a real
+        //    figure (it read 1148x only because 100x was never applied).
+        //
+        // So convert where the two are the same currency in different denominations, and drop only
+        // where the unit genuinely differs.
+        const repCcy = store.eps[t]?.currency;
+        if (quotes[t].epsFwd != null && repCcy && repCcy !== quotes[t].currency) {
+            const sameMoney = repCcy.replace(/^GBp$/, 'GBP') === quotes[t].currency.replace(/^GBp$/, 'GBP');
+            const fx = sameMoney ? epsToQuote({ currency: repCcy }, quotes[t].currency, rates) : null;
+            if (fx != null) { quotes[t].epsFwd = Number((quotes[t].epsFwd * fx).toPrecision(6)); fwdConverted++; }
+            else { delete quotes[t].epsFwd; fwdDropped++; }
         }
         const rec = recurringTtmFrom(store.eps[t], quotes[t].currency, rates);
         if (rec != null) { quotes[t].normEps = rec; quotes[t].normEpsThru = lastQuarterDate(store.eps[t]); recFiled++; continue; }
@@ -1353,7 +1361,9 @@ async function main() {
     console.log(`ok   recurring EPS: ${recFiled} from filed quarters, `
         + `${tickers.filter(t => quotes[t]?.normEps != null).length - recFiled} from the annual proxy`);
     if (fwdDropped) console.log(`     consensus forward EPS dropped for ${fwdDropped} ticker(s): `
-        + `statements not in the price's currency`);
+        + `stated per ordinary share against a receipt price`);
+    if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
+        + `denomination for ${fwdConverted} ticker(s)`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the

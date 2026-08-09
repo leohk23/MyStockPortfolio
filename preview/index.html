@@ -444,6 +444,7 @@
                     <th data-sort="ytd">YTD</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
+                    <th data-sort="held" title="How long the money has been in this position: the cost-weighted average age of the lots you still own, with sells matched against buys oldest-first. Not the first purchase date — 43 of these positions were built with more than one buy, and a position sold down and re-entered (BYD) would otherwise claim an age its money never had. Hover a value for the oldest open lot.">Held</th>
                     <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
                     <th data-sort="cost">Cost</th>
                     <th data-sort="value" aria-sort="descending">Value</th>
@@ -1010,8 +1011,17 @@
                 // earlier — seasonality-free, and the same "smaller line = comparable prior
                 // period" rule the annual rows follow. Only the allowlisted names carry quarters.
                 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                // Labelled by the calendar period it covers, plus — for a company whose year does
+                // not end in December — the FISCAL quarter its own results announcements use.
+                // Disney's Apr-Jun 2026 is "Qtr Jun '26" here and "Q3 '26" in the notice from your
+                // broker; without both, the two look like different quarters.
                 const qLabel = date => { const d = new Date(date + 'T00:00:00Z');
-                    return `Qtr ${MON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`; };
+                    const fq = portfolioLib.fiscalQuarter(date, e?.years);
+                    return `Qtr ${MON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`
+                        + (fq ? ` <span class="tag" title="The company's own fiscal quarter — its year ends in `
+                            + `${MON[new Date(e.years[e.years.length - 1].date + 'T00:00:00Z').getUTCMonth()]}, `
+                            + `so this is what its results announcements and your broker's earnings notices call `
+                            + `this period.">${fq.label}</span>` : ''); };
                 // The same quarter a year before `ref`, matched by DATE (±50 days) so a hole in
                 // Yahoo's ~5-point window can't silently pair the wrong quarter. Null if absent.
                 const yearAgoQ = (list, ref) => {
@@ -1792,6 +1802,18 @@
         // Implied price at the trough multiple, in the quote's own currency (EPS and price are
         // both native, so no FX belongs here). The tooltip shows the low that produced it.
         const num2 = v => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const TODAY = new Date().toISOString().slice(0, 10);
+        // Months under a year, years above — "8mo" and "3.5y" both read at a glance where "0.7y"
+        // and "1278d" do not. The oldest OPEN lot goes in the title: the simple answer stays
+        // reachable without the headline number pretending a re-entered position is old.
+        const heldCell = h => {
+            if (!h) return '<span class="muted">–</span>';
+            // Switch on the ROUNDED months, not on the raw year fraction, or 0.99y prints "12mo".
+            const m = Math.max(0, Math.round(h.days / 30.44));
+            const txt = m < 12 ? `${m}mo` : `${(h.days / 365).toFixed(1)}y`;
+            return `<span title="Cost-weighted average age of ${h.lots} open lot${h.lots === 1 ? '' : 's'}`
+                + `; oldest still open ${h.firstOpen}">${txt}</span>`;
+        };
         const impliedCell = (r) => r.implied == null ? '<span class="muted">–</span>'
             : `<span title="PE Low ${r.peLow.toFixed(1)}x × today's EPS`
                 + `${r.lowPrice != null && r.lowEps != null ? ` — from a low of ${num2(r.lowPrice)} on EPS ${num2(r.lowEps)}` : ''}`
@@ -1839,6 +1861,7 @@
             // Shares only add up within one listing — an ADR and its local line count different
             // things — so a multi-leg row has no share count, and sorts to the bottom like a blank.
             if (key === 'qty') return row.legs.length === 1 ? row.legs[0].qty : null;
+            if (key === 'held') return row.held ? row.held.days : null;
             return row[key];
         };
         function sortedRows() {
@@ -1917,6 +1940,7 @@
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
+                    <td>${heldCell(r.held)}</td>
                     <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? num2(r.legs[0].qty) : '–'}</td>
                     <td>${money(r.cost)}</td>
                     <td>${money(r.value)}</td>
@@ -1948,6 +1972,7 @@
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
+                        <td>${heldCell(portfolioLib.holdingAge(leg.trades, TODAY, c => rateOf(c === 'Gbpence' ? 'GBp' : c)))}</td>
                         <td>${num2(leg.qty)}</td>
                         <td>${money(leg.cost)}</td>
                         <td>${money(leg.value)}</td>
@@ -1972,7 +1997,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="27">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="28">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
