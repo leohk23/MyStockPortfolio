@@ -853,6 +853,66 @@ function trailingEpsFromQuarters(entry, currency, rates) {
     return Number((ttm * fx).toPrecision(6));
 }
 
+// Should the TTM we can sum ourselves REPLACE the one Yahoo reports?
+//
+// Yahoo's trailing EPS is not always current, and how far behind varies by name: ASML's covers
+// the window through Mar 2026 while it reports a most-recent-quarter of 2026-06-28, and Mitsubishi
+// Heavy's 69.97 is roughly its FY2025 figure — over a year old — against 118.62 for the four
+// quarters actually on file. So `mrq` cannot be used to judge freshness; it answers a different
+// question. Nor is "ours is newer, use ours" safe on its own: our own arithmetic has to be shown
+// right first, or a bad quarter silently rewrites a headline P/E.
+//
+// Replaced only on EVIDENCE, by either of two independent routes — each earned by a real ticker:
+//
+//   A. Our quarters RECONCILE. Four consecutive stored quarters tile a filed fiscal year and their
+//      EPS sums to that year's filed EPS. Mitsubishi Heavy: 20.31 + 13.89 + 28.60 + 36.05 = 98.85
+//      against a filed 98.84. That validates the series against the company's own audited annual
+//      without consulting Yahoo's TTM at all, which matters precisely when Yahoo's is the thing
+//      that's wrong.
+//   B. Yahoo is ONE WINDOW BEHIND. Its figure matches the sum of the PREVIOUS four quarters. That
+//      identifies its number as last quarter's TTM rather than something we don't understand —
+//      the distinction that keeps route B away from 7011.T, whose 69.97 matches neither window.
+//
+// Neither passes -> Yahoo's number stands. An unexplained disagreement is not ours to resolve by
+// picking the number we happen to have computed.
+const TTM_RECONCILE_TOL = 0.02;   // filed annual vs our four quarters
+const TTM_WINDOW_TOL = 0.05;      // Yahoo vs our previous-four sum
+// And it must actually CHANGE something. Route A validates our series against the filed annual,
+// which most US names pass — without this floor GOOG's 19.94 would be rewritten to 19.91 and
+// twenty others likewise, swapping Yahoo's arithmetic for ours across the book to no benefit and
+// leaving an "eps replaced" marker on names where nothing was ever wrong.
+const TTM_MATERIAL = 0.01;
+function preferSummedTtm(entry, yahooEps, currency, rates) {
+    if (!(yahooEps > 0)) return null;                  // a loss-maker's multiple is meaningless either way
+    const fx = epsToQuote(entry, currency, rates);
+    if (fx == null) return null;
+    const q = (entry?.quarters || []).filter(x => x.date && typeof x.eps === 'number')
+        .sort((a, b) => a.date.localeCompare(b.date));
+    if (q.length < 5) return null;                     // need a previous window to compare against
+    const span = a => (Date.parse(a[3].date) - Date.parse(a[0].date)) / 864e5;
+    const last4 = q.slice(-4), prev4 = q.slice(-5, -1);
+    if (span(last4) < 250 || span(last4) > 290) return null;
+    const sum = a => a.reduce((t, x) => t + x.eps, 0);
+    const s4 = sum(last4) * fx, p4 = sum(prev4) * fx;
+    if (!(s4 > 0)) return null;
+
+    // A: does any four-quarter run tile a filed year and match its EPS?
+    const years = (entry.years || []).filter(y => typeof y.eps === 'number');
+    let reconciled = false;
+    for (let i = 0; i + 4 <= q.length; i++) {
+        const run = q.slice(i, i + 4);
+        if (span(run) < 250 || span(run) > 290) continue;
+        const y = years.find(v => v.date === run[3].date);
+        if (y && Math.abs(sum(run) - y.eps) <= Math.abs(y.eps) * TTM_RECONCILE_TOL) { reconciled = true; break; }
+    }
+    // B: is Yahoo's figure the PREVIOUS window rather than this one?
+    const behind = Math.abs(yahooEps - p4) <= Math.abs(p4) * TTM_WINDOW_TOL
+        && Math.abs(yahooEps - p4) < Math.abs(yahooEps - s4);
+    if (!reconciled && !behind) return null;
+    if (Math.abs(s4 - yahooEps) <= yahooEps * TTM_MATERIAL) return null;
+    return Number(s4.toPrecision(6));
+}
+
 // Recurring EPS over the last four FILED quarters, summed outright. Preferred over normEpsFrom's
 // annual proxy because that one mixes windows: it applies the latest fiscal YEAR's normalized
 // ratio to the reported TTM EPS, and the two rarely cover the same quarters. GOOG showed the cost
@@ -1249,6 +1309,20 @@ async function main() {
         if (te != null) { quotes[t].eps = te; quotes[t].epsDerived = true; derivedEps++; }
     }
     if (derivedEps) console.log(`ok   trailing EPS summed from quarters for ${derivedEps} ticker(s)`);
+    // Where Yahoo DID send a trailing EPS but it is demonstrably behind what is on file, replace
+    // it — see preferSummedTtm for the two evidence routes and why mrq cannot be used here.
+    let fresher = 0;
+    for (const t of tickers) {
+        if (!quotes[t] || manualEps[t] != null || quotes[t].epsDerived) continue;
+        const s = preferSummedTtm(store.eps[t], quotes[t].eps, quotes[t].currency, rates);
+        if (s == null) continue;
+        quotes[t].epsReported = quotes[t].eps;          // kept so the page can show what was replaced
+        quotes[t].eps = s;
+        quotes[t].epsThru = lastQuarterDate(store.eps[t]);
+        fresher++;
+    }
+    if (fresher) console.log(`ok   trailing EPS refreshed from filed quarters for ${fresher} ticker(s)`
+        + ` (Yahoo's was a window behind)`);
     // Recurring EPS for the Special P/E, from the same store. Separate loop so a ticker with no
     // trough (thin price history) still gets one where its earnings support it.
     //
@@ -1461,6 +1535,51 @@ function selftest() {
     assert.strictEqual(trailingEpsFromQuarters(q4('GBP'), 'GBp', { GBP: 1 }), 10000);
     assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD', { USD: 1 }), null);   // no TWD rate -> "–"
     assert.strictEqual(trailingEpsFromQuarters(q4('TWD'), 'USD'), null);               // no rates -> "–"
+
+    // ---- preferSummedTtm: replacing Yahoo's trailing EPS only on evidence ----
+    // Mitsubishi Heavy, real figures. Its four FY2026 quarters sum to 98.85 against a filed 98.84,
+    // so the series is proven against the company's own annual — route A. Yahoo's 69.97 matches
+    // NEITHER window (it is roughly FY2025), which is exactly why route B must not be the only one.
+    const mhi = {
+        currency: 'JPY',
+        years: [{ date: '2024-03-31', eps: 66.04 }, { date: '2026-03-31', eps: 98.84 }],
+        quarters: [{ date: '2025-06-30', eps: 20.31 }, { date: '2025-09-30', eps: 13.89 },
+                   { date: '2025-12-31', eps: 28.6 }, { date: '2026-03-31', eps: 36.05 },
+                   { date: '2026-06-30', eps: 40.08 }],
+    };
+    assert.ok(Math.abs(preferSummedTtm(mhi, 69.97, 'JPY', {}) - 118.62) < 0.01);
+    // Route B: ASML in EUR. Yahoo's 25.48 is the window through Mar '26 (25.87), not through
+    // Jun '26 (27.55) — one quarter behind, so ours wins. No filed year is tiled here.
+    const asml = {
+        currency: 'EUR',
+        years: [{ date: '2025-12-31', eps: 24.71 }],
+        quarters: [{ date: '2025-06-30', eps: 5.9 }, { date: '2025-09-30', eps: 5.48 },
+                   { date: '2025-12-31', eps: 7.34 }, { date: '2026-03-31', eps: 7.15 },
+                   { date: '2026-06-30', eps: 7.58 }],
+    };
+    assert.ok(Math.abs(preferSummedTtm(asml, 25.48, 'EUR', {}) - 27.55) < 0.01);
+    // ...and converted, when the quote is in another currency.
+    assert.ok(Math.abs(preferSummedTtm(asml, 29.45, 'USD', { EUR: 1.1562, USD: 1 }) - 27.55 * 1.1562) < 0.01);
+    // Yahoo already on the newest window (every US name): left alone.
+    const goodTtm = { currency: 'USD', years: [], quarters: [
+        { date: '2025-06-30', eps: 2 }, { date: '2025-09-30', eps: 2 }, { date: '2025-12-31', eps: 2 },
+        { date: '2026-03-31', eps: 2 }, { date: '2026-06-30', eps: 3 }] };
+    assert.strictEqual(preferSummedTtm(goodTtm, 9, 'USD', {}), null);   // 9 == last4, not prev4
+    // Yahoo matching neither window and nothing reconciling: refused, not overridden.
+    assert.strictEqual(preferSummedTtm({ ...mhi, years: [] }, 69.97, 'JPY', {}), null);
+    // A loss-maker has no meaningful multiple either way.
+    assert.strictEqual(preferSummedTtm(mhi, -5, 'JPY', {}), null);
+    // Only four quarters: no previous window to test against, and no year tiled.
+    assert.strictEqual(preferSummedTtm({ ...mhi, years: [], quarters: mhi.quarters.slice(1) },
+        69.97, 'JPY', {}), null);
+    // Reconciles, but the difference is rounding — GOOG's case. Yahoo's number stands.
+    const goog4 = { currency: 'USD',
+        years: [{ date: '2025-12-31', eps: 8 }],
+        quarters: [{ date: '2024-12-31', eps: 2 }, { date: '2025-03-31', eps: 2 },
+                   { date: '2025-06-30', eps: 2 }, { date: '2025-09-30', eps: 2 },
+                   { date: '2025-12-31', eps: 2 }] };
+    assert.strictEqual(preferSummedTtm(goog4, 8.02, 'USD', {}), null);      // 0.25% apart
+    assert.ok(preferSummedTtm(goog4, 9.0, 'USD', {}) === 8);                // 11% apart -> replaced
     const hole = q4('KRW'); delete hole.quarters[2].eps;
     assert.strictEqual(trailingEpsFromQuarters(hole, 'KRW'), null);               // missing a quarter's EPS -> "–"
     assert.strictEqual(trailingEpsFromQuarters({ currency: 'KRW', quarters: q4('KRW').quarters.slice(1) }, 'KRW'), null); // only 3
