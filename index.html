@@ -461,6 +461,7 @@
                     <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
                     <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
                     <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
+                    <th data-sort="trades" title="How many trades built this position, across every listing in the row. Sits at the end, out of the pinned block, because it was widening the position name — the one column that has to stay on screen. Expand the row (chevron) for the trades themselves.">Trades</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -1803,6 +1804,10 @@
         // both native, so no FX belongs here). The tooltip shows the low that produced it.
         const num2 = v => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
         const TODAY = new Date().toISOString().slice(0, 10);
+        // Trades behind a row, across every listing in it — so a company grouping counts the ADR's
+        // and the local line's together rather than showing nothing, which is what the old bracket
+        // did outside Stock view.
+        const rowTrades = row => (row.legs || []).reduce((a, l) => a + (l.trades || []).length, 0);
         // Months under a year, years above — "8mo" and "3.5y" both read at a glance where "0.7y"
         // and "1278d" do not. The oldest OPEN lot goes in the title: the simple answer stays
         // reachable without the headline number pretending a re-entered position is old.
@@ -1862,6 +1867,7 @@
             // things — so a multi-leg row has no share count, and sorts to the bottom like a blank.
             if (key === 'qty') return row.legs.length === 1 ? row.legs[0].qty : null;
             if (key === 'held') return row.held ? row.held.days : null;
+            if (key === 'trades') return rowTrades(row) || null;
             return row[key];
         };
         function sortedRows() {
@@ -1933,8 +1939,7 @@
                 tr.dataset.yahoo = r.primaryYahoo;
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
-                    <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>`
-                        : trades.length ? ` <span class="muted">(${trades.length} trade${trades.length === 1 ? '' : 's'})</span>` : ''}
+                    <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
@@ -1956,7 +1961,8 @@
                     <td>${peCell(r.peLow)}</td>
                     <td>${lowDateCell(r.lowDate)}</td>
                     <td>${impliedCell(r)}</td>
-                    <td>${vsLowCell(r.vsLow)}</td>`;
+                    <td>${vsLowCell(r.vsLow)}</td>
+                    <td class="${rowTrades(r) ? '' : 'muted'}">${rowTrades(r) || '–'}</td>`;
                 tbody.appendChild(tr);
 
                 // Only multi-instrument rows have constituents to expand.
@@ -1988,7 +1994,8 @@
                         <td>${peCell(leg.peLow)}</td>
                         <td>${lowDateCell(leg.lowDate)}</td>
                         <td>${impliedCell(leg)}</td>
-                        <td>${vsLowCell(leg.vsLow)}</td>`;
+                        <td>${vsLowCell(leg.vsLow)}</td>
+                        <td class="${(leg.trades || []).length ? '' : 'muted'}">${(leg.trades || []).length || '–'}</td>`;
                     el.addEventListener('click', () => { const fix = pinRow(el); selectChart(leg.yahoo); fix(); });
                     tbody.appendChild(el);
                     return el;
@@ -1997,7 +2004,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="28">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="29">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
