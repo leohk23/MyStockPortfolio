@@ -521,11 +521,6 @@
             const v = usd / RATES[display];
             return (v < 0 ? '-' : '') + CURRENCIES[display] + Math.round(Math.abs(v)).toLocaleString();
         };
-        // Per-share price keeps decimals; converted from USD to the display currency.
-        const priceUSD = usd => {
-            const v = usd / RATES[display];
-            return CURRENCIES[display] + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        };
         const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
         const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
@@ -1268,6 +1263,17 @@
             if (notBefore) from = Math.max(from, days.findIndex(d => d >= notBefore));
             return { days: days.slice(from), arrays: arrays.map(a => a.slice(from)) };
         }
+        // The headline's big number is the move over the SELECTED range, which means the one figure
+        // you always want — how it moved today — disappears the moment you pick anything but the
+        // shortest range. So 1D rides alongside it, independent of the range.
+        //
+        // Taken from the quote, never from the plotted series: on the 2Y/5Y/All ranges the series
+        // is WEEKLY, so its last two points are a week apart and would print a week's move labelled
+        // as a day's. The quote's figure is the same one the table's 1D column shows.
+        const dayTag = move => move == null ? ''
+            : ` <span class="tag ${cls(move)}" title="Change since the previous session close — the `
+                + `same figure as the table's 1D column, and independent of the range selected here.">`
+                + `1D ${pct(move)}</span>`;
         const firstNonNull = a => a.find(v => v != null);
         const lastNonNull = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; };
 
@@ -1336,7 +1342,10 @@
                     // A trade carries no ticker of its own; tag it, or a two-leg group can't say
                     // which instrument the dot belongs to.
                     const t = { ...raw, yahoo: leg.yahoo };
-                    markers.push({ i, side: t.side, usd: values[i] * RATES[display], trade: t });
+                    // `plot` is in the same units as `values` — whatever the chart is drawn in.
+                    // It used to be USD that the renderer converted back, which only worked while
+                    // every chart was in the display currency; the price chart no longer is.
+                    markers.push({ i, side: t.side, plot: values[i], trade: t });
                     (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
                 }
             }
@@ -1363,7 +1372,11 @@
                 days,
                 series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
                 fmtY: v => money(v * RATES[display]),
-                headline: money(last * RATES[display]),
+                // Value-weighted across every holding — matching the table's total row, and for a
+                // ONE-day window the weighting distortion that makes the longer periods there
+                // misleading (see BACKLOG.md) has had no time to accumulate.
+                headline: money(last * RATES[display])
+                    + dayTag(portfolioLib.weightedMove(STATE.rows.flatMap(r => r.legs), '1d')),
                 sub: `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: 'Portfolio value',
                 note: 'What the portfolio was actually worth: the Tradelog replayed against past prices, at today\'s FX. Switch to Performance for return with cash flows removed.',
@@ -1392,7 +1405,10 @@
                 series: [{ label: group.name, color: PORT_COLOR, values, area: true }],
                 markers, markersByIndex: byIndex,
                 fmtY: v => money(v * RATES[display]),
-                headline: money(last * RATES[display]),
+                // Value-weighted across this group's instruments — the same number its row in the
+                // table shows, so the two cannot disagree.
+                headline: money(last * RATES[display])
+                    + dayTag(portfolioLib.weightedMove(group.legs, '1d')),
                 sub: `Asset value · ${count} instrument${count === 1 ? '' : 's'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: `${group.name} value`,
                 note: 'What this group was actually worth: your trades replayed against past prices, at today\'s FX. ▲ buy · ▼ sell. Switch to Performance for return with cash flows removed.',
@@ -1447,17 +1463,21 @@
             const replay = gainMode
                 ? portfolioLib.gainHistory(history.days, closes, holding?.trades || [], STATE.rates, q.currency)
                 : null;
-            const usdSource = gainMode ? replay.gains
-                : closes.map(v => v == null ? null : v * nativeToUSD);
+            // Gain/loss is MONEY, so it follows the display-currency toggle. A PRICE is a property
+            // of the listing — 405.40 is what HKEX costs, on any broker screen, whatever currency
+            // you happen to be totalling in — so price mode plots the quote's own currency and
+            // ignores the toggle entirely. Mixing the two was the old behaviour and made a price
+            // unrecognisable against the exchange it trades on.
+            const plotSource = gainMode ? replay.gains : closes;
             // Price starts at listing; gain/loss starts at the first recorded trade.
-            let start = usdSource.findIndex(v => v != null);
+            let start = plotSource.findIndex(v => v != null);
             if (start < 0) start = 0;
             const daysAll = history.days.slice(start);
             const sourceArrays = gainMode
                 ? [replay.gains.slice(start), replay.costs.slice(start), replay.quantities.slice(start)]
-                : [usdSource.slice(start)];
+                : [plotSource.slice(start)];
             const { days, arrays } = sliceRange(daysAll, sourceArrays);
-            const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
+            const values = gainMode ? arrays[0].map(v => v == null ? null : v / RATES[display]) : arrays[0];
             const costsUSD = gainMode ? arrays[1] : null;
             const quantities = gainMode ? arrays[2] : null;
 
@@ -1471,10 +1491,14 @@
                     i = days.findIndex(d => d >= t.date);
                     if (i < 0) continue;
                 }
-                const usd = t.price * rateOf(t.currency);
                 markers.push({
                     i, side: t.side,
-                    usd: gainMode ? t.balanceQty * (t.price - t.avgPrice) * rateOf(t.currency) : usd,
+                    // Same units as `values`: display-currency money in gain mode, and in price
+                    // mode the trade price carried from the PURCHASE currency into the QUOTE's
+                    // (CSUK buys in GBP and quotes in GBp, so this is not always a no-op).
+                    plot: gainMode
+                        ? t.balanceQty * (t.price - t.avgPrice) * rateOf(t.currency) / RATES[display]
+                        : t.price * rateOf(t.currency) / nativeToUSD,
                     trade: t,
                 });
                 (byIndex.get(i) || byIndex.set(i, []).get(i)).push(t);
@@ -1483,7 +1507,7 @@
             const watch = watchOf(yahoo);
             const name = holding ? `${holding.group} · ${yahoo}`
                 : watch ? `${watch.name} · ${yahoo}` : yahoo;
-            const formatValue = gainMode ? money : priceUSD;
+            const fmt = gainMode ? (v => money(v * RATES[display])) : (v => nativePrice(v, q.currency));
             const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
             const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
             const gainPct = lastCostUSD ? last * RATES[display] / lastCostUSD : null;
@@ -1493,26 +1517,29 @@
             // currency exactly as `values` was. Price mode only: in gain/loss mode the series is
             // already measured from cost, so the line would just be the zero line again. A
             // watched stock has no cost, and gets none.
-            const avgUSD = !gainMode && holding?.avgPrice > 0
-                ? holding.avgPrice * rateOf(holding.currency) : null;
+            const avgNative = !gainMode && holding?.avgPrice > 0
+                ? holding.avgPrice * rateOf(holding.currency) / nativeToUSD : null;
             return {
                 days,
                 series: [{ label: name, color: PORT_COLOR, values, area: !gainMode }],
                 markers, markersByIndex: byIndex,
                 zero: gainMode,
-                hline: avgUSD ? { value: avgUSD / RATES[display], label: 'avg cost' } : null,
-                fmtY: v => formatValue(v * RATES[display]),
+                hline: avgNative ? { value: avgNative, label: 'avg cost' } : null,
+                fmtY: fmt,
                 headline: gainMode
                     ? `<span class="${cls(last)}">${money(last * RATES[display])}</span> <span class="muted">${pct(gainPct)}</span>`
-                    : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> <span class="muted">${priceUSD(last * RATES[display])}</span>`,
+                    : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
+                        + `<span class="muted">${fmt(last)}</span>${dayTag(q['1d'])}`,
                 // "0 shares" would be a lie about a watched stock — it isn't a sold-out position.
                 sub: `${watch ? 'not held · watchlist' : shownQty + ' shares'} · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: gainMode ? `${name} Gain/Loss` : name,
                 note: gainMode
                     ? `Unrealized gain/loss from Tradelog balance quantity and average cost, using today's FX — realized gains excluded. ▲ buy · ▼ sell.`
-                    : 'Price per share, converted to ' + display + ' at today\'s FX. ▲ buy · ▼ sell (split-adjusted).',
+                    : `Price per share in ${q.currency}, the listing's own currency — never converted, `
+                        + `so it matches any broker screen whatever the display currency is set to. `
+                        + `▲ buy · ▼ sell (split-adjusted).`,
                 tip: i => {
-                    let s = `${formatValue(values[i] * RATES[display])}`;
+                    let s = `${fmt(values[i])}`;
                     if (gainMode) s += ` <span class="${cls(values[i])}">${pct(costsUSD[i] ? values[i] * RATES[display] / costsUSD[i] : null)}</span>`;
                     for (const t of (byIndex.get(i) || []))
                         s += `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>${t.side} ${t.qty} @ ${t.price.toLocaleString()} ${t.currency}</div>`;
@@ -1586,7 +1613,7 @@
 
             // Trade markers (instrument mode): ▲ buy, ▼ sell.
             const markerEls = (spec.markers || []).map(m => {
-                const cx = x(m.i), cy = y(m.usd / RATES[display]);
+                const cx = x(m.i), cy = y(m.plot);
                 const tri = m.side === 'SELL'
                     ? `${cx - 4},${cy - 4} ${cx + 4},${cy - 4} ${cx},${cy + 4}`
                     : `${cx - 4},${cy + 4} ${cx + 4},${cy + 4} ${cx},${cy - 4}`;
@@ -1612,7 +1639,7 @@
                 const i = Math.max(0, Math.min(days.length - 1, Math.round((px - L) / ((W - L - R) / (days.length - 1)))));
                 const cx = x(i);
                 cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
-                const marker = (spec.markers || []).find(m => Math.hypot(x(m.i) - px, y(m.usd / RATES[display]) - py) <= 10);
+                const marker = (spec.markers || []).find(m => Math.hypot(x(m.i) - px, y(m.plot) - py) <= 10);
                 if (marker) { const gy = y(marker.usd / RATES[display]); guide.setAttribute('y1', gy); guide.setAttribute('y2', gy); guide.style.display = ''; }
                 else guide.style.display = 'none';
                 const yv = series[0].values[i];
