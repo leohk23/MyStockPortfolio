@@ -49,6 +49,9 @@
             border: 1px solid var(--line); border-radius: 5px;
         }
         .btns button:hover { border-color: var(--text-muted); }
+        /* 1D is disabled unless one stock is charted — visibly inert, with the reason in its title. */
+        .btns button:disabled { opacity: .4; cursor: not-allowed; }
+        .btns button:disabled:hover { border-color: var(--line); }
         .btns button[aria-pressed="true"] { background: var(--series-port); border-color: var(--series-port); color: #fff; }
         .btns button.bench[aria-pressed="true"] { color: #fff; }
         .btns button.bench.spx[aria-pressed="true"] { background: var(--series-spx); border-color: var(--series-spx); }
@@ -372,6 +375,7 @@
                     <button class="bench hsi" data-bench="^HSI" aria-pressed="false">HSI</button>
                 </div>
                 <div id="ranges" class="btns" role="group" aria-label="Chart range">
+                    <button data-intraday aria-pressed="false" title="Today's session, 15-minute bars. Individual stocks only — a whole portfolio has no single intraday timeline, because its markets are not open at the same hours.">1D</button>
                     <button data-days="21" aria-pressed="false">1M</button>
                     <button data-days="63" aria-pressed="false">3M</button>
                     <button data-days="126" aria-pressed="false">6M</button>
@@ -560,6 +564,10 @@
         let rangeDays = 0;       // 0 = whole series
         let rangeYears = 0;
         let rangeYtd = false;    // from last year's close to now (daily)
+        // Today's session at 15-minute bars, from intraday.json. Single instruments only — see
+        // instrumentSpec; the button disables itself for anything else rather than drawing a line
+        // that stitches together markets which were never open at the same time.
+        let rangeIntraday = false;
         let longRange = false;   // weekly full history instead of daily one-year data
         let chartSel = null;     // null = portfolio/group; else a yahoo symbol
         let chartGroup = null;   // selected Company/Geography row
@@ -578,6 +586,18 @@
                 .then(r => r.ok ? r.json() : Promise.reject(new Error('history ' + r.status)))
                 .then(h => (HISTORY = h));
             return historyPromise;
+        }
+
+        // Today's session, for the 1D range only — so nobody downloads it unless they ask for 1D.
+        // Absent is fine: the button then says so rather than the page failing.
+        let INTRADAY = null, intradayPromise = null;
+        function loadIntraday() {
+            if (INTRADAY) return Promise.resolve(INTRADAY);
+            if (!intradayPromise) intradayPromise = fetch(DATA + 'intraday.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : { bars: {} })
+                .catch(() => ({ bars: {} }))
+                .then(j => (INTRADAY = j));
+            return intradayPromise;
         }
 
         // Same lazy-once pattern as history: nobody pays for earnings.json until a stock is
@@ -1453,7 +1473,47 @@
             };
         }
 
+        // Today's session for one listing. Separate from the daily path because almost nothing is
+        // shared: the x-axis is clock time rather than dates, there is no range to slice, and the
+        // baseline is the previous close rather than the first point on screen.
+        //
+        // The headline % is the quote's 1D, NOT (last - first)/first from these bars. The first bar
+        // is the opening print, which is already a gap away from yesterday's close — measuring from
+        // it would print a different "today" than the 1D column and the tag, and one of them would
+        // be wrong. One 1D number everywhere; these bars supply the shape.
+        function intradaySpec(yahoo) {
+            const q = STATE.quotes[yahoo];
+            const bar = INTRADAY?.bars?.[yahoo];
+            if (!bar || !bar.t?.length) return null;
+            const holding = STATE.holdings.find(h => h.yahoo === yahoo);
+            const watch = watchOf(yahoo);
+            const name = holding ? `${holding.group} · ${yahoo}` : watch ? `${watch.name} · ${yahoo}` : yahoo;
+            const clock = ts => new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const fmt = v => nativePrice(v, q.currency);
+            const last = bar.c[bar.c.length - 1];
+            return {
+                days: bar.t,                                    // epoch seconds, not date strings
+                fmtX: clock,
+                series: [{ label: name, color: PORT_COLOR, values: bar.c, area: true }],
+                markers: [], markersByIndex: new Map(),
+                // Yesterday's close as the reference line, so the day is read against where it
+                // started rather than against the low of the visible window.
+                hline: bar.prevClose > 0 ? { value: bar.prevClose, label: 'prev close' } : null,
+                fmtY: fmt,
+                headline: `<span class="${cls(q['1d'])}">${pct(q['1d'])}</span> `
+                    + `<span class="muted">${fmt(last)}</span>`,
+                sub: `${watch ? 'not held · watchlist' : (holding?.qty || 0) + ' shares'} · today's session · `
+                    + `${clock(bar.t[0])} → ${clock(bar.t[bar.t.length - 1])}`,
+                title: name,
+                note: `Today's session in ${q.currency}, ${INTRADAY.interval || '15m'} bars. The headline `
+                    + `% is the same 1D the table shows — measured against the previous close `
+                    + `(the dashed line), not against the first bar, which already opens a gap away.`,
+                tip: i => fmt(bar.c[i]),
+            };
+        }
+
         function instrumentSpec(yahoo) {
+            if (rangeIntraday) { const s = intradaySpec(yahoo); if (s) return s; }
             const history = longRange ? HISTORY.long : HISTORY;
             const q = STATE.quotes[yahoo];
             const holding = STATE.holdings.find(h => h.yahoo === yahoo);
@@ -1553,6 +1613,9 @@
             const svg = document.getElementById('chart');
             const tip = document.getElementById('tip');
             const { days, series } = spec;
+            // Daily charts label with dates; the 1D range labels with clock time. The spec chooses,
+            // because only it knows what its x values ARE (date strings vs epoch seconds).
+            const fmtX = spec.fmtX || ymd;
             const W = svg.clientWidth || svg.parentNode.clientWidth;
             const H = 210, L = 64, R = 14, T = 10, B = 22;
             if (!W || days.length < 2) return;
@@ -1595,7 +1658,7 @@
                     + `${spec.hline.label} ${spec.fmtY(spec.hline.value)}</text>`;
             })();
             const dateEls = [0, Math.floor((days.length - 1) / 2), days.length - 1].map((i, k) =>
-                `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${ymd(days[i])}</text>`
+                `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${fmtX(days[i])}</text>`
             ).join('');
 
             // Path per series; skip null gaps by breaking the path.
@@ -1645,7 +1708,7 @@
                 const yv = series[0].values[i];
                 if (yv != null) { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(yv)); dot.style.display = ''; }
                 else dot.style.display = 'none';
-                tip.innerHTML = `<div class="d">${ymd(days[i])}</div>${spec.tip(i)}`;
+                tip.innerHTML = `<div class="d">${fmtX(days[i])}</div>${spec.tip(i)}`;
                 tip.style.left = `${cx / scale}px`;
                 tip.style.top = `${(yv != null ? y(yv) : T) / scale - 10}px`;
                 tip.style.opacity = 1;
@@ -1671,6 +1734,25 @@
             if (watched) instrumentMetric = 'price';
             document.getElementById('metric').style.display = chartSel && !watched ? '' : 'none';
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
+            // 1D only means something for ONE listing, and only in price mode. Disabled rather
+            // than hidden so the reason stays visible; if it was already active when the selection
+            // moved to a basket, fall back to the default range instead of drawing nothing.
+            const oneStock = !!chartSel && instrumentMetric === 'price';
+            const oneDay = document.querySelector('#ranges button[data-intraday]');
+            if (oneDay) {
+                oneDay.disabled = !oneStock;
+                oneDay.title = oneStock
+                    ? "Today's session, 15-minute bars."
+                    : chartSel ? 'Switch to Price to see today\'s session.'
+                        : 'Pick a single stock: a portfolio has no one intraday timeline, because its '
+                            + 'markets are not open at the same hours.';
+                if (rangeIntraday && !oneStock) {
+                    rangeIntraday = false;
+                    const fallback = document.querySelector('#ranges button[data-days="0"]:not([data-long])');
+                    document.querySelectorAll('#ranges button').forEach(o =>
+                        o.setAttribute('aria-pressed', String(o === fallback)));
+                }
+            }
             document.getElementById('cohorts').style.display = twrMode ? '' : 'none';
             document.getElementById('bench').style.display = (!selected && portfolioMetric === 'value') ? '' : 'none';
             document.getElementById('clear-wrap').hidden = !selected;
@@ -2235,8 +2317,9 @@
                 rangeYears = Number(b.dataset.years || 0);
                 rangeYtd = b.hasAttribute('data-ytd');
                 longRange = b.hasAttribute('data-long');
+                rangeIntraday = b.hasAttribute('data-intraday');
                 document.querySelectorAll('#ranges button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
-                updateChart();
+                if (rangeIntraday) loadIntraday().then(updateChart); else updateChart();
             }));
 
         document.querySelectorAll('#metric button').forEach(b =>

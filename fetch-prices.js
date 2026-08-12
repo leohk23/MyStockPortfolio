@@ -29,18 +29,29 @@ function pctFrom(timestamps, closes, cutoffTs, current) {
 // meta.previousClose IS that prior-day close (the number driving its own quote page); fall back to
 // the last completed daily bar — skipping the final live/today bar — for the rare symbol that omits
 // it. Rounded to 4dp like every other movement; a fraction (0.012 = +1.2%).
-function prevSessionClose(meta, closes) {
+function prevSessionClose(meta, closes, current) {
     if (meta.previousClose > 0) return meta.previousClose;
+    // Skip the newest bar ONLY when it IS today's live bar — which Yahoo marks by setting that
+    // bar's close to the live price itself. The old rule skipped the newest non-null bar
+    // unconditionally, and Yahoo leaves today's daily bar NULL on a good number of tickers: for
+    // those the newest non-null bar is a COMPLETED session, so skipping it silently compared
+    // against the session before that. ARM read -4.83% (against 2026-08-07) when it was +0.40%
+    // (against 2026-08-10), and 21 of 75 tickers were wrong the same way, by up to 5 points.
+    // Compared with a relative tolerance, not ===: the closes array comes back at float32
+    // precision (46.41999816894531) while regularMarketPrice is a clean double (46.42), so exact
+    // equality never fires and every closed market read ~0%. 1e-6 is far below any real move and
+    // comfortably above that representation noise.
+    const isLive = v => Math.abs(v - current) <= Math.abs(current) * 1e-6;
     let skippedLive = false;
     for (let i = closes.length - 1; i >= 0; i--) {
         if (closes[i] == null) continue;
-        if (!skippedLive) { skippedLive = true; continue; } // the final bar is today's/live price
+        if (!skippedLive && isLive(closes[i])) { skippedLive = true; continue; }
         return closes[i];
     }
     return null;
 }
 function dailyMove(meta, closes, current) {
-    const prev = prevSessionClose(meta, closes);
+    const prev = prevSessionClose(meta, closes, current);
     return prev > 0 ? Math.round(((current - prev) / prev) * 1e4) / 1e4 : null;
 }
 
@@ -119,6 +130,54 @@ async function fetchWeekly(ticker, attempts = 3) {
             if (!r?.timestamp) throw new Error('no history in response');
             if (r.meta?.dataGranularity !== '1wk') throw new Error(`Yahoo returned ${r.meta?.dataGranularity || 'unknown'} history`);
             return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes: r.indicators?.quote?.[0]?.close || [] } };
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
+}
+
+// Today's session, bar by bar, for the 1D chart range.
+//
+// The daily series cannot draw a 1D line — over one day it is two points. This is the only fetch
+// that asks for anything finer, and it is deliberately per-INSTRUMENT: a listing has one session,
+// so its intraday line is unambiguous. A whole-portfolio intraday line is not, because the sessions
+// do not overlap (Tokyo closes 06:30 UTC, London opens 07:00, New York 13:30), so the page keeps
+// the 1D tag there rather than stitching different hours together and calling it a day.
+//
+// 15-minute bars, not 5: ~27 points instead of ~79 draws the same shape, and the whole file is
+// about 6KB gzipped for the entire book — a rewrite every CI run costs roughly 30MB a year.
+//
+// Best-effort per ticker. Intraday is a nicety; a failure here must never cost the run its prices,
+// so a ticker that errors is simply absent and the page falls back to its daily series.
+const INTRADAY = 'intraday.json';
+const INTRADAY_INTERVAL = '15m';
+async function fetchIntraday(ticker, attempts = 2) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}`
+        + `?range=1d&interval=${INTRADAY_INTERVAL}`;
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const r = (await res.json()).chart?.result?.[0];
+            const ts = r?.timestamp || [], closes = r?.indicators?.quote?.[0]?.close || [];
+            if (!ts.length) return null;                       // market never opened today
+            // Keep only bars that actually traded, and carry the previous close so the page can
+            // draw the day's move against the right baseline rather than against the first bar.
+            const t = [], c = [];
+            for (let i = 0; i < ts.length; i++) {
+                if (closes[i] == null) continue;
+                t.push(ts[i]);
+                c.push(Number(closes[i].toPrecision(7)));
+            }
+            if (t.length < 2) return null;                     // one point is not a line
+            return {
+                currency: r.meta?.currency || null,
+                prevClose: r.meta?.chartPreviousClose ?? r.meta?.previousClose ?? null,
+                t, c,
+            };
         } catch (e) {
             lastErr = e;
             if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
@@ -1279,6 +1338,33 @@ async function main() {
         long: { days: longHist.days, closes: longCloses, nav: longNav },
     }, null, 1));
 
+    // Today's session for the 1D range. Written whole each run — intraday is only ever about
+    // today, so there is nothing to accrete and a stale bar would be worse than none.
+    {
+        const bars = {};
+        let ok = 0, empty = 0, failed = 0;
+        for (const t of tickers) {
+            if (!quotes[t]) continue;
+            try {
+                const bar = await fetchIntraday(t);
+                if (bar) { bars[t] = bar; ok++; } else empty++;
+            } catch (e) {
+                failed++;                                  // never fatal: the day's prices matter more
+            }
+            await sleep();
+        }
+        fs.writeFileSync(INTRADAY, JSON.stringify({
+            updated: new Date().toISOString(),
+            interval: INTRADAY_INTERVAL,
+            _note: 'Today\'s session only, per instrument, for the chart\'s 1D range. Rewritten every '
+                + 'run. A ticker whose market has not opened is simply absent and the page falls back '
+                + 'to its daily series.',
+            bars,
+        }, null, 1));
+        console.log(`wrote ${INTRADAY} (${ok} with bars, ${empty} not trading today`
+            + `${failed ? `, ${failed} failed` : ''}, ${Math.round(fs.statSync(INTRADAY).size / 1024)}KB)`);
+    }
+
     // Trough multiple — cheapest close in each fiscal year over THAT year's earnings. Pure and
     // free: stored EPS + this run's weekly closes, so a fresh low shows up the hour it prints.
     let troughOk = 0, troughMissing = 0;
@@ -1803,6 +1889,19 @@ function selftest() {
     assert.strictEqual(dailyMove({}, [90, 95, 100], 100), Math.round((5 / 95) * 1e4) / 1e4);
     // Trailing nulls (interior gap) don't confuse the fallback; still skips only the live bar.
     assert.strictEqual(dailyMove({}, [90, 95, null], 95), Math.round((5 / 90) * 1e4) / 1e4);
+    // The ARM case: Yahoo left TODAY's daily bar null, so the newest non-null bar is the last
+    // COMPLETED session and must be the base — not the one before it. Live 268.93 against
+    // 2026-08-10's 267.85 is +0.40%; the old rule skipped to 2026-08-07 and printed -4.83%.
+    assert.strictEqual(dailyMove({}, [282.57, 267.85, null], 268.93),
+        Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
+    // ...and when today's bar IS present, it equals the live price and is still skipped.
+    assert.strictEqual(dailyMove({}, [282.57, 267.85, 268.93], 268.93),
+        Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
+    // Yahoo's closes are float32 while regularMarketPrice is a clean double, so "today's bar" has
+    // to be matched with a tolerance. This is 1113.HK exactly as it comes off the wire: without
+    // the tolerance the last bar is not recognised as live and the move reads 0%.
+    assert.strictEqual(dailyMove({}, [46.68000030517578, 46.41999816894531], 46.42),
+        Math.round((46.42 / 46.68000030517578 - 1) * 1e4) / 1e4);
     // No usable base -> null, never a bogus 0%.
     assert.strictEqual(dailyMove({}, [100], 100), null);
     assert.strictEqual(dailyMove({}, [], 100), null);

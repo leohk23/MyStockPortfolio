@@ -36,11 +36,11 @@ jobs:
 
       # earnings.json is the stored annual-EPS history: refreshed by fetch-prices only when it
       # ages out (weekly), not hourly — so most runs leave it untouched and it drops out here.
-      - name: Commit prices.json + history.json + earnings.json
+      - name: Commit prices.json + history.json + earnings.json + intraday.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json history.json earnings.json
+          git add prices.json history.json earnings.json intraday.json
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
           git pull --rebase --autostash

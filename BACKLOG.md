@@ -27,6 +27,12 @@ Not fixable from this endpoint. It would need a different source, and a blank ce
 So `REPORT_LAG_DAYS = 90` in [fetch-prices.js](fetch-prices.js) is still a flat guess everywhere, including in `troughPe`, where a wrong date means a low is priced against earnings the market could not yet see. Real per-year dates for HK names would need the SQL dump at [github.com/renavondata/webbsite](https://github.com/renavondata/webbsite) — a bigger job than an HTML fetch, and worth sizing before starting.
 Actual HK lags for reference: **annual 57–89 days** (mean 78, against our assumed 90), **interim 43–60 days**.
 
+### Five tickers' 1D baseline still disagrees with the intraday feed
+Fixing `prevSessionClose` (it used to skip the newest *completed* session whenever Yahoo left today's daily bar null) took the disagreement between the 1D column and the intraday baseline from **21 tickers down to 5**, and those five are ≤2pp. They split into two causes, and neither source is right in both:
+- **2800.HK, SPOL.L, 3067.HK** — Yahoo's *daily* series is missing the previous session entirely (a null bar), so our baseline falls back one session too far. The intraday feed's `chartPreviousClose` is right here.
+- **V, R1VL.L** — the daily series is complete and correct, and the intraday feed's `chartPreviousClose` disagrees with it (360.65 against a daily close of 361.32). Our baseline is right here.
+The 1D chart deliberately shows the quote's 1D rather than deriving its own from the bars, so there is only ever one 1D number on the page. Resolving the underlying five would mean deciding per-ticker which feed to believe, which needs a third source.
+
 ### CLP's interim row is anomalous
 webb-database reports 0002.HK's latest interim as period end **2026-01-31**, announced 2026-08-06, a 187-day lag — against a December year end, where the half-year should be 30 June. `check-interim` rejects it via `LAG_SANE` and falls back to the flat window, so nothing downstream is wrong. But it is unexplained: either a quirk in the source or something real about CLP's reporting that is worth understanding before relying on that row.
 
