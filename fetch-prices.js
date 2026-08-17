@@ -765,6 +765,41 @@ function mergeSeries(oldRows, freshRows) {
     }
     return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
+// Fold a depositary receipt's stored history into its home listing's entry, so declaring a
+// `primary` never LOSES a period.
+//
+// Yahoo caps annual fundamentals at four fiscal years, and the two listings of one company were
+// first fetched on different days — so the receipt can hold a year the home listing can no longer
+// reach (NTDOY carries FY2022, 7974.T does not; XIACY carries FY2021, 1810.HK does not). Those are
+// the same statements. Only the per-share basis differs, by exactly `adrShares` — the same
+// conversion the deep panel has always applied for display.
+//
+// The rebase is allowed ONLY when the two entries prove they are the same company. Revenue and net
+// income are stated at company level and are therefore basis-independent: on a year both hold, they
+// must agree. If there is no overlapping year, or the figures disagree, or the reporting currencies
+// differ, nothing is merged. A wrong `adrShares` would otherwise write a fabricated EPS into the
+// very entry everything else now trusts, which is worse than a missing row.
+const SAME_CO_TOLERANCE = 0.005;
+function seedFromReceipt(primary, receipt, adrShares = 1) {
+    if (!primary?.years?.length || !receipt?.years?.length) return primary;
+    if (primary.currency !== receipt.currency) return primary;
+    const byDate = new Map(receipt.years.map(y => [y.date, y]));
+    const overlap = primary.years.filter(y => byDate.has(y.date));
+    if (!overlap.length) return primary;
+    const agrees = (a, b) => a > 0 && b > 0 && Math.abs(a / b - 1) <= SAME_CO_TOLERANCE;
+    // Every shared year has to line up, not merely one of them.
+    for (const y of overlap) {
+        const r = byDate.get(y.date);
+        if (!agrees(y.rev, r.rev) || !agrees(y.ni ?? y.nic, r.ni ?? r.nic)) return primary;
+    }
+    const rebase = rows => (rows || []).map(r =>
+        r.eps == null || !(adrShares > 0) ? r : { ...r, eps: r.eps / adrShares });
+    // Receipt first, home listing second: on any period both hold, the home listing wins outright.
+    return mergeEarnings(
+        { currency: receipt.currency, years: rebase(receipt.years), quarters: rebase(receipt.quarters) },
+        primary);
+}
+
 function mergeEarnings(old, fresh) {
     if (!old?.years?.length) return fresh;
     const merged = {
@@ -1087,6 +1122,19 @@ async function main() {
     // Held + watched. navHistory() below deliberately re-derives its own holdings-only list:
     // a watched stock must never leak into the NAV series.
     const tickers = [...new Set([...holdings.map(h => h.yahoo), ...watchlist.map(w => w.yahoo)])];
+    // A depositary receipt is not where a company files. `primary` (meta.json / watchlist.json)
+    // names the home listing that is the single source of truth for that company's fundamentals
+    // and its results date — 7974.T for both Nintendo lines, 9983.T for the Uniqlo HK receipt.
+    //
+    // These are fetched for FUNDAMENTALS AND THE QUOTE'S CALENDAR FIELDS ONLY. They deliberately
+    // never reach fetchTicker, history.json or the NAV: you do not own 2330.TW, and a price series
+    // for a listing you do not hold would be a position the portfolio never had.
+    const primaryOf = Object.fromEntries([...holdings, ...watchlist]
+        .filter(x => x.primary && x.primary !== x.yahoo).map(x => [x.yahoo, x.primary]));
+    const primaries = [...new Set(Object.values(primaryOf))].filter(p => !tickers.includes(p));
+    // What the fundamentals and the batch quote call cover: everything tracked, plus the home
+    // listings behind the receipts. Prices and history stay on `tickers` alone.
+    const fundTickers = [...tickers, ...primaries];
     const quotes = {};
     const failed = [];
 
@@ -1116,7 +1164,7 @@ async function main() {
     try {
         auth = await getCrumb();
         ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions, epsFwd: freshFwd }
-            = await fetchEps(tickers, auth));
+            = await fetchEps(fundTickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
     }
@@ -1125,13 +1173,22 @@ async function main() {
     // — an unknown type (Yahoo omitted it, or the handshake failed) falls through to normal
     // handling, so a real company is never silently denied its earnings. This is what keeps the
     // 14 funds/indices out of the annual-EPS sweep and the ETF payers out of the ex-div lookups.
-    const nonEquity = new Set(tickers.filter(t => quoteTypes[t] && quoteTypes[t] !== 'EQUITY'));
-    let live = 0, stale = 0;
+    const nonEquity = new Set(fundTickers.filter(t => quoteTypes[t] && quoteTypes[t] !== 'EQUITY'));
+    let live = 0, stale = 0, viaPrimary = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         // Not carried forward like EPS: a stale results date is worse than none, and this one
         // is cheap to refetch (it comes with the EPS request every run anyway).
-        if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
+        //
+        // The home listing wins where one is declared. Yahoo's calendar is per-listing and the two
+        // sides genuinely disagree: it has no date at all for the Capcom and Uniqlo receipts while
+        // 9697.T and 9983.T both carry one (9983.T's confirmed). Falling back to the receipt's own
+        // date keeps a name that only the receipt has.
+        const src = primaryOf[t];
+        if (src && earningsDates[src]) { quotes[t].earnings = earningsDates[src]; viaPrimary++; }
+        else if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
+        // Recorded so the page can attribute the figure rather than implying the receipt filed it.
+        if (src) quotes[t].primary = src;
         // ETF / INDEX / MUTUALFUND / CRYPTOCURRENCY, recorded so the page can tell a fund from a
         // company without loading earnings.json. Yahoo hands an ETF an `eps` (VOO, IAU and EWJ all
         // carry one), so the quote alone cannot otherwise make that call. Only the non-equities
@@ -1160,6 +1217,11 @@ async function main() {
     const dated = tickers.filter(t => quotes[t]?.earnings).length;
     console.log(`ok   next results date for ${dated}/${tickers.length} tickers`);
     console.log(`ok   eps for ${live + stale}/${tickers.length} tickers (${live} fresh, ${stale} carried forward)`);
+    if (primaries.length) {
+        console.log(`ok   results dates via the home listing for ${viaPrimary}/${Object.keys(primaryOf).length}`
+            + ` receipt(s); fetched ${primaries.length} extra symbol(s) for fundamentals only`
+            + ` (${primaries.join(', ')})`);
+    }
 
     // Ex-dividend date, for payers only, and only when there's a reason to refetch (see
     // exDivToFetch). Every other payer carries its cached date forward. This deliberately keeps
@@ -1225,9 +1287,10 @@ async function main() {
     // A fund has no annual EPS to fetch — not on the monthly sweep, not as a "new" holding. This
     // is the bigger win of the two: it keeps 14 ETFs/indices out of every sweep instead of
     // re-confirming they have no earnings, and stops a newly-added ETF being fetched even once.
-    const toFetch = auth ? earningsToFetch(store, tickers).filter(t => !nonEquity.has(t)) : [];
+    const toFetch = auth ? earningsToFetch(store, fundTickers).filter(t => !nonEquity.has(t)) : [];
+    let wroteStore = false;   // a fetch OR a receipt fold is reason enough to rewrite the store
     if (toFetch.length) {
-        console.log(`     fetching annual EPS for ${toFetch.length}/${tickers.length} ticker(s)`
+        console.log(`     fetching annual EPS for ${toFetch.length}/${fundTickers.length} ticker(s)`
             + ` (${sweeping ? 'monthly sweep' : 'awaiting results / new'})`);
         let failed = 0, filled = 0;
         for (const t of toFetch) {
@@ -1263,13 +1326,30 @@ async function main() {
         }
         store.v = EARNINGS_V;
         if (sweeping) store.updated = new Date().toISOString();
-        fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
+        wroteStore = true;
         console.log(`wrote ${EARNINGS} (${Object.keys(store.eps).length} tickers`
             + `${filled ? `, ${filled} filled quarters from quoteSummary` : ''}`
             + `${failed ? `, ${failed} failed and will retry` : ''})`);
     } else {
         console.log(`ok   annual EPS from ${EARNINGS} (updated ${store.updated || 'never'}, no fetch)`);
     }
+    // Consolidate each company onto its home listing. OUTSIDE the fetch branch on purpose: the
+    // receipt entries keep accreting on their own schedule, so this has to run every time or
+    // "one dataset per company" quietly means "whichever of the two happens to be shorter".
+    let seeded = 0;
+    const adrOf = Object.fromEntries([...holdings, ...watchlist].map(x => [x.yahoo, x.adrShares]));
+    for (const [receipt, home] of Object.entries(primaryOf)) {
+        if (!store.eps[home] || !store.eps[receipt]) continue;
+        const size = e => (e.years || []).length + (e.quarters || []).length;
+        const merged = seedFromReceipt(store.eps[home], store.eps[receipt], adrOf[receipt] ?? 1);
+        if (size(merged) > size(store.eps[home])) {
+            seeded += size(merged) - size(store.eps[home]);
+            store.eps[home] = { ...store.eps[home], ...merged };
+            wroteStore = true;
+        }
+    }
+    if (seeded) console.log(`ok   folded ${seeded} period(s) from receipts into their home listings`);
+    if (wroteStore) fs.writeFileSync(EARNINGS, JSON.stringify(store, null, 1));
 
     // Every currency in play: what the workbook declares, what Yahoo quotes in, and what each
     // company reports its earnings in (the last one is why CNY/JPY show up for US-listed ADRs).
@@ -1591,6 +1671,53 @@ function selftest() {
     const kawaAdr = { currency: 'JPY', years: kawa.years.map(y => ({ ...y, eps: y.eps * 0.4 })) };
     const aq = fallbackQuarters({ rows: kawaFresh.rows, eps: {} }, kawaAdr);
     assert.ok(Math.abs(aq[3].eps - 18.74 * 0.4) < 0.01);
+
+    // seedFromReceipt: a receipt's extra years go into the home listing, rebased to the ordinary
+    // basis — but only once the two entries have PROVED they are the same company.
+    //
+    // Nintendo's real shape: NTDOY holds FY2022, 7974.T does not, and NTDOY's EPS is per receipt
+    // (one receipt = 0.25 of a share), so 92.8525 / 0.25 = 371.41 — the figure NTO.F reports.
+    const ntdoy = {
+        currency: 'JPY',
+        years: [
+            { date: '2022-03-31', rev: 1695344000000, ni: 477691000000, eps: 100.0 },
+            { date: '2023-03-31', rev: 1601677000000, ni: 432768000000, eps: 92.8525 },
+        ],
+    };
+    const nintendo = {
+        currency: 'JPY',
+        years: [{ date: '2023-03-31', rev: 1601677000000, ni: 432768000000, eps: 371.41 }],
+    };
+    const seeded = seedFromReceipt(nintendo, ntdoy, 0.25);
+    assert.strictEqual(seeded.years.length, 2, 'the receipt-only year is folded in');
+    assert.strictEqual(seeded.years[0].date, '2022-03-31');
+    assert.strictEqual(seeded.years[0].eps, 400, '100.0 per receipt is 400 per ordinary share');
+    // The overlapping year keeps the HOME listing's own figure, never the rebased receipt's.
+    assert.strictEqual(seeded.years[1].eps, 371.41);
+
+    // Same company check: revenue that disagrees means these are not the same statements, so
+    // nothing is merged rather than an invented EPS being written into the source of truth.
+    assert.deepStrictEqual(
+        seedFromReceipt(nintendo, { ...ntdoy, years: ntdoy.years.map((y, i) =>
+            i === 1 ? { ...y, rev: y.rev * 1.4 } : y) }, 0.25),
+        nintendo);
+    // Net income that disagrees is refused on the same grounds.
+    assert.deepStrictEqual(
+        seedFromReceipt(nintendo, { ...ntdoy, years: ntdoy.years.map((y, i) =>
+            i === 1 ? { ...y, ni: y.ni * 1.4 } : y) }, 0.25),
+        nintendo);
+    // No overlapping year at all: nothing to check the basis against, so nothing is merged.
+    assert.deepStrictEqual(
+        seedFromReceipt(nintendo, { ...ntdoy, years: [ntdoy.years[0]] }, 0.25), nintendo);
+    // Different reporting currencies cannot be the same statements.
+    assert.deepStrictEqual(seedFromReceipt(nintendo, { ...ntdoy, currency: 'USD' }, 0.25), nintendo);
+    // A 1:1 secondary line (NTO.F) needs no rebase and still contributes its extra year.
+    assert.strictEqual(seedFromReceipt(nintendo,
+        { currency: 'JPY', years: [{ date: '2022-03-31', rev: 1695344000000, ni: 477691000000, eps: 400 },
+            nintendo.years[0]] }, 1).years[0].eps, 400);
+    // Rounding inside the tolerance still counts as the same company.
+    assert.strictEqual(seedFromReceipt(nintendo, { ...ntdoy, years: ntdoy.years.map((y, i) =>
+        i === 1 ? { ...y, rev: y.rev * 1.002 } : y) }, 0.25).years.length, 2);
 
     // MKS.L: quarters three years behind the filed annuals — the whole set is refused.
     assert.deepStrictEqual(fallbackQuarters(

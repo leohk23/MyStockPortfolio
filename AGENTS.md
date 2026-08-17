@@ -297,6 +297,41 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 
 `holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
+## One company, one dataset (`primary`)
+
+A depositary receipt is not where a company files. `meta.json` (and `watchlist.json`) may carry
+**`primary`** — the Yahoo symbol of the home listing that is the single source of truth for that
+company's **fundamentals and results date**. Nine are declared: `NTDOY`/`NTO.F` → `7974.T`,
+`XIACY` → `1810.HK`, `TSM` → `2330.TW`, `KWHIY` → `7012.T`, `CCOEY` → `9697.T`, `TKOMY` → `8766.T`,
+`6288.HK` → `9983.T`, `BYDDY` → `1211.HK`.
+
+Why it is needed: **Yahoo keeps a separate dataset per listing and they disagree.** Different year
+windows (NTDOY had FY2022 where 7974.T did not; NTDOY was missing FY2025 EPS entirely), per-share
+figures on different bases, and a results date on one side only (no date for the Capcom or Uniqlo
+receipts, while 9697.T and 9983.T both carry one — 9983.T's confirmed).
+
+How it works:
+- `fetch-prices.js` builds `fundTickers = tickers + primaries`. The extra home listings are fetched
+  for **fundamentals and the batch quote's calendar fields only** — they never reach `fetchTicker`,
+  `history.json` or the NAV. You do not own 2330.TW, and a price series for it would be a position
+  the portfolio never had.
+- `quotes[t].earnings` resolves through the home listing, falling back to the receipt's own date.
+  `quotes[t].primary` records where it came from so the UI can attribute it.
+- `seedFromReceipt()` folds the receipt's stored history **into** the home listing's entry, rebasing
+  EPS by `adrShares`. This runs on every run, outside the fetch branch, so declaring a `primary`
+  can never *lose* a period — which is the whole point. **It is gated**: revenue and net income are
+  company-level and basis-independent, so they must agree on every overlapping year, and the
+  reporting currencies must match. No overlap, a mismatch, or a currency difference means nothing is
+  merged — a wrong `adrShares` would otherwise write a fabricated EPS into the source of truth.
+- The deep panel reads `store.eps[leg.primary || leg.yahoo]`. A primary entry is already on the
+  company's own basis, so `onUnderlying()` is **not** applied to it; that call remains the fallback
+  for a receipt with no primary declared.
+
+**Not in scope: `quotes[t].eps` and the P/E columns.** Those are priced against *that listing's own
+price* and must stay per-listing. Note Xiaomi currently reads 16.8× on `XIACY` against 14.1× on
+`1810.HK`, because `XIACY` carries a manual `eps` override in `meta.json` that the HK line does not.
+Moving or deleting that override is a config decision, not a code one.
+
 ## Results calendar (the Calendar view)
 
 `quotes[t].earnings = { date, estimate? }` comes from the same batch `v7/finance/quote` call as the
@@ -309,12 +344,14 @@ plenty of obvious guesses (BLK, TSLA and IBKR all return exactly +91 days from t
 
 The Calendar view (`renderCalendar`) lists one row per **company**, held and watched together: an ADR
 and its local line report the same results, so the legs are collapsed and the earliest date any listing
-carries wins. Funds and indices are excluded via `quotes[t].type` (written only for non-equities —
+carries wins. Where the date came from a home listing (see `primary` above) the row shows
+`XIACY → 1810.HK` rather than implying the receipt filed it. Funds and indices are excluded via `quotes[t].type` (written only for non-equities —
 Yahoo hands ETFs an `eps`, so nothing else on the quote separates them). Companies with no published
 date are named in a line under the table rather than dropped.
 
-Coverage is ~44 of 58 companies: Yahoo projects a next-results date for US and Japanese filers but
-rarely for Hong Kong, Paris or London listings.
+Coverage is 44 of 58 companies (14 confirmed, 30 projected): Yahoo projects a next-results date for
+US and Japanese filers but rarely for Hong Kong, Paris or London listings. Dates refresh with the
+prices — every 15 minutes on weekdays — and are never carried forward from a previous run.
 
 ## Yahoo symbol mapping
 

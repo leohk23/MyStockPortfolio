@@ -139,6 +139,11 @@ function buildHoldings(meta, bySymbol, realized) {
             // company level, so the deep dive uses this to put the filed statements back on the
             // underlying's basis. Set it only for a true depositary receipt.
             adrShares: m.adrShares,
+            // The home listing that files this company's statements, where this instrument is a
+            // depositary receipt or a foreign secondary line (NTDOY and NTO.F both -> 7974.T).
+            // Fundamentals and the results date are read from it, so one company has one dataset
+            // however many of its lines you happen to hold.
+            primary: m.primary,
             // Trough-multiple valuation: the cheapest this traded in living memory, and what
             // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
             lowPrice: m.lowPrice,

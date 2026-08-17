@@ -207,6 +207,11 @@
         /* ---- table ---- */
         .table-responsive { width: 100%; overflow-x: auto; }
         table { border-collapse: collapse; width: 100%; min-width: 1280px; }
+        /* The calendar has five columns, not twenty-nine. Inheriting the 1280px floor forced it
+           wide enough to scroll on a phone, and the sticky first column then took a share of that
+           1280 rather than of the screen — a Date column half the viewport wide. Sized to its
+           own content, nothing scrolls sideways and the pin never comes into play. */
+        #calendar { min-width: 0; }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
@@ -896,10 +901,20 @@
 
             Promise.all([loadEarnings(), loadGuidance(), loadInterim()]).then(([store, guidanceStore, interimStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
-                // Per RECEIPT, as Yahoo returns it — what the Valuation panel needs, because it
-                // divides by the ADR's own price. The table below wants the company's own basis.
-                const eRaw = store.eps[leg.yahoo];
-                const e = portfolioLib.onUnderlying(eRaw, leg.adrShares);
+                // One company, one dataset. Where a home listing is declared (leg.primary — a
+                // depositary receipt or a foreign secondary line), the statements are read from
+                // IT, so both Nintendo lines show the same five years from 7974.T instead of
+                // NTDOY's four-and-a-gap beside NTO.F's four. That entry already reports on the
+                // company's own basis, so there is nothing to rescale.
+                //
+                // Without a primary, fall back to the listing's own entry and put it back on the
+                // underlying's basis as before: Yahoo scales per-share figures to the receipt.
+                const own = store.eps[leg.yahoo];
+                const fromPrimary = leg.primary ? store.eps[leg.primary] : null;
+                const e = fromPrimary || portfolioLib.onUnderlying(own, leg.adrShares);
+                // guidedEpsPe reads NET INCOME and the reporting currency off this — both company
+                // level, so the per-share basis never enters it.
+                const eRaw = fromPrimary || own;
                 const gRaw = guidanceStore[leg.yahoo];
                 const guidance = guidanceView(gRaw, leg.quote.price);
                 const guidePe = document.getElementById('deep-guidance-pe');
@@ -1285,7 +1300,8 @@
                     // it can be eleven months stale — the reader cannot tell the difference between
                     // "nothing has happened" and "nothing has been published since".
                     ...(cadenceNote ? [cadenceNote] : []),
-                    ...(leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
+                    ...(fromPrimary ? [`Source: these statements — and the next results date above — are read from ${leg.primary}, this company's home listing, not from ${leg.yahoo}. Yahoo keeps a separate dataset per listing, and they disagree: different year windows, per-share figures on different bases, and often a results date on one side only. Reading the home listing means every line of this company shows the same numbers, on the basis it actually files.`] : []),
+                    ...(!fromPrimary && leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ])}`;
@@ -2324,8 +2340,8 @@
                     name, value, yahoo: src.yahoo, pe: src.pe,
                     date: dated ? dated.quote.earnings.date : null,
                     estimate: !!dated?.quote.earnings.estimate,
-                    // Only worth naming the listing when the company has more than one.
-                    listing: legs.length > 1 ? src.yahoo : null,
+                    // The home listing the date actually came from, where it isn't this one.
+                    via: dated?.quote.primary || null,
                 });
             };
             for (const r of STATE.rows) fromLegs(r.name, r.legs, r.value);
@@ -2338,6 +2354,15 @@
         const inDays = n => n === 0 ? 'today' : n === 1 ? 'tomorrow'
             : n < 14 ? `${n} days` : n < 70 ? `${Math.round(n / 7)} weeks` : `${Math.round(n / 30.44)} months`;
         const WDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        // "18 Aug", not "2026/08/18": this is the first column on a phone, and the year is dead
+        // weight on a list that runs a few months ahead. It comes back the moment a date falls
+        // outside the current year, which is exactly when it stops being obvious.
+        const calDate = iso => {
+            const d = new Date(iso + 'T00:00:00Z');
+            const y = d.getUTCFullYear();
+            return `${d.getUTCDate()} ${QMON[d.getUTCMonth()]}`
+                + (y === new Date().getUTCFullYear() ? '' : ` '${String(y).slice(2)}`);
+        };
         const daysBetween = (from, to) =>
             Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 864e5);
 
@@ -2358,10 +2383,13 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = e.yahoo;
                 tr.innerHTML = `
-                    <td>${ymd(e.date)} <span class="muted">${WDAY[new Date(e.date + 'T00:00:00Z').getUTCDay()]}</span>`
+                    <td>${calDate(e.date)} <span class="muted">${WDAY[new Date(e.date + 'T00:00:00Z').getUTCDay()]}</span>`
                     + `${e.estimate ? ' <span class="tag" title="Yahoo’s projection, not a date the company has announced — typically the same weekday one quarter on from the last report. Treat it as roughly-when, not when.">est.</span>' : ''}</td>
                     <td class="${n <= 7 ? '' : 'muted'}">${inDays(n)}</td>
-                    <td>${escapeHTML(e.name)}${e.listing ? ` <span class="muted">${escapeHTML(e.listing)}</span>` : ''}</td>
+                    <td>${escapeHTML(e.name)} <span class="muted" title="${escapeHTML(e.via
+                        ? `Listed here as ${e.yahoo}; the date is read from ${e.via}, this company's home listing.`
+                        : 'The listing this date is read from.')}">${escapeHTML(e.yahoo)}`
+                    + `${e.via ? ` → ${escapeHTML(e.via)}` : ''}</span></td>
                     <td>${e.value == null ? '<span class="muted">watched</span>' : money(e.value)}</td>
                     <td>${peCell(e.pe)}</td>`;
                 tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(e.yahoo); fix(); });
@@ -2371,13 +2399,19 @@
             // Say who is missing and why, rather than quietly showing a shorter list. These are all
             // real companies — Yahoo simply publishes no forward date for most of Hong Kong, Paris
             // and London, and there is no second source in this repo to fill it from.
-            const unknown = all.filter(e => !e.date || e.date < today).map(e => e.name).sort();
-            document.getElementById('cal-none').innerHTML = unknown.length
-                ? `No date published for ${unknown.length} of ${all.length}: `
-                    + `${escapeHTML(unknown.join(', '))}. Yahoo projects a next-results date for US and `
-                    + `Japanese filers but rarely for Hong Kong, Paris or London listings; these will `
-                    + `appear once it does.`
-                : '';
+            const unknown = all.filter(e => !e.date || e.date < today)
+                .map(e => `${e.name} (${e.yahoo})`).sort();
+            const conf = due.filter(e => !e.estimate).length;
+            document.getElementById('cal-none').innerHTML =
+                `Dates come from Yahoo's quote feed and are refreshed with the prices — every 15 `
+                + `minutes on weekdays, so a newly announced date appears the same day. `
+                + `${conf} of ${due.length} are confirmed; the rest are Yahoo's projection, `
+                + `usually the same weekday one quarter on from the last report.`
+                + (unknown.length
+                    ? ` No date published at all for ${unknown.length} of ${all.length}: `
+                        + `${escapeHTML(unknown.join(', '))} — Yahoo projects a next-results date for `
+                        + `US and Japanese filers but rarely for Hong Kong, Paris or London listings.`
+                    : '');
             markSelectedRow();
         }
 
