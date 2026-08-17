@@ -213,11 +213,11 @@ async function getCrumb() {
 //
 // The next results date rides along in the same response — no extra request.
 //
-// Yahoo's earningsTimestamp is NOT reliably the NEXT one: once a company has reported and the
-// following date isn't scheduled yet, it keeps handing back the LAST one (in July 2026 MKS.L
-// returns 2026-05-20 and 1113.HK 2026-03-19, both long past). Only a future date is a "next
-// results" date; a past one is dropped rather than displayed as if it were upcoming. `now` is a
-// parameter so this stays testable.
+// Yahoo's earningsTimestamp is NOT reliably the NEXT one: once a company has reported it keeps
+// handing back the LAST one (in July 2026 MKS.L returns 2026-05-20 and 1113.HK 2026-03-19, both
+// long past), and the projected next date arrives in earningsTimestampStart instead. Only a
+// future date is a "next results" date; a past one is dropped rather than displayed as if it
+// were upcoming. `now` is a parameter so this stays testable.
 function parseQuotes(json, now = Date.now()) {
     const eps = {}, earnings = {}, types = {}, session = {}, epsFwd = {};
     for (const r of json.quoteResponse?.result || []) {
@@ -265,12 +265,24 @@ function parseQuotes(json, now = Date.now()) {
         // a consensus loss has no meaningful multiple, same rule the trough uses. Whether it can
         // be BELIEVED is decided in main(), where the split flag is known.
         if (typeof r.epsForward === 'number' && r.epsForward > 0) epsFwd[r.symbol] = r.epsForward;
-        const ts = r.earningsTimestamp ?? r.earningsTimestampStart;
-        if (typeof ts === 'number' && ts * 1000 > now) {
+        // Two fields, two different meanings, and `earningsTimestamp ?? earningsTimestampStart`
+        // got it backwards: once a company has reported, earningsTimestamp holds the date it just
+        // reported ON, while earningsTimestampStart carries the projected NEXT one. Preferring the
+        // former lost the next date for 40 of 75 tickers here — AAPL, GOOG, MSFT, TSLA all read
+        // "not scheduled" while Yahoo was handing back October. Take the nearest FUTURE of the two.
+        const ts = [r.earningsTimestampStart, r.earningsTimestamp]
+            .filter(v => typeof v === 'number' && v * 1000 > now)
+            .sort((a, b) => a - b)[0];
+        if (ts != null) {
+            // isEarningsDateEstimate describes earningsTimestamp, not the Start projection, and
+            // it is false on plenty of dates that are plainly guesses (BLK, TSLA and IBKR all
+            // return exactly +91 days from the last report, unflagged). So a date is treated as
+            // confirmed ONLY when it is the earningsTimestamp itself and Yahoo hasn't flagged it;
+            // anything reached via Start is a projection and says so.
+            const confirmed = ts === r.earningsTimestamp && !r.isEarningsDateEstimate;
             earnings[r.symbol] = {
                 date: new Date(ts * 1000).toISOString().slice(0, 10),
-                // Yahoo flags a guessed date; say so rather than implying it's confirmed.
-                ...(r.isEarningsDateEstimate ? { estimate: true } : {}),
+                ...(confirmed ? {} : { estimate: true }),
             };
         }
     }
@@ -1120,6 +1132,11 @@ async function main() {
         // Not carried forward like EPS: a stale results date is worse than none, and this one
         // is cheap to refetch (it comes with the EPS request every run anyway).
         if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
+        // ETF / INDEX / MUTUALFUND / CRYPTOCURRENCY, recorded so the page can tell a fund from a
+        // company without loading earnings.json. Yahoo hands an ETF an `eps` (VOO, IAU and EWJ all
+        // carry one), so the quote alone cannot otherwise make that call. Only the non-equities
+        // are written — EQUITY is the default and 61 of 75 tickers would just repeat it.
+        if (nonEquity.has(t)) quotes[t].type = quoteTypes[t];
         // Same reasoning: never carried forward from the previous run. An after-hours move is only
         // true at the moment it was read — a stale one would keep warning about a swing that has
         // long since been absorbed into a new regular session. Absent means no marker, not "flat".
@@ -1976,10 +1993,29 @@ function selftest() {
     // scheduled (MKS.L in July 2026 returns May 2026). That is not upcoming, so it is dropped.
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'MKS.L', earningsTimestamp: past }] } }, QNOW).earnings, {});
-    // earningsTimestampStart stands in when the exact timestamp is missing (1113.HK).
+    // earningsTimestampStart stands in when the exact timestamp is missing (1113.HK) — and a date
+    // reached that way is a projection, so it is flagged even though Yahoo flagged nothing.
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestampStart: future }] } }, QNOW).earnings,
-        { X: { date: '2026-07-30' } });
+        { X: { date: '2026-07-30', estimate: true } });
+    // The case the `??` used to lose: already reported (past), next one projected (future). The
+    // future Start wins over the past timestamp instead of the whole name reading "not scheduled".
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [
+            { symbol: 'GOOG', earningsTimestamp: past, earningsTimestampStart: future, isEarningsDateEstimate: false },
+        ] } }, QNOW).earnings,
+        { GOOG: { date: '2026-07-30', estimate: true } });
+    // Both future and equal (NVDA, a confirmed upcoming date): confirmed, not flagged.
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [
+            { symbol: 'NVDA', earningsTimestamp: future, earningsTimestampStart: future },
+        ] } }, QNOW).earnings,
+        { NVDA: { date: '2026-07-30' } });
+    // Both past (MC.PA, MKS.L): nothing upcoming, and no stale date passed off as one.
+    assert.deepStrictEqual(
+        parseQuotes({ quoteResponse: { result: [
+            { symbol: 'MC.PA', earningsTimestamp: past, earningsTimestampStart: past },
+        ] } }, QNOW).earnings, {});
     // A guessed date is flagged, not passed off as confirmed.
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestamp: future, isEarningsDateEstimate: true }] } }, QNOW).earnings,

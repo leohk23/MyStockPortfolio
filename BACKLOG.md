@@ -17,6 +17,7 @@ The obvious fix — return null unless a bar predates the cutoff — is **wrong*
 
 ### The watchlist lists one company twice
 Xiaomi appears as both `XIACY` and `1810.HK`. The portfolio table de-duplicates on `group`; `buildWatchlist` does not. Either apply the same grouping or accept it as deliberate (the two lines do trade differently).
+The Calendar view makes it more visible: the held Xiaomi line and the watched one sit on the same day as two entries. `calendarRows()` collapses legs within a row but cannot pair "XIAOMI CORPORATION" (the holding's `group`) with "Xiaomi" (the watchlist's `name`) — a watchlist `group` key, matching `meta.json`'s, would fix both places at once.
 
 ### Fallback quarters have no operating income
 Quarters filled from `quoteSummary` ([fetch-prices.js](fetch-prices.js), `fallbackQuarters`) carry revenue and net income only — Yahoo's `incomeStatementHistoryQuarterly` returns `operatingIncome` as absent and several other fields as a placeholder zero. So Op income and Op margin are blank on those rows for every Japanese name.

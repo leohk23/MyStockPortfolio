@@ -297,6 +297,25 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 
 `holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
+## Results calendar (the Calendar view)
+
+`quotes[t].earnings = { date, estimate? }` comes from the same batch `v7/finance/quote` call as the
+price — no extra request. Two Yahoo fields feed it and they mean different things: **`earningsTimestamp`
+is the date the company last reported on** once it has reported, while **`earningsTimestampStart`
+carries the projected next one**. `parseQuotes` takes the nearest FUTURE of the two; a past date is
+dropped rather than shown as upcoming. A date is `estimate: true` unless it *is* `earningsTimestamp`
+and Yahoo hasn't flagged it — `isEarningsDateEstimate` describes only that field and reads false on
+plenty of obvious guesses (BLK, TSLA and IBKR all return exactly +91 days from the last report).
+
+The Calendar view (`renderCalendar`) lists one row per **company**, held and watched together: an ADR
+and its local line report the same results, so the legs are collapsed and the earliest date any listing
+carries wins. Funds and indices are excluded via `quotes[t].type` (written only for non-equities —
+Yahoo hands ETFs an `eps`, so nothing else on the quote separates them). Companies with no published
+date are named in a line under the table rather than dropped.
+
+Coverage is ~44 of 58 companies: Yahoo projects a next-results date for US and Japanese filers but
+rarely for Hong Kong, Paris or London listings.
+
 ## Yahoo symbol mapping
 
 Each `meta.json` entry carries its `yahoo` symbol directly — no derivation, no `OVERRIDES` map. `extract-portfolio.js` verifies every *new* symbol (one not yet in `prices.json`) against Yahoo and refuses to write if it returns no price, so a typo fails the extract instead of silently dropping the row (`portfolio.js` skips holdings with no quote). Normal runs make zero network calls. All 56 are currently verified.
