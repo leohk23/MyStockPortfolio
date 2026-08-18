@@ -134,9 +134,12 @@
         #deep-val .derived { font-size: 11px; color: var(--text-secondary);
             border-bottom: 1px dotted var(--text-secondary); cursor: help; }
         /* Source remark (reported / filed) — which feed a TTM figure comes from. */
-        #deep-val .tag, #deep-fin .tag { font-size: 10px; text-transform: uppercase;
+        #deep-val .tag, #deep-fin .tag, #calendar .tag { font-size: 10px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); margin-left: 5px;
             border-bottom: 1px dotted var(--text-muted); cursor: help; }
+        /* "filed" is a real link to the exchange announcement, so it reads as one: solid underline
+           and a pointer, against the dotted help-cursor of the tags that only carry a tooltip. */
+        #calendar a.tag { color: var(--series-port); border-bottom-style: solid; cursor: pointer; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -207,6 +210,11 @@
         /* ---- table ---- */
         .table-responsive { width: 100%; overflow-x: auto; }
         table { border-collapse: collapse; width: 100%; min-width: 1280px; }
+        /* The calendar has five columns, not twenty-nine. Inheriting the 1280px floor forced it
+           wide enough to scroll on a phone, and the sticky first column then took a share of that
+           1280 rather than of the screen — a Date column half the viewport wide. Sized to its
+           own content, nothing scrolls sideways and the pin never comes into play. */
+        #calendar { min-width: 0; }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
@@ -431,6 +439,7 @@
             <button data-dim="company" aria-pressed="true">Company</button>
             <button data-dim="geography" aria-pressed="false">Geography</button>
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
+            <button data-dim="calendar" aria-pressed="false">Calendar</button>
         </div>
     </div>
 
@@ -493,6 +502,27 @@
             </tr></thead>
             <tbody></tbody>
         </table>
+    </div>
+
+    <!-- When everything you follow next reports, held and watched together, nearest first. One row
+         per company rather than per listing: an ADR and its local line report the same results, so
+         Xiaomi is one entry, not two. Names Yahoo has no date for are listed underneath rather
+         than dropped — "we don't know" is a fact about the calendar, not an empty space. -->
+    <div class="table-responsive" id="cal" hidden>
+        <!-- Not .pinned: five columns fit any screen, so there is nothing to scroll past. -->
+        <table id="calendar">
+            <!-- No sortable headers here on purpose: nearest-first IS the question this view
+                 answers, and a results calendar sorted by P/E is not a calendar. -->
+            <thead><tr>
+                <th>Date</th>
+                <th>In</th>
+                <th>Company</th>
+                <th title="Position value, so a big holding reporting this week stands out from a small one. Watched names have no position and say so.">Position</th>
+                <th title="Trailing P/E — what the results are about to land against">P/E</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="cal-none" class="deep-note"></p>
     </div>
 
     <script>
@@ -874,10 +904,20 @@
 
             Promise.all([loadEarnings(), loadGuidance(), loadInterim()]).then(([store, guidanceStore, interimStore]) => {
                 if (chartSel !== leg.yahoo) return;         // selection moved on while loading
-                // Per RECEIPT, as Yahoo returns it — what the Valuation panel needs, because it
-                // divides by the ADR's own price. The table below wants the company's own basis.
-                const eRaw = store.eps[leg.yahoo];
-                const e = portfolioLib.onUnderlying(eRaw, leg.adrShares);
+                // One company, one dataset. Where a home listing is declared (leg.primary — a
+                // depositary receipt or a foreign secondary line), the statements are read from
+                // IT, so both Nintendo lines show the same five years from 7974.T instead of
+                // NTDOY's four-and-a-gap beside NTO.F's four. That entry already reports on the
+                // company's own basis, so there is nothing to rescale.
+                //
+                // Without a primary, fall back to the listing's own entry and put it back on the
+                // underlying's basis as before: Yahoo scales per-share figures to the receipt.
+                const own = store.eps[leg.yahoo];
+                const fromPrimary = leg.primary ? store.eps[leg.primary] : null;
+                const e = fromPrimary || portfolioLib.onUnderlying(own, leg.adrShares);
+                // guidedEpsPe reads NET INCOME and the reporting currency off this — both company
+                // level, so the per-share basis never enters it.
+                const eRaw = fromPrimary || own;
                 const gRaw = guidanceStore[leg.yahoo];
                 const guidance = guidanceView(gRaw, leg.quote.price);
                 const guidePe = document.getElementById('deep-guidance-pe');
@@ -1263,7 +1303,8 @@
                     // it can be eleven months stale — the reader cannot tell the difference between
                     // "nothing has happened" and "nothing has been published since".
                     ...(cadenceNote ? [cadenceNote] : []),
-                    ...(leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
+                    ...(fromPrimary ? [`Source: these statements — and the next results date above — are read from ${leg.primary}, this company's home listing, not from ${leg.yahoo}. Yahoo keeps a separate dataset per listing, and they disagree: different year windows, per-share figures on different bases, and often a results date on one side only. Reading the home listing means every line of this company shows the same numbers, on the basis it actually files.`] : []),
+                    ...(!fromPrimary && leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ])}`;
@@ -1827,7 +1868,7 @@
             updateChart();
         }
         function markSelectedRow() {
-            document.querySelectorAll('#portfolio tr, #watchlist tr').forEach(tr =>
+            document.querySelectorAll('#portfolio tr, #watchlist tr, #calendar tr').forEach(tr =>
                 tr.classList.toggle('sel', (!!chartSel && tr.dataset.yahoo === chartSel)
                     || (!!chartGroup && tr.dataset.group === chartGroup.name)));
         }
@@ -1964,9 +2005,12 @@
         function updateSearchCount() {
             const el = document.getElementById('search-count');
             if (!searchTerms().length) { el.textContent = ''; return; }
-            const watchMode = STATE.dim === 'watch';
-            const shown = watchMode ? visibleWatch().length : visibleRows().length;
-            const of = watchMode ? WATCH.length : STATE.rows.length;
+            // Each view counts its own table, so the count can never describe a list you can't see.
+            const t = searchTerms();
+            const cal = () => calendarRows().filter(e => matches([e.name, e.yahoo].join(' ').toLowerCase(), t));
+            const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
+                : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
+                : [visibleRows().length, STATE.rows.length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
         }
 
@@ -2210,8 +2254,8 @@
             const wrap = document.getElementById('holdings-table');
             const table = document.getElementById('portfolio');
             const footRow = table.tFoot?.rows[0];
-            // Watchlist view has no totals to float; nor does an empty table.
-            if (STATE.dim === 'watch' || !footRow || !table.tBodies[0]?.rows.length) {
+            // Watchlist and calendar views have no totals to float; nor does an empty table.
+            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || !footRow || !table.tBodies[0]?.rows.length) {
                 el.classList.remove('show');
                 el.innerHTML = '';
                 return;
@@ -2274,11 +2318,123 @@
             pinColumns();
         }
 
-        // The watchlist takes the holdings table's place rather than sitting beneath it.
+        /* ---------------- results calendar ---------------- */
+        // One entry per COMPANY, held or watched. An ADR and its local listing report the same
+        // results, and Yahoo frequently schedules only one of the two (KWHIY has no date where its
+        // Tokyo line would), so the legs are collapsed: earliest date any listing carries wins, and
+        // the row says which listing it came from. STATE.rows is company-grouped whenever this view
+        // is active — portfolioLib.build falls back to the company dimension for any name it does
+        // not recognise, and 'calendar' is one.
+        //
+        // Funds and indices are left out entirely rather than listed as "not scheduled": an ETF has
+        // no results to schedule, so its absence is correct and its presence would be 15 rows of
+        // noise. quote.type is only written for non-equities (see fetch-prices.js) — Yahoo hands
+        // ETFs an `eps`, so nothing else on the quote can tell them apart.
+        function calendarRows() {
+            const entries = [];
+            const fromLegs = (name, legs, value) => {
+                const dated = legs.filter(l => !l.quote.type && l.quote.earnings)
+                    .sort((a, b) => a.quote.earnings.date.localeCompare(b.quote.earnings.date))[0];
+                // A company whose every listing is a fund isn't a company — drop it. One whose
+                // listings are equities but carry no date is kept, with date null.
+                if (!dated && legs.every(l => l.quote.type)) return;
+                const src = dated || legs[0];
+                entries.push({
+                    name, value, yahoo: src.yahoo, pe: src.pe,
+                    date: dated ? dated.quote.earnings.date : null,
+                    estimate: !!dated?.quote.earnings.estimate,
+                    // The home listing the date actually came from, where it isn't this one.
+                    via: dated?.quote.primary || null,
+                    // Set when the date came from the company's own exchange filing rather than
+                    // from Yahoo — a link to the announcement itself.
+                    notice: dated?.quote.earnings.notice || null,
+                });
+            };
+            for (const r of STATE.rows) fromLegs(r.name, r.legs, r.value);
+            for (const w of WATCH) fromLegs(w.name, [w], null);
+            return entries;
+        }
+
+        // "In 3 days" beats a date you have to subtract in your head — the whole reason to look at
+        // this view is proximity. Today and tomorrow get words; a week out gets weeks.
+        const inDays = n => n === 0 ? 'today' : n === 1 ? 'tomorrow'
+            : n < 14 ? `${n} days` : n < 70 ? `${Math.round(n / 7)} weeks` : `${Math.round(n / 30.44)} months`;
+        const WDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        // "18 Aug", not "2026/08/18": this is the first column on a phone, and the year is dead
+        // weight on a list that runs a few months ahead. It comes back the moment a date falls
+        // outside the current year, which is exactly when it stops being obvious.
+        const calDate = iso => {
+            const d = new Date(iso + 'T00:00:00Z');
+            const y = d.getUTCFullYear();
+            return `${d.getUTCDate()} ${QMON[d.getUTCMonth()]}`
+                + (y === new Date().getUTCFullYear() ? '' : ` '${String(y).slice(2)}`);
+        };
+        const daysBetween = (from, to) =>
+            Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 864e5);
+
+        function renderCalendar() {
+            const tbody = document.querySelector('#calendar tbody');
+            const today = todayISO();
+            tbody.textContent = '';
+            const terms = searchTerms();
+            const all = calendarRows().filter(e => !terms.length
+                || matches([e.name, e.yahoo].join(' ').toLowerCase(), terms));
+            // A date that has passed is not upcoming. It happens between a company reporting and
+            // Yahoo posting the next date, so those names join the unscheduled list rather than
+            // sitting at the top of the calendar claiming a day that has already been and gone.
+            const due = all.filter(e => e.date && e.date >= today)
+                .sort((a, b) => a.date.localeCompare(b.date) || (b.value || 0) - (a.value || 0));
+            for (const e of due) {
+                const n = daysBetween(today, e.date);
+                const tr = document.createElement('tr');
+                tr.dataset.yahoo = e.yahoo;
+                tr.innerHTML = `
+                    <td>${calDate(e.date)} <span class="muted">${WDAY[new Date(e.date + 'T00:00:00Z').getUTCDay()]}</span>`
+                    + `${e.estimate ? ' <span class="tag" title="Yahoo’s projection, not a date the company has announced — typically the same weekday one quarter on from the last report. Treat it as roughly-when, not when.">est.</span>' : ''}`
+                    + `${e.notice ? ` <a class="tag" href="${escapeHTML(e.notice)}" target="_blank" rel="noopener"`
+                        + ` title="The company filed this date with the exchange under Listing Rule 13.43, which requires at least 7 clear business days' notice. Click to read the announcement itself." `
+                        + `onclick="event.stopPropagation()">filed</a>` : ''}</td>
+                    <td class="${n <= 7 ? '' : 'muted'}">${inDays(n)}</td>
+                    <td>${escapeHTML(e.name)} <span class="muted" title="${escapeHTML(e.via
+                        ? `Listed here as ${e.yahoo}; the date is read from ${e.via}, this company's home listing.`
+                        : 'The listing this date is read from.')}">${escapeHTML(e.yahoo)}`
+                    + `${e.via ? ` → ${escapeHTML(e.via)}` : ''}</span></td>
+                    <td>${e.value == null ? '<span class="muted">watched</span>' : money(e.value)}</td>
+                    <td>${peCell(e.pe)}</td>`;
+                tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(e.yahoo); fix(); });
+                tbody.appendChild(tr);
+            }
+            // ponytail: no month separators or grouping — 44 rows in date order read fine.
+            // Say who is missing and why, rather than quietly showing a shorter list. These are all
+            // real companies — Yahoo simply publishes no forward date for most of Hong Kong, Paris
+            // and London, and there is no second source in this repo to fill it from.
+            const unknown = all.filter(e => !e.date || e.date < today)
+                .map(e => `${e.name} (${e.yahoo})`).sort();
+            const filed = due.filter(e => e.notice).length;
+            const conf = due.filter(e => !e.estimate && !e.notice).length;
+            document.getElementById('cal-none').innerHTML =
+                `${filed} of these ${due.length} are <b>filed</b> — the company's own announcement to `
+                + `the Hong Kong exchange under Listing Rule 13.43, which requires at least 7 clear `
+                + `business days' notice; click the tag to read it. Those are checked once a day. `
+                + `Another ${conf} are dates Yahoo reports as confirmed and the remaining `
+                + `${due.length - filed - conf} are its projection, usually the same weekday one `
+                + `quarter on from the last report; both refresh with the prices, every 15 minutes `
+                + `on weekdays.`
+                + (unknown.length
+                    ? ` No date published at all for ${unknown.length} of ${all.length}: `
+                        + `${escapeHTML(unknown.join(', '))} — Yahoo projects a next-results date for `
+                        + `US and Japanese filers but rarely for Hong Kong, Paris or London listings.`
+                    : '');
+            markSelectedRow();
+        }
+
+        // The watchlist and the calendar each take the holdings table's place rather than sitting
+        // beneath it — one table area, one control.
         function applyView() {
-            const watchMode = STATE.dim === 'watch';
-            document.getElementById('holdings-table').hidden = watchMode;
-            document.getElementById('watch').hidden = !watchMode;
+            const dim = STATE.dim;
+            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar';
+            document.getElementById('watch').hidden = dim !== 'watch';
+            document.getElementById('cal').hidden = dim !== 'calendar';
         }
 
         function renderAll() {
@@ -2286,6 +2442,7 @@
             renderTotals();
             renderTable();
             renderWatchlist();
+            renderCalendar();
             renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
@@ -2358,6 +2515,7 @@
             filterText = ev.target.value.trim().toLowerCase();
             renderTable();
             renderWatchlist();
+            renderCalendar();
             updateSearchCount();
         });
 
@@ -2372,6 +2530,7 @@
                 rebuildRows();
                 renderTable();
                 renderWatchlist();
+                renderCalendar();   // needs the rows rebuild above: it reads STATE.rows
                 updateChart();
             }));
 
@@ -2420,7 +2579,7 @@
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : [])];
+            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));
