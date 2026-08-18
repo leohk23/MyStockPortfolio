@@ -140,6 +140,16 @@
         /* "filed" is a real link to the exchange announcement, so it reads as one: solid underline
            and a pointer, against the dotted help-cursor of the tags that only carry a tooltip. */
         #calendar a.tag { color: var(--series-port); border-bottom-style: solid; cursor: pointer; }
+        /* Fund facts stand in for the statements a tracker does not have: label, value, and why the
+           value means what it does. Scoped under #deep-fin because that is what these rules have to
+           OUTRANK — `#deep-fin td` sets right-aligned nowrap for columns of numbers, and this table
+           has no numbers to line up and a sentence in its last column. */
+        #deep-fin .fund-facts { min-width: 0; }
+        #deep-fin .fund-facts td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top;
+            white-space: normal; }
+        #deep-fin .fund-facts td:first-child { color: var(--text-muted); white-space: nowrap; }
+        #deep-fin .fund-facts td:nth-child(2) { white-space: nowrap; }
+        #deep-fin .fund-facts td:last-child { font-size: 11px; max-width: 40ch; line-height: 1.45; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -894,6 +904,63 @@
                 + `<ul class="deep-note">${notes.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul></details>`
             : '';
 
+        // A tracker has no earnings, so the Financials box used to dead-end on "not an operating
+        // company". What it DOES have is a fee, a payout cadence and a policy on the income it
+        // receives — which is most of what there is to know about owning one.
+        //
+        // Frequency is a COUNT of the distributions in the last twelve months, not a schedule read
+        // off a prospectus: it comes free with the dividend events divTTM is already summed from,
+        // and it reports what the fund actually did rather than what it intends.
+        const CADENCE = { 12: 'monthly', 4: 'quarterly', 2: 'semi-annual', 1: 'annual' };
+        // Accumulating or distributing, in order of how much the evidence is worth.
+        //
+        // A payment settles it outright. With no payments, the fund's OWN NAME is the issuer's
+        // word — "USD (Acc)", "GBP Acc" — and better evidence than inferring policy from silence.
+        // A commodity or crypto trust is neither: it holds an asset that pays nothing, so there is
+        // no income to accumulate or distribute and saying "accumulating" would imply there is.
+        // Anything else keeps its silence rather than being labelled on no evidence at all.
+        function incomePolicy(q) {
+            const name = q.fund?.name || '';
+            if (q.divCount > 0) return { label: 'Distributing', why: 'it has paid out in the last year' };
+            if (/\bacc\b|\(acc\)|accumulating/i.test(name)) {
+                return { label: 'Accumulating', why: 'the fund\u2019s own name says so; income is reinvested inside the fund rather than paid out' };
+            }
+            if (/digital asset|commodit|bitcoin|gold/i.test(`${q.fund?.category || ''} ${name}`)) {
+                return { label: 'No income', why: 'it holds an asset that pays nothing, so there is neither a distribution nor anything to accumulate' };
+            }
+            return { label: 'No distributions in the last year', why: 'no payment was made and the fund does not state a policy in its name \u2014 which is not the same as proving it accumulates' };
+        }
+
+        function fundFacts(leg) {
+            const q = leg.quote, f = q.fund || {};
+            const pol = incomePolicy(q);
+            const fee = f.expense != null
+                ? `<b>${(f.expense * 100).toFixed(2)}%</b> a year`
+                : '<span class="muted">–</span>';
+            const feeTip = f.expense != null
+                ? `Total expense ratio, charged inside the fund: it is deducted from the price rather than billed, so it never appears as a cost anywhere in this book. On this position that is about ${money(leg.value * f.expense)} a year.`
+                : 'Yahoo has no expense ratio for this listing. It reports a MISSING one as 0.00%, which is why a zero is dropped rather than shown \u2014 there is no free fund.';
+            const paid = q.divCount > 0
+                ? `${q.divCount} payment${q.divCount === 1 ? '' : 's'} in the last year`
+                    + `${CADENCE[q.divCount] ? ` (${CADENCE[q.divCount]})` : ''}`
+                : '<span class="muted">none in the last year</span>';
+            const yieldCell = q.divYield > 0
+                ? `<b>${plain(q.divYield)}</b> <span class="muted">${q.currency} ${q.divTTM} per ${q.currency === 'GBp' ? 'unit, in pence' : 'unit'}</span>`
+                : '<span class="muted">–</span>';
+            const row = (label, value, tip) =>
+                `<tr><td>${label}</td><td>${value}</td><td class="muted">${tip}</td></tr>`;
+            return `<table class="fund-facts"><tbody>
+                ${row('Fee', fee, escapeHTML(feeTip))}
+                ${row('Income', `<b>${pol.label}</b>`, escapeHTML(pol.why))}
+                ${row('Paid', paid, 'Counted from the distributions Yahoo reports over the trailing twelve months \u2014 what the fund did, not what it schedules.')}
+                ${row('Yield TTM', yieldCell, 'Trailing twelve-month distributions divided by the current price. Gross \u2014 withholding tax is not deducted.')}
+                ${f.category ? row('Category', escapeHTML(f.category), escapeHTML(f.family || '')) : ''}
+            </tbody></table>
+            <span class="deep-note">No reported financials: this is a fund, trust or commodity, not an
+            operating company, so there is no revenue, EPS or P/E to show. The figures above describe the
+            wrapper \u2014 what it charges and what it does with the income it receives.</span>`;
+        }
+
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
@@ -965,8 +1032,7 @@
                     ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
                         if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
-                    fin.innerHTML = '<span class="deep-note">No reported financials — '
-                        + 'this is a fund, trust or commodity, not an operating company.</span>';
+                    fin.innerHTML = fundFacts(leg);
                     return;
                 }
 

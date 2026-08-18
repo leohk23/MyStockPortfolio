@@ -297,6 +297,36 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 
 `holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
+## Funds: what the deep panel shows instead of financials
+
+A tracker has no earnings, so the Financials box used to dead-end on "not an operating company".
+It now renders `fundFacts()`: fee, income policy, payout count, yield and category.
+
+- **`quotes[t].divCount`** — how many distributions in the trailing year, free from the chart call
+  that already asks `events=div,split` for `divTTM`. Payout frequency needs no extra request.
+  Deliberately a **count of what the fund did**, not a schedule read off a prospectus.
+- **`quotes[t].fund`** = `{ expense, category, family, name, checked }` from `quoteSummary`'s
+  `fundProfile` + `quoteType`. Non-equities only, gated on `FUND_STALE_DAYS = 90` — an expense
+  ratio never moves — and carried forward between sweeps like `exDiv`.
+
+**Yahoo reports a MISSING expense ratio as 0.000%.** VUSA.L and WDEF.PA both come back zero and
+neither is free (Vanguard's S&P 500 UCITS charges 0.07%). A zero is therefore dropped, not
+published — the same placeholder-zero trap as the quarterly fallback's operating income. 12 of 16
+funds have a fee on file; the rest correctly show "–".
+
+Accumulating vs distributing, in order of evidence quality (`incomePolicy()`):
+1. `divCount > 0` → **Distributing**. A payment settles it.
+2. Name matches `Acc` / `(Acc)` / `accumulating` → **Accumulating**. The issuer's own word beats
+   inferring a policy from silence, which is why the fund's `longName` is stored at all.
+3. Category or name is commodity/crypto → **No income**. IAU, IBIT and GBTC hold assets that pay
+   nothing, so there is neither a distribution nor anything to accumulate; calling them
+   "accumulating" would imply income exists.
+4. Otherwise → **"No distributions in the last year"**, unlabelled. Not the same as proving
+   accumulation.
+
+Not a table column: the fee would be blank on 43 of 59 rows. If a scannable comparison is ever
+wanted, the watchlist table is the place, not the holdings table.
+
 ## One company, one dataset (`primary`)
 
 A depositary receipt is not where a company files. `meta.json` (and `watchlist.json`) may carry

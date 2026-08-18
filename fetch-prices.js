@@ -108,6 +108,12 @@ function shape(r) {
         // Trust Yahoo over the workbook: .L tickers quote in pence ("GBp"), .T in JPY.
         currency: r.meta.currency || 'USD',
         divTTM: Number(divTTM.toPrecision(6)),
+        // HOW MANY payments made that total, not just how much. Free — these are the same events
+        // divTTM is summed from — and it is the whole of a fund's payout frequency: 4 in the
+        // trailing year is quarterly, 2 semi-annual, 0 accumulating (or nothing to distribute).
+        // Deliberately a COUNT over the last twelve months rather than an inferred schedule: a
+        // fund that changed cadence, or paid a special, should read as what it actually did.
+        divCount: Object.keys(r.events?.dividends || {}).length,
         divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
         splitRecently: hasSplit(r.events?.splits),
         '1d': dailyMove(r.meta, closes, price),
@@ -325,6 +331,60 @@ function exDivToFetch(prevQuotes, payers, today) {
         const q = prevQuotes[t] || {};
         const needsLook = !q.exDiv || q.exDiv < today;   // ISO dates compare lexically
         return needsLook && q.exDivChecked !== today;    // ...but not twice in one day
+    });
+}
+
+// ---- fund facts -----------------------------------------------------------------------------
+//
+// What a tracker HAS instead of earnings: a fee, a category, and a policy on what it does with the
+// income it receives. None of it is in the batch quote, and all of it is static — an expense ratio
+// changes about never — so this is fetched once per fund and cached for FUND_STALE_DAYS.
+//
+// Yahoo reports a MISSING expense ratio as 0.000%, not as absent: VUSA.L and WDEF.PA both come
+// back zero, and neither is a free fund (Vanguard's S&P 500 UCITS charges 0.07%). A zero is
+// therefore dropped rather than published — the same placeholder-zero trap as the quarterly
+// fallback's operating income. There is no free fund, so nothing is lost by refusing to believe in
+// one, and "–" is the correct rendering of "we do not know".
+const FUND_STALE_DAYS = 90;
+async function fetchFundProfile(ticker, { crumb, cookie }, attempts = 2) {
+    const sym = ticker.replace('^', '%5E');
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}`
+        + `?modules=fundProfile,quoteType&crumb=${encodeURIComponent(crumb)}`;
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+            // 404 is definitive: this symbol has no fundProfile (every index returns it).
+            if (res.status === 404) return {};
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const r = (await res.json()).quoteSummary?.result?.[0] || {};
+            const fp = r.fundProfile || {};
+            const raw = fp.feesExpensesInvestment?.annualReportExpenseRatio?.raw;
+            return {
+                // > 0 only — see the placeholder-zero note above.
+                ...(typeof raw === 'number' && raw > 0 ? { expense: Number(raw.toPrecision(4)) } : {}),
+                ...(fp.categoryName ? { category: fp.categoryName } : {}),
+                ...(fp.family ? { family: fp.family } : {}),
+                // The fund's own name states its income policy where it has one — "USD (Acc)",
+                // "GBP Acc", "A-dis". That is the issuer's word, and better evidence than
+                // inferring accumulation from an absence of payments.
+                ...(r.quoteType?.longName ? { name: r.quoteType.longName } : {}),
+            };
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await sleep(600 * (a + 1));
+        }
+    }
+    throw lastErr;
+}
+
+// Which funds need looking up: the ones with nothing cached, or a cache older than the window.
+// Pure, so the gating is selftest-able without a network call.
+function fundsToFetch(prevQuotes, funds, today) {
+    return funds.filter(t => {
+        const f = (prevQuotes[t] || {}).fund;
+        if (!f?.checked) return true;
+        return (Date.parse(today) - Date.parse(f.checked)) / 864e5 > FUND_STALE_DAYS;
     });
 }
 
@@ -1256,6 +1316,9 @@ async function main() {
         if (prevQuotes[t]?.exDivChecked) quotes[t].exDivChecked = prevQuotes[t].exDivChecked;
         if (prevQuotes[t]?.mrq) quotes[t].mrq = prevQuotes[t].mrq;
         if (prevQuotes[t]?.mrqChecked) quotes[t].mrqChecked = prevQuotes[t].mrqChecked;
+        // Fund facts are static and gated to a 90-day refresh, so they MUST carry forward —
+        // without this every run between sweeps would blank the fee it just decided not to refetch.
+        if (prevQuotes[t]?.fund) quotes[t].fund = prevQuotes[t].fund;
     }
     if (auth) {
         // Payers, minus funds: an ETF distribution is not in calendarEvents (it 404s), so there
@@ -1276,6 +1339,26 @@ async function main() {
         }
     }
     console.log(`ok   ex-div date for ${tickers.filter(t => quotes[t]?.exDiv).length} payer(s)`);
+
+    // Fund facts (fee, category, income policy) for the trackers — the mirror image of the mrq
+    // sweep above, which covers only the operating companies. Cached for FUND_STALE_DAYS because
+    // none of it moves; a failure keeps whatever was cached rather than blanking the panel.
+    if (auth) {
+        const funds = tickers.filter(t => quotes[t] && nonEquity.has(t));
+        const due = fundsToFetch(prevQuotes, funds, today);
+        if (due.length) console.log(`     fund profile lookup for ${due.length}/${funds.length} fund(s)`);
+        for (const t of due) {
+            try {
+                const f = await fetchFundProfile(t, auth);
+                quotes[t].fund = { ...f, checked: today };
+            } catch (e) {
+                console.error(`     fund profile ${t}: ${e.message} — keeping cached`);
+            }
+            await sleep();
+        }
+    }
+    console.log(`ok   fund facts for ${tickers.filter(t => quotes[t]?.fund?.expense).length}`
+        + `/${tickers.filter(t => nonEquity.has(t)).length} fund(s) with a fee on file`);
 
     // Most-recent-quarter end (the through-quarter of the reported trailing EPS), for equities
     // only and only when the cached one has aged out — same trickle discipline as ex-div.
@@ -2168,6 +2251,15 @@ function selftest() {
     assert.deepStrictEqual(
         parseQuotes({ quoteResponse: { result: [{ symbol: 'X', earningsTimestamp: future, isEarningsDateEstimate: true }] } }, QNOW).earnings,
         { X: { date: '2026-07-30', estimate: true } });
+
+    // fundsToFetch: expense ratios never move, so look once and then leave it for 90 days.
+    const FT = '2026-08-18';
+    assert.deepStrictEqual(fundsToFetch({}, ['VOO'], FT), ['VOO']);                       // nothing cached
+    assert.deepStrictEqual(fundsToFetch({ VOO: { fund: { checked: FT } } }, ['VOO'], FT), []);
+    assert.deepStrictEqual(fundsToFetch({ VOO: { fund: { checked: '2026-06-01' } } }, ['VOO'], FT), []);
+    assert.deepStrictEqual(fundsToFetch({ VOO: { fund: { checked: '2026-01-01' } } }, ['VOO'], FT), ['VOO']);
+    // A cached fund with no fee (Yahoo had none) is still cached — it must not be re-asked daily.
+    assert.deepStrictEqual(fundsToFetch({ VOO: { fund: { checked: FT } } }, ['VOO'], FT), []);
 
     // exDivToFetch: only look when there's a reason, and never twice a day.
     const T2 = '2026-07-17';
