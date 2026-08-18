@@ -1,0 +1,52 @@
+name: Refresh HK results dates
+
+# Board-meeting notices from HKEXnews: the date a Hong Kong issuer has TOLD the exchange it will
+# announce results. Deliberately a separate workflow from Refresh prices, on a separate schedule.
+#
+# Once a day, and no more. These notices appear twice a year per company and must be filed at least
+# 7 clear business days ahead (Main Board Listing Rule 13.43), so a daily check can never be more
+# than a day behind the fact — while polling a regulator's Akamai-fronted site every 15 minutes
+# alongside the prices would be pointless and rude.
+#
+# The price loop never calls HKEXnews. It reads hk-board.json, which this writes, and works
+# unchanged when the file is absent or stale.
+
+on:
+  schedule:
+    # 01:20 UTC = 09:20 Hong Kong, after the exchange opens and after the previous evening's
+    # filings (these land ~16:00-18:00 HK time) are all published. Off-peak minute, not on the
+    # hour, because GitHub's scheduler is heavily contended at :00.
+    - cron: '20 1 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hkboard
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Dependency-free by design, same as the rest of the pipeline.
+      - run: node fetch-hk-board.js --selftest
+      - run: node fetch-hk-board.js
+
+      # A run that finds nothing new is the common case — every company having already reported is
+      # a normal state, not a failure — so an unchanged file exits quietly.
+      - name: Commit hk-board.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hk-board.json
+          git diff --staged --quiet && echo "no change" && exit 0
+          git commit -m "hk board dates: $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash
+          git push

@@ -134,9 +134,12 @@
         #deep-val .derived { font-size: 11px; color: var(--text-secondary);
             border-bottom: 1px dotted var(--text-secondary); cursor: help; }
         /* Source remark (reported / filed) — which feed a TTM figure comes from. */
-        #deep-val .tag, #deep-fin .tag { font-size: 10px; text-transform: uppercase;
+        #deep-val .tag, #deep-fin .tag, #calendar .tag { font-size: 10px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); margin-left: 5px;
             border-bottom: 1px dotted var(--text-muted); cursor: help; }
+        /* "filed" is a real link to the exchange announcement, so it reads as one: solid underline
+           and a pointer, against the dotted help-cursor of the tags that only carry a tooltip. */
+        #calendar a.tag { color: var(--series-port); border-bottom-style: solid; cursor: pointer; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -2342,6 +2345,9 @@
                     estimate: !!dated?.quote.earnings.estimate,
                     // The home listing the date actually came from, where it isn't this one.
                     via: dated?.quote.primary || null,
+                    // Set when the date came from the company's own exchange filing rather than
+                    // from Yahoo — a link to the announcement itself.
+                    notice: dated?.quote.earnings.notice || null,
                 });
             };
             for (const r of STATE.rows) fromLegs(r.name, r.legs, r.value);
@@ -2384,7 +2390,10 @@
                 tr.dataset.yahoo = e.yahoo;
                 tr.innerHTML = `
                     <td>${calDate(e.date)} <span class="muted">${WDAY[new Date(e.date + 'T00:00:00Z').getUTCDay()]}</span>`
-                    + `${e.estimate ? ' <span class="tag" title="Yahoo’s projection, not a date the company has announced — typically the same weekday one quarter on from the last report. Treat it as roughly-when, not when.">est.</span>' : ''}</td>
+                    + `${e.estimate ? ' <span class="tag" title="Yahoo’s projection, not a date the company has announced — typically the same weekday one quarter on from the last report. Treat it as roughly-when, not when.">est.</span>' : ''}`
+                    + `${e.notice ? ` <a class="tag" href="${escapeHTML(e.notice)}" target="_blank" rel="noopener"`
+                        + ` title="The company filed this date with the exchange under Listing Rule 13.43, which requires at least 7 clear business days' notice. Click to read the announcement itself." `
+                        + `onclick="event.stopPropagation()">filed</a>` : ''}</td>
                     <td class="${n <= 7 ? '' : 'muted'}">${inDays(n)}</td>
                     <td>${escapeHTML(e.name)} <span class="muted" title="${escapeHTML(e.via
                         ? `Listed here as ${e.yahoo}; the date is read from ${e.via}, this company's home listing.`
@@ -2401,12 +2410,16 @@
             // and London, and there is no second source in this repo to fill it from.
             const unknown = all.filter(e => !e.date || e.date < today)
                 .map(e => `${e.name} (${e.yahoo})`).sort();
-            const conf = due.filter(e => !e.estimate).length;
+            const filed = due.filter(e => e.notice).length;
+            const conf = due.filter(e => !e.estimate && !e.notice).length;
             document.getElementById('cal-none').innerHTML =
-                `Dates come from Yahoo's quote feed and are refreshed with the prices — every 15 `
-                + `minutes on weekdays, so a newly announced date appears the same day. `
-                + `${conf} of ${due.length} are confirmed; the rest are Yahoo's projection, `
-                + `usually the same weekday one quarter on from the last report.`
+                `${filed} of these ${due.length} are <b>filed</b> — the company's own announcement to `
+                + `the Hong Kong exchange under Listing Rule 13.43, which requires at least 7 clear `
+                + `business days' notice; click the tag to read it. Those are checked once a day. `
+                + `Another ${conf} are dates Yahoo reports as confirmed and the remaining `
+                + `${due.length - filed - conf} are its projection, usually the same weekday one `
+                + `quarter on from the last report; both refresh with the prices, every 15 minutes `
+                + `on weekdays.`
                 + (unknown.length
                     ? ` No date published at all for ${unknown.length} of ${all.length}: `
                         + `${escapeHTML(unknown.join(', '))} — Yahoo projects a next-results date for `

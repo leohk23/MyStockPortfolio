@@ -1174,7 +1174,14 @@ async function main() {
     // handling, so a real company is never silently denied its earnings. This is what keeps the
     // 14 funds/indices out of the annual-EPS sweep and the ETF payers out of the ex-div lookups.
     const nonEquity = new Set(fundTickers.filter(t => quoteTypes[t] && quoteTypes[t] !== 'EQUITY'));
-    let live = 0, stale = 0, viaPrimary = 0;
+    // Optional by design: the file is written by a separate, much slower job and the price run must
+    // work identically without it (a fresh clone, or the day the HKEXnews shape changes).
+    const hkBoard = (() => {
+        try { return JSON.parse(fs.readFileSync('hk-board.json', 'utf8')).results || {}; }
+        catch { return {}; }
+    })();
+    const todayISO = new Date().toISOString().slice(0, 10);
+    let live = 0, stale = 0, viaPrimary = 0, viaFiling = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         // Not carried forward like EPS: a stale results date is worse than none, and this one
@@ -1187,6 +1194,16 @@ async function main() {
         const src = primaryOf[t];
         if (src && earningsDates[src]) { quotes[t].earnings = earningsDates[src]; viaPrimary++; }
         else if (earningsDates[t]) quotes[t].earnings = earningsDates[t];
+        // Highest authority of all: a date the company has FILED with its exchange. Yahoo publishes
+        // no forward date for most of Hong Kong, and where it does this one is a Rule 13.43
+        // announcement rather than a projection. Written by fetch-hk-board.js (npm run hkboard) on
+        // its own slow schedule; this only ever READS the file, so the price loop never touches
+        // HKEXnews. Carries the filing's URL so the page can link what it is asserting.
+        const filed = hkBoard[t] || (src ? hkBoard[src] : null);
+        if (filed && filed.date >= todayISO) {
+            quotes[t].earnings = { date: filed.date, notice: filed.notice };
+            viaFiling++;
+        }
         // Recorded so the page can attribute the figure rather than implying the receipt filed it.
         if (src) quotes[t].primary = src;
         // ETF / INDEX / MUTUALFUND / CRYPTOCURRENCY, recorded so the page can tell a fund from a
@@ -1222,6 +1239,10 @@ async function main() {
             + ` receipt(s); fetched ${primaries.length} extra symbol(s) for fundamentals only`
             + ` (${primaries.join(', ')})`);
     }
+    console.log(viaFiling
+        ? `ok   ${viaFiling} results date(s) from the company's own exchange filing (hk-board.json)`
+        : `     no exchange-filed results dates in play (hk-board.json ${Object.keys(hkBoard).length
+            ? 'has none upcoming' : 'absent — run npm run hkboard'})`);
 
     // Ex-dividend date, for payers only, and only when there's a reason to refetch (see
     // exDivToFetch). Every other payer carries its cached date forward. This deliberately keeps

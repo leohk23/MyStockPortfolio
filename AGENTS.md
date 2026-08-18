@@ -349,9 +349,45 @@ carries wins. Where the date came from a home listing (see `primary` above) the 
 Yahoo hands ETFs an `eps`, so nothing else on the quote separates them). Companies with no published
 date are named in a line under the table rather than dropped.
 
-Coverage is 44 of 58 companies (14 confirmed, 30 projected): Yahoo projects a next-results date for
-US and Japanese filers but rarely for Hong Kong, Paris or London listings. Dates refresh with the
-prices — every 15 minutes on weekdays — and are never carried forward from a previous run.
+Coverage is ~45 of 58 companies: Yahoo projects a next-results date for US and Japanese filers but
+rarely for Hong Kong, Paris or London listings. Dates refresh with the prices — every 15 minutes on
+weekdays — and are never carried forward from a previous run.
+
+### Hong Kong: the company's own filing beats Yahoo
+
+`fetch-hk-board.js` (`npm run hkboard`, daily via `.github/workflows/hkboard.yml`) reads **HKEXnews**,
+where Main Board Listing Rule 13.43 requires an issuer to announce its results board meeting **at
+least 7 clear business days ahead**. That is a date the company has stated, not a projection, so it
+outranks Yahoo — `quotes[t].earnings` becomes `{ date, notice }` and the calendar shows a **filed**
+tag linking the announcement. It resolves through `primary` too, so `XIACY` picks up `1810.HK`'s.
+
+Three steps, because the exchange splits the fact up: `activestock_sehk_e.json` maps `01113` → the
+internal stockId; `titleSearchServlet.do` (`t2code=13150`, "Date of Board Meeting") returns
+announcement metadata only; the date itself is in the PDF. `pdfText()` inflates the FlateDecode
+streams and takes the string literals — no dependency, and it cannot read a scanned or CID-keyed
+font, which is a refusal, not a fallback.
+
+**The parse is the dangerous step**, so the guards are there rather than on the fetch:
+- Anchored on the announcing sentence. Every filing also states its **period end**, which is always
+  in the past — "the first date in the document" would return the wrong one.
+- Publication beats the meeting where the filing gives both: Trip.com approves on the 24th and
+  publishes on the 25th, and the 25th is when the figures appear.
+- **Stated weekday must match the date.** Free integrity check; a misread day rarely lands right.
+- Meeting must fall 0–120 days after its own notice, and must not already have passed.
+- Document must mention results — `13150` covers board meetings generally.
+- A **"Delay in Results Announcement"** (`t2code=13200`) filed after the notice supersedes it.
+
+Both date orders and both weekday positions occur: `Thursday, 13th August, 2026` (most),
+`August 18, 2026 (Tuesday)` (Xiaomi), `Wednesday, June 24, 2026` (Trip.com). PDF marked-content
+language tags (`en-US`, `zh-TW`) leak into the text glued mid-word — `en-US13th`, `en-GBHong` — so
+`stripLangTags` can use **neither** `\b` anchor and keeps the region case-sensitive.
+
+`titleSearchServlet.do` is undocumented and unversioned — same risk class as stockanalysis.com. Its
+failure mode is safe (a changed shape returns zero rows → no date, which is the status quo). The
+price loop never calls HKEXnews; it only reads `hk-board.json`, and runs unchanged without it.
+
+Known refusals, both correct: **1211.HK** (partial PDF extraction loses the word "results"; Yahoo
+has BYD confirmed anyway) and **6288.HK** (undecodable font; its date comes from `9983.T`).
 
 ## Yahoo symbol mapping
 
