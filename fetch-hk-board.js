@@ -39,6 +39,14 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MyStockPortfolio/1.0 (pers
 const T1_ANNOUNCEMENTS = '10000';
 const T2_BOARD_MEETING = '13150';   // "Date of Board Meeting"
 const T2_DELAY = '13200';           // "Delay in Results Announcement"
+const T2_INTERIM_RESULTS = '13400'; // "Interim Results" — the half-year statements themselves
+
+const OUT_INTERIM = 'hk-interim.json';
+// A half year is rarely less than a twentieth or more than 1.5x its own full year. That band is
+// wide on purpose: it is not a plausibility test on the business, it is a UNITS-and-column test.
+// The failures worth catching are order-of-magnitude (a note number read as a value, cents read as
+// dollars) and column-order (prior read as current), and both blow straight through it.
+const HALF_OF_YEAR = [0.05, 1.5];
 
 // How far back to look for a notice. A results board meeting is called ~2 weeks out and companies
 // report twice (HK) to four times a year, so 150 days always spans the latest one without dragging
@@ -210,6 +218,102 @@ function meetingDate(text, filed, today = iso(new Date())) {
     return { date, period, weekdayChecked: !!weekday };
 }
 
+// ---- half-year EPS, from the results announcement itself ------------------------------------
+//
+// A different document from the board-meeting notice: that one is a single page saying a meeting
+// will happen, this is the 30-100 page statement published on the day. Same site, same access,
+// one category code apart.
+//
+// Why bother: Yahoo publishes NOTHING sub-annual for a semi-annual reporter — not on the local
+// line, not on the ADR, not in any quoteSummary module — so these names sit on a figure up to
+// twelve months old, and interim.json is filled in by hand.
+//
+// The trap that makes this harder than the date is the NOTE REFERENCE. Every statement line reads
+// "Revenue 2 42,856 42,854" — label, note pointer, current period, prior period — and a parser
+// that takes "the first number after the label" reports revenue of 2. What saves EPS specifically
+// is that the figures carry a CURRENCY PREFIX and the note number does not:
+//
+//   CLP           "Earnings per share, basic and diluted 7 HK$2.37 HK$2.23"
+//   Power Assets  "Earnings per share Basic and diluted 9 $6.90 $1.43"
+//   CK Asset      "Earnings per shareHK$2.48HK$1.80"          (no spaces at all)
+//
+// So the pattern skips anything that is not a $, then demands two $-prefixed numbers in a row.
+// Parenthesised figures are losses, which HK statements write as "(0.15)" rather than "-0.15".
+const EPS_LINE = /Earnings per share[^$]{0,60}?(?:HK)?\$\s?\(?([\d,]+(?:\.\d+)?)\)?\s*(?:HK)?\$\s?(\(?[\d,]+(?:\.\d+)?\)?)/i;
+
+// Nothing separates a figure from whatever follows it in extracted PDF text, and what follows the
+// LAST figure on the line is the column header: CK Asset's "HK$2.48HK$1.80" runs straight into
+// "2026 2025 HK$ Million", so a greedy decimal reads 1.802026. The value barely moves, which is
+// exactly why it is dangerous — the reconciliation check waves it through.
+//
+// Two decimals is the convention in every HK statement here (2.37, 2.23, 6.90, 1.43, 2.48, 1.80).
+// So: two decimals is clean; three is a genuinely finer figure and kept; anything longer is only
+// accepted when the surplus is precisely a glued four-digit year, and is otherwise REFUSED as
+// ambiguous rather than silently truncated to something plausible.
+function ungluedDecimal(s) {
+    const m = /^(\d[\d,]*)\.(\d+)$/.exec(s);
+    if (!m) return s;
+    const [, whole, dec] = m;
+    if (dec.length <= 3) return s;
+    if (dec.length === 6 && /^(?:19|20)\d\d$/.test(dec.slice(2))) return `${whole}.${dec.slice(0, 2)}`;
+    return null;                      // unreadable, and a guess here is worse than no figure
+}
+// Not every issuer puts EPS in the statement table. CK Hutchison states it in prose, with the
+// comparative in brackets after the period rather than in a second column:
+//
+//   "earnings per share were HK$7.00 for the six months ended 30 June 2026 (30 June 2025 - HK$0.22)"
+//
+// Same two figures, same order, and still both currency-prefixed. Neither run may cross a full
+// stop or another $, which keeps it from stitching together two unrelated sentences.
+const EPS_PROSE = /earnings per share[^.$]{0,40}?(?:HK)?\$([\d,]+(?:\.\d+)?)[^.$]{0,80}?\([^)$]{0,40}(?:HK)?\$([\d,]+(?:\.\d+)?)\)/i;
+
+const num = s => {
+    const neg = s.startsWith('(');
+    const cleaned = ungluedDecimal(s.replace(/[(),]/g, ''));
+    if (cleaned == null) return null;
+    const v = Number(cleaned);
+    return Number.isFinite(v) ? (neg ? -v : v) : null;
+};
+
+// Both halves, current first. Returning the PRIOR one is the point, not a bonus: it is the only
+// figure in the document that can be checked against something already in the store.
+function interimEps(text) {
+    const m = EPS_LINE.exec(text) || EPS_PROSE.exec(text);
+    if (!m) return { eps: null, why: 'no earnings-per-share line with two currency-prefixed figures' };
+    const eps = num(m[1]), prior = num(m[2]);
+    if (eps == null || prior == null) return { eps: null, why: 'unreadable figures on the EPS line' };
+    return { eps, prior };
+}
+
+// Which half-year does this announcement cover?
+function interimPeriod(text) {
+    const p = /(?:six months|half[- ]year)\s+end(?:ed|ing)\s+([^.;]{4,28}?20\d\d)/i.exec(text);
+    return p ? parseDate(p[1])?.date ?? null : null;
+}
+
+// The check that makes this publishable rather than merely extracted.
+//
+// The announcement prints last year's half beside this year's. We already hold last year's FULL
+// year in earnings.json, and a half year has to be a sensible fraction of the year that contains
+// it. So the document validates itself against data that came from somewhere else entirely: if the
+// PRIOR column reconciles, the parse found the right line, read the right units and had the columns
+// the right way round — and only then is the CURRENT column worth keeping.
+function reconcile(eps, prior, priorEnd, entry) {
+    if (!entry?.years?.length) return { ok: false, why: 'no annual history to check against' };
+    if (!priorEnd) return { ok: false, why: 'could not read which period the prior column covers' };
+    // The fiscal year that CONTAINS that prior half — it ends within twelve months after it.
+    const fy = entry.years.find(y => y.date > priorEnd && daysBetween(priorEnd, y.date) <= 370);
+    if (!fy) return { ok: false, why: `no filed year covering the half to ${priorEnd}` };
+    if (!(fy.eps > 0)) return { ok: false, why: `filed year ${fy.date} has no positive EPS to check against` };
+    const ratio = prior / fy.eps;
+    const [lo, hi] = HALF_OF_YEAR;
+    if (!(ratio >= lo && ratio <= hi)) {
+        return { ok: false, why: `prior half ${prior} is ${ratio.toFixed(2)}x the filed ${fy.date} year `
+            + `(${fy.eps}) — outside ${lo}-${hi}, so the line, the units or the column order is wrong` };
+    }
+    return { ok: true, against: fy.date, fyEps: fy.eps, ratio: Number(ratio.toFixed(3)) };
+}
+
 async function main() {
     // HK listings we care about: held, watched, or the home listing behind a receipt. ETFs and
     // indices are dropped — prices.json records `type` for non-equities, and a tracker fund files
@@ -293,6 +397,78 @@ async function main() {
             + `${got.period ? ` for the period to ${got.period}` : ''}`
             + `  (announced ${notice.filed}${got.weekdayChecked ? ', weekday checked' : ''})`);
     }
+
+    // ---- second pass: half-year EPS out of the results announcements ------------------------
+    //
+    // Deliberately a SEPARATE output from the dates. interim.json wants rev + nic + eps together
+    // and check-interim.js refuses a period filed half-empty ("omit the period rather than filing
+    // it half-empty"), which is the right rule — so EPS alone is written here as a proposal, to be
+    // read and promoted deliberately, never merged into the hand-kept file behind your back.
+    const store = (() => {
+        try { return JSON.parse(fs.readFileSync('earnings.json', 'utf8')).eps || {}; }
+        catch { return {}; }
+    })();
+    const interim = {};
+    let epsOk = 0, epsNo = 0;
+    console.log('\nhalf-year EPS from the results announcements:');
+    for (const ticker of wanted) {
+        const id = idOf[ticker.replace('.HK', '').padStart(5, '0')];
+        if (!id) continue;
+        let filings;
+        try {
+            filings = await search(id, T2_INTERIM_RESULTS, yyyymmdd(from), yyyymmdd(today));
+        } catch (e) {
+            console.error(`  ${ticker.padEnd(9)} search failed: ${e.message}`);
+            continue;
+        }
+        await sleep();
+        if (!filings.length) { console.log(`  ${ticker.padEnd(9)} no interim results filed in ${LOOKBACK_DAYS}d`); continue; }
+
+        const doc = filings[0];
+        let text;
+        try {
+            const res = await fetch(HOST + doc.link, { headers: { 'User-Agent': UA } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            text = pdfText(Buffer.from(await res.arrayBuffer()));
+        } catch (e) {
+            console.error(`  ${ticker.padEnd(9)} could not read ${doc.link}: ${e.message}`);
+            epsNo++;
+            await sleep();
+            continue;
+        }
+        await sleep();
+
+        const got = interimEps(text);
+        if (got.eps == null) { console.log(`  ${ticker.padEnd(9)} REFUSED — ${got.why}`); epsNo++; continue; }
+        const end = interimPeriod(text);
+        // The prior column covers the same half one year earlier.
+        const priorEnd = end ? `${+end.slice(0, 4) - 1}${end.slice(4)}` : null;
+        const check = reconcile(got.eps, got.prior, priorEnd, store[ticker]);
+        if (!check.ok) { console.log(`  ${ticker.padEnd(9)} REFUSED — ${check.why}`); epsNo++; continue; }
+
+        interim[ticker] = {
+            end, eps: got.eps, priorEnd, priorEps: got.prior,
+            currency: store[ticker]?.currency || null,
+            published: doc.filed,
+            source: HOST + doc.link,
+            reconciled: `prior half ${got.prior} is ${check.ratio}x the filed ${check.against} year (${check.fyEps})`,
+        };
+        epsOk++;
+        console.log(`  ${ticker.padEnd(9)} ${end} EPS ${got.eps} (prior half ${got.prior}, `
+            + `${check.ratio}x the filed ${check.against} year — reconciled)`);
+    }
+    fs.writeFileSync(OUT_INTERIM, JSON.stringify({
+        _source: 'Half-year EPS read from each company\'s own interim results announcement on '
+            + 'HKEXnews. A PROPOSAL, not page data: interim.json wants rev + nic + eps together and '
+            + 'check-interim.js rightly refuses a period filed half-empty, so nothing here is merged '
+            + 'automatically. Every entry carries the prior-year half printed alongside it in the '
+            + 'same document, and was only written because that prior figure reconciled against the '
+            + 'filed full year already in earnings.json — which is what proves the parser found the '
+            + 'right line, read the right units, and had the two columns the right way round.',
+        updated: new Date().toISOString(),
+        results: interim,
+    }, null, 1) + '\n');
+    console.log(`\nwrote ${OUT_INTERIM} (${epsOk} reconciled, ${epsNo} refused)`);
 
     fs.writeFileSync(OUT, JSON.stringify({
         _source: 'HKEXnews (www1.hkexnews.hk), the exchange\'s own disclosure site. Board-meeting '
@@ -398,6 +574,72 @@ function selftest() {
         meetingDate(clean('a meeting will be held on en-USThursday, en-US13th August, 2026 '
             + 'to approve the interim results'), '2026-07-30', T).date,
         '2026-08-13');
+
+    // ---- interim EPS ------------------------------------------------------------------------
+    // All three wordings are verbatim from the August 2026 announcements, note numbers included.
+    assert.deepStrictEqual(interimEps('Earnings per share, basic and diluted 7 HK$2.37 HK$2.23'),
+        { eps: 2.37, prior: 2.23 });                       // CLP — note 7 must not be read as a value
+    assert.deepStrictEqual(interimEps('Earnings per share Basic and diluted 9 $6.90 $1.43'),
+        { eps: 6.90, prior: 1.43 });                       // Power Assets — note 9
+    assert.deepStrictEqual(interimEps('Earnings per shareHK$2.48HK$1.80'),
+        { eps: 2.48, prior: 1.80 });                       // CK Asset — no spaces at all
+    // ...and CK Asset's real text, where the column header runs straight into the last figure.
+    // 1.802026 is 1.80 followed by the year, and it must come back as 1.80, not 1.802026 — a
+    // difference too small for the reconciliation check to notice, which is the whole problem.
+    assert.deepStrictEqual(interimEps('Earnings per shareHK$2.48HK$1.802026 2025 HK$ Million'),
+        { eps: 2.48, prior: 1.80 });
+    // Three decimals is a real figure, not glue, and is kept as filed.
+    assert.deepStrictEqual(interimEps('Earnings per share 2 HK$0.123 HK$0.118'),
+        { eps: 0.123, prior: 0.118 });
+    // A long decimal that is NOT a glued year is unreadable — refuse rather than truncate to
+    // something that looks right.
+    assert.strictEqual(interimEps('Earnings per share HK$2.48 HK$1.804812').eps, null);
+    assert.strictEqual(ungluedDecimal('1.802026'), '1.80');
+    assert.strictEqual(ungluedDecimal('1.80'), '1.80');
+    assert.strictEqual(ungluedDecimal('0.123'), '0.123');
+    assert.strictEqual(ungluedDecimal('1.804812'), null);
+    // A loss is written in brackets, not with a minus.
+    assert.deepStrictEqual(interimEps('Earnings per share, basic 4 HK$1.20 HK$(0.15)'),
+        { eps: 1.20, prior: -0.15 });
+    // Thousands separators survive.
+    assert.deepStrictEqual(interimEps('Earnings per share 3 $1,234.50 $1,100.00'),
+        { eps: 1234.5, prior: 1100 });
+    // No currency prefix means no way to tell a note number from a figure — refuse.
+    assert.strictEqual(interimEps('Earnings per share, basic and diluted 7 2.37 2.23').eps, null);
+    assert.strictEqual(interimEps('Revenue 2 42,856 42,854').eps, null);
+
+    // CK Hutchison's prose form, verbatim — comparative in brackets, not a second column.
+    assert.deepStrictEqual(interimEps('earnings per share were HK$7.00 for the six months ended '
+        + '30 June 2026 (30 June 2025 - HK$0.22). Dividend The Board of Directors'),
+        { eps: 7.00, prior: 0.22 });
+    // The table form still wins where a document has both, since it is the audited statement line.
+    assert.deepStrictEqual(interimEps('Earnings per share, basic and diluted 7 HK$2.37 HK$2.23. '
+        + 'Separately, earnings per share were HK$9.99 for the period (30 June 2025 - HK$8.88).'),
+        { eps: 2.37, prior: 2.23 });
+    // Prose must not stitch two unrelated sentences together across a full stop.
+    assert.strictEqual(interimEps('earnings per share were HK$7.00 for the period. '
+        + 'Dividends (last year - HK$0.22) were paid.').eps, null);
+
+    assert.strictEqual(interimPeriod('for the six months ended 30 June 2026'), '2026-06-30');
+    assert.strictEqual(interimPeriod('for the six months ended June 30, 2026'), '2026-06-30');
+
+    // reconcile: CLP's prior half (2.23) against a filed 2025 year of 4.42 — about half, so the
+    // parse is trustworthy and the current half may be kept.
+    const clp = { currency: 'HKD', years: [{ date: '2025-12-31', eps: 4.42 }] };
+    assert.strictEqual(reconcile(2.37, 2.23, '2025-06-30', clp).ok, true);
+    // The failure this exists for: the note number read as the value. 7 against a 4.42 year is
+    // 1.58x — nonsense for a half year, and caught.
+    assert.strictEqual(reconcile(2.37, 7, '2025-06-30', clp).ok, false);
+    // Cents mistaken for dollars is 100x out and cannot slip through either.
+    assert.strictEqual(reconcile(237, 223, '2025-06-30', clp).ok, false);
+    // No annual history, no check — so no publication.
+    assert.strictEqual(reconcile(2.37, 2.23, '2025-06-30', { years: [] }).ok, false);
+    // A filed year that is a loss gives nothing to reconcile against.
+    assert.strictEqual(reconcile(2.37, 2.23, '2025-06-30',
+        { years: [{ date: '2025-12-31', eps: -1 }] }).ok, false);
+    // A year too far from the half to contain it is not a match.
+    assert.strictEqual(reconcile(2.37, 2.23, '2025-06-30',
+        { years: [{ date: '2027-12-31', eps: 4.42 }] }).ok, false);
 
     console.log('selftest ok');
 }

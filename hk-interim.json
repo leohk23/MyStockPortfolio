@@ -1,0 +1,36 @@
+{
+ "_source": "Half-year EPS read from each company's own interim results announcement on HKEXnews. A PROPOSAL, not page data: interim.json wants rev + nic + eps together and check-interim.js rightly refuses a period filed half-empty, so nothing here is merged automatically. Every entry carries the prior-year half printed alongside it in the same document, and was only written because that prior figure reconciled against the filed full year already in earnings.json — which is what proves the parser found the right line, read the right units, and had the two columns the right way round.",
+ "updated": "2026-08-18T00:25:16.127Z",
+ "results": {
+  "0001.HK": {
+   "end": "2026-06-30",
+   "eps": 7,
+   "priorEnd": "2025-06-30",
+   "priorEps": 0.22,
+   "currency": "HKD",
+   "published": "2026-08-13",
+   "source": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0813/2026081300222.pdf",
+   "reconciled": "prior half 0.22 is 0.071x the filed 2025-12-31 year (3.09)"
+  },
+  "0002.HK": {
+   "end": "2026-06-30",
+   "eps": 2.37,
+   "priorEnd": "2025-06-30",
+   "priorEps": 2.23,
+   "currency": "HKD",
+   "published": "2026-08-06",
+   "source": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0806/2026080600235.pdf",
+   "reconciled": "prior half 2.23 is 0.539x the filed 2025-12-31 year (4.14)"
+  },
+  "1113.HK": {
+   "end": "2026-06-30",
+   "eps": 2.48,
+   "priorEnd": "2025-06-30",
+   "priorEps": 1.8,
+   "currency": "HKD",
+   "published": "2026-08-13",
+   "source": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0813/2026081300220.pdf",
+   "reconciled": "prior half 1.8 is 0.581x the filed 2025-12-31 year (3.1)"
+  }
+ }
+}
