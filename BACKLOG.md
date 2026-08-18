@@ -15,9 +15,10 @@ The obvious fix — return null unless a bar predates the cutoff — is **wrong*
 
 ## Smaller
 
-### The watchlist lists one company twice
-Xiaomi appears as both `XIACY` and `1810.HK`. The portfolio table de-duplicates on `group`; `buildWatchlist` does not. Either apply the same grouping or accept it as deliberate (the two lines do trade differently).
-The Calendar view makes it more visible: the held Xiaomi line and the watched one sit on the same day as two entries. `calendarRows()` collapses legs within a row but cannot pair "XIAOMI CORPORATION" (the holding's `group`) with "Xiaomi" (the watchlist's `name`) — a watchlist `group` key, matching `meta.json`'s, would fix both places at once.
+### The watchlist lists one company twice — DELIBERATE, do not "fix"
+Xiaomi appears as both `XIACY` and `1810.HK`, and HKEX as both `HKXCY` and `0388.HK`. In each pair the ADR is held and the home listing is watched, so the same company shows twice in the Calendar view, on the same day.
+**This is intended.** Holding the receipt while keeping the primary listing on the watchlist is how the home line's own price stays on the page — it appears nowhere else. Asked directly (18 Aug 2026): *"it's okay I just want to see the price of the primary listed ones"*.
+So do **not** de-duplicate `buildWatchlist` on `group`, and do **not** drop a watched line when its ADR is bought: either would remove the price it is there to show. If this duplication ever does need to go, the replacement must first surface the primary's price on the holding's own row — `quotes[t].primary` already records which listing that is.
 
 ### Fallback quarters have no operating income
 Quarters filled from `quoteSummary` ([fetch-prices.js](fetch-prices.js), `fallbackQuarters`) carry revenue and net income only — Yahoo's `incomeStatementHistoryQuarterly` returns `operatingIncome` as absent and several other fields as a placeholder zero. So Op income and Op margin are blank on those rows for every Japanese name.
