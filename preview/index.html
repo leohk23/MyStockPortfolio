@@ -85,6 +85,10 @@
         .hlabel { fill: var(--text-secondary); }
         .sline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
         .sarea { opacity: .10; }
+        /* Hand-placed market events. Annotations, not data: achromatic on purpose, because any
+           of the series colours here would read as a fourth line on the chart. */
+        .event { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 5 4; opacity: .85; }
+        .event-label { fill: var(--text-secondary); font-size: 10px; }
         .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
         .trade-guide { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .45; }
         .cursor-dot { stroke: var(--surface-3); stroke-width: 2; }
@@ -1777,6 +1781,20 @@
             };
         }
 
+        // Hand-placed market events, drawn as a vertical rule on any range that spans them.
+        // Deliberately a hard-coded list and not something derived: these are the moments the
+        // owner wants to recognise on sight, which no feed knows about. Add a line to add a mark.
+        //
+        // A chart only shows one if its own x-range covers it, and instrument charts start at
+        // listing (and gain/loss charts at the first trade), so a name that floated in 2021 will
+        // never show the COVID rule — which is right, it wasn't there for it.
+        const CHART_EVENTS = [
+            { date: '2020-03-20', label: 'COVID crash' },
+            // The tariffs were announced on 2 April 2025; the 7th is the session the owner asked
+            // to mark, and where the selloff was steepest.
+            { date: '2025-04-07', label: 'Liberation Day' },
+        ];
+
         function drawChart() {
             const spec = chartSpec();
             const svg = document.getElementById('chart');
@@ -1826,6 +1844,33 @@
                     + `<text class="axis-label hlabel" x="${W - R}" y="${ly.toFixed(1)}" text-anchor="end">`
                     + `${spec.hline.label} ${spec.fmtY(spec.hline.value)}</text>`;
             })();
+            // Market events as vertical rules, behind the series so the data still reads on top.
+            // Skipped on the 1D range, whose x values are epoch seconds rather than ISO dates.
+            //
+            // The rule lands on the first bar AT OR AFTER the date, so on the weekly series (2Y,
+            // 5Y, All) it can sit up to a week late. The label carries the name rather than the
+            // date, so a few days' drift says nothing untrue.
+            //
+            // Labels are packed onto rows left to right: on a phone-width All chart two rules can
+            // land close enough that the names overlap and neither is readable. Sorted by date so
+            // the greedy pack sees them in x order; widths are estimated from the character count,
+            // which is enough to decide "these collide" without measuring text in the DOM.
+            const rowEnd = [];
+            const eventEls = typeof days[0] !== 'string' ? '' :
+                [...CHART_EVENTS].sort((a, b) => a.date < b.date ? -1 : 1).map(ev => {
+                    if (ev.date < days[0] || ev.date > days[days.length - 1]) return '';
+                    const ex = x(days.findIndex(d => d >= ev.date));
+                    // Flip the label back inside the plot when its rule sits near the right edge.
+                    const right = ex > L + (W - L - R) * 0.72;
+                    const wLab = ev.label.length * 5.6 + 6;
+                    const x0 = right ? ex - 4 - wLab : ex + 4;
+                    let row = 0;
+                    while (rowEnd[row] != null && x0 < rowEnd[row]) row++;
+                    rowEnd[row] = x0 + wLab;
+                    return `<line class="event" x1="${ex.toFixed(1)}" y1="${T}" x2="${ex.toFixed(1)}" y2="${H - B}"/>`
+                        + `<text class="event-label" x="${(right ? ex - 4 : ex + 4).toFixed(1)}" y="${T + 9 + row * 12}"`
+                        + ` text-anchor="${right ? 'end' : 'start'}">${escapeHTML(ev.label)}</text>`;
+                }).join('');
             const dateEls = [0, Math.floor((days.length - 1) / 2), days.length - 1].map((i, k) =>
                 `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}">${fmtX(days[i])}</text>`
             ).join('');
@@ -1854,7 +1899,7 @@
 
             svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
             svg.setAttribute('height', H);
-            svg.innerHTML = `${gridEls}${zeroEl}${hlineEl}${dateEls}${lineEls}
+            svg.innerHTML = `${gridEls}${zeroEl}${hlineEl}${eventEls}${dateEls}${lineEls}
                 <line class="trade-guide" id="trade-guide" x1="${L}" x2="${W - R}" style="display:none"/>
                 ${markerEls}
                 <line class="crosshair" id="cross" y1="${T}" y2="${H - B}" style="display:none"/>
