@@ -155,8 +155,20 @@
         #deep-fin .fund-facts td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top;
             white-space: normal; }
         #deep-fin .fund-facts td:first-child { color: var(--text-muted); white-space: nowrap; }
-        #deep-fin .fund-facts td:nth-child(2) { white-space: nowrap; }
-        #deep-fin .fund-facts td:last-child { font-size: 11px; max-width: 40ch; line-height: 1.45; }
+        /* The value column wraps. Held on one line it was the widest thing in the table — "12
+           payments in the last year (monthly)" runs to 38 characters — and every one of them came
+           out of the notes beside it. Where there is room the browser still keeps it on one line;
+           where there is not, it now yields instead of squeezing the sentence to a ribbon. The
+           floor stops it collapsing to one word per line once the note starts claiming space. */
+        #deep-fin .fund-facts td:nth-child(2) { white-space: normal; min-width: 13ch; }
+        /* ...but a figure never splits from its currency: "USD 4.32 per unit" breaking after USD
+           reads as two facts instead of one. */
+        #deep-fin .fund-facts td:nth-child(2) .muted { white-space: nowrap; }
+        /* The notes take the leftover width rather than a fixed 40ch, which on this box left a
+           third of the row empty and the sentences three words wide. Still capped: 72ch is a long
+           line to read but a sane one, and past that the eye loses its place returning. */
+        #deep-fin .fund-facts td:last-child { font-size: 11px; width: 100%; max-width: 72ch;
+            line-height: 1.45; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
