@@ -1136,6 +1136,7 @@ function alignedCloses(tickers, quotes) {
     const days = [...new Set(
         tickers.flatMap(t => quotes[t]?.series.timestamps.map(isoDay) ?? [])
     )].sort();
+    const lastDay = days[days.length - 1];
 
     const closes = {};
     for (const t of tickers) {
@@ -1147,6 +1148,31 @@ function alignedCloses(tickers, quotes) {
         for (const day of days) {
             if (byDay.has(day)) { last = byDay.get(day); seen = true; }
             arr.push(seen ? last : null);
+        }
+        // Yahoo leaves TODAY's daily bar null for markets that closed hours ago — every Japanese,
+        // Korean and Hong Kong listing here, 23 of 79 tickers on a normal afternoon, while US
+        // names get theirs. `days` is the union across all tickers, so those nulls are interior as
+        // far as this loop is concerned and the forward-fill above stamps YESTERDAY'S CLOSE with
+        // today's date. That is not a gap being bridged, it is a wrong number: on 19 Aug 2026 SK
+        // Hynix fell 9.75% to 1,500,000 and the daily series still read 1,662,000, so 7D through
+        // 1Y showed a price the stock had not traded at since the previous session — while 1D (the
+        // intraday feed), 2Y/5Y/ALL (the weekly series, whose in-progress bar does update) and the
+        // table all had the right one. One instrument, four different answers.
+        //
+        // The fix is not to guess: regularMarketPrice IS that session's close, and it is already
+        // what the table, the valuation and the 1D column are built on. Using it here makes the
+        // daily series agree with them instead of contradicting them.
+        //
+        // Only the FINAL day, and only when the ticker has no real bar of its own for it. Interior
+        // forward-fill stays exactly as it was — a holiday is a genuine gap and carrying the last
+        // close across it is right. A market that is simply shut today is unaffected either way,
+        // because then regularMarketPrice IS the previous close.
+        //
+        // Inert for the weekly series: fetchWeekly returns {currency, series} with no price, so
+        // the typeof guard skips it — and it needs no help, its current-week bar tracks live.
+        if (seen && lastDay !== undefined && !byDay.has(lastDay)
+            && typeof quotes[t].price === 'number') {
+            arr[arr.length - 1] = quotes[t].price;
         }
         closes[t] = arr;
     }
@@ -2341,6 +2367,45 @@ function selftest() {
     assert.deepStrictEqual(aligned.closes.A, [10, 10, 10]);
     assert.deepStrictEqual(aligned.closes.B, [null, null, 5]); // null before B's first close
     assert.deepStrictEqual(alignedCloses(['A'], gap).closes.A, [10, 10, 12]);
+    // A trailing NULL bar is not a gap to bridge. Yahoo leaves today's daily bar null for every
+    // Asian listing, and forward-filling it stamped yesterday's close with today's date — SK Hynix
+    // read 1,662,000 on a day it closed at 1,500,000. The live regularMarketPrice IS that close, so
+    // the final day takes it rather than the stale carry.
+    const D = [d[0], d[1], d[2]];
+    const asian = {
+        K: { currency: 'KRW', price: 1500000,
+             series: { timestamps: D, closes: [1425000, 1662000, null] } },   // today's bar null
+        U: { currency: 'USD', price: 341.7,
+             series: { timestamps: D, closes: [340, 341.28, 341.7] } },       // today's bar present
+    };
+    const fixed = alignedCloses(['K', 'U'], asian);
+    assert.deepStrictEqual(fixed.closes.K, [1425000, 1662000, 1500000]);   // not 1662000 again
+    assert.deepStrictEqual(fixed.closes.U, [340, 341.28, 341.7]);          // real bar untouched
+
+    // Interior gaps still forward-fill — a holiday genuinely has no trade, and the close carries.
+    assert.deepStrictEqual(alignedCloses(['K'], {
+        K: { currency: 'KRW', price: 999,
+             series: { timestamps: D, closes: [10, null, 12] } },
+    }).closes.K, [10, 10, 12]);
+
+    // A market shut today: regularMarketPrice IS the previous close, so the patch is a no-op.
+    assert.deepStrictEqual(alignedCloses(['K'], {
+        K: { currency: 'KRW', price: 1662000,
+             series: { timestamps: D, closes: [1425000, 1662000, null] } },
+    }).closes.K, [1425000, 1662000, 1662000]);
+
+    // Leading nulls stay null — a stock that had not listed yet must not inherit today's price.
+    assert.deepStrictEqual(alignedCloses(['A', 'B'], {
+        A: { currency: 'USD', price: 12, series: { timestamps: D, closes: [10, 11, 12] } },
+        B: { currency: 'USD', price: 7, series: { timestamps: [d[2]], closes: [null] } },
+    }).closes.B, [null, null, null]);
+
+    // The weekly series carries no `price` (fetchWeekly returns {currency, series}), so the patch
+    // cannot touch it — and it needs no help: its in-progress bar already tracks live.
+    assert.deepStrictEqual(alignedCloses(['W'], {
+        W: { currency: 'USD', series: { timestamps: D, closes: [10, 11, null] } },
+    }).closes.W, [10, 11, 11]);
+
 
     console.log('selftest ok');
 }
