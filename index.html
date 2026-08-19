@@ -140,6 +140,16 @@
         /* "filed" is a real link to the exchange announcement, so it reads as one: solid underline
            and a pointer, against the dotted help-cursor of the tags that only carry a tooltip. */
         #calendar a.tag { color: var(--series-port); border-bottom-style: solid; cursor: pointer; }
+        /* Fund facts stand in for the statements a tracker does not have: label, value, and why the
+           value means what it does. Scoped under #deep-fin because that is what these rules have to
+           OUTRANK — `#deep-fin td` sets right-aligned nowrap for columns of numbers, and this table
+           has no numbers to line up and a sentence in its last column. */
+        #deep-fin .fund-facts { min-width: 0; }
+        #deep-fin .fund-facts td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top;
+            white-space: normal; }
+        #deep-fin .fund-facts td:first-child { color: var(--text-muted); white-space: nowrap; }
+        #deep-fin .fund-facts td:nth-child(2) { white-space: nowrap; }
+        #deep-fin .fund-facts td:last-child { font-size: 11px; max-width: 40ch; line-height: 1.45; }
         /* Below its natural width the table scrolls inside its own box, so it can never widen
            the page — the same rule the main table follows. */
         #deep-fin { overflow-x: auto; }
@@ -161,6 +171,8 @@
         #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
         #deep-fin tr.interim-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.interim-row td:first-child, #deep-fin tr.interim-row a { color: var(--text-secondary); }
+        #deep-fin tr.band-row td { border-top: 1px solid var(--line); }
+        #deep-fin tr.band-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.quarter-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.guidance-row td { border-top: 1px solid var(--series-port); }
@@ -855,11 +867,11 @@
             const values = pe ? [
                 range('revenue', big), range('operatingIncome', big), range('opMargin', plain),
                 range('netIncome', big), range('netMargin', plain), big(pe.shares),
-                range('quarterlyEps', num2), null,
+                range('quarterlyEps', num2), null, null,
             ] : [
                 metric('Revenue', 'Net sales'), metric('Operating income'),
                 metric('Operating margin', 'Op margin'), metric('Net income'),
-                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null,
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null, null,
             ];
             const source = String(g.source || '');
             const label = periodLabel(g);
@@ -893,6 +905,63 @@
             ? `<details class="deep-notes"><summary>Notes (${notes.length})</summary>`
                 + `<ul class="deep-note">${notes.map(n => `<li>${escapeHTML(n)}</li>`).join('')}</ul></details>`
             : '';
+
+        // A tracker has no earnings, so the Financials box used to dead-end on "not an operating
+        // company". What it DOES have is a fee, a payout cadence and a policy on the income it
+        // receives — which is most of what there is to know about owning one.
+        //
+        // Frequency is a COUNT of the distributions in the last twelve months, not a schedule read
+        // off a prospectus: it comes free with the dividend events divTTM is already summed from,
+        // and it reports what the fund actually did rather than what it intends.
+        const CADENCE = { 12: 'monthly', 4: 'quarterly', 2: 'semi-annual', 1: 'annual' };
+        // Accumulating or distributing, in order of how much the evidence is worth.
+        //
+        // A payment settles it outright. With no payments, the fund's OWN NAME is the issuer's
+        // word — "USD (Acc)", "GBP Acc" — and better evidence than inferring policy from silence.
+        // A commodity or crypto trust is neither: it holds an asset that pays nothing, so there is
+        // no income to accumulate or distribute and saying "accumulating" would imply there is.
+        // Anything else keeps its silence rather than being labelled on no evidence at all.
+        function incomePolicy(q) {
+            const name = q.fund?.name || '';
+            if (q.divCount > 0) return { label: 'Distributing', why: 'it has paid out in the last year' };
+            if (/\bacc\b|\(acc\)|accumulating/i.test(name)) {
+                return { label: 'Accumulating', why: 'the fund\u2019s own name says so; income is reinvested inside the fund rather than paid out' };
+            }
+            if (/digital asset|commodit|bitcoin|gold/i.test(`${q.fund?.category || ''} ${name}`)) {
+                return { label: 'No income', why: 'it holds an asset that pays nothing, so there is neither a distribution nor anything to accumulate' };
+            }
+            return { label: 'No distributions in the last year', why: 'no payment was made and the fund does not state a policy in its name \u2014 which is not the same as proving it accumulates' };
+        }
+
+        function fundFacts(leg) {
+            const q = leg.quote, f = q.fund || {};
+            const pol = incomePolicy(q);
+            const fee = f.expense != null
+                ? `<b>${(f.expense * 100).toFixed(2)}%</b> a year`
+                : '<span class="muted">–</span>';
+            const feeTip = f.expense != null
+                ? `Total expense ratio, charged inside the fund: it is deducted from the price rather than billed, so it never appears as a cost anywhere in this book. On this position that is about ${money(leg.value * f.expense)} a year.`
+                : 'Yahoo has no expense ratio for this listing. It reports a MISSING one as 0.00%, which is why a zero is dropped rather than shown \u2014 there is no free fund.';
+            const paid = q.divCount > 0
+                ? `${q.divCount} payment${q.divCount === 1 ? '' : 's'} in the last year`
+                    + `${CADENCE[q.divCount] ? ` (${CADENCE[q.divCount]})` : ''}`
+                : '<span class="muted">none in the last year</span>';
+            const yieldCell = q.divYield > 0
+                ? `<b>${plain(q.divYield)}</b> <span class="muted">${q.currency} ${q.divTTM} per ${q.currency === 'GBp' ? 'unit, in pence' : 'unit'}</span>`
+                : '<span class="muted">–</span>';
+            const row = (label, value, tip) =>
+                `<tr><td>${label}</td><td>${value}</td><td class="muted">${tip}</td></tr>`;
+            return `<table class="fund-facts"><tbody>
+                ${row('Fee', fee, escapeHTML(feeTip))}
+                ${row('Income', `<b>${pol.label}</b>`, escapeHTML(pol.why))}
+                ${row('Paid', paid, 'Counted from the distributions Yahoo reports over the trailing twelve months \u2014 what the fund did, not what it schedules.')}
+                ${row('Yield TTM', yieldCell, 'Trailing twelve-month distributions divided by the current price. Gross \u2014 withholding tax is not deducted.')}
+                ${f.category ? row('Category', escapeHTML(f.category), escapeHTML(f.family || '')) : ''}
+            </tbody></table>
+            <span class="deep-note">No reported financials: this is a fund, trust or commodity, not an
+            operating company, so there is no revenue, EPS or P/E to show. The figures above describe the
+            wrapper \u2014 what it charges and what it does with the income it receives.</span>`;
+        }
 
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
@@ -965,8 +1034,7 @@
                     ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
                         if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
-                    fin.innerHTML = '<span class="deep-note">No reported financials — '
-                        + 'this is a fund, trust or commodity, not an operating company.</span>';
+                    fin.innerHTML = fundFacts(leg);
                     return;
                 }
 
@@ -996,6 +1064,58 @@
                 const recEps = y => y.norm != null && y.ni && y.eps != null ? y.norm * y.eps / y.ni : null;
                 const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
                 const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
+
+                // What the market actually PAID for these earnings, year by year: the cheapest and
+                // dearest multiple struck inside each fiscal year, with the year's average beneath.
+                //
+                // The same point-in-time figure as "P/E (cheapest)" in Valuation, sliced by year
+                // instead of minimised over all of history — so the lowest low here IS that number,
+                // by construction, and the page cannot contradict itself.
+                //
+                // Deliberately NOT price ÷ the EPS on this row. Annual results land months after
+                // the year they describe, so for most of FY2025 the market was still pricing
+                // FY2024's earnings; dividing a 2025 price by 2025 earnings prices a multiple
+                // nobody could have paid. The tooltip says so on every cell.
+                //
+                // Struck on THIS listing's own price and its own filed EPS — which is why it stays
+                // right on a receipt whose statements above are read from the home listing.
+                const allBands = leg.quote.peBands || [];
+                const shownYears = new Set(years.map(y => y.date));
+                const bandBy = new Map(allBands.filter(b => shownYears.has(b.end)).map(b => [b.end, b]));
+                const bandOf = b => {
+                    const tip = `Weekly closes through FY${b.fy} over the annual EPS already published `
+                        + `by each date: cheapest ${num2(b.lo)}×, average ${num2(b.avg)}×, dearest `
+                        + `${num2(b.hi)}×, over ${b.weeks} priced weeks. Point-in-time — for most of `
+                        + `this year the market had only the PREVIOUS year's results, so this is not `
+                        + `the price divided by the EPS in this row.`;
+                    return `<td title="${escapeHTML(tip)}">${num2(b.lo)}–${num2(b.hi)}`
+                        + `<span class="yoy muted">avg ${num2(b.avg)}</span></td>`;
+                };
+                const bandCell = y => {
+                    const b = bandBy.get(y.date);
+                    return b ? bandOf(b) : '<td><span class="muted">–</span></td>';
+                };
+                // The years since the last filed one. Their accounts do not exist yet, so every
+                // other cell is blank — but the multiple does exist, and it is the one being paid
+                // today. Without these rows the table stops at the last audited year, and "is this
+                // dear against its own history?" has no answer for the only year that matters.
+                //
+                // Usually one row, the year in progress. Occasionally two, where a fiscal year has
+                // closed and simply not been filed yet — which is why each is labelled from what
+                // it actually is rather than all being called "to date".
+                const bandRow = allBands.filter(b => !shownYears.has(b.end)).map(b => {
+                    const tip = b.partial
+                        ? `Part year: ${b.weeks} weeks from the last filed year end to ${ymd(b.end)}. No accounts are filed for it yet, so only the multiple can be shown.`
+                        : `A full fiscal year — ${b.weeks} weeks to ${ymd(b.end)} — whose accounts have not been filed yet, so only the multiple can be shown.`;
+                    const tag = b.partial
+                        ? '<span class="tag" title="Not a reported period — the fiscal year now running, priced to the latest weekly close.">part year</span>'
+                        : '<span class="tag" title="A complete fiscal year that has not been reported yet. The prices are all in; the accounts are not.">not filed</span>';
+                    return `<tr class="band-row">
+                        <td title="${escapeHTML(tip)}">FY${b.fy}${b.partial ? ' to date' : ''} ${tag}</td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        ${bandOf(b)}
+                    </tr>`;
+                }).join('');
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
@@ -1027,6 +1147,7 @@
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
                         ${cell(recEps(y), p ? yoy(recEps(y), recEps(p)) : null, false, num2)}
+                        ${bandCell(y)}
                     </tr>`;
                 }).join('');
 
@@ -1060,6 +1181,7 @@
                         <td>${span}y CAGR</td>${cagrCell(rc)}${cagrCell(oc)}<td></td>
                         ${cagrCell(nc)}<td></td>${cagrCell(scagr, true)}<td></td>${reccagr == null ? '<td>–</td>'
                             : `<td title="${rspan}y CAGR of recurring EPS"><span class="yoy ${cls(reccagr)}">${pct(reccagr)}</span></td>`}
+                        <td></td>
                     </tr>` : '';
 
                 // Latest reported QUARTER, at the same granularity as the guidance row below it,
@@ -1127,6 +1249,7 @@
                         ${cell(shares(L), ya ? qy(shares(L), shares(ya)) : null, true)}
                         ${cell(L.eps, qy(L.eps, ya?.eps), false, num2, L.epsDerived)}
                         ${cell(recEps(L), ya ? qy(recEps(L), recEps(ya)) : null, false, num2)}
+                        <td></td>
                     </tr>`;
                 }).join('');
 
@@ -1164,6 +1287,7 @@
                         <td></td>
                         ${cell(tEps.v, tEps.g, false, num2)}
                         ${cell(tRec.v, tRec.g, false, num2)}
+                        <td></td>
                     </tr>` : '';
 
                 // Half-year rows, for companies that report twice a year rather than four times.
@@ -1198,6 +1322,7 @@
                         ${marginCell(m(r.nic, r.rev), prior ? m(prior.nic, prior.rev) : null)}
                         <td></td>
                         ${cell(r.eps, g(r.eps, prior?.eps), false, num2)}
+                        <td></td>
                         <td></td>
                     </tr>`;
                 }).join('');
@@ -1288,12 +1413,14 @@
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
+                        <th title="Cheapest and dearest multiple the market struck inside that fiscal year, with the year's average beneath. Weekly closes ÷ the annual EPS already PUBLISHED by each date — so it is not the price divided by the EPS on the same row: results land months after the year they describe. The lowest low here is the P/E (cheapest) figure in Valuation, by construction.">P/E paid</th>
                     </tr></thead>
-                    <tbody>${body}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${bandRow}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
                 ${notesBlock([
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
+                    ...(bandBy.size ? ['P/E paid: the cheapest–dearest multiple struck inside each fiscal year, average beneath, from weekly closes over the annual EPS published by each date. Point-in-time, so a year is priced mostly on the PREVIOUS year’s earnings — the ones the market actually had — not on the EPS in its own row. Weekly closes, so the band is a little narrower than the true intraday range.'] : []),
                     'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     ...(qs.some(x => x.derivedQuarter) ? ['Derived quarter: Yahoo omits a quarter this filer did report, so it is reconstructed as the audited fiscal year minus the three filed quarters — exact for revenue and income, which accumulate over the year. That quarter carries no EPS or share count: those need its own share base, and a bonus issue or buyback inside the year would make an imputed per-share figure fiction.'] : []),
