@@ -408,6 +408,7 @@
                     <button data-days="0" aria-pressed="true">12M</button>
                     <button data-years="2" data-long aria-pressed="false">2Y</button>
                     <button data-years="5" data-long aria-pressed="false">5Y</button>
+                    <button data-years="10" data-long aria-pressed="false" title="Ten years of weekly closes — far enough back to put the COVID crash inside the window.">10Y</button>
                     <button data-days="0" data-long aria-pressed="false">All</button>
                 </div>
             </div>
@@ -1446,6 +1447,11 @@
 
         /* ---------------- chart ---------------- */
         // Slice short ranges by trading bars; long ranges by exact calendar years.
+        // `notBefore` is passed on EVERY long range, not just All. It is a Math.max, so it does
+        // nothing whenever the range cutoff already sits after the first trade — which was every
+        // case until 10Y arrived. Ten years reaches back past Jan 2018, and NAV before the first
+        // trade is a genuine 0, so without the clamp the portfolio drew seventeen months of flat
+        // zero and called it history. You did not own a portfolio worth nothing; you owned none.
         function sliceRange(days, arrays, notBefore = '') {
             const cutoff = new Date(days[days.length - 1] + 'T00:00:00Z');
             cutoff.setUTCFullYear(cutoff.getUTCFullYear() - rangeYears);
@@ -1505,7 +1511,7 @@
             if (!active.length) active.push('total');
             const raw = active.map(k => portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, DEFS[k].filter));
             const { days, arrays } = sliceRange(history.days, raw.flatMap(r => [r.mv, r.flow]),
-                longRange && !rangeYears ? STATE.firstTrade : '');
+                longRange ? STATE.firstTrade : '');
             const series = active.map((k, idx) => ({
                 label: DEFS[k].label, color: DEFS[k].color,
                 values: portfolioLib.twr(arrays[idx * 2], arrays[idx * 2 + 1]),
@@ -1558,7 +1564,7 @@
 
         function portfolioValueSpec() {
             const nav = longRange ? HISTORY.long.nav : STATE.nav;
-            const { days, arrays } = sliceRange(nav.days, [nav.values], longRange && !rangeYears ? STATE.firstTrade : '');
+            const { days, arrays } = sliceRange(nav.days, [nav.values], longRange ? STATE.firstTrade : '');
             const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
             const last = lastNonNull(values);
             return {
@@ -1587,7 +1593,7 @@
             const firstTrade = group.legs.flatMap(leg => leg.trades || [])
                 .reduce((first, trade) => !first || trade.date < first ? trade.date : first, '');
             const { days, arrays } = sliceRange(
-                history.days, [mv], longRange && !rangeYears ? firstTrade : '',
+                history.days, [mv], longRange ? firstTrade : '',
             );
             const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
             const last = lastNonNull(values);
@@ -1626,7 +1632,7 @@
                 history.days, twrHoldings(STATE.holdings), history.closes, STATE.rates);
             const benches = ['^GSPC', '^HSI'].filter(s => benchOn.has(s) && history.closes[s]);
             const sliced = sliceRange(history.days, [mv, flow, ...benches.map(s => history.closes[s])],
-                longRange && !rangeYears ? STATE.firstTrade : '');
+                longRange ? STATE.firstTrade : '');
             const series = [
                 { label: 'Portfolio', color: PORT_COLOR, values: portfolioLib.twr(sliced.arrays[0], sliced.arrays[1]) },
                 ...benches.map((s, k) => ({
