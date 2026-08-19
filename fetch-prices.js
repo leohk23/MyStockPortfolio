@@ -700,6 +700,30 @@ const reportedBy = date =>
     new Date(new Date(date + 'T00:00:00Z').getTime() + REPORT_LAG_DAYS * DAY * 1000)
         .toISOString().slice(0, 10);
 
+// What was public when: [publication date, EPS] steps, oldest first, in the QUOTE's currency.
+// A year with no EPS and no net income (Yahoo's per-field cap) carries no information and is
+// transparent; a published LOSS is kept — it genuinely voids the multiple until the next
+// profit prints. Shared by troughPe and peBands so both price the same denominator.
+function publishedEps(entry, quoteCurrency, rates) {
+    const years = entry?.years || [];
+    const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
+    const fxQuote = rateFor(quoteCurrency, rates);
+    if (!fxReport || !fxQuote) return null;
+    const toQuote = fxReport / fxQuote;
+    const normalised = normaliseEps(years);   // onto the latest year's share basis
+    return years
+        .map((y, i) => ({ from: reportedBy(y.date), eps: normalised[i] * toQuote }))
+        .filter(k => Number.isFinite(k.eps))
+        .sort((a, b) => a.from < b.from ? -1 : 1);
+}
+
+// The EPS a buyer could see on a given day — the last one published by then, or null.
+const epsAsOf = (known, day) => {
+    let e = null;
+    for (const k of known) { if (k.from <= day) e = k.eps; else break; }
+    return e > 0 ? e : null;
+};
+
 // The cheapest multiple the market ever put on this stock's PUBLISHED earnings: each weekly
 // close ÷ the latest annual EPS already reported by that date, minimum across history.
 //
@@ -720,32 +744,95 @@ const reportedBy = date =>
 // GBP-reported EPS scales by 100 into a pence-quoted price) — no special case needed.
 // Returns null if we lack an FX rate for either side, rather than a wrong multiple.
 function troughPe(entry, days, closes, quoteCurrency, rates) {
-    const years = entry?.years || [];
-    const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
-    const fxQuote = rateFor(quoteCurrency, rates);
-    if (!fxReport || !fxQuote) return null;
-    const toQuote = fxReport / fxQuote;
-    const normalised = normaliseEps(years);   // onto the latest year's share basis
-
-    // What was public when: [publication date, EPS] steps, oldest first. A year with no EPS
-    // and no net income (Yahoo's per-field cap) carries no information and is transparent;
-    // a published LOSS is kept — it genuinely voids the multiple until the next profit prints.
-    const known = years
-        .map((y, i) => ({ from: reportedBy(y.date), eps: normalised[i] * toQuote }))
-        .filter(k => Number.isFinite(k.eps))
-        .sort((a, b) => a.from < b.from ? -1 : 1);
-
+    const known = publishedEps(entry, quoteCurrency, rates);
+    if (!known) return null;
     let best = null;
     for (let i = 0; i < days.length; i++) {
         const c = closes[i];
         if (c == null) continue;
-        let e = null;
-        for (const k of known) { if (k.from <= days[i]) e = k.eps; else break; }
-        if (!(e > 0)) continue;
+        const e = epsAsOf(known, days[i]);
+        if (e == null) continue;
         const pe = c / e;
         if (best == null || pe < best.peLow) best = { peLow: pe, lowPrice: c, lowEps: e, lowDate: days[i] };
     }
     return best;
+}
+
+// The same multiple, sliced by fiscal year instead of minimised over all of history: for each
+// filed year, the cheapest, dearest and average multiple the market struck inside that year.
+//
+// This is the "ten year" view of a valuation — what a stock has actually been worth, rather
+// than one all-time low — and it is the per-year decomposition of peLow above: the minimum of
+// the `lo` column IS peLow, on the same closes and the same denominator, so the two numbers on
+// the page can never contradict each other.
+//
+// Point-in-time on both sides, exactly as troughPe: each close is divided by the EPS PUBLISHED
+// by that date, not by the year's own EPS. A year's multiple therefore changes denominator
+// partway through, when the previous year's results are announced — which is what a buyer
+// actually faced. Pricing the whole year against earnings not yet released would print a low
+// nobody could have paid.
+//
+// ponytail: weekly closes, so the band is narrower than the true intraday range (HKEX's 2024
+// high reads 376 against an intraday 398). Deliberate — this is the same series peLow is struck
+// on, and a wider band here would disagree with the headline number on the same page.
+function peBands(entry, days, closes, quoteCurrency, rates) {
+    const known = publishedEps(entry, quoteCurrency, rates);
+    if (!known) return null;
+    const plusYear = (d, n = 1) => {
+        const x = new Date(d + 'T00:00:00Z');
+        x.setUTCFullYear(x.getUTCFullYear() + n);
+        return x.toISOString().slice(0, 10);
+    };
+    // One window, (from, to]: the cheapest, dearest and average multiple struck inside it.
+    const band = (from, to) => {
+        let lo = null, hi = null, sum = 0, n = 0;
+        for (let i = 0; i < days.length; i++) {
+            if (days[i] <= from || days[i] > to) continue;
+            const c = closes[i];
+            if (c == null) continue;
+            const e = epsAsOf(known, days[i]);
+            if (e == null) continue;
+            const pe = c / e;
+            if (lo == null || pe < lo) lo = pe;
+            if (hi == null || pe > hi) hi = pe;
+            sum += pe; n++;
+        }
+        return n ? { lo, hi, avg: sum / n, weeks: n } : null;
+    };
+
+    const bands = [];
+    for (const y of entry?.years || []) {
+        const b = band(plusYear(y.date, -1), y.date);
+        // Half a year of priced closes is the floor: a stub year (a listing part-way through, or
+        // a fiscal year whose earliest closes predate the first published EPS) would otherwise
+        // print a "range" struck on a handful of weeks and read as the whole year's.
+        if (b && b.weeks >= 26) bands.push({ fy: y.date.slice(0, 4), end: y.date, ...b });
+    }
+    // Then the years since the last FILED one, rolling forward a fiscal year at a time. Without
+    // them the table stops at the last audited year and the reader cannot see where the stock
+    // trades TODAY against its own history — which is the whole question. It is also where the
+    // cheapest multiple often is (13 of 60 names in this book), so leaving it out would put the
+    // column's lowest low at odds with the peLow printed beside it.
+    //
+    // A loop, not a single trailing window, because "unfiled" is not always "in progress":
+    // Kansai Electric's FY to June 2026 has closed and simply has not been filed, so a single
+    // window would run 60 weeks and still be labelled one year. Each pass covers exactly one
+    // fiscal year and only the last can be short.
+    const filed = bands[bands.length - 1];
+    const newest = days[days.length - 1];
+    for (let from = filed?.end; from && from < newest;) {
+        const end = plusYear(from);
+        const to = end < newest ? end : newest;
+        const b = band(from, to);
+        // No minimum here, unlike the filed years above. Every close after the last filed year end
+        // must land in exactly one of these windows, or the cheapest band would stop being the
+        // peLow printed beside it — and in the first weeks of a new fiscal year, a floor is
+        // precisely what would swallow a fresh low. A one-week "range" is odd-looking but true,
+        // and the row is labelled a part year with its week count in the tooltip.
+        if (b) bands.push({ fy: end.slice(0, 4), end: to, ...(to < end ? { partial: true } : {}), ...b });
+        from = end;
+    }
+    return bands.length ? bands : null;
 }
 
 // Last run's EPS, straight out of the committed prices.json. The crumb handshake is the
@@ -1594,9 +1681,19 @@ async function main() {
 
     // Trough multiple — cheapest close in each fiscal year over THAT year's earnings. Pure and
     // free: stored EPS + this run's weekly closes, so a fresh low shows up the hour it prints.
-    let troughOk = 0, troughMissing = 0;
+    // The per-fiscal-year bands come off the same two inputs, so the cheapest band IS peLow.
+    let troughOk = 0, troughMissing = 0, bandOk = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
+        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates);
+        if (bands) {
+            quotes[t].peBands = bands.map(b => ({
+                fy: b.fy, end: b.end, weeks: b.weeks, ...(b.partial ? { partial: true } : {}),
+                lo: Number(b.lo.toPrecision(6)), hi: Number(b.hi.toPrecision(6)),
+                avg: Number(b.avg.toPrecision(6)),
+            }));
+            bandOk++;
+        }
         const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates);
         if (!low) { troughMissing++; continue; }
         Object.assign(quotes[t], {
@@ -1678,6 +1775,7 @@ async function main() {
     if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
         + `denomination for ${fwdConverted} ticker(s)`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
+    console.log(`ok   per-year PE bands for ${bandOk}/${tickers.length} tickers`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
     // daily closes live in this process and the page loads only prices.json (not history).
@@ -2148,6 +2246,92 @@ function selftest() {
     assert.strictEqual(troughPe({ currency: 'GBP', years: [{ date: '2024-12-31', eps: 0.5 }] }, days, px, 'GBp', fx).peLow, 1);
     // No FX rate for the reporting currency -> null, never a wrong multiple.
     assert.strictEqual(troughPe({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, days, px, 'USD', fx), null);
+
+    // peBands: the same point-in-time multiple, sliced by fiscal year instead of minimised.
+    // Two full years of weekly closes, flat at 40 except one dip and one spike in each.
+    const weeks = (from, n) => Array.from({ length: n }, (_, i) =>
+        new Date(new Date(from + 'T00:00:00Z').getTime() + i * 7 * DAY * 1000).toISOString().slice(0, 10));
+    const bDays = weeks('2024-01-05', 104);                 // 2024-01-05 .. 2025-12-26
+    const bPx = bDays.map(() => 40);
+    bPx[bDays.indexOf('2024-07-05')] = 32;                  // FY2024 dip, on FY2023's EPS of 4
+    bPx[bDays.indexOf('2024-10-04')] = 60;                  // FY2024 spike
+    bPx[bDays.indexOf('2025-02-07')] = 50;                  // FY2025, BEFORE FY2024's EPS is out
+    bPx[bDays.indexOf('2025-06-06')] = 50;                  // FY2025, after — same price, cheaper
+    const bEntry = { currency: 'USD', years: [
+        { date: '2023-12-31', eps: 4 }, { date: '2024-12-31', eps: 5 },
+        { date: '2025-12-31', eps: 6 }] };
+    const bands = peBands(bEntry, bDays, bPx, 'USD', fx);
+    assert.deepStrictEqual(bands.map(b => b.fy), ['2024', '2025']);
+    // The closes stop inside FY2025, so there is no year in progress beyond it to report.
+    assert.ok(!bands.some(b => b.partial));
+    // FY2024 is priced entirely on FY2023's 4 — its own 5 does not publish until 2025-03-31.
+    // Closes before 2024-03-30 have no published EPS at all and are skipped, not back-priced.
+    const y24 = bands[0];
+    assert.strictEqual(y24.lo, 8);                          // 32 / 4
+    assert.strictEqual(y24.hi, 15);                         // 60 / 4
+    assert.strictEqual(y24.weeks, bDays.filter(d => d >= '2024-03-30' && d <= '2024-12-31').length);
+    // The denominator changes INSIDE a year, when the results land. Two identical closes of 50
+    // sit either side of 2025-03-31 and are NOT the same multiple: 12.5x then 10x.
+    const y25 = bands[1];
+    assert.strictEqual(y25.hi, 12.5);                       // 50 / 4 — February, before the results
+    assert.strictEqual(y25.lo, 8);                          // 40 / 5 — the flat weeks after them
+    // 12.5 is only reachable through the OLD denominator: on FY2025's own EPS of 6 that same
+    // February close would read 8.3x and the year's low 6.7x — a multiple nobody could have
+    // paid, because those earnings were fifteen months away.
+    // The invariant that keeps the page honest: the cheapest band IS the headline peLow, because
+    // both are struck on the same closes and the same published EPS. This only holds because the
+    // year IN PROGRESS gets a band too — 13 of 60 names have their all-time low there, and without
+    // that row the column's lowest and the peLow beside it would contradict each other.
+    const sameLow = (entry, d, px) => assert.ok(Math.abs(
+        Math.min(...peBands(entry, d, px, 'USD', fx).map(b => b.lo))
+        - troughPe(entry, d, px, 'USD', fx).peLow) < 1e-9, 'cheapest band must equal peLow');
+    sameLow(bEntry, bDays, bPx);
+    // Now push the series eight months past FY2025 with a crash to 24 — the cheapest multiple in
+    // the stock's history (24 / 6 = 4), and it happens in a year nobody has filed yet.
+    const pDays = [...bDays, ...weeks('2026-01-02', 35)];
+    const pPx = [...bPx, ...Array(35).fill(40)];
+    pPx[pDays.indexOf('2026-05-01')] = 24;
+    const pBands = peBands(bEntry, pDays, pPx, 'USD', fx);
+    assert.deepStrictEqual(pBands.map(b => b.fy), ['2024', '2025', '2026']);
+    const inProgress = pBands[2];
+    assert.strictEqual(inProgress.partial, true);
+    assert.strictEqual(inProgress.end, pDays[pDays.length - 1]);   // to the newest close, not a year end
+    assert.strictEqual(inProgress.lo, 4);                          // 24 / 6, FY2025 having published
+    sameLow(bEntry, pDays, pPx);
+    // Even two weeks into a new fiscal year gets its own row, floor-free: a low struck in the
+    // first days of a year must still be inside a band, or the column's cheapest stops being the
+    // peLow beside it. Here that fortnight IS the all-time low — 20 over FY2024's published 5,
+    // because FY2025's results are still three months away in January.
+    const sDays = [...bDays, ...weeks('2026-01-02', 2)];
+    const sPx = [...bPx, 40, 20];
+    const sBands = peBands(bEntry, sDays, sPx, 'USD', fx);
+    assert.deepStrictEqual(sBands.map(b => b.fy), ['2024', '2025', '2026']);
+    assert.strictEqual(sBands[2].weeks, 2);
+    assert.ok(Math.abs(sBands[2].lo - 20 / 5) < 1e-9);
+    sameLow(bEntry, sDays, sPx);
+    // "Unfiled" is not always "in progress". Run the closes two and a half years past the last
+    // filed year: that is a COMPLETE fiscal year nobody has filed, then a part year. One window
+    // for the lot would print 130 weeks under a single year's label (Kansai Electric's case).
+    const lDays = [...bDays, ...weeks('2026-01-02', 87)];      // to 2027-08-27
+    const lPx = [...bPx, ...Array(87).fill(40)];
+    const lBands = peBands(bEntry, lDays, lPx, 'USD', fx);
+    assert.deepStrictEqual(lBands.map(b => b.fy), ['2024', '2025', '2026', '2027']);
+    assert.ok(!lBands[2].partial);                             // FY2026 ran its full course
+    assert.strictEqual(lBands[2].end, '2026-12-31');           // and ends on its own year end
+    assert.strictEqual(lBands[3].partial, true);               // FY2027 has not
+    assert.strictEqual(lBands[3].end, lDays[lDays.length - 1]);
+    assert.ok(lBands[2].weeks <= 53 && lBands[3].weeks <= 53); // neither window overruns a year
+    sameLow(bEntry, lDays, lPx);
+    // A stub year — fewer than 26 priced weeks — is dropped rather than printed as a range.
+    // FY2023 here has only the eight weeks from its EPS publication to its own year end.
+    assert.deepStrictEqual(
+        peBands({ currency: 'USD', years: [{ date: '2024-02-29', eps: 4 }] },
+            bDays, bPx, 'USD', fx),
+        null);
+    // Same guards as troughPe: no history, no FX rate, no entry -> null, never a wrong band.
+    assert.strictEqual(peBands({ currency: 'USD', years: [] }, bDays, bPx, 'USD', fx), null);
+    assert.strictEqual(peBands({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, bDays, bPx, 'USD', fx), null);
+    assert.strictEqual(peBands(undefined, bDays, bPx, 'USD', fx), null);
     const shaped = shape({
         meta: { regularMarketPrice: 100, currency: 'USD', previousClose: 96 }, timestamp: [],
         indicators: { quote: [{ close: [] }] },

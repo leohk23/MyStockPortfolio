@@ -170,6 +170,30 @@ The idea (ported from the workbook's old Portfolio!BA:BM block, now fully derive
 
 `fetch-prices.js` best-effort fetches trailing EPS from Yahoo's `v7/finance/quote` for every holding in one batched request. That endpoint (unlike `v8/finance/chart`) requires a crumb+cookie handshake (`getCrumb()`) — Yahoo's anti-scraping measure, not something this repo controls, so it can start failing without a code change on our side. A failure there is always silent and non-fatal (logs `skip eps: ...` and moves on): PE columns use a checked `meta.json` manual override first, then Yahoo/current carried data, or show `–`. Check the Action's log line (`ok eps for N/M tickers`) if PE looks stale.
 
+
+## "P/E paid" — the trough, decomposed by year (`peBands`)
+
+The trough answers *how cheap has this ever been*. It cannot answer *is this dear right now, by its own standards* — for that you need the whole distribution, not its minimum. `peBands` (`fetch-prices.js`) gives the financials table one extra column: for each fiscal year, the **cheapest, dearest and average** multiple the market struck inside it.
+
+Ported from the owner's own `388 HKEX.xlsx` "十年" sheet, which prices each year's low/high/average share price against three EPS bases — 歷史 (the prior year's, i.e. what was published), 預期 (the year's own, i.e. hindsight) and 中間 (the mean of the two). **Nine combinations; this repo ships three.** The three *price* points are genuinely different facts. The three *EPS bases* are one fact seen three ways, and only one of them is defensible here: `troughPe` already rejects pricing a year against earnings released months after it (the Trip.com case above), and a second column contradicting that decision would be worse than no column.
+
+**Same machinery as the trough, by construction.** Both call `publishedEps` for the [publication date, EPS] steps and `epsAsOf` to pick the one a buyer could see. So:
+
+> **the lowest `lo` across a ticker's bands IS its `peLow`** — the same closes, the same denominator. Verified as an invariant in the selftest and over the live file (0 breaches across 60 tickers).
+
+Two consequences fall out of that guarantee and must not be "simplified" away:
+
+- **Years since the last filed one get rows too.** 13 of 60 names have their all-time low in the current, unaudited year. Drop those rows and the column's lowest stops matching the `peLow` printed beside it.
+- **Those trailing windows have no minimum week count.** Filed years need 26 priced weeks (a stub year is not a range). The roll-forward windows need none — a low struck in the first fortnight of a new fiscal year must still land in a band. A two-week "range" looks odd and is true; the row says `part year` and the tooltip gives the week count.
+
+**It rolls forward a fiscal year at a time, not one trailing window.** "Unfiled" is not always "in progress": Kansai Electric's year to June 2026 has closed and simply has not been filed. One window would have run 60 weeks under a single year's label. Each pass covers exactly one fiscal year; only the last can be short, and only it is tagged `part year` (a complete-but-unreported year is tagged `not filed`).
+
+**The cell is deliberately NOT `price ÷ the EPS on its own row`,** and both the header and every cell's tooltip say so. Results land ~90 days after the year they describe, so for most of FY2025 the market was still pricing FY2024's earnings. A reader who divides by eye and gets a different number is right to; the tooltip tells them why.
+
+**Struck on the listing's own price and its own filed EPS** (`store.eps[t]`, not the `primary`'s) — which is what keeps it correct on a receipt whose statements above are read from the home listing. A P/E is a ratio, so it is currency- and ADR-agnostic; the same reason `peLow` needs no FX.
+
+⚠️ **Weekly closes.** The band is a little narrower than the true intraday range — HKEX's 2024 high reads 376 where the intraday high was 398, and the owner's sheet (daily closes) says 393.8. This is deliberate: it is the same series `peLow` is struck on, and a wider band here would disagree with the headline number on the same page. Cross-checked against the sheet where it matters: HKEX's FY2026-to-date low reads **25.85×** against the sheet's **25.86×**.
+
 ## Watchlist (stocks not held)
 
 `watchlist.json` lists names to analyse before buying. They ride the **same pipeline** — quotes, weekly history, trough P/E, annual financials — because `fetch-prices.js` unions them into its ticker list. There is no second fetch path, and `npm run backfill` picks them up too (it just walks `earnings.json`).
