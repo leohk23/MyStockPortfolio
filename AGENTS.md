@@ -23,6 +23,10 @@ What that means in practice:
 
 Corollary: don't gold-plate. No design systems, no component frameworks, no build step. Plain HTML/CSS/JS that a future session can read top-to-bottom is the point — the repo has no dependencies at runtime and should stay that way.
 
+## Ponytail mode
+
+Use **Ponytail lite** by default for coding work in this repository. It may be turned off at the owner's request. Never enable `full` or `ultra` in this repository.
+
 ## Data flow
 
 ```
