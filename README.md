@@ -47,7 +47,6 @@ Committing the price files re-triggers the Pages build, so the live site follows
   Annual EPS is cached in `earnings.json` (refreshed weekly, not every run — earnings only print 4×/year), but the trough is recomputed every run, so a **new low shows up on the next refresh**. Limited to ~4 fiscal years because that's all the earnings history Yahoo gives away.
 
   ⚠️ This is **context, not a signal**. A trough multiple is one data point from one bad moment. A company that has genuinely grown into its earnings will read as permanently expensive against a low set in 2022 — NVDA at +380% isn't a sell, it's telling you its 2022 trough earnings bear little relation to today's business.
-
 - **Click a stock for the deep dive** — filed annual and quarterly financials, with a trailing-twelve-month row. Where Yahoo omits a quarter a company did report, it is reconstructed as *the audited fiscal year minus the three filed quarters* and labelled **`derived`**; a TTM containing one reads **`part-derived`** rather than `filed`. Only revenue and income are reconstructed that way — never EPS, which would need that quarter's own share base (BYD's shares roughly doubled mid-FY2025, so an imputed per-share figure would be fiction). Without this a single missing quarter silently removed the whole TTM row.
 - **Price freshness.** Every figure here is the **regular-session** price, deliberately — value, gain, PE, 1D and the whole NAV history are built on regular closes, so folding an after-hours print into the price would move every derived number against a history that never had one. The risk that leaves is a price that is quietly *wrong*: a company reports after the bell, drops 8%, and the row still shows yesterday's close. So the extended-hours move is shown **beside** the price, never inside it — `308.91 USD −8.2%` means the last close was 308.91 and it has since traded 8.2% lower. Hovering any price gives the last-traded time and the full detail.
 
@@ -135,5 +134,3 @@ npm test            # self-check the maths (needs `npm install`)
 ```
 
 ⚠️ Public repo: your holdings, cost basis, trade history, and Tradelog comments are public. Pages on a private repo requires GitHub Pro.
-
-
