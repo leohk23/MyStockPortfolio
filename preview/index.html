@@ -524,6 +524,7 @@
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <th data-sort="held" title="How long the money has been in this position: the cost-weighted average age of the lots you still own, with sells matched against buys oldest-first. Not the first purchase date — 43 of these positions were built with more than one buy, and a position sold down and re-entered (BYD) would otherwise claim an age its money never had. Hover a value for the oldest open lot.">Held</th>
+                    <th data-sort="cagr" title="The Gain/Loss % column, compounded over the Held period beside it: (value ÷ cost) ^ (365 ÷ days held) − 1. Same open lots and same cost basis as that column, so the two always agree — this is simply that return per year. Realized gains are excluded, exactly as they are there. Blank under one year on purpose: a position bought last week annualises its first move into the millions of percent, and the % column already tells you everything about it.">CAGR</th>
                     <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
                     <th data-sort="cost">Cost</th>
                     <th data-sort="value" aria-sort="descending">Value</th>
@@ -2196,6 +2197,17 @@
             return `<span title="Cost-weighted average age of ${h.lots} open lot${h.lots === 1 ? '' : 's'}`
                 + `; oldest still open ${h.firstOpen}">${txt}</span>`;
         };
+        // The Held period turned into a rate. Blank under a year is the normal case, not a
+        // failure, so the dash says which of the two reasons it is rather than leaving the reader
+        // to wonder whether the column is broken.
+        const cagrHeldCell = (v, held) => {
+            if (v != null) return `<td class="${cls(v)}">${pct(v)}</td>`;
+            const why = !held ? 'No open lots to measure.'
+                : `Held ${Math.max(0, Math.round(held.days / 30.44))} months — under a year, so there is `
+                    + 'no annual rate to state. Annualising a short hold turns an ordinary move into '
+                    + 'a headline percentage; the Gain/Loss % column is the honest figure here.';
+            return `<td><span class="muted" title="${escapeHTML(why)}">–</span></td>`;
+        };
         const impliedCell = (r) => r.implied == null ? '<span class="muted">–</span>'
             : `<span title="PE Low ${r.peLow.toFixed(1)}x × today's EPS`
                 + `${r.lowPrice != null && r.lowEps != null ? ` — from a low of ${num2(r.lowPrice)} on EPS ${num2(r.lowEps)}` : ''}`
@@ -2325,6 +2337,7 @@
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td>${heldCell(r.held)}</td>
+                    ${cagrHeldCell(r.cagr, r.held)}
                     <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? num2(r.legs[0].qty) : '–'}</td>
                     <td>${money(r.cost)}</td>
                     <td>${money(r.value)}</td>
@@ -2357,7 +2370,12 @@
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
-                        <td>${heldCell(portfolioLib.holdingAge(leg.trades, TODAY, c => rateOf(c === 'Gbpence' ? 'GBp' : c)))}</td>
+                        ${(() => {
+                            // One age, used twice: the cell and the rate struck on it must be the
+                            // same period, or an expanded leg could show a CAGR its Held disowns.
+                            const age = portfolioLib.holdingAge(leg.trades, TODAY, c => rateOf(c === 'Gbpence' ? 'GBp' : c));
+                            return `<td>${heldCell(age)}</td>${cagrHeldCell(portfolioLib.annualised(leg.value, leg.cost, age), age)}`;
+                        })()}
                         <td>${num2(leg.qty)}</td>
                         <td>${money(leg.cost)}</td>
                         <td>${money(leg.value)}</td>
@@ -2383,7 +2401,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="29">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="30">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });

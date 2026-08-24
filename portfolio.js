@@ -225,6 +225,23 @@ function holdingAge(trades, asOf, rate = () => 1) {
     return { days: num / den, firstOpen: first, lots: open.length };
 }
 
+// Annualised return on the money still in a position: the Gain/Loss % column compounded over the
+// Held age beside it. Same numerator and same denominator as gainPct — open lots only, realized
+// gains excluded — so the two can never disagree. This is that figure, per year, and nothing else.
+//
+// Refused under a year, and the refusal is most of the value. HKEX bought yesterday is +4.4%,
+// which annualises to 597,024,777%: an exact calculation of a meaningless quantity, and the kind
+// of number that makes a reader stop trusting the column it sits in. Inside a year the % beside it
+// already says everything there is to say, so this one says nothing.
+//
+// A wiped-out position (value 0) is refused too. The formula returns -100% for it no matter how
+// long it took, and a rate that ignores its own time period is not a rate.
+const CAGR_MIN_DAYS = 365;
+function annualised(value, cost, held) {
+    if (!(cost > 0) || !(value > 0) || !(held?.days >= CAGR_MIN_DAYS)) return null;
+    return Math.pow(value / cost, 365 / held.days) - 1;
+}
+
 // Which fiscal quarter is this calendar period end, for a company whose year does not end in
 // December? Disney's year ends late September, so its Apr-Jun quarter — the one this app labels
 // "Qtr Jun '26" — is the Q3 FY26 your broker's earnings notice names. Both labels are right; they
@@ -363,6 +380,12 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
         const traded = g.legs.filter(l => l.lastTrade);
         const recent = traded.sort((a, b) => b.lastTrade.date.localeCompare(a.lastTrade.date))[0];
         const single = g.legs.length === 1 ? g.legs[0] : null;
+        // How long the money has been in this row, cost-weighted across every open lot of every
+        // leg (see holdingAge). Pooling the legs' trades is right precisely because cost is the
+        // weight: an ADR and its local line contribute in one common currency. Hoisted out of the
+        // literal below because the CAGR beside it is struck on exactly this period.
+        const held = holdingAge(g.legs.flatMap(l => l.trades || []), asOf,
+            c => rateFor(c === 'Gbpence' ? 'GBp' : c, rates));
         return {
             ...g, cost, value, income, realized: sum('realized'),
             gain: value - cost,
@@ -371,11 +394,8 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
             moves: Object.fromEntries(PERIODS.map(p => [p, weightedMove(g.legs, p)])),
             lastTrade: recent ? recent.lastTrade : null,
             since: recent ? recent.since : null,
-            // How long the money has been in this row, cost-weighted across every open lot of
-            // every leg (see holdingAge). Pooling the legs' trades is right precisely because
-            // cost is the weight: an ADR and its local line contribute in one common currency.
-            held: holdingAge(g.legs.flatMap(l => l.trades || []), asOf,
-                c => rateFor(c === 'Gbpence' ? 'GBp' : c, rates)),
+            held,
+            cagr: annualised(value, cost, held),
             // Current price per share only makes sense for a single instrument; shown native.
             price: single ? single.quote.price : null,
             priceCurrency: single ? single.quote.currency : null,
@@ -400,7 +420,7 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -749,6 +769,26 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
           trades: [{ date: '2024-08-09', side: 'BUY', qty: 1, price: 100, currency: 'USD' }] }],
         { USD: 1 }, { A: { priceUSD: 120, price: 120, currency: 'USD' } }, 'company', '2026-08-09');
     assert.ok(Math.abs(heldRows[0].held.days - 2 * 365) < 2);
+
+    // annualised: the row's own Gain/Loss %, compounded over the Held period beside it.
+    // 100 -> 120 over exactly two years is 20% total, which is 9.54% a year.
+    assert.ok(Math.abs(heldRows[0].cagr - (Math.sqrt(1.2) - 1)) < 1e-3);
+    // Exactly one year is the SAME number as the % column, by construction — nothing compounds.
+    assert.ok(Math.abs(annualised(120, 100, { days: 365 }) - 0.2) < 1e-12);
+    // Four years of doubling: 2^(1/4) - 1 = 18.92%.
+    assert.ok(Math.abs(annualised(200, 100, { days: 4 * 365 }) - (Math.pow(2, 0.25) - 1)) < 1e-12);
+    // A loss annualises too — it must, or the column would only ever flatter.
+    assert.ok(annualised(50, 100, { days: 2 * 365 }) < -0.29);
+    // THE guard. HKEX, bought yesterday, up 4.4%: a real +597,024,777% that must never print.
+    assert.strictEqual(annualised(104.4, 100, { days: 1 }), null);
+    // ...and the boundary either side of it, so the rule is exactly "a year", not "about a year".
+    assert.strictEqual(annualised(120, 100, { days: 364.9 }), null);
+    assert.ok(annualised(120, 100, { days: 365 }) != null);
+    // Nothing to compound, or nothing to compound it over.
+    assert.strictEqual(annualised(120, 0, { days: 800 }), null);      // no cost basis
+    assert.strictEqual(annualised(0, 100, { days: 800 }), null);      // wiped out: -100%, undated
+    assert.strictEqual(annualised(120, 100, null), null);             // no open lots
+    assert.strictEqual(annualised(120, 100, undefined), null);
 
     // fiscalQuarter: the label a broker's earnings notice uses, for off-calendar filers.
     // Disney's year ends late September, so the quarter this app calls "Qtr Jun '26" is the
