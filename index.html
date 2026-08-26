@@ -530,6 +530,9 @@
                     <th data-sort="ytd">YTD</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
+                    <!-- Return, then the period it took, then the rate. Sitting after Realized it
+                         was six columns from the Held and CAGR it is the same measurement as. -->
+                    <th data-sort="gainPct" title="Gain or loss on the money still in the position, as a percentage of its cost. Open lots only — realized gains are in their own column — which is the same basis as Held beside it and the CAGR beside that: this figure, and that figure per year.">%</th>
                     <th data-sort="held" title="How long the money has been in this position: the cost-weighted average age of the lots you still own, with sells matched against buys oldest-first. Not the first purchase date — 43 of these positions were built with more than one buy, and a position sold down and re-entered (BYD) would otherwise claim an age its money never had. Hover a value for the oldest open lot.">Held</th>
                     <th data-sort="cagr" title="The Gain/Loss % column, compounded over the Held period beside it: (value ÷ cost) ^ (365 ÷ days held) − 1. Same open lots and same cost basis as that column, so the two always agree — this is simply that return per year. Realized gains are excluded, exactly as they are there. Blank under one year on purpose: a position bought last week annualises its first move into the millions of percent, and the % column already tells you everything about it.">CAGR</th>
                     <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
@@ -537,7 +540,6 @@
                     <th data-sort="value" aria-sort="descending">Value</th>
                     <th data-sort="gain">Gain/Loss</th>
                     <th data-sort="realized">Realized</th>
-                    <th data-sort="gainPct">%</th>
                     <th data-sort="value" title="Share of the whole portfolio by value. The bar under each position name shows the same thing relative to the largest row on screen — a full bar is the biggest holding, not 100%.">Mix</th>
                     <th data-sort="yield" title="Yahoo trailing 12-month dividends divided by current price">Yield TTM</th>
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
@@ -2392,6 +2394,7 @@
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
+                    <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
                     <td>${heldCell(r.held)}</td>
                     ${cagrHeldCell(r.cagr, r.held)}
                     <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? num2(r.legs[0].qty) : '–'}</td>
@@ -2399,7 +2402,6 @@
                     <td>${money(r.value)}</td>
                     <td class="${cls(r.gain)}">${money(r.gain)}</td>
                     <td class="${realizedCls(r.realized)}">${money(r.realized)}</td>
-                    <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
                     <td>${plain(r.value / total)}</td>
                     <td class="muted">${r.yield ? plain(r.yield) : '–'}</td>
                     <td>${incomeCell(r.income)}</td>
@@ -2426,6 +2428,7 @@
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
+                        <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
                         ${(() => {
                             // One age, used twice: the cell and the rate struck on it must be the
                             // same period, or an expanded leg could show a CAGR its Held disowns.
@@ -2437,7 +2440,6 @@
                         <td>${money(leg.value)}</td>
                         <td class="${cls(gain)}">${money(gain)}</td>
                         <td class="${realizedCls(leg.realized)}">${money(leg.realized)}</td>
-                        <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
                         <td>${plain(leg.value / total)}</td>
                         <td class="muted">${leg.quote.divYield ? plain(leg.quote.divYield) : '–'}</td>
                         <td>${incomeCell(leg.income)}</td>
