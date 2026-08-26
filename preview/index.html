@@ -919,7 +919,40 @@
 
         // Fit guidance into the filed-financials columns. Missing company-guided accounts stay
         // blank; only NVIDIA's explicit runRatePe inputs derive the absent accounts.
-        const guidanceView = (g, price) => {
+        // A forecast that gives net income but no per-share figure is not missing an EPS — it is one
+        // division away from it. Fast Retailing guides revenue, operating income, margins and net
+        // income and stops there, so the FY26E row read "–" in a column whose own Shares cell says
+        // 307.2M three years running.
+        //
+        // Derived as guided net income x (filed EPS / filed net income). Going through the FILED
+        // pair rather than a share count means the answer lands in whatever units that column is
+        // already showing — reporting currency, and per ordinary share or per receipt depending on
+        // adrShares — so it cannot repeat the basis mismatch this table has been bitten by twice.
+        //
+        // The assumption is the share count: guidance restates earnings, not shares, so a buyback or
+        // issue inside the year moves this. Marked `derived` and the tooltip names the count used,
+        // rather than passing it off as company-issued.
+        const derivedGuidedEps = (g, entry) => {
+            const metric = (...labels) => (g?.metrics || []).find(m => labels.includes(m.label))?.value || null;
+            if (metric('EPS', 'Diluted EPS')) return null;          // company gave one; never override it
+            const ni = guidedRange(metric('Net income', 'Net profit'));
+            const filed = [...(entry?.years || [])].reverse()
+                .find(y => y.eps > 0 && (y.nic ?? y.ni) > 0);
+            if (!ni || !filed) return null;
+            const perUnit = filed.eps / (filed.nic ?? filed.ni);     // 1 / share count, in the column's units
+            const lo = ni.lo * perUnit, hi = ni.hi * perUnit;
+            if (!(lo > 0)) return null;
+            const sign = CCY_SIGN[entry?.currency] || '';
+            const shares = (filed.nic ?? filed.ni) / filed.eps;
+            return {
+                text: sign + (Math.abs(hi / lo - 1) < 0.005 ? num2(lo) : `${num2(lo)}–${num2(hi)}`),
+                title: `Not guided per share. Derived as guided net income divided by the latest filed `
+                    + `diluted share count (${big(shares)}, from ${filed.date}), which the forecast does `
+                    + `not restate — a buyback or share issue during the year would move it.`,
+            };
+        };
+
+        const guidanceView = (g, price, entry) => {
             const metrics = (g?.metrics || []).filter(m => m?.label && m?.value);
             if (!metrics.length || !g.period || !g.issued) return null;
             const pe = guidancePe(g, price);
@@ -932,7 +965,7 @@
             ] : [
                 metric('Revenue', 'Net sales'), metric('Operating income'),
                 metric('Operating margin', 'Op margin'), metric('Net income'),
-                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS'), null, null,
+                metric('Net margin'), metric('Shares'), metric('EPS', 'Diluted EPS') || derivedGuidedEps(g, entry), null, null,
             ];
             const source = String(g.source || '');
             const label = periodLabel(g);
@@ -940,7 +973,11 @@
             const first = source.startsWith('https://')
                 ? `<a href="${escapeHTML(source)}" target="_blank" rel="noopener" title="${escapeHTML(issuedTitle)}">${escapeHTML(label)}</a>`
                 : `<span title="${escapeHTML(issuedTitle)}">${escapeHTML(label)}</span>`;
-            const cells = values.map(v => `<td>${v == null ? '<span class="muted">–</span>' : escapeHTML(v)}</td>`).join('');
+            const cells = values.map(v => {
+                if (v == null) return '<td><span class="muted">–</span></td>';
+                if (typeof v === 'object') return `<td><span class="derived" title="${escapeHTML(v.title)}">${escapeHTML(v.text)}</span></td>`;
+                return `<td>${escapeHTML(v)}</td>`;
+            }).join('');
             const horizon = /^Q\d/.test(g.period)
                 ? `${g.period} is one quarter; reported rows are full fiscal years.`
                 : `${label.replace(/E$/, '')} is a full-year forecast${g.periodEnd ? `, for the year ending ${ymd(g.periodEnd)}` : ''}.${periodAka(g)}`;
@@ -950,6 +987,8 @@
                 pe
                     ? 'Derived: operating income, op margin, net income, net margin and quarterly EPS; revenue is company-issued.'
                     : 'Guidance values are company-issued; missing accounts remain blank.',
+                ...(values.some(v => v && typeof v === 'object')
+                    ? ['Derived EPS: this forecast gives net income but no per-share figure, so EPS is guided net income over the latest filed diluted share count — in the same units as the EPS column above it. Guidance does not restate shares, so a buyback or issue during the year would move it.'] : []),
                 ...(pe ? ['Inputs: guided GAAP gross margin and operating expenses, 16–18% tax and 24.391B latest reported diluted shares; excludes other income/expense.'] : []),
             ];
             return { row: `<tr class="guidance-row"><td>${first}</td>${cells}</tr>`, notes, pe };
@@ -1059,7 +1098,7 @@
                 // level, so the per-share basis never enters it.
                 const eRaw = fromPrimary || own;
                 const gRaw = guidanceStore[leg.yahoo];
-                const guidance = guidanceView(gRaw, leg.quote.price);
+                const guidance = guidanceView(gRaw, leg.quote.price, e);   // `e` is post-onUnderlying
                 const guidePe = document.getElementById('deep-guidance-pe');
                 const guideEps = document.getElementById('deep-guidance-eps');
                 // Two routes to a guided multiple, and they answer different questions. NVIDIA's
