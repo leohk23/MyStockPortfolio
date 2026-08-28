@@ -20,6 +20,39 @@ a valid answer.** §4.4 says holding cash is a position. If nothing clears Leo's
 write `pot/proposals/YYYY-MM-DD-none.md` saying what you looked at and why each failed. That is a
 more useful record than a forced buy.
 
+## The multiple is not the thesis
+
+**A proposal whose case is "it is cheap against its own history" is rejected.** That comparison is
+the trigger that woke you — it is not a reason to own a business, and §2.4 says valuation is a
+**filter**: a filter screens things out, it never argues you in.
+
+So the floor comparison belongs in §5 with the other numbers, as a gate the name passed. The thesis
+in §2 has to stand on the business: what it does, whether the earnings are any good (margin level,
+the *consistency* of that margin, growth — §2.4), and what the market is missing. Leo's own two
+proud buys were NVDA *because he used ChatGPT and reasoned about what compute would be worth*, and
+M&S *because he kept noticing the food range changing in the shops* — neither was a screen result.
+
+The first deep dive led with "33.43× against a 38.50× floor". That is exactly the mechanical
+reasoning this section exists to stop.
+
+**Use the freshest earnings you can source, and say when ours are stale.** `signals.json` flags a
+ticker as `epsStale` when its trailing EPS predates results the company has already published. Both
+sides of any multiple you quote must be current, and a stale denominator can flip the answer: NVDA
+on our cached EPS is 5% *above* its floor; on its actual post-Q2 EPS it is 13% *below*.
+
+## Spend the budget, not just the first slot
+
+Sizing is a **§4 allocation across candidates**, not one ticket:
+
+- The pot's cash is in `pot/positions.json`; if £0, work against the next £250 contribution.
+- §4.2 caps any one position at **50%**, so £250 supports **two** £125 positions, not one.
+- §4.1 has no minimum, but refuse a ticket whose first-year costs exceed **2%** of it.
+
+After the first proposal, **keep going while cash remains and a candidate still clears the rules.**
+If the second-best name does not clear, say so and leave the cash — §4.4 makes holding it a
+position, and it is what the VIX standing order will need. What is not acceptable is stopping at
+one because the brief only asked for one.
+
 ## Rank against Leo's rules, and show the ranking
 
 State, in a short table, every name you considered and why it did or did not make the cut. Use his
@@ -68,7 +101,8 @@ BUY <ticker> on <exchange>, £<amount>, <market|limit @ price>. Currency <ccy>.
 Expected first-year costs: <breakdown>, <x>% of the ticket.
 
 ## 2. Thesis
-<Three sentences. Why this, why now, what the market is missing.>
+<Three sentences. Why this, why now, what the market is missing.
+ About the BUSINESS. See "The multiple is not the thesis" below.>
 
 ## 3. Falsifier
 <One specific observable that would prove this wrong. Not "the price falls".

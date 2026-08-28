@@ -137,6 +137,59 @@ function reportedSince(previousDue, quotes, today) {
     return out;
 }
 
+// Is our trailing EPS behind the company's own reporting?
+//
+// Both sides of a multiple have to be current, and the denominator is the one that goes quietly
+// stale: Yahoo's trailing EPS lags a quarter or more, and nothing on the page says so. NVDA is the
+// case that surfaced it — our `mrq` is 26 Apr 2026 while Q2 was reported in August, and on the
+// cached EPS it reads 5% ABOVE its own floor where on the real figure it is 13% below. Same price,
+// opposite conclusion.
+//
+// Detected from cadence rather than from a fixed age, because a semi-annual filer four months past
+// its last quarter is perfectly current while a quarterly one is a period behind. The cadence
+// comes from the gaps between filed quarters; with fewer than two, no claim is made.
+//
+// The sharp version, using something we already know: the NEXT results date. One reporting period
+// before it is the PREVIOUS results date, and if that has passed while our newest quarter is older
+// still, a set of results has been published that we have not picked up.
+//
+// NVDA: next results 2026-11-17, cycle 92 days, so it last reported around 2026-08-17 — in the
+// past, and four months after the 2026-04-26 quarter our EPS runs to. Stale, provably.
+//
+// An earlier attempt allowed a whole period plus 90 days after `mrq`, which was so generous it
+// never fired: NVDA files about 30 days after a quarter ends, not 90. Inferring backwards from a
+// date the company itself has published beats guessing forwards from one it has not.
+// The measure is the IMPLIED REPORTING LAG, not a comparison of dates in different units.
+//
+// If our data is current, `mrq` is the period the company most recently reported, and the next
+// report covers the period after it — so `next results − mrq` should come to one period plus a
+// normal reporting lag. When that arithmetic demands an implausible lag, the only explanation is
+// that our `mrq` is one or more periods behind:
+//
+//   GOOG   next 2026-11-17 − mrq 2026-06-30 = 140d − 91d period = 49d lag.  Normal. Current.
+//   NVDA   next 2026-11-17 − mrq 2026-04-26 = 205d − 91d period = 114d lag. Impossible for a
+//                                             filer that reports in ~30. One period behind.
+//
+// An earlier version compared the inferred last REPORT DATE against `mrq`, a PERIOD END — of
+// course a report comes after the period it covers, so it flagged 48 of 83 tickers, most of them
+// perfectly current. Comparing two things measured in different units is how that happens.
+const MAX_PLAUSIBLE_LAG_DAYS = 75;
+function epsStale(quote, entry, today) {
+    const next = quote?.earnings?.date;
+    const qs = (entry?.quarters || []).map(q => q.date).filter(Boolean).sort();
+    if (!quote?.mrq || !next || next <= today || qs.length < 2) return null;
+    const gaps = qs.slice(1).map((d, i) => (Date.parse(d) - Date.parse(qs[i])) / 86400e3);
+    const period = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    if (!(period > 30)) return null;
+    const impliedLag = (Date.parse(next) - Date.parse(quote.mrq)) / 86400e3 - period;
+    if (impliedLag <= MAX_PLAUSIBLE_LAG_DAYS) return null;
+    const behind = Math.max(1, Math.round(impliedLag / period));
+    return { mrq: quote.mrq, behind, period: Math.round(period), impliedLag: Math.round(impliedLag),
+        why: `trailing EPS runs only to ${quote.mrq}; with the next results on ${next} and a `
+            + `${Math.round(period)}-day cycle, that implies a ${Math.round(impliedLag)}-day reporting `
+            + `lag — about ${behind} period${behind === 1 ? '' : 's'} of earnings we do not have` };
+}
+
 // ---------------------------------------------------------------- macro, made deterministic
 //
 // Harvested from what the Sweep actually did with the macro block on 28 Aug 2026. Its useful
@@ -222,8 +275,14 @@ function scan(state, today) {
 
     const valuation = [];
     for (const [t, q] of Object.entries(quotes)) {
-        const hit = nearOwnFloor(q, RULES.valuationBand, state.earnings?.eps?.[t]);
-        if (hit) valuation.push({ rule: '6.1 valuation', ticker: t, where: label(t), ...hit });
+        const entry = state.earnings?.eps?.[t];
+        const hit = nearOwnFloor(q, RULES.valuationBand, entry);
+        if (!hit) continue;
+        // A stale denominator can flip the answer, so it rides with the signal rather than being
+        // something the reader has to remember to check.
+        const stale = epsStale(q, entry, today);
+        valuation.push({ rule: '6.1 valuation', ticker: t, where: label(t), ...hit,
+            ...(stale ? { epsStale: stale } : {}) });
     }
     valuation.sort((a, b) => a.vsFloor - b.vsFloor);
     valuation.length ? fired.push(...valuation) : quiet.push('6.1 valuation');
@@ -302,7 +361,7 @@ function main() {
     for (const [rule, list] of Object.entries(by)) {
         console.log(`\n  ${rule} — ${list.length}`);
         for (const f of list.slice(0, 8)) {
-            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}`);
+            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS: ' + f.epsStale.behind + 'd' : ''}`);
             else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
             else console.log(`     ${JSON.stringify(f)}`);
         }
@@ -384,6 +443,28 @@ function selftest() {
     assert.ok(Math.abs(spxDailyMove({ closes: { '^GSPC': [100, null, 110] } }) - 0.1) < 1e-9);
     assert.strictEqual(spxDailyMove({ closes: {} }), null);
 
+
+    // epsStale: the implied reporting lag, not a comparison of dates in different units.
+    const T2 = '2026-08-28';
+    const quarterly = { quarters: [{ date: '2025-10-31' }, { date: '2026-01-31' }, { date: '2026-04-30' }] };
+    // NVDA: next results 2026-11-17 against an EPS running only to 2026-04-26 implies a 114-day
+    // reporting lag on a ~91-day cycle. Impossible; it is a period behind.
+    const nvda = epsStale({ mrq: '2026-04-26', earnings: { date: '2026-11-17' } }, quarterly, T2);
+    assert.ok(nvda, 'NVDA is a period behind and must be flagged');
+    assert.strictEqual(nvda.behind, 1);
+    assert.ok(nvda.impliedLag > 100);
+    // GOOG-shaped: next 2026-10-28 against 2026-06-30 implies a 29-day lag. Perfectly normal.
+    assert.strictEqual(epsStale({ mrq: '2026-06-30', earnings: { date: '2026-10-28' } }, quarterly, T2), null);
+    // The regression this replaced: comparing the inferred report DATE to a period END flagged
+    // every current company, because a report always comes after the period it covers.
+    assert.strictEqual(epsStale({ mrq: '2026-06-30', earnings: { date: '2026-11-17' } }, quarterly, T2), null);
+    // Two periods behind counts as two.
+    assert.strictEqual(epsStale({ mrq: '2026-01-31', earnings: { date: '2026-11-17' } }, quarterly, T2).behind, 2);
+    // No claim without the inputs: no next date, no quarters, or a past date.
+    assert.strictEqual(epsStale({ mrq: '2026-04-26' }, quarterly, T2), null);
+    assert.strictEqual(epsStale({ mrq: '2026-04-26', earnings: { date: '2026-11-17' } }, { quarters: [] }, T2), null);
+    assert.strictEqual(epsStale({ mrq: '2026-04-26', earnings: { date: '2026-01-01' } }, quarterly, T2), null);
+
 // macroNotes: the Sweep's own inferences, computed. Each case below is a line it actually
     // wrote on 28 Aug 2026, turned into arithmetic.
     const M = {
@@ -426,4 +507,4 @@ function selftest() {
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main();
-module.exports = { nearOwnFloor, oneOffRisk, macroNotes, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
+module.exports = { nearOwnFloor, oneOffRisk, epsStale, macroNotes, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
