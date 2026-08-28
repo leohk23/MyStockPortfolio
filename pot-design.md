@@ -3,6 +3,19 @@
 Companion to [strategy.md](strategy.md). That file holds the **rules** (what to buy). This one
 holds the **system** (how it runs) and a record of what has been decided, by whom, and why.
 
+> **Standing rule, while this is still early: update this file in the same change.**
+>
+> Not afterwards, not at the end of the session. A decision made and not written down is a decision
+> that gets silently re-made differently a week later, and this whole design has already been
+> corrected twice by its own written record — A6 said a standing order needs re-arm logic until D11
+> said it does not, and A1 said three lanes until Review became a fourth. Neither contradiction
+> would have been visible if the file had been kept in someone's head.
+>
+> Concretely, a change to the pot is not finished until: any new **DECIDED / AGREED** row is in §1,
+> anything it settles is struck through in **OPEN**, anything it overturns is marked **superseded**
+> rather than deleted, and §5 says what is now built. The reason a rejected or superseded item
+> keeps its reasoning is that the reasoning is the part worth having later.
+
 Append as we go. Every decision gets a status:
 
 | Status             | Meaning                                                                        |

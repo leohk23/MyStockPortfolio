@@ -48,6 +48,43 @@ index.html + portfolio.js   all arithmetic in the browser
 - **prices.json** loads on every page view (small). **history.json** is **lazy-loaded** only for a stock, benchmark, or 2Y/5Y/All range — keep it that way.
 - Committing prices.json/history.json re-triggers the Pages build, so the site follows each scheduled refresh automatically.
 
+## The AI pot (early development)
+
+A second, AI-managed pot runs in parallel to the human book, funded £250/month. Two documents
+govern it, and both are required reading before touching anything under `pot/`, `signals.js`, or
+the macro data:
+
+- **[strategy.md](strategy.md)** — the rules. What may be bought, sized how, sold when, which
+  triggers fire. The "Rules at a glance" table is the spec `signals.js` is written against, so a
+  threshold changes there first and in the code second.
+- **[pot-design.md](pot-design.md)** — the system, and a decision log carrying the reasons.
+
+⚠️ **Update `pot-design.md` in the same change, never afterwards.** While this is still early, a
+decision made and not written down is one that gets silently re-made differently a week later. That
+file has already caught two contradictions in its own design — an AGREED rule saying a standing
+order *needs* re-arm logic against a DECIDED one taking none, and "three lanes" against a fourth
+lane that had quietly appeared. Neither would have been visible if the design had lived in
+someone's head. A pot change is finished when: the new **DECIDED/AGREED** row is in §1, whatever it
+settles is struck through under **OPEN**, whatever it overturns is marked **superseded** rather
+than deleted, and **§5 What is built** reflects reality. Superseded entries keep their reasoning,
+because the reasoning is the part worth having later.
+
+Three lanes and a scan, in short:
+
+| Lane | Cost | What it may produce |
+|---|---|---|
+| **Scan** — `npm run signals` | free, no LLM, no network | signals, and standing-order instructions |
+| **Sweep** — `pot/brief-sweep.md` | one agent session | watchlist candidates, never orders |
+| **Deep dive** — `pot/brief-deepdive.md` | one agent session | one executable proposal, on a ticker Leo names |
+
+`npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
+would break D3 (no metered API spend), because CI has no subscription auth.
+
+`npm run pot-report` regenerates `pot/SUMMARY.md` (the entry point), `pot/summaries/*.md` (one dated
+report per run), `pot/runs.md` (the cost ledger) and `pot/logs/*.md` (transcripts made readable).
+All four are derived and gitignored; every figure in them is read from the Codex session logs, never
+from what an agent said about itself.
+
 ## Files
 
 | File                             | Role                                                                                                                                                                                                                                                         | Runs where                                |

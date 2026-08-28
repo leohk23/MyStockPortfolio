@@ -197,11 +197,26 @@
         #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
         #deep-fin tr.interim-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.interim-row td:first-child, #deep-fin tr.interim-row a { color: var(--text-secondary); }
-        /* Macro group headings: a label row inside the table, not a sortable column. */
+        /* Nine columns, not twenty-four, so the 1280px floor meant for the holdings table only
+           forces a scrollbar it does not need. */
+        #macro-table { min-width: 0; }
+        #macro-table td:first-child, #macro-table th:first-child { text-align: left; }
+        /* The sticky column carries the whole row's identity, so every pixel of it is width the
+           numbers do not get. Stacking the ticker under the name makes the cell as wide as the
+           longer of the two rather than their sum — "Euro Stoxx 50 ^STOXX50E" on one line is
+           nearly twice "Euro Stoxx 50". */
+        #macro-table td:first-child { max-width: 15ch; white-space: normal; line-height: 1.25; }
+        #macro-table .macro-sym { display: block; font-size: 10px; color: var(--text-muted); }
+        /* Macro group headings: a label row inside the table, not a sortable column. Sticky under
+           the header so the group a row belongs to is still on screen once you have scrolled past
+           its heading — with four groups and seventeen rows, that is most of the time.
+           --macro-head-top is measured from the live header by renderMacro, because the header's
+           height is a rendered fact (font, padding, border) and not a number to hardcode. */
         #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
-            padding-top: 14px; text-align: left; }
-        #macro-table td:first-child, #macro-table th:first-child { text-align: left; }
+            padding-top: 14px; text-align: left;
+            position: sticky; top: var(--macro-head-top, 29px); left: 0;
+            background: var(--surface-1); z-index: 2; }
         #deep-fin tr.band-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.band-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
@@ -2784,13 +2799,19 @@
                 for (const s of inGroup) {
                     const m = macro[s];
                     const level = m.unit === '%' ? `${num2(m.price)}%` : num2(m.price);
-                    rows.push(`<tr><td>${escapeHTML(m.name)} <span class="muted">${escapeHTML(s)}</span></td>`
+                    rows.push(`<tr><td>${escapeHTML(m.name)}<span class="macro-sym">${escapeHTML(s)}</span></td>`
                         + `<td>${level}</td>`
                         + portfolioLib.PERIODS.map(p => `<td class="${cls(m[p])}">${pct(m[p])}</td>`).join('')
                         + '</tr>');
                 }
             }
             tbody.innerHTML = rows.join('');
+            // The group rows stick BELOW the header, so they need its height — a rendered fact
+            // (font, padding, border, zoom), not a constant. Measured after the rows are in, and
+            // left at the CSS fallback where there is nothing to measure (a headless run).
+            const head = document.querySelector('#macro-table thead');
+            const h = head?.getBoundingClientRect().height;
+            if (h > 0) document.getElementById('macro-table').style.setProperty('--macro-head-top', `${Math.round(h)}px`);
             note.textContent = `${syms.length} series, from the same free endpoint as the prices. `
                 + 'Levels are native — an index is not converted into your display currency, because '
                 + 'it is not money you hold. This is the macro state handed to the Sweep, so the '
