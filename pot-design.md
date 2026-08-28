@@ -30,6 +30,8 @@ checked against it.
 | D5 | The universe is unrestricted — new names *or* existing holdings. | 26 Aug 2026 |
 | D6 | **The monthly £250 is a funding cadence, not a decision cadence.** Recommendations must be timely and event-driven, produced when there is a reason, not on a calendar. | 27 Aug 2026 |
 | D7 | Decisions get documented as they are made — this file. | 27 Aug 2026 |
+| D8 | Articles Leo reads are an input to the Sweep. Kept in [pot/reading.md](pot/reading.md), one line each, with **why it caught his attention** — the part an agent could not have generated. | 27 Aug 2026 |
+| D9 | **Standing orders exist**: hard rules that fire without any LLM judgement. First one — when `^VIX` closes at or above 40, buy the S&P 500. Parameters still open, see O6. | 27 Aug 2026 |
 
 ### AGREED — the design
 
@@ -40,6 +42,8 @@ checked against it.
 | A3 | **Every proposed name enters `watchlist.json`,** so CI fetches its real fundamentals within the hour and the agent's claimed figures can be contradicted by an independent source before any money moves. | The repo already owns a fact-checker for its own LLM. Not using it would be perverse. |
 | A4 | The pot's return is measured **including idle cash**. | Cash accumulating between decisions is a position. Excluding it would rig the comparison against a fully-invested book. |
 | A5 | Scored **three ways** — pot TWR, human book TWR, a passive index — over the pot's own window. | Two is a trap: if the pot beats the human book and both lose to the index, that is the finding. |
+| A6 | A standing order needs **re-arm logic**, not just a threshold. It fires once, then stays disarmed until the market has calmed by a stated definition. | Measured, not assumed: `^VIX` has closed ≥ 40 on **208 days** since 1990. A per-day rule would have bought 125 times through 2008 alone and emptied the pot inside one episode. See §6. |
+| A7 | The Scan may emit an **instruction**, not only a signal, when a standing order's condition is met. | A standing order has no judgement in it by definition, so routing it through an LLM adds latency and a chance to argue with a rule already decided. |
 
 ### OPEN
 
@@ -50,6 +54,8 @@ checked against it.
 | O3 | How the pot's trades are tagged: a new Tradelog column, or a dedicated broker account that implies it. | Pot accounting. |
 | O4 | Sweep cadence. Weekly is the suggestion; nothing tested. | Scheduling (§4). |
 | O5 | Whether the Deep dive drafts automatically or waits to be asked. See §4.4 — the recommendation is auto-draft, human-read. | Scheduling. |
+| O6 | The VIX standing order's five parameters: **re-arm condition**, **size**, **instrument**, what happens when the pot has no cash, and whether it overrides the position limits in §4. | The rule cannot be coded without them, and each one changes what it does. |
+| O7 | Whether the Sweep can reach the web under `--sandbox workspace-write`. Untested — the smoke run needed no network. | The Sweep lane. It may decide which agent runs it. |
 
 ### REJECTED
 
@@ -225,3 +231,39 @@ of $1,600 funds **two to three positions a year**, not a dozen.
 
 → Machines for macro **state**, LLM for macro **interpretation**. The Sweep should be handed the
 dashboard, not asked to fetch it.
+
+**The VIX standing order, backtested 27 Aug 2026** — `^VIX` daily closes, 9,233 sessions back to
+1990, against `^GSPC`.
+
+Raw threshold: **208 days** closed at or above 40, in 13 episodes. Wildly uneven — 2008 alone
+supplied **125** of them, 2020 another 33. A rule that fires per qualifying day would have spent
+the pot 125 times over in one drawdown. This is what A6 exists to prevent.
+
+With a re-arm — fire at ≥ 40, then stay disarmed until 10 consecutive closes below 25 — it becomes
+**10 fires in 37 years, one every 3.7 years**:
+
+```
+FIRED         VIX    S&P     +3m    +12m
+1998-08-31   44.3    957    +22%    +38%
+2001-09-17   41.8   1039     +8%    −16%
+2002-07-22   41.9    820     +8%    +21%
+2008-09-29   46.7   1106    −21%     −4%
+2010-05-07   41.0   1111     +1%    +21%
+2011-08-08   48.0   1119    +12%    +25%
+2015-08-24   40.7   1893    +10%    +16%
+2020-02-28   40.1   2954     +3%    +32%
+2020-10-28   40.3   3271    +14%    +41%
+2025-04-04   45.3   5074    +23%    +34%
+```
+
+8 of 10 positive at twelve months, median +25%.
+
+**Read that carefully rather than gladly.** Ten observations is an anecdote count, not a sample,
+and the index in question is the one that survived. The 2008 fire sat 21% underwater three months
+later — the rule buys fear, it does not call bottoms. And at roughly one fire every 3.7 years there
+is a real chance it **never fires inside the 24-month review window**, which is an argument for
+writing it down now and not for expecting to use it.
+
+One useful consequence: the rule only works if the pot is holding cash when it triggers. That makes
+dry powder a deliberate position rather than a failure to act — which is exactly what A4 and
+§4.4 of [strategy.md](strategy.md) already say.
