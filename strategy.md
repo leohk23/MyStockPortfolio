@@ -212,6 +212,8 @@ year**, which on a £60 ticket can be 1–3% annually — enough to decide the o
 codeable version of your answer is probably *"no fixed minimum, but refuse a ticket whose first-year
 costs exceed X% of it."* What is X?
 
+Follow-up ANS: 2%, and I want to avoid some situations like when buying a small amount of an income generating OTC share while custody fee is a fixed amount and eating its dividends, and at the end it defeats the purpose and gains.
+
 **4.2** Maximum position, as a share of the pot. `[auto]`
 
 > **Suggested: 35%.** Early on the pot is small and any first position is 100% of it — so this
@@ -348,6 +350,8 @@ changes §8.4: if everything is reviewed weekly anyway, a per-proposal review da
 It also moves the Review lane from monthly to weekly, which is four times the sessions. Which did
 you mean — fire on the date each thesis names, or sweep them all every week?
 
+Sweep them all every week.
+
 **6.6** Anything else that should wake it?
 
 > Candidates: a holding's dividend cut, a 52-week high, an insider/buyback disclosure, a currency
@@ -364,6 +368,8 @@ the world. Two honest options: leave it to the weekly Sweep and accept up to sev
 or add a cheap proxy the Scan *can* see — `^VIX` jumping, or an index gapping — which catches the
 market's reaction rather than the news itself. The proxy is usually same-day; the Sweep explains
 what happened. Which do you want, or both?
+
+Both.
 
 ---
 
@@ -491,6 +497,8 @@ With no broker constraint, a trade on IB could belong to either pot, so **the Tr
 column** — call it `Pot`, blank for the human book. Without it the two cannot be told apart, and
 D4 (tracking the pot separately) has nothing to stand on.
 
+Yes no problem I will create that.
+
 ISA qualified shares prefered of course, but not necessarily.
 
 ---
@@ -521,12 +529,16 @@ So the threshold is not the rule. These five parameters are the rule, and none i
 
 → **ANSWER:**
 
+Nothing.
+
 **11.1.b Size.** How much does it buy?
 
 > All available pot cash? A fixed £? A fraction? Note the interaction: at one fire every 3.7 years,
 > whatever is not spent here waits years for another chance.
 
 → **ANSWER:**
+
+No limits.
 
 **11.1.c Instrument.** Which S&P 500 line?
 
@@ -535,12 +547,16 @@ So the threshold is not the rule. These five parameters are the rule, and none i
 
 → **ANSWER:**
 
+VUAG.
+
 **11.1.d No cash.** If the pot holds nothing when it fires — skip, or queue until the next £250?
 
 > A queued order can arrive weeks after the panic it was meant to buy. Skipping is honest; queueing
 > is optimistic. Either is fine, but the file has to say which.
 
 → **ANSWER:**
+
+Alert me to let me decide if I should put more into the pot.
 
 **11.1.e Precedence.** Does it override §4?
 
@@ -549,6 +565,8 @@ So the threshold is not the rule. These five parameters are the rule, and none i
 > stops working in exactly the conditions it exists for.
 
 → **ANSWER:**
+
+Yes.
 
 ### 11.2 Others
 
