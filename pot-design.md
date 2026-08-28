@@ -35,6 +35,7 @@ checked against it.
 | D10 | **Thesis review is weekly**, and sweeps every open thesis rather than waiting for the review date each proposal named. | 28 Aug 2026 |
 | D11 | The VIX order takes **no re-arm** — it fires on every qualifying close, buys with all available cash (**VUAG**), outranks the §4 position limits, and alerts when the pot is empty rather than queueing. | 28 Aug 2026 |
 | D12 | What gets recorded per proposal is **provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
+| D13 | **Leo names the ticker for a Deep dive.** The Sweep proposes, he picks, the agent researches what it is given — it may argue against the pick in §6 but may not substitute another. | 28 Aug 2026 |
 
 ### AGREED — the design
 
@@ -86,18 +87,31 @@ has just talked itself into three exciting new names is not the one you want gra
 wrote last month. Reviewing before discovering keeps the two apart in the only way that matters.
 
 ```
-     ┌── Sweep (weekly, LLM) ──→ candidates ──→ watchlist.json
-     │                                              │
-     │                                    CI fetches fundamentals
-     │                                              ↓
-     └──────────────────────────────→ Scan (free, every 15 min)
-                                                    │
-                                          something fires
-                                                    ↓
-                                         Deep dive (LLM) ──→ pot/proposals/
-                                                    ↓
-                                            Leo reads, executes, logs
+   Sweep (weekly, LLM) ──→ candidates ──→ watchlist.json
+                                │                │
+                                │      CI fetches fundamentals (< 15 min)
+                                │                ↓
+                                │      Scan (free, every 15 min)
+                                │                │
+                                │       fires, maybe months later
+                                ↓                ↓
+                              LEO PICKS ONE ← ← ←
+                                     │
+                            Deep dive (LLM) ──→ pot/proposals/
+                                     │
+                            Leo reads, executes, logs
 ```
+
+**Two paths in, one gate.** A Sweep candidate can be picked the same week, or wait years until the
+Scan finds it cheap. Either way it must be in `watchlist.json` with independently fetched
+fundamentals before a Deep dive may touch it — that gate, not a rule against the short path, is
+what keeps the discipline. Measured on the first real run: CHRT.L and ROK were swept and fully
+covered, four filed years and four P/E bands each, inside one CI pass.
+
+**Leo is the selector (D13), and that was a correction.** The first Deep dive brief told the agent
+to take the strongest unflagged signal itself. It produced a proposal for GME — a name that never
+appeared in that week's Sweep — because the brief pointed at `signals.json` and nothing pointed at
+the Sweep output. The lanes were not joined. The agent obeyed perfectly; the instruction was wrong.
 
 The expensive lane is gated behind the free one. The free lane's coverage grows every time the
 Sweep runs, so the zero-cost surface compounds.

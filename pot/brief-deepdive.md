@@ -3,13 +3,27 @@
 The only lane permitted to produce an order. One name, researched properly, written so it can be
 placed without further thought and audited in two years.
 
-## Pick
+## The name is given to you
 
-From `signals.json`, take the **strongest candidate that is not flagged `oneOff`**. A one-off flag
-means the multiple that triggered the signal is inflated by an exceptional gain — you may still
-choose it, but then the flag is the first thing your thesis has to answer.
+**Leo names the ticker.** It arrives in the instruction — "Follow pot/brief-deepdive.md for
+CHRT.L". You do not choose it, and you do not substitute a different one because you like it
+better; if you think the pick is wrong, research it anyway and say so in §6.
 
-State in one line why this name and not the others that fired.
+This is deliberate. An earlier version of this brief told the agent to pick the strongest unflagged
+signal itself, and it dutifully produced a proposal for GME — a name that had never appeared in
+that week's Sweep, because the brief pointed at `signals.json` and nothing pointed at the Sweep.
+The lanes were not connected. Selection is judgement, judgement is Leo's, and this is where it goes.
+
+**Before anything else, check the name is locally covered (§7.2).** It must be in `prices.json`
+with fundamentals — real `eps`, and `peBands` if it is an operating company. If it is not, stop and
+say so: a fresh Sweep candidate needs one CI pass to be fetched, which takes under fifteen minutes.
+A proposal that cannot be fact-checked against independent data is void, and writing one anyway is
+worse than writing none.
+
+Useful context, not instructions: `pot/sweeps/` holds the latest candidates and why they were
+raised; `signals.json` holds what the free scan fired on and whether it flagged a `oneOff` risk on
+this name. If it did, the flag is the first thing your thesis has to answer — the multiple that
+looked cheap may be inflated by an exceptional gain.
 
 ## Verify before you argue — §7.2, mandatory
 

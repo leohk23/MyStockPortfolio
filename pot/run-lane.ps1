@@ -13,6 +13,9 @@
 param(
     [string]$Brief = 'pot\brief-smoke.md',
     [ValidateSet('codex', 'claude')][string]$Agent = 'codex',
+    # Deep dive only: the name Leo picked. Selection is his, so it is an argument, never something
+    # the agent decides for itself — see the top of pot\brief-deepdive.md for why.
+    [string]$Ticker,
     [switch]$Push,
     [string]$Repo = 'C:\Users\leohk\MyStockPortfolio'
 )
@@ -36,12 +39,16 @@ if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged or offline) — conti
 # Only these paths may change. Anything else the agent touches is reverted below, not committed.
 $allowed = @('pot/*', 'watchlist.json')
 
+$prompt = if ($Ticker) { "Follow the instructions in $Brief for $Ticker" }
+          else { "Follow the instructions in $Brief" }
+Note "prompt: $prompt"
+
 if ($Agent -eq 'codex') {
     codex exec --cd $Repo --sandbox workspace-write `
-        --output-last-message pot\last-message.txt "Follow the instructions in $Brief" 2>&1 |
+        --output-last-message pot\last-message.txt $prompt 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 } else {
-    claude -p "Follow the instructions in $Brief" --permission-mode acceptEdits `
+    claude -p $prompt --permission-mode acceptEdits `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }
 if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
