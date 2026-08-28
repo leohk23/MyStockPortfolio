@@ -7,13 +7,14 @@
     "publish": "node publish.js",
     "fetch": "node fetch-prices.js",
     "backfill": "node backfill-earnings.js",
-    "test": "node fetch-prices.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest && node backfill-earnings.js --selftest && node fetch-hk-board.js --selftest",
+    "test": "node fetch-prices.js --selftest && node signals.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest && node backfill-earnings.js --selftest && node fetch-hk-board.js --selftest",
     "start": "npx --yes serve .",
     "promote": "node -e \"require('fs').copyFileSync('preview/index.html','index.html')\" && echo \"promoted preview -> live\"",
     "preview": "npx --yes serve .",
     "interim": "node check-interim.js",
     "hkdates": "node fetch-hk-dates.js",
-    "hkboard": "node fetch-hk-board.js"
+    "hkboard": "node fetch-hk-board.js",
+    "signals": "node signals.js"
   },
   "repository": {
     "type": "git",

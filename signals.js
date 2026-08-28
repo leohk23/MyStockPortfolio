@@ -1,0 +1,280 @@
+#!/usr/bin/env node
+// The free lane. `npm run signals`.
+//
+// Every [auto] rule in strategy.md, evaluated over data CI has already fetched. No LLM, no network,
+// no auth, no cost — so it can run on every CI pass forever. Its job is that nothing in the known
+// universe goes unnoticed; the expensive lanes are gated behind it (pot-design.md §2).
+//
+// Writes signals.json. That file is also this script's MEMORY: results dates vanish from
+// prices.json once they pass (fetch-prices keeps only future ones), so "X reported since the last
+// scan" can only be seen by diffing against what the previous run recorded.
+//
+// The most valuable output is an empty one. "Nothing fired" is information, and it is why every
+// run also records which rules checked clean and which could not run at all — a dead scan and a
+// quiet scan look identical otherwise.
+
+const fs = require('fs');
+
+// Every threshold in strategy.md's rules-at-a-glance, in one place. Change them there first.
+const RULES = {
+    valuationBand: 0.15,      // §6.1  within 15% of the ticker's own lowest band low
+    drawdown7d: -0.15,        // §6.2  −15% in 7 days
+    drawdown1m: -0.25,        // §6.2  ...or −25% in 30
+    dryPowderFirst: 750,      // §6.4  £750 uninvested, then...
+    dryPowderStep: 250,       // §6.4  ...every £250 after
+    vixFire: 40,              // §11.1 standing order: VIX close ≥ 40
+    vixInstrument: 'VUAG.L',  // §11.1 Vanguard S&P 500 UCITS ETF USD Accumulation
+    // §6.6 the market-reaction proxy for breaking news. Set from the distribution, not taste:
+    // a VIX jump this size is the top ~1.5% of days since 1990 and an S&P fall this size the
+    // worst ~1.5% since 1970. Together they fire about 4.9 days a year.
+    newsVixJump: 0.20,
+    newsSpxDrop: -0.025,
+};
+
+const iso = d => d.toISOString().slice(0, 10);
+const read = (f, fallback = null) => {
+    try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return fallback; }
+};
+
+// ---------------------------------------------------------------- rules (pure, so testable)
+
+// §6.1 — cheap against its OWN history, not against the market's.
+//
+// ponytail: the current multiple is price ÷ trailing EPS, while the band low was struck on
+// normalised ANNUAL EPS (see troughPe). The two bases differ by up to a quarter's growth, so a
+// name can sit a whisker either side of the line for that reason alone. Tightening it would mean
+// recomputing the bands on trailing EPS, which loses the point-in-time property that makes them
+// honest. Being approximately right about "is this near its floor?" is the job here.
+function nearOwnFloor(quote, band = RULES.valuationBand) {
+    if (!quote?.peBands?.length || !(quote.eps > 0) || !(quote.price > 0)) return null;
+    const pe = quote.price / quote.eps;
+    const floor = Math.min(...quote.peBands.map(b => b.lo));
+    if (!(floor > 0)) return null;
+    // Compare the ratio rather than `pe > floor * (1 + band)`: it is the same quantity that gets
+    // reported, so the number in the output is the number that was tested. Neither form is exact
+    // at the boundary — 12 x 1.15 is 13.799999999999999 and 13.8 / 12 - 1 is 0.15000000000000013 —
+    // so a name sitting on precisely 15.000000% falls either way. That is a property of binary
+    // floats, not a bug worth an epsilon, and it cannot matter at this scale.
+    const vsFloor = pe / floor - 1;
+    if (vsFloor > band) return null;
+    return { pe, floor, vsFloor };
+}
+
+// §6.2 — fell hard, fast. Either window qualifies on its own.
+function fellHard(quote, r = RULES) {
+    const hits = [];
+    if (quote?.['7d'] <= r.drawdown7d) hits.push({ window: '7d', move: quote['7d'] });
+    if (quote?.['1m'] <= r.drawdown1m) hits.push({ window: '1m', move: quote['1m'] });
+    return hits.length ? hits : null;
+}
+
+// §6.4 — cash piling up with nothing done. Fires at £750, then on each further £250, and only
+// once per step: `alerted` is the last level already reported.
+function dryPowder(cash, alerted = 0, r = RULES) {
+    if (!(cash >= r.dryPowderFirst)) return null;
+    const steps = Math.floor((cash - r.dryPowderFirst) / r.dryPowderStep);
+    const level = r.dryPowderFirst + steps * r.dryPowderStep;
+    return level > alerted ? { cash, level } : null;
+}
+
+// §11.1 — the standing order. No re-arm (D11): it fires on every qualifying close, and the Scan
+// emits an instruction rather than a signal, because there is no judgement left in it (A7).
+function vixStandingOrder(vix, r = RULES) {
+    if (!(vix?.price >= r.vixFire)) return null;
+    return { close: vix.price, threshold: r.vixFire, instrument: r.vixInstrument };
+}
+
+// §6.6 — the proxy. It catches the market's REACTION, not the news; the Sweep says what happened.
+function marketShock(vix, spxMove, r = RULES) {
+    const hits = [];
+    if (vix?.['1d'] >= r.newsVixJump) hits.push({ what: 'VIX jump', move: vix['1d'] });
+    if (spxMove <= r.newsSpxDrop) hits.push({ what: 'S&P fall', move: spxMove });
+    return hits.length ? hits : null;
+}
+
+// §6.3 — reported since the last scan. Only visible by diffing: a date that was in the future last
+// run and is now gone (or has moved on to the next period) means the results landed.
+function reportedSince(previousDue, quotes, today) {
+    const out = [];
+    for (const [t, was] of Object.entries(previousDue || {})) {
+        if (was > today) continue;                       // still in the future, nothing to see
+        const now = quotes[t]?.earnings?.date;
+        if (!now || now > was) out.push({ ticker: t, reported: was, next: now || null });
+    }
+    return out;
+}
+
+// The S&P's one-day move. It is a benchmark, so it lives in history.json rather than in quotes.
+function spxDailyMove(history) {
+    const c = history?.closes?.['^GSPC'] || [];
+    const seen = c.filter(v => v != null);
+    return seen.length < 2 ? null : seen[seen.length - 1] / seen[seen.length - 2] - 1;
+}
+
+// ---------------------------------------------------------------- the scan
+
+function scan(state, today) {
+    const { prices, history, held, potPositions, previous } = state;
+    const quotes = prices.quotes || {};
+    const label = t => (held.has(t) ? 'HELD' : 'watchlist');
+    const fired = [], instructions = [], quiet = [], blocked = [];
+
+    const valuation = [];
+    for (const [t, q] of Object.entries(quotes)) {
+        const hit = nearOwnFloor(q);
+        if (hit) valuation.push({ rule: '6.1 valuation', ticker: t, where: label(t), ...hit });
+    }
+    valuation.sort((a, b) => a.vsFloor - b.vsFloor);
+    valuation.length ? fired.push(...valuation) : quiet.push('6.1 valuation');
+
+    const drops = [];
+    for (const [t, q] of Object.entries(quotes)) {
+        const hit = fellHard(q);
+        if (hit) drops.push({ rule: '6.2 drawdown', ticker: t, where: label(t), hits: hit });
+    }
+    drops.length ? fired.push(...drops) : quiet.push('6.2 drawdown');
+
+    // §6.3 is scoped to what the POT holds, so it stays blocked rather than quiet until there is
+    // a pot. Blocked and quiet are different states and must not be conflated.
+    if (!potPositions) {
+        blocked.push({ rule: '6.3 results', why: 'the pot holds nothing yet (pot/positions.json absent)' });
+        blocked.push({ rule: '6.4 dry powder', why: 'no pot cash balance to read yet' });
+    } else {
+        const potTickers = new Set(Object.keys(potPositions.holdings || {}));
+        const rep = reportedSince(previous?.resultsDue, quotes, today)
+            .filter(r => potTickers.has(r.ticker));
+        rep.length ? fired.push(...rep.map(r => ({ rule: '6.3 results', ...r })))
+                   : quiet.push('6.3 results');
+        const dp = dryPowder(potPositions.cashGBP, previous?.dryPowderAlerted || 0);
+        dp ? fired.push({ rule: '6.4 dry powder', ...dp }) : quiet.push('6.4 dry powder');
+    }
+
+    const vix = quotes['^VIX'];
+    const spx = spxDailyMove(history);
+    if (!vix) blocked.push({ rule: '6.6 / 11.1', why: '^VIX not in prices.json' });
+    else {
+        const shock = marketShock(vix, spx);
+        shock ? fired.push({ rule: '6.6 news proxy', hits: shock }) : quiet.push('6.6 news proxy');
+        const order = vixStandingOrder(vix);
+        if (order) instructions.push({ rule: '11.1 standing order',
+            action: `BUY ${order.instrument} with all available pot cash`, ...order });
+        else quiet.push('11.1 standing order');
+    }
+
+    // Carried into the next run so §6.3 has something to diff against.
+    const resultsDue = {};
+    for (const [t, q] of Object.entries(quotes)) if (q.earnings?.date) resultsDue[t] = q.earnings.date;
+
+    return {
+        generated: new Date().toISOString(),
+        pricesAt: prices.updated || null,
+        vix: vix ? { close: vix.price, day: vix['1d'] } : null,
+        spxDay: spx,
+        fired, instructions, quiet, blocked, resultsDue,
+        dryPowderAlerted: fired.find(f => f.rule === '6.4 dry powder')?.level
+            ?? previous?.dryPowderAlerted ?? 0,
+    };
+}
+
+// ---------------------------------------------------------------- run / selftest
+
+function main() {
+    const prices = read('prices.json');
+    if (!prices) { console.error('no prices.json — run npm run fetch first'); process.exit(1); }
+    const state = {
+        prices,
+        history: read('history.json'),
+        held: new Set((read('holdings.json', { holdings: [] }).holdings || []).map(h => h.yahoo)),
+        potPositions: read('pot/positions.json'),
+        previous: read('signals.json'),
+    };
+    const out = scan(state, iso(new Date()));
+    fs.writeFileSync('signals.json', JSON.stringify(out, null, 1));
+
+    const pct = n => (n >= 0 ? '+' : '') + (n * 100).toFixed(1) + '%';
+    console.log(`signals @ ${out.generated.slice(0, 16).replace('T', ' ')}  (prices ${(out.pricesAt || '?').slice(0, 16).replace('T', ' ')})`);
+    if (out.vix) console.log(`  VIX ${out.vix.close} (${pct(out.vix.day)})   S&P ${out.spxDay == null ? '–' : pct(out.spxDay)}`);
+    for (const i of out.instructions) console.log(`\n  ** INSTRUCTION — ${i.action}\n     ${i.rule}: VIX closed ${i.close}, threshold ${i.threshold}`);
+    const by = out.fired.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f), a), {});
+    for (const [rule, list] of Object.entries(by)) {
+        console.log(`\n  ${rule} — ${list.length}`);
+        for (const f of list.slice(0, 8)) {
+            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}`);
+            else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
+            else console.log(`     ${JSON.stringify(f)}`);
+        }
+        if (list.length > 8) console.log(`     …and ${list.length - 8} more`);
+    }
+    if (out.quiet.length) console.log(`\n  quiet: ${out.quiet.join(', ')}`);
+    if (out.blocked.length) for (const b of out.blocked) console.log(`  blocked: ${b.rule} — ${b.why}`);
+    console.log(`\nwrote signals.json (${out.fired.length} fired, ${out.instructions.length} instruction${out.instructions.length === 1 ? '' : 's'})`);
+}
+
+function selftest() {
+    const assert = require('assert');
+
+    // §6.1 — inside the band fires, outside does not, and the floor is the CHEAPEST band.
+    const bands = [{ lo: 20 }, { lo: 12 }, { lo: 30 }];
+    // The floor is 12 — the cheapest band, not the first or the latest — so the line sits at 13.8.
+    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, peBands: bands }), null);  // PE 20, well clear
+    assert.ok(nearOwnFloor({ price: 137, eps: 10, peBands: bands }));                 // 13.7, inside the band
+    assert.strictEqual(nearOwnFloor({ price: 139, eps: 10, peBands: bands }), null);  // 13.9, outside
+    assert.strictEqual(nearOwnFloor({ price: 125, eps: 10, peBands: bands }).floor, 12);
+    // A loss, no price, or no bands is not a signal — it is an absence of one.
+    assert.strictEqual(nearOwnFloor({ price: 100, eps: -1, peBands: bands }), null);
+    assert.strictEqual(nearOwnFloor({ price: 100, eps: 10, peBands: [] }), null);
+    assert.strictEqual(nearOwnFloor(undefined), null);
+
+    // §6.2 — either window on its own, and both reported when both trip.
+    assert.strictEqual(fellHard({ '7d': -0.14, '1m': -0.24 }), null);
+    assert.strictEqual(fellHard({ '7d': -0.15, '1m': 0 }).length, 1);
+    assert.strictEqual(fellHard({ '7d': -0.30, '1m': -0.40 }).length, 2);
+
+    // §6.4 — the ladder, and each rung only once.
+    assert.strictEqual(dryPowder(700), null);
+    assert.strictEqual(dryPowder(750).level, 750);
+    assert.strictEqual(dryPowder(999).level, 750);
+    assert.strictEqual(dryPowder(1000).level, 1000);
+    assert.strictEqual(dryPowder(1000, 1000), null);      // already told you at this level
+    assert.strictEqual(dryPowder(1250, 1000).level, 1250);
+
+    // §11.1 — no re-arm, so the only question is the close itself.
+    assert.strictEqual(vixStandingOrder({ price: 39.9 }), null);
+    assert.strictEqual(vixStandingOrder({ price: 40 }).instrument, 'VUAG.L');
+    assert.strictEqual(vixStandingOrder({ price: 82.7 }).close, 82.7);
+
+    // §6.6 — either leg, and neither below its threshold.
+    assert.strictEqual(marketShock({ '1d': 0.19 }, -0.024), null);
+    assert.strictEqual(marketShock({ '1d': 0.25 }, 0).length, 1);
+    assert.strictEqual(marketShock({ '1d': 0 }, -0.03).length, 1);
+    assert.strictEqual(marketShock({ '1d': 0.25 }, -0.03).length, 2);
+    assert.strictEqual(marketShock({ '1d': 0.1 }, null), null);   // no S&P move is not a fall
+
+    // §6.3 — a date that has passed and is gone means it reported; one still ahead does not.
+    const T = '2026-08-28';
+    assert.deepStrictEqual(
+        reportedSince({ AAA: '2026-08-27', BBB: '2026-09-30' }, { AAA: {}, BBB: { earnings: { date: '2026-09-30' } } }, T),
+        [{ ticker: 'AAA', reported: '2026-08-27', next: null }]);
+    // Rolled forward to the next period counts as reported, and carries the new date.
+    assert.deepStrictEqual(
+        reportedSince({ AAA: '2026-08-27' }, { AAA: { earnings: { date: '2026-11-20' } } }, T),
+        [{ ticker: 'AAA', reported: '2026-08-27', next: '2026-11-20' }]);
+    assert.deepStrictEqual(reportedSince(null, {}, T), []);
+
+    // spxDailyMove ignores the nulls the aligned series carries for non-trading days.
+    assert.ok(Math.abs(spxDailyMove({ closes: { '^GSPC': [100, null, 110] } }) - 0.1) < 1e-9);
+    assert.strictEqual(spxDailyMove({ closes: {} }), null);
+
+    // Blocked and quiet are different states: with no pot, 6.3/6.4 are blocked, never "clean".
+    const s = scan({ prices: { quotes: {} }, history: null, held: new Set(),
+        potPositions: null, previous: null }, T);
+    assert.ok(s.blocked.some(b => b.rule === '6.3 results'));
+    assert.ok(!s.quiet.includes('6.3 results'));
+    assert.ok(s.blocked.some(b => b.rule === '6.6 / 11.1'));   // no ^VIX in this fixture
+
+    console.log('selftest ok');
+}
+
+if (process.argv.includes('--selftest')) selftest();
+else if (require.main === module) main();
+module.exports = { nearOwnFloor, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
