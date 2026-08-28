@@ -27,10 +27,10 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 5.1  | Valid sell reasons                       | falsifier tripped · thesis played out · breached a §4 limit                                                      |
 | 5.2  | Minimum holding period                   | None                                                                                                                |
 | 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
-| 6.1  | Valuation trigger                        | within**15%** of the ticker's lowest band low                                                                 |
-| 6.2  | Drawdown trigger                         | **−15% in 7 days**, or **−25% in 30**                                                                 |
-| 6.3  | Results trigger                          | the day after results, for anything the pot holds                                                                   |
-| 6.4  | Dry-powder trigger                       | at**£750** uninvested, then every **£250**                                                            |
+| 6.1  | Valuation signal                         | within**15%** of the ticker's lowest band low                                                                 |
+| 6.2  | Drawdown signal                          | **−15% in 7 days**, or **−25% in 30**                                                                 |
+| 6.3  | Results signal                           | the day after results, for anything the pot holds                                                                   |
+| 6.4  | Dry-powder signal                        | at**£750** uninvested, then every **£250**                                                            |
 | 6.5  | Thesis review                            | sweep them**all, every week**                                                                                 |
 | 6.6  | Breaking news                            | both — weekly Sweep*and* a market-reaction proxy the Scan can see                                                |
 | 7.1  | Maximum buys per quarter                 | No limit                                                                                                            |
@@ -316,7 +316,21 @@ Follow-up ANS: 2%, and I want to avoid some situations like when buying a small 
 
 ---
 
-## 6. Triggers — what wakes the agent
+## 6. Signals — what wakes the agent
+
+One vocabulary, settled 28 Aug 2026. The **Scan** is the lane; a **signal** is what it emits;
+`signals.js`, `signals.json` and `npm run signals` are the code. These had drifted into three
+names for one mechanism — "triggers" here, "Scan" in [pot-design.md](pot-design.md), "signals" in
+the code — which was confusing enough to have to be asked about.
+
+Not everything the Scan emits is a signal, and the differences matter:
+
+| | What it is |
+|---|---|
+| **signal** | something worth a look. Wakes an agent; decides nothing |
+| **instruction** | a standing order (§11) firing. No agent in the loop at all |
+| **annotation** | `oneOff`, `epsStale` — a qualification riding on a signal, not one itself |
+| **quiet** | a rule that ran and found nothing. Not the same as one that could not run |
 
 This is the timeliness you asked for. Each is a cheap check over data CI already has. Tick the ones
 you want; they become the signal scan.
@@ -325,7 +339,7 @@ you want; they become the signal scan.
 
 > Now computable for 60 tickers: `peBands` holds every fiscal year's cheapest, dearest and average
 > multiple. **Suggested: fire when the current multiple is within 15% of the ticker's lowest band
-> low.** This is the trigger your last two weeks of work accidentally built.
+> low.** This is the signal your last two weeks of work accidentally built.
 
 **A (threshold)** — fire when the current multiple is within 15% of the ticker's lowest band
 
@@ -352,7 +366,7 @@ you want; they become the signal scan.
 
 **Q 6.5** Review due `[auto]` — a thesis has reached its own review date.
 
-> Every proposal names one. This is the trigger that closes the feedback loop; without it the pot
+> Every proposal names one. This is the signal that closes the feedback loop; without it the pot
 > is a pick generator.
 
 **A** — Every week.
@@ -508,7 +522,7 @@ ISA qualified shares prefered of course, but not necessarily.
 Hard rules that fire with **no LLM judgement at all**. The Scan detects the condition and emits an
 *instruction*, not a candidate — a rule already decided gains nothing from being argued with.
 
-Different from §6 triggers, which only wake the agent to go and think.
+Different from a §6 signal, which only wakes the agent to go and think.
 
 ### 11.1 VIX ≥ 40 → buy the S&P 500
 

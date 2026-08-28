@@ -174,18 +174,26 @@ function reportedSince(previousDue, quotes, today) {
 // course a report comes after the period it covers, so it flagged 48 of 83 tickers, most of them
 // perfectly current. Comparing two things measured in different units is how that happens.
 const MAX_PLAUSIBLE_LAG_DAYS = 75;
+// Only where we KNOW the window. `epsThru` is set by fetch-prices when it replaces Yahoo's figure
+// with one summed from filed quarters — so it is the window of the number actually in use.
+//
+// Yahoo's own `mrq` is not a substitute, and NVDA is the proof: after the replacement bug was
+// fixed its EPS is Yahoo's fresh post-Q2 7.91 while `mrq` still reads 2026-04-26. Flagging on that
+// called a current figure stale. Where the window is unknown, say nothing — an unfounded warning
+// is worse than none, which is the same rule the rest of this repo follows about numbers.
 function epsStale(quote, entry, today) {
     const next = quote?.earnings?.date;
+    const through = quote?.epsThru;
     const qs = (entry?.quarters || []).map(q => q.date).filter(Boolean).sort();
-    if (!quote?.mrq || !next || next <= today || qs.length < 2) return null;
+    if (!through || !next || next <= today || qs.length < 2) return null;
     const gaps = qs.slice(1).map((d, i) => (Date.parse(d) - Date.parse(qs[i])) / 86400e3);
     const period = gaps.reduce((a, b) => a + b, 0) / gaps.length;
     if (!(period > 30)) return null;
-    const impliedLag = (Date.parse(next) - Date.parse(quote.mrq)) / 86400e3 - period;
+    const impliedLag = (Date.parse(next) - Date.parse(through)) / 86400e3 - period;
     if (impliedLag <= MAX_PLAUSIBLE_LAG_DAYS) return null;
     const behind = Math.max(1, Math.round(impliedLag / period));
     return { mrq: quote.mrq, behind, period: Math.round(period), impliedLag: Math.round(impliedLag),
-        why: `trailing EPS runs only to ${quote.mrq}; with the next results on ${next} and a `
+        why: `the trailing EPS in use is summed to ${through}; with the next results on ${next} and a `
             + `${Math.round(period)}-day cycle, that implies a ${Math.round(impliedLag)}-day reporting `
             + `lag — about ${behind} period${behind === 1 ? '' : 's'} of earnings we do not have` };
 }
@@ -449,21 +457,21 @@ function selftest() {
     const quarterly = { quarters: [{ date: '2025-10-31' }, { date: '2026-01-31' }, { date: '2026-04-30' }] };
     // NVDA: next results 2026-11-17 against an EPS running only to 2026-04-26 implies a 114-day
     // reporting lag on a ~91-day cycle. Impossible; it is a period behind.
-    const nvda = epsStale({ mrq: '2026-04-26', earnings: { date: '2026-11-17' } }, quarterly, T2);
+    const nvda = epsStale({ epsThru: '2026-04-26', earnings: { date: '2026-11-17' } }, quarterly, T2);
     assert.ok(nvda, 'NVDA is a period behind and must be flagged');
     assert.strictEqual(nvda.behind, 1);
     assert.ok(nvda.impliedLag > 100);
     // GOOG-shaped: next 2026-10-28 against 2026-06-30 implies a 29-day lag. Perfectly normal.
-    assert.strictEqual(epsStale({ mrq: '2026-06-30', earnings: { date: '2026-10-28' } }, quarterly, T2), null);
+    assert.strictEqual(epsStale({ epsThru: '2026-06-30', earnings: { date: '2026-10-28' } }, quarterly, T2), null);
     // The regression this replaced: comparing the inferred report DATE to a period END flagged
     // every current company, because a report always comes after the period it covers.
-    assert.strictEqual(epsStale({ mrq: '2026-06-30', earnings: { date: '2026-11-17' } }, quarterly, T2), null);
+    assert.strictEqual(epsStale({ epsThru: '2026-06-30', earnings: { date: '2026-11-17' } }, quarterly, T2), null);
     // Two periods behind counts as two.
-    assert.strictEqual(epsStale({ mrq: '2026-01-31', earnings: { date: '2026-11-17' } }, quarterly, T2).behind, 2);
+    assert.strictEqual(epsStale({ epsThru: '2026-01-31', earnings: { date: '2026-11-17' } }, quarterly, T2).behind, 2);
     // No claim without the inputs: no next date, no quarters, or a past date.
-    assert.strictEqual(epsStale({ mrq: '2026-04-26' }, quarterly, T2), null);
-    assert.strictEqual(epsStale({ mrq: '2026-04-26', earnings: { date: '2026-11-17' } }, { quarters: [] }, T2), null);
-    assert.strictEqual(epsStale({ mrq: '2026-04-26', earnings: { date: '2026-01-01' } }, quarterly, T2), null);
+    assert.strictEqual(epsStale({ epsThru: '2026-04-26' }, quarterly, T2), null);
+    assert.strictEqual(epsStale({ epsThru: '2026-04-26', earnings: { date: '2026-11-17' } }, { quarters: [] }, T2), null);
+    assert.strictEqual(epsStale({ epsThru: '2026-04-26', earnings: { date: '2026-01-01' } }, quarterly, T2), null);
 
 // macroNotes: the Sweep's own inferences, computed. Each case below is a line it actually
     // wrote on 28 Aug 2026, turned into arithmetic.

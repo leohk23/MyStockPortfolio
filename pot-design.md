@@ -89,7 +89,7 @@ checked against it.
 
 | Lane                | Job                                             | Universe                                  | Cost            | Trigger             |
 | ------------------- | ----------------------------------------------- | ----------------------------------------- | --------------- | ------------------- |
-| **Scan**      | never miss a known thing                        | closed — the ~79 tickers already fetched | **free**  | every CI run        |
+| **Scan**      | emits *signals*; also *instructions* for standing orders | closed — the ~79 tickers already fetched | **free**  | every CI run        |
 | **Sweep**     | read the world, find candidates                 | open                                      | one LLM session | weekly              |
 | **Review**    | re-read every open thesis against its falsifier | what the pot holds                        | one LLM session | weekly              |
 | **Deep dive** | research one name → executable order           | a single name                             | one LLM session | Scan or Sweep fires |

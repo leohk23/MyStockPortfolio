@@ -1161,7 +1161,20 @@ const TTM_WINDOW_TOL = 0.05;      // Yahoo vs our previous-four sum
 // twenty others likewise, swapping Yahoo's arithmetic for ours across the book to no benefit and
 // leaving an "eps replaced" marker on names where nothing was ever wrong.
 const TTM_MATERIAL = 0.01;
-function preferSummedTtm(entry, yahooEps, currency, rates) {
+// Are OUR quarters current, or has the company reported since our newest one? Same measure as
+// signals.js epsStale: next results, less one reporting period, is roughly the last period we
+// should already hold. An implausible implied lag means we are behind.
+const MAX_PLAUSIBLE_LAG_DAYS = 75;
+function windowCurrent(entry, nextResults) {
+    const q = (entry?.quarters || []).map(x => x.date).filter(Boolean).sort();
+    if (!nextResults || q.length < 2) return true;      // no way to tell — do not block on it
+    const gaps = q.slice(1).map((d, i) => (Date.parse(d) - Date.parse(q[i])) / 864e5);
+    const period = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    if (!(period > 30)) return true;
+    return (Date.parse(nextResults) - Date.parse(q[q.length - 1])) / 864e5 - period <= MAX_PLAUSIBLE_LAG_DAYS;
+}
+
+function preferSummedTtm(entry, yahooEps, currency, rates, nextResults = null) {
     if (!(yahooEps > 0)) return null;                  // a loss-maker's multiple is meaningless either way
     const fx = epsToQuote(entry, currency, rates);
     if (fx == null) return null;
@@ -1175,6 +1188,8 @@ function preferSummedTtm(entry, yahooEps, currency, rates) {
     const s4 = sum(last4) * fx, p4 = sum(prev4) * fx;
     if (!(s4 > 0)) return null;
 
+    const ourWindowCurrent = windowCurrent(entry, nextResults);
+
     // A: does any four-quarter run tile a filed year and match its EPS?
     const years = (entry.years || []).filter(y => typeof y.eps === 'number');
     let reconciled = false;
@@ -1187,7 +1202,17 @@ function preferSummedTtm(entry, yahooEps, currency, rates) {
     // B: is Yahoo's figure the PREVIOUS window rather than this one?
     const behind = Math.abs(yahooEps - p4) <= Math.abs(p4) * TTM_WINDOW_TOL
         && Math.abs(yahooEps - p4) < Math.abs(yahooEps - s4);
-    if (!reconciled && !behind) return null;
+    // A on its own is NOT evidence that Yahoo is stale. It only says our quarters tie to a filed
+    // year — that they are trustworthy, not that they are newer. Treating it as sufficient
+    // replaced Yahoo's freshly reported NVDA figure of 7.91 with 6.53 summed from quarters ending
+    // 30 April, three months before the company had reported again. Same for HKXCY and 0388.HK.
+    // Sixteen replacements, eleven of them on A alone, three demonstrably backwards.
+    //
+    // So an A-only replacement now also has to show our own quarters are current: `ourWindowStale`
+    // asks whether the newest filed quarter is a period behind the company's own reporting, using
+    // the next results date it has published. Route B still stands alone — matching the previous
+    // window IS the evidence, and needs no corroboration.
+    if (!behind && !(reconciled && ourWindowCurrent)) return null;
     if (Math.abs(s4 - yahooEps) <= yahooEps * TTM_MATERIAL) return null;
     return Number(s4.toPrecision(6));
 }
@@ -1808,7 +1833,7 @@ async function main() {
     let fresher = 0;
     for (const t of tickers) {
         if (!quotes[t] || manualEps[t] != null || quotes[t].epsDerived) continue;
-        const s = preferSummedTtm(store.eps[t], quotes[t].eps, quotes[t].currency, rates);
+        const s = preferSummedTtm(store.eps[t], quotes[t].eps, quotes[t].currency, rates, quotes[t].earnings?.date);
         if (s == null) continue;
         quotes[t].epsReported = quotes[t].eps;          // kept so the page can show what was replaced
         quotes[t].eps = s;

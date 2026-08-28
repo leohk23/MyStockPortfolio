@@ -4,6 +4,7 @@
 //   pot/SUMMARY.md          the entry point. A bookmark that never moves.
 //   pot/summaries/*.md    one dated report per run — the record that never overwrites.
 //   pot/runs.md           the ledger: what each lane did, and what it cost.
+//   pot/scan.md           what the free lane found, in prose. Rewritten each run.
 //   pot/logs/*.md         readable transcripts, rendered from Codex JSONL.
 //
 // D12: judgement is measured by the return, so what is recorded here is PROVENANCE. Every figure
@@ -172,10 +173,57 @@ About 1MB each, full detail including whole file contents. \`codex resume --last
 recent interactively. Not committed: large, and the rendered logs above are the readable part.
 `);
 
-    // ---- the entry point
-    const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
     const fired = sig?.fired || [];
     const byRule = fired.reduce((a, f) => ((a[f.rule] = (a[f.rule] || 0) + 1), a), {});
+
+    // ---- the Scan, in prose
+    //
+    // Every other lane left a markdown behind and this one did not — it wrote signals.json and
+    // nothing else, so the only way to read it was the console or a one-line summary. One file,
+    // rewritten each run rather than dated: CI scans every fifteen minutes, and 96 dated files a
+    // day is not a history, it is landfill. The dated record of what the Scan said at a point in
+    // time is the summary that quotes it.
+    const pctOf = n => n == null ? '–' : `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
+    const byRuleFull = fired.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f), a), {});
+    fs.writeFileSync('pot/scan.md', `# Scan — ${when(sig?.generated)}
+
+The free lane. Every \`[auto]\` rule in [strategy.md](../strategy.md) §6, over data CI already
+fetched. No LLM, no network, no cost. Rewritten on every run — for the dated record, see
+[summaries/](summaries/).
+
+Prices as of ${when(sig?.pricesAt)}. VIX ${sig?.vix?.close ?? '–'} (${pctOf(sig?.vix?.day)}), S&P ${pctOf(sig?.spxDay)} on the day.
+
+${sig?.instructions?.length ? `## Instructions — no agent involved
+
+${sig.instructions.map(i => `- **${i.action}** — ${i.rule}, VIX closed ${i.close} against a ${i.threshold} threshold.`).join('\n')}
+` : ''}
+## Signals${fired.length ? '' : ' — none'}
+
+${Object.entries(byRuleFull).map(([rule, list]) => `### ${rule} — ${list.length}
+
+${list[0].pe != null
+        ? `| ticker | | P/E | own floor | vs floor | notes |\n|---|---|---:|---:|---:|---|\n`
+            + list.map(f => `| \`${f.ticker}\` | ${f.where} | ${f.pe.toFixed(1)} | ${f.floor.toFixed(1)} | ${pctOf(f.vsFloor)} | `
+                + `${[f.oneOff && `⚠ one-off: ${f.oneOff.why}`, f.epsStale && `⚠ stale EPS: ${f.epsStale.why}`].filter(Boolean).join('; ')} |`).join('\n')
+        : list.map(f => `- \`${f.ticker || ''}\` ${JSON.stringify(f)}`).join('\n')}`).join('\n\n') || '_Nothing fired._'}
+
+## Macro
+
+The reading, not the level — each is a relation between two series, computed rather than inferred.
+
+${(sig?.macro || []).map(n => `- **${n.name}** — ${n.says || 'mixed across windows, no clean direction'}`).join('\n') || '_No macro state._'}
+
+## Health
+
+- **Quiet** (ran, found nothing): ${sig?.quiet?.join(', ') || 'none'}
+- **Blocked** (could not run): ${sig?.blocked?.length ? sig.blocked.map(b => `${b.rule} — ${b.why}`).join('; ') : 'none'}
+
+A quiet rule and a blocked one are both silent. Keeping them apart is the only way a dead scan
+does not look exactly like a healthy one.
+`);
+
+    // ---- the entry point
+    const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
@@ -207,7 +255,7 @@ ${openProposals.length
 
 | lane | last run | what it produced | transcript |
 |---|---|---|---|
-| **Scan** (free) | ${when(sig?.generated) || '–'} | ${fired.length} fired${Object.keys(byRule).length ? ' — ' + Object.entries(byRule).map(([r, n]) => `${r} ×${n}`).join(', ') : ''} | _no session_ |
+| **Scan** (free) | ${when(sig?.generated) || '–'} | [${fired.length} fired](scan.md)${Object.keys(byRule).length ? ' — ' + Object.entries(byRule).map(([r, n]) => `${r} ×${n}`).join(', ') : ''} | _no session_ |
 | **Sweep** | ${when(lastOf('sweep')?.started) || '–'} | ${sweep ? `[${sweep.replace(/\.md$/, '')}](sweeps/${sweep})` : '–'} | ${lastOf('sweep') ? `[read](${lastOf('sweep').log.replace('pot/','')})` : '–'} |
 | **Deep dive** | ${when(lastOf('deepdive')?.started) || '–'} | ${proposals[0] ? `[${proposals[0].replace(/\.md$/, '')}](proposals/${proposals[0]})` : '–'} | ${lastOf('deepdive') ? `[read](${lastOf('deepdive').log.replace('pot/','')})` : '–'} |
 
@@ -226,6 +274,7 @@ ${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalFresh)} fresh
 | Run ledger and costs | [runs.md](runs.md) |
 | Readable transcripts | [logs/](logs/) |
 | Articles you kept, as Sweep input | [reading.md](reading.md) |
+| What the Scan found, in prose | [scan.md](scan.md) |
 | Raw scan output | [signals.json](../signals.json) |
 `;
 
