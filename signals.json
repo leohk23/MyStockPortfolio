@@ -1,19 +1,19 @@
 {
- "generated": "2026-08-28T13:37:15.761Z",
- "pricesAt": "2026-08-28T12:54:47.637Z",
+ "generated": "2026-08-28T15:37:46.491Z",
+ "pricesAt": "2026-08-28T13:33:42.135Z",
  "vix": {
-  "close": 14.48,
-  "day": -0.0021
+  "close": 14.46,
+  "day": -0.0034
  },
- "spxDay": 0,
+ "spxDay": 0.0008692289085874272,
  "fired": [
   {
    "rule": "6.1 valuation",
    "ticker": "GME",
    "where": "watchlist",
-   "pe": 13.619402985074625,
+   "pe": 13.604477611940299,
    "floor": 23.6493,
-   "vsFloor": -0.4241096782959908
+   "vsFloor": -0.4247407909773102
   },
   {
    "rule": "6.1 valuation",
@@ -21,15 +21,24 @@
    "where": "watchlist",
    "pe": 7.142857142857142,
    "floor": 12.3785,
-   "vsFloor": -0.4229626252892401
+   "vsFloor": -0.4229626252892401,
+   "oneOff": {
+    "why": "trailing EPS is 2.9x the last filed year (2024)",
+    "epsJump": 2.926829268292683
+   }
   },
   {
    "rule": "6.1 valuation",
    "ticker": "AMZN",
    "where": "HELD",
-   "pe": 20.616251005631536,
+   "pe": 20.78205953338697,
    "floor": 29.2566,
-   "vsFloor": -0.29532990827261074
+   "vsFloor": -0.28966251945246646,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 40.521195427108566,
+    "recurringVsFloor": 0.38502749557735916
+   }
   },
   {
    "rule": "6.1 valuation",
@@ -43,33 +52,38 @@
    "rule": "6.1 valuation",
    "ticker": "PLTR",
    "where": "watchlist",
-   "pe": 158.8792234204365,
+   "pe": 159.06465229948898,
    "floor": 179.254,
-   "vsFloor": -0.11366427850738903
+   "vsFloor": -0.11262983085739231
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NVDA",
    "where": "HELD",
-   "pe": 34.912710566615615,
+   "pe": 34.731546707503824,
    "floor": 38.4968,
-   "vsFloor": -0.09310097029842446
+   "vsFloor": -0.09780691622410631
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NFLX",
    "where": "HELD",
-   "pe": 25.10691823899371,
+   "pe": 25.205974842767294,
    "floor": 27.253,
-   "vsFloor": -0.07874662462871207
+   "vsFloor": -0.07511192005403833
   },
   {
    "rule": "6.1 valuation",
    "ticker": "GOOG",
    "where": "HELD",
-   "pe": 16.953313253012045,
+   "pe": 17.02961847389558,
    "floor": 18.0424,
-   "vsFloor": -0.06036263174455481
+   "vsFloor": -0.056133414961669126,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 33.53964189316117,
+    "recurringVsFloor": 0.8589346147497654
+   }
   },
   {
    "rule": "6.1 valuation",
@@ -83,17 +97,17 @@
    "rule": "6.1 valuation",
    "ticker": "META",
    "where": "HELD",
-   "pe": 21.50225903614458,
+   "pe": 21.712725903614462,
    "floor": 20.6975,
-   "vsFloor": 0.038881944009884206
+   "vsFloor": 0.04905065363519556
   },
   {
    "rule": "6.1 valuation",
    "ticker": "RMS.PA",
    "where": "HELD",
-   "pe": 37.575616565844584,
+   "pe": 37.50581665891112,
    "floor": 35.5584,
-   "vsFloor": 0.05672967754017577
+   "vsFloor": 0.054766712194899814
   },
   {
    "rule": "6.1 valuation",
@@ -107,19 +121,12 @@
  "instructions": [],
  "quiet": [
   "6.2 drawdown",
+  "6.3 results",
+  "6.4 dry powder",
   "6.6 news proxy",
   "11.1 standing order"
  ],
- "blocked": [
-  {
-   "rule": "6.3 results",
-   "why": "the pot holds nothing yet (pot/positions.json absent)"
-  },
-  {
-   "rule": "6.4 dry powder",
-   "why": "no pot cash balance to read yet"
-  }
- ],
+ "blocked": [],
  "resultsDue": {
   "5332.T": "2026-10-30",
   "6288.HK": "2026-10-08",

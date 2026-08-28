@@ -37,20 +37,19 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 7.2  | Local fact-check before execution        | **Mandatory**                                                                                                 |
 | 7.3  | Unsourced figures                        | Not permitted                                                                                                       |
 | 9.1  | Benchmark                                | pot TWR · main-book TWR ·**S&P 500**                                                                        |
-| 9.2  | Recorded per proposal                    | provenance — model, lane, tokens, wall time (not a score)                                                           |
 | 9.3  | Experiment reviewed                      | at 24 months                                                                                                        |
 | 10   | Broker                                   | unconstrained — so the Tradelog gains a**`Pot` column**                                                    |
-| 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, **no re-arm — fires every qualifying close**, overrides §4; alert if the pot is empty |
-| 11.2 | Other standing orders                    | none for now                                                                                                        |
+| 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
 
-**Nothing open.** All 34 questions answered, 28 Aug 2026.
+**Still open:** §9.2 (what "how much thinking the agent did" should mean in practice) and §11.2
+(any further standing orders). §11.1.a carries an unresolved consequence — see the follow-up there.
 
-Each question was asked with a suggested default drawn from what the existing book actually does.
-Those suggestions are kept as `> quoted` history rather than deleted: where an answer departs from
-one, the pair records that the departure was deliberate, and where it agrees, it records that the
-default was read rather than defaulted to.
+Fill in the `→` lines. Every question carries a suggested default, drawn from what your existing
+book actually does, so you are editing rather than writing from scratch — "default is fine" is a
+complete answer. Delete the commentary once you have answered; what survives becomes the rules an
+agent is held to.
 
-Two markers say what an answer becomes:
+Two markers tell you what an answer becomes:
 
 - **`[auto]`** — becomes a deterministic check in code. Runs free, on data CI already fetches, no
   LLM involved. These are what make the thing timely.
@@ -68,7 +67,7 @@ Cash and decisions run on **separate clocks**. This is the whole design:
 | **Funding** — £250 arrives, sits as pot cash             | monthly, calendar                        | nothing         |
 | **Signals** — scan for anything worth a look              | continuous, every CI run                 | nothing         |
 | **Decision** — research, then a buy/sell instruction      | *only when a signal fires, or you ask* | one LLM session |
-| **Review** — re-read open theses against their falsifiers | weekly (§6.5)              | one LLM session |
+| **Review** — re-read open theses against their falsifiers | monthly, calendar                        | one LLM session |
 
 The expensive step is gated behind the free one. A signal scan over `prices.json`, `earnings.json`
 and `peBands` is ordinary JavaScript — it can run every fifteen minutes forever and cost nothing.
@@ -466,20 +465,7 @@ and an agent can burn tokens going nowhere. The version worth having is probably
 case-against was**: did the agent name the risk that actually materialised? That is scoreable at
 review time, in hindsight, against the falsifier it wrote. Which did you mean?
 
-**A** — Effort, not judgement: judgement is already measured by the return. Record what produced
-each proposal — the model, the lane, the tokens, the wall time — so that a later switch of model,
-or a move to API credits for fuller automation, can be compared against what came before.
-
-That reframes it. It is not a score at all, it is **provenance**, which makes it more useful rather
-than less: it belongs in each proposal's own header and in `pot/run-log.txt`, not in a periodic
-tally. And it stops being optional the moment the model changes — a 24-month record spanning two
-models is a record of two systems, and without the stamp there is no way to separate them
-afterwards. Cheap to capture: `codex exec` already prints its model and token count on every run,
-and the harness already writes the log.
-
-Note for [pot-design.md](pot-design.md): "maybe utilise API credits" would revise **D3**, which
-currently rules out metered spend. Recorded as anticipated, not decided.
-
+the judgement is also measured by return
 
 **Q 9.3** When do you call the experiment, and on what basis? `[agent]`
 
@@ -554,15 +540,7 @@ a cap on total VIX-triggered spend per episode, a modest re-arm (one close below
 few times per episode rather than daily), or rate-limiting the *alert* to weekly while VIX stays
 above 40 — which keeps the behaviour and drops 125 prompts to 26.
 
-**A** — No limit, for now. It fires on every qualifying close.
-
-**Decided.** The consequence above is accepted rather than overlooked: in a 2008-shaped drawdown
-this is one purchase followed by ~124 prompts to add cash. Recorded here so that if it ever runs
-for real, what was known when the rule was written is on the page.
-
-One implementation note that changes nothing about the rule: those prompts should arrive **batched
-in the existing digest**, not as 124 separate alerts. Same decision surface, same frequency of
-being asked — just not 124 notifications.
+**A** — *unanswered*
 
 > **Suggested: ten consecutive closes below 25.** That is the definition the backtest used, and it
 > is what turns 208 firing days into 10.
@@ -600,4 +578,4 @@ being asked — just not 124 notifications.
 
 ### 11.2 Others
 
-**A (add any)** — None for now.
+**A (add any)** — *unanswered*

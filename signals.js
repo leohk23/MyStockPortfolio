@@ -45,7 +45,39 @@ const read = (f, fallback = null) => {
 // name can sit a whisker either side of the line for that reason alone. Tightening it would mean
 // recomputing the bands on trailing EPS, which loses the point-in-time property that makes them
 // honest. Being approximately right about "is this near its floor?" is the job here.
-function nearOwnFloor(quote, band = RULES.valuationBand) {
+// The one-off trap, found by the first real Sweep rather than by me. Trailing EPS includes
+// exceptional gains, so a company that booked a large one can look cheap on a multiple nobody
+// could earn twice. Of the first twelve hits, TWO were false for this reason: Alphabet read −6%
+// below its floor and is +86% above it on recurring earnings; Amazon read −29% and is +39%. Both
+// were investment gains, not trade.
+//
+// Flagged, never suppressed. The floor itself was struck on filed annual EPS, which carries its
+// own one-offs, so "recurring vs a headline floor" is not a clean comparison either — suppressing
+// on it would hide genuine cheapness. The Deep dive gets told, and decides.
+//
+// Two detectors, because they cover different ground. Yahoo's normalized income catches the US
+// names; it is absent for Hong Kong (0006.HK reports normEps identical to eps), so the second
+// asks whether trailing EPS has run far ahead of the last audited year — 0006.HK's is 2.9x its
+// last filed annual, which is what a disposal looks like from the outside.
+const ONE_OFF_EPS_JUMP = 2.0;
+function oneOffRisk(quote, entry, floor, band) {
+    const rpe = quote.normEps > 0 ? quote.price / quote.normEps : null;
+    if (rpe != null && quote.normEps !== quote.eps) {
+        const rv = rpe / floor - 1;
+        return rv > band
+            ? { why: 'recurring earnings put it above its floor', recurringPe: rpe, recurringVsFloor: rv }
+            : null;
+    }
+    // No normalized figure to compare against — fall back to the audited annual.
+    const filed = [...(entry?.years || [])].reverse().find(y => y.eps > 0);
+    if (!filed) return null;
+    const jump = quote.eps / filed.eps;
+    return jump >= ONE_OFF_EPS_JUMP
+        ? { why: `trailing EPS is ${jump.toFixed(1)}x the last filed year (${filed.date.slice(0, 4)})`, epsJump: jump }
+        : null;
+}
+
+function nearOwnFloor(quote, band = RULES.valuationBand, entry = null) {
     if (!quote?.peBands?.length || !(quote.eps > 0) || !(quote.price > 0)) return null;
     const pe = quote.price / quote.eps;
     const floor = Math.min(...quote.peBands.map(b => b.lo));
@@ -57,7 +89,8 @@ function nearOwnFloor(quote, band = RULES.valuationBand) {
     // floats, not a bug worth an epsilon, and it cannot matter at this scale.
     const vsFloor = pe / floor - 1;
     if (vsFloor > band) return null;
-    return { pe, floor, vsFloor };
+    const oneOff = oneOffRisk(quote, entry, floor, band);
+    return { pe, floor, vsFloor, ...(oneOff ? { oneOff } : {}) };
 }
 
 // §6.2 — fell hard, fast. Either window qualifies on its own.
@@ -121,7 +154,7 @@ function scan(state, today) {
 
     const valuation = [];
     for (const [t, q] of Object.entries(quotes)) {
-        const hit = nearOwnFloor(q);
+        const hit = nearOwnFloor(q, RULES.valuationBand, state.earnings?.eps?.[t]);
         if (hit) valuation.push({ rule: '6.1 valuation', ticker: t, where: label(t), ...hit });
     }
     valuation.sort((a, b) => a.vsFloor - b.vsFloor);
@@ -184,6 +217,7 @@ function main() {
     const state = {
         prices,
         history: read('history.json'),
+        earnings: read('earnings.json', { eps: {} }),
         held: new Set((read('holdings.json', { holdings: [] }).holdings || []).map(h => h.yahoo)),
         potPositions: read('pot/positions.json'),
         previous: read('signals.json'),
@@ -199,7 +233,7 @@ function main() {
     for (const [rule, list] of Object.entries(by)) {
         console.log(`\n  ${rule} — ${list.length}`);
         for (const f of list.slice(0, 8)) {
-            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}`);
+            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}`);
             else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
             else console.log(`     ${JSON.stringify(f)}`);
         }
@@ -224,6 +258,22 @@ function selftest() {
     assert.strictEqual(nearOwnFloor({ price: 100, eps: -1, peBands: bands }), null);
     assert.strictEqual(nearOwnFloor({ price: 100, eps: 10, peBands: [] }), null);
     assert.strictEqual(nearOwnFloor(undefined), null);
+
+// The one-off detector, from the first Sweep. Alphabet and Amazon both looked below their
+    // floor on headline EPS and are well above it on recurring — flag, never suppress.
+    const bandsF = [{ lo: 20 }];
+    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, normEps: 10, peBands: bandsF }).oneOff, undefined);
+    const flagged = nearOwnFloor({ price: 200, eps: 10, normEps: 4, peBands: bandsF });
+    assert.ok(flagged, 'still fires — the flag does not suppress');
+    assert.ok(flagged.oneOff.recurringPe === 50 && flagged.oneOff.recurringVsFloor > 0.15);
+    // Recurring still cheap -> no flag.
+    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, normEps: 9, peBands: bandsF }).oneOff, undefined);
+    // No normalized figure (the Hong Kong case): fall back to the last filed annual EPS.
+    const hk = { price: 60, eps: 8.4, normEps: 8.4, peBands: [{ lo: 12.4 }] };
+    const entry = { years: [{ date: '2024-12-31', eps: 2.87 }, { date: '2025-12-31' }] };
+    assert.ok(/2.9x the last filed year/.test(nearOwnFloor(hk, 0.15, entry).oneOff.why));
+    assert.strictEqual(nearOwnFloor(hk, 0.15, { years: [{ date: '2025-12-31', eps: 7 }] }).oneOff, undefined);
+    assert.strictEqual(nearOwnFloor(hk, 0.15, null).oneOff, undefined);   // nothing to compare to
 
     // §6.2 — either window on its own, and both reported when both trip.
     assert.strictEqual(fellHard({ '7d': -0.14, '1m': -0.24 }), null);
@@ -277,4 +327,4 @@ function selftest() {
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main();
-module.exports = { nearOwnFloor, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
+module.exports = { nearOwnFloor, oneOffRisk, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
