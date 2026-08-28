@@ -13,43 +13,45 @@ offered alongside the question and is kept only as history. Where an answer need
 Derived from the answers below; **the sections are authoritative** and this table is an index. Every
 `[auto]` row is a parameter the signal scan needs.
 
-| § | Rule | Value |
-|---|---|---|
-| 3.1 | Universe | No constraints |
-| 3.2 | Permanent exclusions | None |
-| 3.3 | May buy what the main book already holds | Yes |
-| 3.4 | Single stocks / funds | Both |
-| 4.1 | Minimum position | **No minimum** — but refuse a ticket whose first-year costs exceed **2%** of it |
-| 4.2 | Maximum position | 50% of the pot |
-| 4.3 | Number of positions | No limit |
-| 4.4 | May hold cash | Yes, no ceiling |
-| 4.5 | May top up an existing position | Yes |
-| 5.1 | Valid sell reasons | falsifier tripped · thesis played out · breached a §4 limit |
-| 5.2 | Minimum holding period | None |
-| 5.3 | Trim or all-or-nothing | Trim |
-| 6.1 | Valuation trigger | within **15%** of the ticker's lowest band low |
-| 6.2 | Drawdown trigger | **−15% in 7 days**, or **−25% in 30** |
-| 6.3 | Results trigger | the day after results, for anything the pot holds |
-| 6.4 | Dry-powder trigger | at **£750** uninvested, then every **£250** |
-| 6.5 | Thesis review | sweep them **all, every week** |
-| 6.6 | Breaking news | both — weekly Sweep *and* a market-reaction proxy the Scan can see |
-| 7.1 | Maximum buys per quarter | No limit |
-| 7.2 | Local fact-check before execution | **Mandatory** |
-| 7.3 | Unsourced figures | Not permitted |
-| 9.1 | Benchmark | pot TWR · main-book TWR · **S&P 500** |
-| 9.3 | Experiment reviewed | at 24 months |
-| 10 | Broker | unconstrained — so the Tradelog gains a **`Pot` column** |
-| 11.1 | Standing order | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
+| §   | Rule                                     | Value                                                                                                               |
+| ---- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 3.1  | Universe                                 | No constraints                                                                                                      |
+| 3.2  | Permanent exclusions                     | None                                                                                                                |
+| 3.3  | May buy what the main book already holds | Yes                                                                                                                 |
+| 3.4  | Single stocks / funds                    | Both                                                                                                                |
+| 4.1  | Minimum position                         | **No minimum** — but refuse a ticket whose first-year costs exceed **2%** of it                        |
+| 4.2  | Maximum position                         | 50% of the pot                                                                                                      |
+| 4.3  | Number of positions                      | No limit                                                                                                            |
+| 4.4  | May hold cash                            | Yes, no ceiling                                                                                                     |
+| 4.5  | May top up an existing position          | Yes                                                                                                                 |
+| 5.1  | Valid sell reasons                       | falsifier tripped · thesis played out · breached a §4 limit                                                      |
+| 5.2  | Minimum holding period                   | None                                                                                                                |
+| 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
+| 6.1  | Valuation trigger                        | within**15%** of the ticker's lowest band low                                                                 |
+| 6.2  | Drawdown trigger                         | **−15% in 7 days**, or **−25% in 30**                                                                 |
+| 6.3  | Results trigger                          | the day after results, for anything the pot holds                                                                   |
+| 6.4  | Dry-powder trigger                       | at**£750** uninvested, then every **£250**                                                            |
+| 6.5  | Thesis review                            | sweep them**all, every week**                                                                                 |
+| 6.6  | Breaking news                            | both — weekly Sweep*and* a market-reaction proxy the Scan can see                                                |
+| 7.1  | Maximum buys per quarter                 | No limit                                                                                                            |
+| 7.2  | Local fact-check before execution        | **Mandatory**                                                                                                 |
+| 7.3  | Unsourced figures                        | Not permitted                                                                                                       |
+| 9.1  | Benchmark                                | pot TWR · main-book TWR ·**S&P 500**                                                                        |
+| 9.2  | Recorded per proposal                    | provenance — model, lane, tokens, wall time (not a score)                                                           |
+| 9.3  | Experiment reviewed                      | at 24 months                                                                                                        |
+| 10   | Broker                                   | unconstrained — so the Tradelog gains a**`Pot` column**                                                    |
+| 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
+| 11.2 | Other standing orders                    | none for now                                                                                                        |
 
-**Still open:** §9.2 (what "how much thinking the agent did" should mean in practice) and §11.2
-(any further standing orders). §11.1.a carries an unresolved consequence — see the follow-up there.
+**Still open:** one item — **§11.1.a**, the re-arm on the VIX standing order. Its three answers are
+individually settled but combine into something none of them states; see the follow-up there.
 
-Fill in the `→` lines. Every question carries a suggested default, drawn from what your existing
-book actually does, so you are editing rather than writing from scratch — "default is fine" is a
-complete answer. Delete the commentary once you have answered; what survives becomes the rules an
-agent is held to.
+Each question was asked with a suggested default drawn from what the existing book actually does.
+Those suggestions are kept as `> quoted` history rather than deleted: where an answer departs from
+one, the pair records that the departure was deliberate, and where it agrees, it records that the
+default was read rather than defaulted to.
 
-Two markers tell you what an answer becomes:
+Two markers say what an answer becomes:
 
 - **`[auto]`** — becomes a deterministic check in code. Runs free, on data CI already fetches, no
   LLM involved. These are what make the thing timely.
@@ -67,7 +69,7 @@ Cash and decisions run on **separate clocks**. This is the whole design:
 | **Funding** — £250 arrives, sits as pot cash             | monthly, calendar                        | nothing         |
 | **Signals** — scan for anything worth a look              | continuous, every CI run                 | nothing         |
 | **Decision** — research, then a buy/sell instruction      | *only when a signal fires, or you ask* | one LLM session |
-| **Review** — re-read open theses against their falsifiers | monthly, calendar                        | one LLM session |
+| **Review** — re-read open theses against their falsifiers | weekly (§6.5)              | one LLM session |
 
 The expensive step is gated behind the free one. A signal scan over `prices.json`, `earnings.json`
 and `peBands` is ordinary JavaScript — it can run every fifteen minutes forever and cost nothing.
@@ -465,6 +467,21 @@ and an agent can burn tokens going nowhere. The version worth having is probably
 case-against was**: did the agent name the risk that actually materialised? That is scoreable at
 review time, in hindsight, against the falsifier it wrote. Which did you mean?
 
+**A** — Effort, not judgement: judgement is already measured by the return. Record what produced
+each proposal — the model, the lane, the tokens, the wall time — so that a later switch of model,
+or a move to API credits for fuller automation, can be compared against what came before.
+
+That reframes it. It is not a score at all, it is **provenance**, which makes it more useful rather
+than less: it belongs in each proposal's own header and in `pot/run-log.txt`, not in a periodic
+tally. And it stops being optional the moment the model changes — a 24-month record spanning two
+models is a record of two systems, and without the stamp there is no way to separate them
+afterwards. Cheap to capture: `codex exec` already prints its model and token count on every run,
+and the harness already writes the log.
+
+Note for [pot-design.md](pot-design.md): "maybe utilise API credits" would revise **D3**, which
+currently rules out metered spend. Recorded as anticipated, not decided.
+
+
 **Q 9.3** When do you call the experiment, and on what basis? `[agent]`
 
 > **Suggested: review at 24 months, no earlier.** Deciding at 12 is reading noise. Worth writing
@@ -576,4 +593,4 @@ above 40 — which keeps the behaviour and drops 125 prompts to 26.
 
 ### 11.2 Others
 
-**A (add any)** — *unanswered*
+**A (add any)** — None for now.
