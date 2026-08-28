@@ -197,6 +197,11 @@
         #deep-fin .derived { border-bottom: 1px dotted var(--text-muted); cursor: help; }
         #deep-fin tr.interim-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.interim-row td:first-child, #deep-fin tr.interim-row a { color: var(--text-secondary); }
+        /* Macro group headings: a label row inside the table, not a sortable column. */
+        #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
+            letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
+            padding-top: 14px; text-align: left; }
+        #macro-table td:first-child, #macro-table th:first-child { text-align: left; }
         #deep-fin tr.band-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.band-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
@@ -512,6 +517,7 @@
             <button data-dim="geography" aria-pressed="false">Geography</button>
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
+            <button data-dim="macro" aria-pressed="false" title="Index, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
         </div>
     </div>
 
@@ -598,6 +604,22 @@
             <tbody></tbody>
         </table>
         <p id="cal-none" class="deep-note"></p>
+    </div>
+
+    <!-- Macro state. Not a portfolio view — it is the regime the holdings sit inside, and the
+         same numbers the Sweep is handed so it spends its session interpreting rather than
+         looking up. Grouped rather than sorted: "equities up, dollar up, gold down" is read a
+         block at a time, and a table ordered by 1D move would break exactly that reading. -->
+    <div class="table-responsive" id="macro" hidden>
+        <table id="macro-table">
+            <thead><tr>
+                <th>Series</th><th>Level</th>
+                <th title="Change since the previous close">1D</th>
+                <th>7D</th><th>1M</th><th>3M</th><th>6M</th><th>1Y</th><th>YTD</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="macro-note" class="deep-note"></p>
     </div>
 
     <script>
@@ -2305,6 +2327,7 @@
             const t = searchTerms();
             const cal = () => calendarRows().filter(e => matches([e.name, e.yahoo].join(' ').toLowerCase(), t));
             const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
+                : STATE.dim === 'macro' ? [0, 0]
                 : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
                 : [visibleRows().length, STATE.rows.length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
@@ -2556,7 +2579,7 @@
             const table = document.getElementById('portfolio');
             const footRow = table.tFoot?.rows[0];
             // Watchlist and calendar views have no totals to float; nor does an empty table.
-            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || !footRow || !table.tBodies[0]?.rows.length) {
+            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || STATE.dim === 'macro' || !footRow || !table.tBodies[0]?.rows.length) {
                 el.classList.remove('show');
                 el.innerHTML = '';
                 return;
@@ -2733,9 +2756,45 @@
         // beneath it — one table area, one control.
         function applyView() {
             const dim = STATE.dim;
-            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar';
+            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro';
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
+            document.getElementById('macro').hidden = dim !== 'macro';
+        }
+
+        // Levels, not holdings — so no currency conversion and no position sizing. A yield is
+        // already a percentage, which makes "4.716" the level and "+0.94%" the move on it: two
+        // different percentages in one row, so the unit is spelled out rather than assumed.
+        const MACRO_GROUPS = ['Equity', 'Rates', 'Currency', 'Commodity'];
+        function renderMacro() {
+            const tbody = document.querySelector('#macro-table tbody');
+            const note = document.getElementById('macro-note');
+            const macro = STATE.macro || {};
+            const syms = Object.keys(macro);
+            if (!syms.length) {
+                tbody.innerHTML = '';
+                note.textContent = 'No macro state in prices.json — run npm run fetch.';
+                return;
+            }
+            const rows = [];
+            for (const group of MACRO_GROUPS) {
+                const inGroup = syms.filter(s => macro[s].group === group);
+                if (!inGroup.length) continue;
+                rows.push(`<tr class="macro-head"><td colspan="9">${group}</td></tr>`);
+                for (const s of inGroup) {
+                    const m = macro[s];
+                    const level = m.unit === '%' ? `${num2(m.price)}%` : num2(m.price);
+                    rows.push(`<tr><td>${escapeHTML(m.name)} <span class="muted">${escapeHTML(s)}</span></td>`
+                        + `<td>${level}</td>`
+                        + portfolioLib.PERIODS.map(p => `<td class="${cls(m[p])}">${pct(m[p])}</td>`).join('')
+                        + '</tr>');
+                }
+            }
+            tbody.innerHTML = rows.join('');
+            note.textContent = `${syms.length} series, from the same free endpoint as the prices. `
+                + 'Levels are native — an index is not converted into your display currency, because '
+                + 'it is not money you hold. This is the macro state handed to the Sweep, so the '
+                + 'agent interprets rather than looks up.';
         }
 
         function renderAll() {
@@ -2744,6 +2803,7 @@
             renderTable();
             renderWatchlist();
             renderCalendar();
+            renderMacro();
             renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
@@ -2872,7 +2932,7 @@
             fetch(DATA + 'prices.json' + bust).then(r => r.json()),
             // Optional: an empty or absent watchlist must not take the dashboard down with it.
             fetch(DATA + 'watchlist.json' + bust).then(r => r.ok ? r.json() : []).catch(() => []),
-        ])).then(([{ holdings }, { updated, rates, quotes, nav, performance }, watchlist]) => {
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, nav, performance }, watchlist]) => {
             RATES = rates;
             // Held names are dropped: once you own it, the holdings table is the truth. This
             // keeps a stock that was on the list and then bought from appearing twice.
@@ -2880,7 +2940,7 @@
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar'];
+            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));
@@ -2888,7 +2948,7 @@
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, nav, performance, firstTrade, dim };
+            STATE = { holdings, rates, quotes, macro, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.

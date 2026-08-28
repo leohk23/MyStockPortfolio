@@ -1305,6 +1305,37 @@ const sleep = () => new Promise(r => setTimeout(r, 300)); // ponytail: fixed del
 // Chart benchmarks: Yahoo symbol -> display name. Rebased to % on the client.
 const BENCHMARKS = { '^GSPC': 'S&P 500', '^HSI': 'HSI' };
 
+// Macro state, for the Macro view and for the Sweep to be handed rather than have to fetch.
+// All of these come off the same free chart endpoint the rest of the file uses — no crumb, no key
+// — so the cost of carrying them is one request each per run.
+//
+// Machines for macro STATE, the LLM for macro INTERPRETATION. An agent asked "what is the regime?"
+// should be given these numbers, not spend a third of its session looking them up and possibly
+// getting them wrong. `^VIX` is deliberately absent: it is already a watchlist line, so it comes
+// through the normal quote path and the standing order reads it there.
+// The same period keys `movements()` produces, spelled out here rather than imported: this file
+// does not load portfolio.js, and a macro row only needs the moves, not the whole quote shape.
+const MACRO_PERIODS = ['1d', '7d', '1m', '3m', '6m', '1y', 'ytd'];
+const MACRO = {
+    '^GSPC':    { name: 'S&P 500',      group: 'Equity' },
+    '^IXIC':    { name: 'Nasdaq',       group: 'Equity' },
+    '^HSI':     { name: 'Hang Seng',    group: 'Equity' },
+    '^N225':    { name: 'Nikkei 225',   group: 'Equity' },
+    '^FTSE':    { name: 'FTSE 100',     group: 'Equity' },
+    '^STOXX50E':{ name: 'Euro Stoxx 50', group: 'Equity' },
+    '^TNX':     { name: 'US 10y yield', group: 'Rates', unit: '%' },
+    '^FVX':     { name: 'US 5y yield',  group: 'Rates', unit: '%' },
+    'DX-Y.NYB': { name: 'Dollar index', group: 'Currency' },
+    'GBPUSD=X': { name: 'GBP/USD',      group: 'Currency' },
+    'EURUSD=X': { name: 'EUR/USD',      group: 'Currency' },
+    'USDJPY=X': { name: 'USD/JPY',      group: 'Currency' },
+    'USDHKD=X': { name: 'USD/HKD',      group: 'Currency' },
+    'GC=F':     { name: 'Gold',         group: 'Commodity' },
+    'CL=F':     { name: 'Crude (WTI)',  group: 'Commodity' },
+    'HG=F':     { name: 'Copper',       group: 'Commodity' },
+    'BTC-USD':  { name: 'Bitcoin',      group: 'Commodity' },
+};
+
 async function main() {
     // Held + watched. navHistory() below deliberately re-derives its own holdings-only list:
     // a watched stock must never leak into the NAV series.
@@ -1624,6 +1655,26 @@ async function main() {
         await sleep();
     }
 
+    // Macro state. Best-effort per symbol, exactly like the benchmarks: a macro line that fails
+    // is one blank row in a view, never a broken price file. ^GSPC and ^HSI are already fetched
+    // above as benchmarks, so they are reused rather than requested twice.
+    const macro = {};
+    let macroOk = 0;
+    for (const [sym, meta] of Object.entries(MACRO)) {
+        try {
+            const q = benchQuotes[sym] || await fetchTicker(sym);
+            if (!benchQuotes[sym]) await sleep();
+            macro[sym] = {
+                ...meta, price: q.price, currency: q.currency,
+                ...Object.fromEntries(MACRO_PERIODS.map(p => [p, q[p]])),
+            };
+            macroOk++;
+        } catch (e) {
+            console.error(`skip macro ${sym}: ${e.message}`);
+        }
+    }
+    console.log(`ok   macro state for ${macroOk}/${Object.keys(MACRO).length} series`);
+
     // Per-instrument close history (native currency) for charting a single stock,
     // plus the benchmarks, on one shared calendar. Separate file, loaded by the page
     // only when needed (stock click, benchmark toggle, or long range) so first paint stays lean.
@@ -1815,6 +1866,9 @@ async function main() {
         updated: new Date().toISOString(),
         rates,
         quotes,
+        // Kept out of `quotes` on purpose: an index or a currency pair is not a holding, and
+        // anything that lands in quotes has to be defended against every table that walks it.
+        macro,
         nav,
         performance,
         failed,

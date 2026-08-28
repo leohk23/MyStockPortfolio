@@ -5,12 +5,12 @@ holds the **system** (how it runs) and a record of what has been decided, by who
 
 Append as we go. Every decision gets a status:
 
-| Status | Meaning |
-|---|---|
-| **DECIDED** | Leo said it. Settled unless he reopens it. |
-| **AGREED** | Proposed and accepted. Settled, but a design choice rather than a requirement. |
-| **OPEN** | Still a question. Nothing should be built on it. |
-| **REJECTED** | Considered and dropped. The reason matters more than the verdict. |
+| Status             | Meaning                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| **DECIDED**  | Leo said it. Settled unless he reopens it.                                     |
+| **AGREED**   | Proposed and accepted. Settled, but a design choice rather than a requirement. |
+| **OPEN**     | Still a question. Nothing should be built on it.                               |
+| **REJECTED** | Considered and dropped. The reason matters more than the verdict.              |
 
 Nothing here is built yet. This is the plan, written down before the code so the code can be
 checked against it.
@@ -21,64 +21,64 @@ checked against it.
 
 ### DECIDED — the requirements
 
-| # | Decision | Date |
-|---|---|---|
-| D1 | A separate pot, funded **£250/month**, managed on AI recommendations, run in parallel to the human book. | 26 Aug 2026 |
-| D2 | **Execution is manual.** The system produces instructions; Leo places the orders. Nothing automated ever touches a broker. | 26 Aug 2026 |
-| D3 | **No metered API spend.** The LLM runs through an existing subscription on the always-on PC, not a pay-per-token key. | 26 Aug 2026 |
-| D4 | This dashboard must **track the pot's performance separately**, alongside the human-managed book. | 26 Aug 2026 |
-| D5 | The universe is unrestricted — new names *or* existing holdings. | 26 Aug 2026 |
-| D6 | **The monthly £250 is a funding cadence, not a decision cadence.** Recommendations must be timely and event-driven, produced when there is a reason, not on a calendar. | 27 Aug 2026 |
-| D7 | Decisions get documented as they are made — this file. | 27 Aug 2026 |
-| D8 | Articles Leo reads are an input to the Sweep. Kept in [pot/reading.md](pot/reading.md), one line each, with **why it caught his attention** — the part an agent could not have generated. | 27 Aug 2026 |
-| D9 | **Standing orders exist**: hard rules that fire without any LLM judgement. First one — when `^VIX` closes at or above 40, buy the S&P 500. | 27 Aug 2026 |
-| D10 | **Thesis review is weekly**, and sweeps every open thesis rather than waiting for the review date each proposal named. | 28 Aug 2026 |
-| D11 | The VIX order takes **no re-arm** — it fires on every qualifying close, buys with all available cash (**VUAG**), outranks the §4 position limits, and alerts when the pot is empty rather than queueing. | 28 Aug 2026 |
-| D12 | What gets recorded per proposal is **provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
-| D13 | **Leo names the ticker for a Deep dive.** The Sweep proposes, he picks, the agent researches what it is given — it may argue against the pick in §6 but may not substitute another. | 28 Aug 2026 |
+| #   | Decision                                                                                                                                                                                                                                                    | Date        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| D1  | A separate pot, funded**£250/month**, managed on AI recommendations, run in parallel to the human book.                                                                                                                                              | 26 Aug 2026 |
+| D2  | **Execution is manual.** The system produces instructions; Leo places the orders. Nothing automated ever touches a broker.                                                                                                                            | 26 Aug 2026 |
+| D3  | **No metered API spend.** The LLM runs through an existing subscription on the always-on PC, not a pay-per-token key.                                                                                                                                 | 26 Aug 2026 |
+| D4  | This dashboard must**track the pot's performance separately**, alongside the human-managed book.                                                                                                                                                      | 26 Aug 2026 |
+| D5  | The universe is unrestricted — new names*or* existing holdings.                                                                                                                                                                                          | 26 Aug 2026 |
+| D6  | **The monthly £250 is a funding cadence, not a decision cadence.** Recommendations must be timely and event-driven, produced when there is a reason, not on a calendar.                                                                              | 27 Aug 2026 |
+| D7  | Decisions get documented as they are made — this file.                                                                                                                                                                                                     | 27 Aug 2026 |
+| D8  | Articles Leo reads are an input to the Sweep. Kept in[pot/reading.md](pot/reading.md), one line each, with **why it caught his attention** — the part an agent could not have generated.                                                              | 27 Aug 2026 |
+| D9  | **Standing orders exist**: hard rules that fire without any LLM judgement. First one — when `^VIX` closes at or above 40, buy the S&P 500.                                                                                                         | 27 Aug 2026 |
+| D10 | **Thesis review is weekly**, and sweeps every open thesis rather than waiting for the review date each proposal named.                                                                                                                                | 28 Aug 2026 |
+| D11 | The VIX order takes**no re-arm** — it fires on every qualifying close, buys with all available cash (**VUAG**), outranks the §4 position limits, and alerts when the pot is empty rather than queueing.                                       | 28 Aug 2026 |
+| D12 | What gets recorded per proposal is**provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
+| D13 | **Leo names the ticker for a Deep dive.** The Sweep proposes, he picks, the agent researches what it is given — it may argue against the pick in §6 but may not substitute another.                                                                 | 28 Aug 2026 |
 
 ### AGREED — the design
 
-| # | Decision | Rationale |
-|---|---|---|
-| A1 | **Four lanes** — Scan (free, continuous), Sweep (LLM, weekly), Review (LLM, weekly), Deep dive (LLM, on demand). See §2. | A single lane cannot do both "never miss a known thing" and "discover an unknown thing". |
-| A2 | **The Sweep produces universe, not orders.** Its output is watchlist candidates with a one-line reason; only a Deep dive may produce an executable instruction. | Puts the noisy generative step where its worst case is a cluttered watchlist rather than a bad trade. It also enforces patience mechanically: a name found mid-hype is *added*, and the buy trigger may not fire for months. |
-| A3 | **Every proposed name enters `watchlist.json`,** so CI fetches its real fundamentals within the hour and the agent's claimed figures can be contradicted by an independent source before any money moves. | The repo already owns a fact-checker for its own LLM. Not using it would be perverse. |
-| A4 | The pot's return is measured **including idle cash**. | Cash accumulating between decisions is a position. Excluding it would rig the comparison against a fully-invested book. |
-| A5 | Scored **three ways** — pot TWR, human book TWR, a passive index — over the pot's own window. | Two is a trap: if the pot beats the human book and both lose to the index, that is the finding. |
-| ~~A6~~ | ~~A standing order needs **re-arm logic**~~ — **superseded by D11**, which takes no re-arm. The measurement stands and is why the question was put; the answer went the other way. | Measured, not assumed: `^VIX` has closed ≥ 40 on **208 days** since 1990. A per-day rule would have bought 125 times through 2008 alone and emptied the pot inside one episode. See §6. |
-| A7 | The Scan may emit an **instruction**, not only a signal, when a standing order's condition is met. | A standing order has no judgement in it by definition, so routing it through an LLM adds latency and a chance to argue with a rule already decided. |
+| #       | Decision                                                                                                                                                                                                          | Rationale                                                                                                                                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1      | **Four lanes** — Scan (free, continuous), Sweep (LLM, weekly), Review (LLM, weekly), Deep dive (LLM, on demand). See §2.                                                                                  | A single lane cannot do both "never miss a known thing" and "discover an unknown thing".                                                                                                                                      |
+| A2      | **The Sweep produces universe, not orders.** Its output is watchlist candidates with a one-line reason; only a Deep dive may produce an executable instruction.                                             | Puts the noisy generative step where its worst case is a cluttered watchlist rather than a bad trade. It also enforces patience mechanically: a name found mid-hype is*added*, and the buy trigger may not fire for months. |
+| A3      | **Every proposed name enters `watchlist.json`,** so CI fetches its real fundamentals within the hour and the agent's claimed figures can be contradicted by an independent source before any money moves. | The repo already owns a fact-checker for its own LLM. Not using it would be perverse.                                                                                                                                         |
+| A4      | The pot's return is measured**including idle cash**.                                                                                                                                                        | Cash accumulating between decisions is a position. Excluding it would rig the comparison against a fully-invested book.                                                                                                       |
+| A5      | Scored**three ways** — pot TWR, human book TWR, a passive index — over the pot's own window.                                                                                                              | Two is a trap: if the pot beats the human book and both lose to the index, that is the finding.                                                                                                                               |
+| ~~A6~~ | ~~A standing order needs **re-arm logic**~~ — **superseded by D11**, which takes no re-arm. The measurement stands and is why the question was put; the answer went the other way.                  | Measured, not assumed:`^VIX` has closed ≥ 40 on **208 days** since 1990. A per-day rule would have bought 125 times through 2008 alone and emptied the pot inside one episode. See §6.                              |
+| A7      | The Scan may emit an**instruction**, not only a signal, when a standing order's condition is met.                                                                                                           | A standing order has no judgement in it by definition, so routing it through an LLM adds latency and a chance to argue with a rule already decided.                                                                           |
 
 ### OPEN
 
-| # | Question | Blocking |
-|---|---|---|
-| ~~O1~~ | ~~All 31 answers in strategy.md~~ — **closed 28 Aug 2026**, all 34 answered. | — |
-| O2 | Broker and wrapper. Suggested T212 inside an ISA — commission-free, fractional, and only 7 of 335 existing trades sit there, so it is nearly a clean slate. | Pot accounting (§5). |
-| ~~O3~~ | ~~How the pot's trades are tagged~~ — **closed**: §10 rules out identifying them by account, so the Tradelog gains a `Pot` column. | — |
-| ~~O4~~ | ~~Sweep cadence~~ — **closed 28 Aug 2026**: weekly, alongside the Review. | — |
-| O5 | Whether the Deep dive drafts automatically or waits to be asked. See §4.4 — the recommendation is auto-draft, human-read. | Scheduling. |
-| ~~O6~~ | ~~The VIX standing order's five parameters~~ — **closed 28 Aug 2026**, see D11. | — |
-| O7 | Whether the Sweep can reach the web under `--sandbox workspace-write`. Untested — the smoke run needed no network. | The Sweep lane. It may decide which agent runs it. |
+| #       | Question                                                                                                                                                     | Blocking                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| ~~O1~~ | ~~All 31 answers in strategy.md~~ — **closed 28 Aug 2026**, all 34 answered.                                                                         | —                                                 |
+| O2      | Broker and wrapper. Suggested T212 inside an ISA — commission-free, fractional, and only 7 of 335 existing trades sit there, so it is nearly a clean slate. | Pot accounting (§5).                              |
+| ~~O3~~ | ~~How the pot's trades are tagged~~ — **closed**: §10 rules out identifying them by account, so the Tradelog gains a `Pot` column.                | —                                                 |
+| ~~O4~~ | ~~Sweep cadence~~ — **closed 28 Aug 2026**: weekly, alongside the Review.                                                                            | —                                                 |
+| O5      | Whether the Deep dive drafts automatically or waits to be asked. See §4.4 — the recommendation is auto-draft, human-read.                                  | Scheduling.                                        |
+| ~~O6~~ | ~~The VIX standing order's five parameters~~ — **closed 28 Aug 2026**, see D11.                                                                      | —                                                 |
+| O7      | Whether the Sweep can reach the web under`--sandbox workspace-write`. Untested — the smoke run needed no network.                                         | The Sweep lane. It may decide which agent runs it. |
 
 ### REJECTED
 
-| # | Rejected | Why |
-|---|---|---|
-| R1 | A monthly "spend this month's £250" cycle. | Superseded by D6. Forcing money out on a calendar buys the least-bad idea available rather than a good one. |
-| R2 | LLM calls inside GitHub Actions. | Violates D3 — CI has no subscription auth, only a metered key would work there. CI stays LLM-free and deterministic, as it is today. |
-| R3 | Comparing the pot to the human book alone. | Superseded by A5. |
+| #  | Rejected                                    | Why                                                                                                                                   |
+| -- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| R1 | A monthly "spend this month's £250" cycle. | Superseded by D6. Forcing money out on a calendar buys the least-bad idea available rather than a good one.                           |
+| R2 | LLM calls inside GitHub Actions.            | Violates D3 — CI has no subscription auth, only a metered key would work there. CI stays LLM-free and deterministic, as it is today. |
+| R3 | Comparing the pot to the human book alone.  | Superseded by A5.                                                                                                                     |
 
 ---
 
 ## 2. The lanes
 
-| Lane | Job | Universe | Cost | Trigger |
-|---|---|---|---|---|
-| **Scan** | never miss a known thing | closed — the ~79 tickers already fetched | **free** | every CI run |
-| **Sweep** | read the world, find candidates | open | one LLM session | weekly |
-| **Review** | re-read every open thesis against its falsifier | what the pot holds | one LLM session | weekly |
-| **Deep dive** | research one name → executable order | a single name | one LLM session | Scan or Sweep fires |
+| Lane                | Job                                             | Universe                                  | Cost            | Trigger             |
+| ------------------- | ----------------------------------------------- | ----------------------------------------- | --------------- | ------------------- |
+| **Scan**      | never miss a known thing                        | closed — the ~79 tickers already fetched | **free**  | every CI run        |
+| **Sweep**     | read the world, find candidates                 | open                                      | one LLM session | weekly              |
+| **Review**    | re-read every open thesis against its falsifier | what the pot holds                        | one LLM session | weekly              |
+| **Deep dive** | research one name → executable order           | a single name                             | one LLM session | Scan or Sweep fires |
 
 Sweep and Review are both weekly, which is ~104 sessions a year — negligible against a subscription
 at the ~2 minutes each measured in §4. **Worth running as one scheduled session with two ordered
@@ -129,10 +129,10 @@ the only question is whether a human types the prompt or a scheduler does.
 
 **Verified on this machine, 27 Aug 2026:**
 
-| | Path | Non-interactive form |
-|---|---|---|
-| Claude Code | `C:\Users\leohk\.local\bin\claude` | `claude -p "<prompt>"` — `--print` runs and exits. Also `--permission-mode`, `--output-format`. |
-| Codex | `C:\Users\leohk\AppData\Roaming\npm\codex` | `codex exec "<prompt>"` — documented as "Run Codex non-interactively". Also `--sandbox`, `--cd`, `--json`, `--output-last-message <FILE>`. |
+|             | Path                                         | Non-interactive form                                                                                                                                  |
+| ----------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | `C:\Users\leohk\.local\bin\claude`         | `claude -p "<prompt>"` — `--print` runs and exits. Also `--permission-mode`, `--output-format`.                                              |
+| Codex       | `C:\Users\leohk\AppData\Roaming\npm\codex` | `codex exec "<prompt>"` — documented as "Run Codex non-interactively". Also `--sandbox`, `--cd`, `--json`, `--output-last-message <FILE>`. |
 
 Both authenticate against a **subscription**, which satisfies D3. Note the consequence: a scheduled
 run draws on the *same allowance* as interactive use. A weekly Sweep is negligible; a daily one
@@ -209,23 +209,52 @@ instructions provided"* — already draws this line in the right place.
 
 ---
 
-## 5. What has to be built
+## 5. What is built
 
-Nothing yet. In dependency order:
+Was a plan; now mostly a record. Everything ticked below runs today.
 
-| Phase | What | Depends on |
+| | What | Command |
 |---|---|---|
-| 1 | Answers in [strategy.md](strategy.md) | Leo |
-| 2 | Pot accounting: trade tagging, **cash balance**, a third cohort, the three-way comparison | O2, O3 |
-| 3 | `npm run signals` — the free Scan, plus `signals.json` | O1 |
-| 4 | `pot/brief-sweep.md` and `pot/brief-deepdive.md`, agent-agnostic | O1 |
-| 5 | Scheduled tasks and the publish script | 3, 4 |
-| 6 | The "Pot" view on the dashboard | 2, 3 |
+| ✅ | **The rules** — 34 questions answered | [strategy.md](strategy.md) |
+| ✅ | **Scan** — every `[auto]` rule over data CI already fetches. Free, no LLM | `npm run signals` |
+| ✅ | **Macro state** — 17 index, rate, currency and commodity series, plus a **Macro view** beside Calendar | part of `npm run fetch` |
+| ✅ | **Sweep brief** — discovery. Produces candidates, never orders | `pot/brief-sweep.md` |
+| ✅ | **Deep dive brief** — the only lane that may produce an order. Leo names the ticker (D13) | `pot/brief-deepdive.md` |
+| ✅ | **Unattended harness** — allowlists what an agent may commit, logs every run | `pot/run-lane.ps1` |
+| ✅ | **Reporting** — entry point, dated report per run, cost ledger, readable transcripts | `npm run pot-report` |
+| ⬜ | **Pot accounting** — cash, the Tradelog `Pot` column, a third cohort, the three-way TWR | — |
+| ⬜ | **Scheduling** — Task Scheduler entries for the weekly Sweep and Review | — |
+| ⬜ | **Pot view on the dashboard** — proposals and open theses beside the other views | — |
 
-The only genuinely new machinery is **cash**. `tradeFlow` computes a trade's cash flow for TWR, but
-nothing tracks a balance — and under D6 the pot will hold cash for months at a time.
+### What reporting produces
 
----
+`npm run pot-report` writes four things, all from the Codex session transcripts rather than from
+anything an agent claimed about itself:
+
+- **`pot/SUMMARY.md`** — the entry point. What needs a decision, the pot's state, the latest run of
+  each lane, cost so far, and links to everything else. A bookmark that never moves.
+- **`pot/summaries/YYYY-MM-DD-HHMM.md`** — the same report, dated, one per run, so the history is a
+  history and not the last one only.
+- **`pot/runs.md`** — the ledger: model, wall time, fresh vs cached input, output and total, per run.
+- **`pot/logs/*.md`** — the transcripts made readable. One deep dive renders from **1,057KB of JSONL
+  down to 8KB**: what it was asked, all 17 search queries with the URLs they returned, every command
+  with its exit code and duration, the files written, and what it concluded. The raw JSONL stays
+  where Codex put it, for when the detail matters.
+
+### Cost, measured rather than estimated
+
+Six runs so far: **16m46s wall, 4,698,617 tokens, of which only 449,905 were fresh input** — the
+rest served from cache. **Cash cost £0**: Codex authenticates against a ChatGPT subscription, so
+nothing is billed per token; what a run spends is subscription allowance and wall-clock time.
+
+The token columns exist for D12. If this ever moves to metered credits, those are the numbers that
+would be charged, and runs either side of the switch stay comparable.
+
+The model is **`gpt-5.6-sol`** at reasoning effort *high* — read from `~/.codex/config.toml` and
+confirmed in every transcript. A proposal header reading "GPT-5 Codex" is the agent describing
+itself, which is not the same thing, and every header so far says "tokens: unknown" because a model
+cannot see its own accounting. That is exactly why the ledger reads the log instead.
+
 
 ## 6. Evidence recorded so far
 

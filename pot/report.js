@@ -1,26 +1,28 @@
 #!/usr/bin/env node
-// `npm run pot-report` — what every lane did, and what it cost.
+// `npm run pot-report` — everything you need after a run, in three files.
 //
-// D12: judgement is measured by the return, so what gets recorded here is PROVENANCE. If the
-// model changes, or this ever moves to metered API credits, a 24-month record spanning two
-// systems has to be separable afterwards — and it only can be if the stamp was taken at the time.
+//   pot/SUMMARY.md          the entry point. A bookmark that never moves.
+//   pot/summaries/*.md    one dated report per run — the record that never overwrites.
+//   pot/runs.md           the ledger: what each lane did, and what it cost.
+//   pot/logs/*.md         readable transcripts, rendered from Codex JSONL.
 //
-// Two lanes, two very different sources:
-//   Scan   — signals.json. Free, deterministic, no session, no tokens.
-//   Agent  — Codex writes a full JSONL transcript per session under ~/.codex/sessions/. That file
-//            is the authority on model and token usage; the agent's own header is NOT, because a
-//            model cannot see its own accounting (every proposal so far says "tokens: unknown").
-//
-// Writes pot/runs.md, newest first, and leaves the transcripts where they are — they are large
-// (~1MB a session) and belong outside the repo.
+// D12: judgement is measured by the return, so what is recorded here is PROVENANCE. Every figure
+// comes from the session transcripts under ~/.codex/sessions/, never from what an agent said about
+// itself — a model cannot see its own token accounting, which is why every proposal header so far
+// reads "tokens: unknown" while the log has it to the token.
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const SESSIONS = path.join(os.homedir(), '.codex', 'sessions');
+const LOGS = 'pot/logs';
 
-// Every rollout-*.jsonl under the sessions tree, newest first.
+const fmt = n => n == null ? '–' : n.toLocaleString();
+const mmss = s => s == null ? '–' : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
+const when = t => (t || '').slice(0, 16).replace('T', ' ');
+const read = (f, d = null) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
+
 function sessionFiles(root, out = []) {
     let entries;
     try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return out; }
@@ -32,115 +34,220 @@ function sessionFiles(root, out = []) {
     return out;
 }
 
-// Pull one run's facts out of a transcript. Everything here is read from the log rather than
-// from anything the agent said about itself.
+const parseJsonl = file => fs.readFileSync(file, 'utf8').trim().split('\n')
+    .map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+
+// One run's facts, all read from the log rather than asserted by the agent.
 function summarise(file) {
     let lines;
-    try {
-        lines = fs.readFileSync(file, 'utf8').trim().split('\n')
-            .map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-    } catch { return null; }
+    try { lines = parseJsonl(file); } catch { return null; }
     if (!lines.length) return null;
-
     const blob = JSON.stringify(lines);
-    const started = lines[0].timestamp || null;
-    const ended = lines[lines.length - 1].timestamp || null;
-    // The model as the runtime recorded it, not as the agent described itself.
-    const model = (blob.match(/"model":"([^"]+)"/) || [])[1] || null;
-    // Cumulative usage is the last total_token_usage in the file.
+    const started = lines[0].timestamp || null, ended = lines[lines.length - 1].timestamp || null;
     const totals = [...blob.matchAll(/"total_token_usage":(\{[^}]*\})/g)].pop();
-    const usage = totals ? JSON.parse(totals[1]) : null;
-    // Which brief was this? The instruction names it.
     const brief = (blob.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1] || null;
-    const cwdMatch = blob.match(/"cwd":"([^"]+)"/);
-
     return {
-        file, started, ended, model, brief,
+        file, started, ended, brief, lines,
         lane: brief ? brief.replace(/-/g, ' ') : 'unknown',
+        model: (blob.match(/"model":"([^"]+)"/) || [])[1] || null,
         seconds: started && ended ? Math.round((Date.parse(ended) - Date.parse(started)) / 1000) : null,
-        usage,
-        repo: cwdMatch ? cwdMatch[1].includes('MyStockPortfolio') : false,
+        usage: totals ? JSON.parse(totals[1]) : null,
+        repo: /MyStockPortfolio/.test((blob.match(/"cwd":"([^"]+)"/) || [])[1] || ''),
     };
 }
 
-const fmt = n => n == null ? '–' : n.toLocaleString();
-const mmss = s => s == null ? '–' : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
+// ---------------------------------------------------------------- readable transcript
+//
+// The raw JSONL is ~1MB and mostly encrypted reasoning blobs and whole-file dumps. What is worth
+// reading is the shape of the run: what it was asked, what it searched for, what it ran, what it
+// wrote, what it concluded. Output is truncated on purpose — this is a record to skim, and the
+// JSONL is still there when the detail matters.
+const clip = (s, n) => { s = String(s ?? '').replace(/\r/g, '').trim(); return s.length > n ? s.slice(0, n) + ' …' : s; };
+
+function renderTranscript(run) {
+    const items = run.lines.filter(l => l.payload?.type === 'item_completed').map(l => l.payload.item);
+    const out = [
+        `# ${run.lane} — ${when(run.started)}`, '',
+        `\`${run.model}\` · ${mmss(run.seconds)} · ${fmt(run.usage?.total_tokens)} tokens`,
+        `· [${path.basename(run.file)}](${run.file.replace(/\\/g, '/')}) (raw)`, '',
+    ];
+    let searches = 0, commands = 0;
+    for (const it of items) {
+        if (it.type === 'UserMessage') {
+            out.push('## Asked', '', '> ' + clip(it.content?.map(c => c.text).join(' '), 400), '');
+        } else if (it.type === 'AgentMessage') {
+            out.push('## Said', '', clip(it.content?.map(c => c.text).join('\n'), 1600), '');
+        } else if (it.type === 'Extension' && it.kind === 'web.search') {
+            searches++;
+            // One Extension item can carry several queries; `query` is a joined summary and is
+            // sometimes null, so the authoritative list is action.queries.
+            const queries = it.action?.queries?.length ? it.action.queries : (it.query ? [it.query] : []);
+            const urls = [...new Set((it.results || []).map(r => r.url || r.domain).filter(Boolean))].slice(0, 5);
+            for (const q of queries) out.push(`**searched** \`${clip(q, 150)}\``);
+            for (const u of urls) out.push(`  - ${u}`);
+            out.push('');
+        } else if (it.type === 'CommandExecution') {
+            commands++;
+            const cmd = Array.isArray(it.command) ? it.command[it.command.length - 1] : it.command;
+            out.push('```', clip(cmd, 300), `→ exit ${it.exit_code}${it.duration?.secs != null ? ` (${it.duration.secs}s)` : ''}`, '```', '');
+        } else if (it.type === 'FileChange') {
+            for (const [f, c] of Object.entries(it.changes || {})) {
+                out.push(`**${c.type}** \`${f.split(/[\\/]/).slice(-2).join('/')}\``
+                    + (c.content ? ` — ${c.content.split('\n').length} lines` : ''), '');
+            }
+        }
+    }
+    out.splice(4, 0, `${searches} web search${searches === 1 ? '' : 'es'} · ${commands} command${commands === 1 ? '' : 's'}`, '');
+    return out.join('\n');
+}
+
+// ---------------------------------------------------------------- build
 
 function build() {
+    fs.mkdirSync(LOGS, { recursive: true });
     const runs = sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief);
     runs.sort((a, b) => (b.started || '').localeCompare(a.started || ''));
 
-    const sig = (() => { try { return JSON.parse(fs.readFileSync('signals.json', 'utf8')); } catch { return null; } })();
+    // Readable transcript per run, named so it sorts with the run.
+    for (const r of runs) {
+        r.log = `${LOGS}/${(r.started || '').slice(0, 19).replace(/[:T]/g, '-')}-${r.brief}.md`;
+        fs.writeFileSync(r.log, renderTranscript(r));
+    }
 
-    const rows = runs.map(r => {
-        const u = r.usage || {};
-        // Fresh input is what a metered API would actually bill; cached reads are the rest.
-        const fresh = (u.input_tokens ?? 0) - (u.cached_input_tokens ?? 0);
-        return `| ${(r.started || '').slice(0, 16).replace('T', ' ')} | ${r.lane} | \`${r.model || '?'}\` `
-            + `| ${mmss(r.seconds)} | ${fmt(fresh)} | ${fmt(u.cached_input_tokens)} | ${fmt(u.output_tokens)} `
-            + `| ${fmt(u.total_tokens)} |`;
-    });
+    const sig = read('signals.json');
+    const pos = read('pot/positions.json', { cashGBP: 0, holdings: {} });
+    const newest = dir => { try { return fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort().pop(); } catch { return null; } };
+    const sweep = newest('pot/sweeps'), proposals = (() => {
+        try { return fs.readdirSync('pot/proposals').filter(f => f.endsWith('.md')).sort().reverse(); } catch { return []; }
+    })();
+    const lastOf = lane => runs.find(r => r.brief === lane);
 
+    const fresh = u => (u?.input_tokens ?? 0) - (u?.cached_input_tokens ?? 0);
     const totalTokens = runs.reduce((a, r) => a + (r.usage?.total_tokens || 0), 0);
-    const totalFresh = runs.reduce((a, r) => a + ((r.usage?.input_tokens ?? 0) - (r.usage?.cached_input_tokens ?? 0)), 0);
+    const totalFresh = runs.reduce((a, r) => a + fresh(r.usage), 0);
     const totalSecs = runs.reduce((a, r) => a + (r.seconds || 0), 0);
 
-    const md = `# Run ledger
+    // ---- the ledger
+    fs.writeFileSync('pot/runs.md', `# Run ledger
 
-Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} by \`npm run pot-report\`.
-Every figure is read from the Codex session transcripts under \`~/.codex/sessions/\`, never from
-what an agent said about itself — a model cannot see its own token accounting, which is why every
-proposal header so far reads "tokens: unknown".
+Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from the Codex session
+transcripts under \`~/.codex/sessions/\` — never from what an agent said about itself.
 
 ## Cost
 
-**Cash cost so far: £0.** Codex is authenticated against a ChatGPT subscription
-(\`codex login status\` → "Logged in using ChatGPT"), so there is no per-token charge. What a run
-actually spends is subscription allowance and wall-clock time.
+**Cash cost: £0.** Codex is authenticated against a ChatGPT subscription (\`codex login status\` →
+"Logged in using ChatGPT"), so nothing is billed per token. What a run spends is subscription
+allowance and wall-clock time.
 
-The token columns are kept anyway, and they are the point of D12: if this ever moves to metered
-API credits, these are the numbers that would be billed, and a run from before the switch stays
-comparable with one after it. **Fresh** is input that was not served from cache — the part a
-metered call would charge full rate for.
+The token columns are kept because that is D12's whole purpose: if this ever moves to metered API
+credits these are the numbers that would be charged, and runs either side of the switch stay
+comparable. **Fresh** is input not served from cache — the part a metered call charges full rate for.
 
-| total runs | wall time | fresh input | total tokens |
-|---|---|---|---|
+| runs | wall time | fresh input | total tokens |
+|---|---|---:|---:|
 | ${runs.length} | ${mmss(totalSecs)} | ${fmt(totalFresh)} | ${fmt(totalTokens)} |
 
-## Agent lanes
-
-| started | lane | model | wall | fresh in | cached in | out | total |
-|---|---|---|---|---:|---:|---:|---:|
-${rows.join('\n') || '| – | no sessions found | | | | | | |'}
+| started | lane | model | wall | fresh in | cached in | out | total | transcript |
+|---|---|---|---|---:|---:|---:|---:|---|
+${runs.map(r => `| ${when(r.started)} | ${r.lane} | \`${r.model || '?'}\` | ${mmss(r.seconds)} `
+        + `| ${fmt(fresh(r.usage))} | ${fmt(r.usage?.cached_input_tokens)} | ${fmt(r.usage?.output_tokens)} `
+        + `| ${fmt(r.usage?.total_tokens)} | [read](${r.log.replace('pot/','')}) |`).join('\n') || '| – | none yet | | | | | | | |'}
 
 ## Scan lane
 
-Free, deterministic, no session and no tokens. It runs on every CI pass; the figures below are
-from the last one recorded in \`signals.json\`.
+Free, deterministic, no session and no tokens — it runs on every CI pass.
 
 ${sig ? `| last run | prices as of | fired | instructions | quiet | blocked |
 |---|---|---:|---:|---:|---:|
-| ${(sig.generated || '').slice(0, 16).replace('T', ' ')} | ${(sig.pricesAt || '').slice(0, 16).replace('T', ' ')} | ${sig.fired?.length ?? 0} | ${sig.instructions?.length ?? 0} | ${sig.quiet?.length ?? 0} | ${sig.blocked?.length ?? 0} |`
+| ${when(sig.generated)} | ${when(sig.pricesAt)} | ${sig.fired?.length ?? 0} | ${sig.instructions?.length ?? 0} | ${sig.quiet?.length ?? 0} | ${sig.blocked?.length ?? 0} |`
         : '_No `signals.json` yet — run `npm run signals`._'}
 
-## Transcripts
-
-Full chat logs live outside the repo, one JSONL per session, about 1MB each:
+## Raw transcripts
 
 \`\`\`
-${SESSIONS.replace(/\\/g, '\\\\')}\\<year>\\<month>\\<day>\\rollout-*.jsonl
+${SESSIONS}\\<year>\\<month>\\<day>\\rollout-*.jsonl
 \`\`\`
 
-\`codex resume\` reopens one interactively (\`--last\` for the most recent). They are deliberately
-not committed: they are large, they carry full file contents, and the ledger above is the part
-worth keeping.
+About 1MB each, full detail including whole file contents. \`codex resume --last\` reopens the most
+recent interactively. Not committed: large, and the rendered logs above are the readable part.
+`);
+
+    // ---- the entry point
+    const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
+    const fired = sig?.fired || [];
+    const byRule = fired.reduce((a, f) => ((a[f.rule] = (a[f.rule] || 0) + 1), a), {});
+
+    // Each run gets its own dated file, so the history is a history and not the last one only.
+    // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
+    // moves, over a record that never overwrites.
+    fs.mkdirSync('pot/summaries', { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const dated = 'pot/summaries/' + stamp + '.md';
+    const body = `# AI pot — ${when(new Date().toISOString())}
+
+_Generated ${when(new Date().toISOString())} by \`npm run pot-report\`. This is the entry point;
+everything else hangs off it._
+
+## Needs you
+
+${sig?.instructions?.length
+        ? sig.instructions.map(i => `- **STANDING ORDER FIRED** — ${i.action} (${i.rule}, VIX ${i.close})`).join('\n')
+        : '- No standing order has fired.'}
+${openProposals.length
+        ? openProposals.map(f => `- **Proposal awaiting your decision** — [${f.replace(/\.md$/, '')}](proposals/${f})`).join('\n')
+        : '- No proposal is waiting.'}
+
+## The pot
+
+| cash | holdings | open theses | contributed |
+|---:|---:|---:|---:|
+| £${(pos.cashGBP ?? 0).toLocaleString()} | ${Object.keys(pos.holdings || {}).length} | ${(pos.proposals || []).length} | £${((pos.contributions || []).reduce((a, c) => a + (c.amountGBP || 0), 0)).toLocaleString()} |
+
+## Latest by lane
+
+| lane | last run | what it produced | transcript |
+|---|---|---|---|
+| **Scan** (free) | ${when(sig?.generated) || '–'} | ${fired.length} fired${Object.keys(byRule).length ? ' — ' + Object.entries(byRule).map(([r, n]) => `${r} ×${n}`).join(', ') : ''} | _no session_ |
+| **Sweep** | ${when(lastOf('sweep')?.started) || '–'} | ${sweep ? `[${sweep.replace(/\.md$/, '')}](sweeps/${sweep})` : '–'} | ${lastOf('sweep') ? `[read](${lastOf('sweep').log.replace('pot/','')})` : '–'} |
+| **Deep dive** | ${when(lastOf('deepdive')?.started) || '–'} | ${proposals[0] ? `[${proposals[0].replace(/\.md$/, '')}](proposals/${proposals[0]})` : '–'} | ${lastOf('deepdive') ? `[read](${lastOf('deepdive').log.replace('pot/','')})` : '–'} |
+
+${sig?.blocked?.length ? `**Blocked:** ${sig.blocked.map(b => `${b.rule} (${b.why})`).join('; ')}\n` : ''}
+## Cost so far
+
+${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalFresh)} fresh input tokens ·
+**£0 cash** (subscription, not metered). Full breakdown: **[runs.md](runs.md)**.
+
+## Everything else
+
+| | |
+|---|---|
+| The rules — what to buy, what to sell | [strategy.md](../strategy.md) |
+| The system — decisions, lanes, why | [pot-design.md](../pot-design.md) |
+| Run ledger and costs | [runs.md](runs.md) |
+| Readable transcripts | [logs/](logs/) |
+| Articles you kept, as Sweep input | [reading.md](reading.md) |
+| Raw scan output | [signals.json](../signals.json) |
 `;
-    fs.writeFileSync('pot/runs.md', md);
-    console.log(`wrote pot/runs.md — ${runs.length} agent run(s), ${fmt(totalTokens)} tokens, ${mmss(totalSecs)} wall time`);
-    for (const r of runs.slice(0, 8)) {
-        console.log(`  ${(r.started || '').slice(0, 16).replace('T', ' ')}  ${r.lane.padEnd(10)} ${(r.model || '?').padEnd(13)} ${mmss(r.seconds).padStart(7)}  ${fmt(r.usage?.total_tokens).padStart(10)} tokens`);
-    }
+
+    fs.writeFileSync(dated, body);
+
+    // The stable entry point: a bookmark that never moves, pointing at the record that never
+    // overwrites. It carries the same content as the newest dated file, plus the trail behind it —
+    // so opening SUMMARY.md always shows the current state and how it got there.
+    const past = fs.readdirSync('pot/summaries').filter(f => f.endsWith('.md')).sort().reverse();
+    fs.writeFileSync('pot/SUMMARY.md', body + `
+---
+
+## Previous runs
+
+${past.slice(0, 20).map((f, i) => `- ${i === 0 ? '**' : ''}[${f.replace(/\.md$/, '').replace(/-(\d\d)-(\d\d)$/, ' $1:$2')}](summaries/${f})${i === 0 ? '** — this one' : ''}`).join('\n')}
+${past.length > 20 ? `\n_…and ${past.length - 20} older, in [summaries/](summaries/)._` : ''}
+`);
+
+    console.log(`wrote ${dated}, pot/SUMMARY.md, pot/runs.md and ${runs.length} transcript(s)`);
+    console.log(`  ${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalTokens)} tokens · £0`);
+    if (openProposals.length) console.log(`  ${openProposals.length} proposal(s) awaiting a decision`);
 }
 
 if (require.main === module) build();
-module.exports = { summarise, sessionFiles };
+module.exports = { summarise, sessionFiles, renderTranscript };
