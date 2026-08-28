@@ -40,11 +40,10 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 9.2  | Recorded per proposal                    | provenance — model, lane, tokens, wall time (not a score)                                                           |
 | 9.3  | Experiment reviewed                      | at 24 months                                                                                                        |
 | 10   | Broker                                   | unconstrained — so the Tradelog gains a**`Pot` column**                                                    |
-| 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
+| 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, **no re-arm — fires every qualifying close**, overrides §4; alert if the pot is empty |
 | 11.2 | Other standing orders                    | none for now                                                                                                        |
 
-**Still open:** one item — **§11.1.a**, the re-arm on the VIX standing order. Its three answers are
-individually settled but combine into something none of them states; see the follow-up there.
+**Nothing open.** All 34 questions answered, 28 Aug 2026.
 
 Each question was asked with a suggested default drawn from what the existing book actually does.
 Those suggestions are kept as `> quoted` history rather than deleted: where an answer departs from
@@ -555,7 +554,15 @@ a cap on total VIX-triggered spend per episode, a modest re-arm (one close below
 few times per episode rather than daily), or rate-limiting the *alert* to weekly while VIX stays
 above 40 — which keeps the behaviour and drops 125 prompts to 26.
 
-**A** — *unanswered*
+**A** — No limit, for now. It fires on every qualifying close.
+
+**Decided.** The consequence above is accepted rather than overlooked: in a 2008-shaped drawdown
+this is one purchase followed by ~124 prompts to add cash. Recorded here so that if it ever runs
+for real, what was known when the rule was written is on the page.
+
+One implementation note that changes nothing about the rule: those prompts should arrive **batched
+in the existing digest**, not as 124 separate alerts. Same decision surface, same frequency of
+being asked — just not 124 notifications.
 
 > **Suggested: ten consecutive closes below 25.** That is the definition the backtest used, and it
 > is what turns 208 firing days into 10.

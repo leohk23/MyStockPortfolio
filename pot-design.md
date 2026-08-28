@@ -31,30 +31,33 @@ checked against it.
 | D6 | **The monthly £250 is a funding cadence, not a decision cadence.** Recommendations must be timely and event-driven, produced when there is a reason, not on a calendar. | 27 Aug 2026 |
 | D7 | Decisions get documented as they are made — this file. | 27 Aug 2026 |
 | D8 | Articles Leo reads are an input to the Sweep. Kept in [pot/reading.md](pot/reading.md), one line each, with **why it caught his attention** — the part an agent could not have generated. | 27 Aug 2026 |
-| D9 | **Standing orders exist**: hard rules that fire without any LLM judgement. First one — when `^VIX` closes at or above 40, buy the S&P 500. Parameters still open, see O6. | 27 Aug 2026 |
+| D9 | **Standing orders exist**: hard rules that fire without any LLM judgement. First one — when `^VIX` closes at or above 40, buy the S&P 500. | 27 Aug 2026 |
+| D10 | **Thesis review is weekly**, and sweeps every open thesis rather than waiting for the review date each proposal named. | 28 Aug 2026 |
+| D11 | The VIX order takes **no re-arm** — it fires on every qualifying close, buys with all available cash (**VUAG**), outranks the §4 position limits, and alerts when the pot is empty rather than queueing. | 28 Aug 2026 |
+| D12 | What gets recorded per proposal is **provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
 
 ### AGREED — the design
 
 | # | Decision | Rationale |
 |---|---|---|
-| A1 | **Three lanes** — Scan (free, continuous), Sweep (LLM, scheduled), Deep dive (LLM, on demand). See §2. | A single lane cannot do both "never miss a known thing" and "discover an unknown thing". |
+| A1 | **Four lanes** — Scan (free, continuous), Sweep (LLM, weekly), Review (LLM, weekly), Deep dive (LLM, on demand). See §2. | A single lane cannot do both "never miss a known thing" and "discover an unknown thing". |
 | A2 | **The Sweep produces universe, not orders.** Its output is watchlist candidates with a one-line reason; only a Deep dive may produce an executable instruction. | Puts the noisy generative step where its worst case is a cluttered watchlist rather than a bad trade. It also enforces patience mechanically: a name found mid-hype is *added*, and the buy trigger may not fire for months. |
 | A3 | **Every proposed name enters `watchlist.json`,** so CI fetches its real fundamentals within the hour and the agent's claimed figures can be contradicted by an independent source before any money moves. | The repo already owns a fact-checker for its own LLM. Not using it would be perverse. |
 | A4 | The pot's return is measured **including idle cash**. | Cash accumulating between decisions is a position. Excluding it would rig the comparison against a fully-invested book. |
 | A5 | Scored **three ways** — pot TWR, human book TWR, a passive index — over the pot's own window. | Two is a trap: if the pot beats the human book and both lose to the index, that is the finding. |
-| A6 | A standing order needs **re-arm logic**, not just a threshold. It fires once, then stays disarmed until the market has calmed by a stated definition. | Measured, not assumed: `^VIX` has closed ≥ 40 on **208 days** since 1990. A per-day rule would have bought 125 times through 2008 alone and emptied the pot inside one episode. See §6. |
+| ~~A6~~ | ~~A standing order needs **re-arm logic**~~ — **superseded by D11**, which takes no re-arm. The measurement stands and is why the question was put; the answer went the other way. | Measured, not assumed: `^VIX` has closed ≥ 40 on **208 days** since 1990. A per-day rule would have bought 125 times through 2008 alone and emptied the pot inside one episode. See §6. |
 | A7 | The Scan may emit an **instruction**, not only a signal, when a standing order's condition is met. | A standing order has no judgement in it by definition, so routing it through an LLM adds latency and a chance to argue with a rule already decided. |
 
 ### OPEN
 
 | # | Question | Blocking |
 |---|---|---|
-| O1 | All 31 answers in [strategy.md](strategy.md). | Everything. No rule can be coded until the rules exist. |
+| ~~O1~~ | ~~All 31 answers in strategy.md~~ — **closed 28 Aug 2026**, all 34 answered. | — |
 | O2 | Broker and wrapper. Suggested T212 inside an ISA — commission-free, fractional, and only 7 of 335 existing trades sit there, so it is nearly a clean slate. | Pot accounting (§5). |
-| O3 | How the pot's trades are tagged: a new Tradelog column, or a dedicated broker account that implies it. | Pot accounting. |
-| O4 | Sweep cadence. Weekly is the suggestion; nothing tested. | Scheduling (§4). |
+| ~~O3~~ | ~~How the pot's trades are tagged~~ — **closed**: §10 rules out identifying them by account, so the Tradelog gains a `Pot` column. | — |
+| ~~O4~~ | ~~Sweep cadence~~ — **closed 28 Aug 2026**: weekly, alongside the Review. | — |
 | O5 | Whether the Deep dive drafts automatically or waits to be asked. See §4.4 — the recommendation is auto-draft, human-read. | Scheduling. |
-| O6 | The VIX standing order's five parameters: **re-arm condition**, **size**, **instrument**, what happens when the pot has no cash, and whether it overrides the position limits in §4. | The rule cannot be coded without them, and each one changes what it does. |
+| ~~O6~~ | ~~The VIX standing order's five parameters~~ — **closed 28 Aug 2026**, see D11. | — |
 | O7 | Whether the Sweep can reach the web under `--sandbox workspace-write`. Untested — the smoke run needed no network. | The Sweep lane. It may decide which agent runs it. |
 
 ### REJECTED
@@ -67,13 +70,20 @@ checked against it.
 
 ---
 
-## 2. The three lanes
+## 2. The lanes
 
 | Lane | Job | Universe | Cost | Trigger |
 |---|---|---|---|---|
 | **Scan** | never miss a known thing | closed — the ~79 tickers already fetched | **free** | every CI run |
-| **Sweep** | read the world, find candidates | open | one LLM session | scheduled |
+| **Sweep** | read the world, find candidates | open | one LLM session | weekly |
+| **Review** | re-read every open thesis against its falsifier | what the pot holds | one LLM session | weekly |
 | **Deep dive** | research one name → executable order | a single name | one LLM session | Scan or Sweep fires |
+
+Sweep and Review are both weekly, which is ~104 sessions a year — negligible against a subscription
+at the ~2 minutes each measured in §4. **Worth running as one scheduled session with two ordered
+parts: Review first, then Sweep.** Not to save sessions but to protect the Review: an agent that
+has just talked itself into three exciting new names is not the one you want grading the theses it
+wrote last month. Reviewing before discovering keeps the two apart in the only way that matters.
 
 ```
      ┌── Sweep (weekly, LLM) ──→ candidates ──→ watchlist.json
@@ -176,7 +186,7 @@ instructions provided"* — already draws this line in the right place.
 
 - **Non-determinism.** Two runs of the same Sweep give different answers. Acceptable for candidate
   generation; the rules in [strategy.md](strategy.md) are what constrain the spread.
-- **Quality drift with nobody watching.** The monthly thesis review is the human checkpoint, and it
+- **Quality drift with nobody watching.** The weekly thesis review is the human checkpoint, and it
   should stay one.
 - **Hype bias.** An LLM reading news surfaces what is most written about, which correlates with
   what is already priced in. The Sweep brief must push the other way — toward stories that have
