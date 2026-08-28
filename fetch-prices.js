@@ -710,15 +710,27 @@ function normaliseEps(years) {
 // ponytail: flat lag, not real publication dates — exact filed dates exist only for US EDGAR
 // filers; store them in earnings.json if a few weeks' slack ever matters.
 const REPORT_LAG_DAYS = 90;
-const reportedBy = date =>
-    new Date(new Date(date + 'T00:00:00Z').getTime() + REPORT_LAG_DAYS * DAY * 1000)
+// The real filing date when one is known, the flat guess when it is not.
+//
+// The guess was wrong by two to three times for every US filer, and it mattered: NVDA's trough
+// read 38.50x on 2 May 2025 — which is not a thing the market did, it is the first weekly bar
+// after 31 Jan + 90 days. Those results were public from 26 February, so the April selloff was
+// priced on them, and the real low is 31.71x on 4 April. Everything the rule excluded was the
+// cheap part.
+//
+// `npm run filings` writes filing-dates.json from SEC EDGAR — actual 10-K/20-F filing dates,
+// 21–47 days after year end for the US names here. A date later than 90 days is kept too: a
+// pre-IPO year first appears in the 10-K after listing (PLTR's FY2018, 788 days), and being late
+// is the safe direction. Non-US filers keep the guess until a source for them exists.
+const reportedBy = (date, filed) =>
+    filed || new Date(new Date(date + 'T00:00:00Z').getTime() + REPORT_LAG_DAYS * DAY * 1000)
         .toISOString().slice(0, 10);
 
 // What was public when: [publication date, EPS] steps, oldest first, in the QUOTE's currency.
 // A year with no EPS and no net income (Yahoo's per-field cap) carries no information and is
 // transparent; a published LOSS is kept — it genuinely voids the multiple until the next
 // profit prints. Shared by troughPe and peBands so both price the same denominator.
-function publishedEps(entry, quoteCurrency, rates) {
+function publishedEps(entry, quoteCurrency, rates, filedOn = null) {
     const years = entry?.years || [];
     const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
     const fxQuote = rateFor(quoteCurrency, rates);
@@ -726,7 +738,7 @@ function publishedEps(entry, quoteCurrency, rates) {
     const toQuote = fxReport / fxQuote;
     const normalised = normaliseEps(years);   // onto the latest year's share basis
     return years
-        .map((y, i) => ({ from: reportedBy(y.date), eps: normalised[i] * toQuote }))
+        .map((y, i) => ({ from: reportedBy(y.date, filedOn?.[y.date]), eps: normalised[i] * toQuote }))
         .filter(k => Number.isFinite(k.eps))
         .sort((a, b) => a.from < b.from ? -1 : 1);
 }
@@ -757,8 +769,8 @@ const epsAsOf = (known, day) => {
 // rateFor for BOTH sides means the GBp/pence case falls out for free (GBp is GBP/100, so a
 // GBP-reported EPS scales by 100 into a pence-quoted price) — no special case needed.
 // Returns null if we lack an FX rate for either side, rather than a wrong multiple.
-function troughPe(entry, days, closes, quoteCurrency, rates) {
-    const known = publishedEps(entry, quoteCurrency, rates);
+function troughPe(entry, days, closes, quoteCurrency, rates, filedOn = null) {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn);
     if (!known) return null;
     let best = null;
     for (let i = 0; i < days.length; i++) {
@@ -789,8 +801,8 @@ function troughPe(entry, days, closes, quoteCurrency, rates) {
 // ponytail: weekly closes, so the band is narrower than the true intraday range (HKEX's 2024
 // high reads 376 against an intraday 398). Deliberate — this is the same series peLow is struck
 // on, and a wider band here would disagree with the headline number on the same page.
-function peBands(entry, days, closes, quoteCurrency, rates) {
-    const known = publishedEps(entry, quoteCurrency, rates);
+function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null) {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn);
     if (!known) return null;
     const plusYear = (d, n = 1) => {
         const x = new Date(d + 'T00:00:00Z');
@@ -1747,10 +1759,17 @@ async function main() {
     // Trough multiple — cheapest close in each fiscal year over THAT year's earnings. Pure and
     // free: stored EPS + this run's weekly closes, so a fresh low shows up the hour it prints.
     // The per-fiscal-year bands come off the same two inputs, so the cheapest band IS peLow.
-    let troughOk = 0, troughMissing = 0, bandOk = 0;
+    // Real publication dates where SEC EDGAR has them (npm run filings). Optional: without the
+    // file every ticker falls back to the flat 90-day guess, exactly as before.
+    let filedDates = {};
+    try { filedDates = JSON.parse(fs.readFileSync('filing-dates.json', 'utf8')).dates || {}; }
+    catch { console.log('note no filing-dates.json — every year falls back to the 90-day lag'); }
+    let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
-        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates);
+        const filedOn = filedDates[t] || null;
+        if (filedOn && Object.keys(filedOn).length) realDated++;
+        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn);
         if (bands) {
             quotes[t].peBands = bands.map(b => ({
                 fy: b.fy, end: b.end, weeks: b.weeks, ...(b.partial ? { partial: true } : {}),
@@ -1759,7 +1778,7 @@ async function main() {
             }));
             bandOk++;
         }
-        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates);
+        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn);
         if (!low) { troughMissing++; continue; }
         Object.assign(quotes[t], {
             peLow: Number(low.peLow.toPrecision(6)),
@@ -1840,7 +1859,7 @@ async function main() {
     if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
         + `denomination for ${fwdConverted} ticker(s)`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
-    console.log(`ok   per-year PE bands for ${bandOk}/${tickers.length} tickers`);
+    console.log(`ok   per-year PE bands for ${bandOk}/${tickers.length} tickers (${realDated} on real filing dates, the rest on the 90-day lag)`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
     // daily closes live in this process and the page loads only prices.json (not history).
@@ -2314,6 +2333,29 @@ function selftest() {
     assert.strictEqual(troughPe({ currency: 'GBP', years: [{ date: '2024-12-31', eps: 0.5 }] }, days, px, 'GBp', fx).peLow, 1);
     // No FX rate for the reporting currency -> null, never a wrong multiple.
     assert.strictEqual(troughPe({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, days, px, 'USD', fx), null);
+
+// The real filing date beats the flat lag, and the NVDA case is the reason it exists.
+    // FY2025 ends 2025-01-31. The 90-day rule makes it public on 2025-05-01; EDGAR says the 10-K
+    // was filed 2025-02-26. The close on 2025-04-04 is inside that gap.
+    assert.strictEqual(reportedBy('2025-01-31'), '2025-05-01');
+    assert.strictEqual(reportedBy('2025-01-31', '2025-02-26'), '2025-02-26');
+    const nv = { currency: 'USD', years: [{ date: '2025-01-31', eps: 2.97427 }] };
+    const nvDays = ['2025-04-04', '2025-05-02'], nvPx = [94.31, 114.5];
+    // Without the real date, the April close is invisible and the low is the first bar after the
+    // cutoff — 38.50x, which is an artefact of the rule and not a thing the market did.
+    const lagged = troughPe(nv, nvDays, nvPx, 'USD', fx);
+    assert.strictEqual(lagged.lowDate, '2025-05-02');
+    assert.ok(Math.abs(lagged.peLow - 38.4968) < 0.001);
+    // With it, the selloff is priced on earnings that were already public: 31.71x on 4 April.
+    const real = troughPe(nv, nvDays, nvPx, 'USD', fx, { '2025-01-31': '2025-02-26' });
+    assert.strictEqual(real.lowDate, '2025-04-04');
+    assert.ok(Math.abs(real.peLow - 31.71) < 0.01);
+    // A date LATER than 90 days is honoured too — a pre-IPO year first appears in the 10-K after
+    // listing (PLTR's FY2018 was filed 788 days late), and being late is the safe direction.
+    assert.strictEqual(reportedBy('2018-12-31', '2021-02-26'), '2021-02-26');
+    assert.strictEqual(troughPe(nv, nvDays, nvPx, 'USD', fx, { '2025-01-31': '2026-01-01' }), null);
+    // peBands takes the same route, so the two can never disagree about what was public when.
+    assert.strictEqual(peBands(nv, nvDays, nvPx, 'USD', fx, { '2025-01-31': '2025-02-26' }), null);  // <26 weeks
 
     // peBands: the same point-in-time multiple, sliced by fiscal year instead of minimised.
     // Two full years of weekly closes, flat at 40 except one dip and one spike in each.

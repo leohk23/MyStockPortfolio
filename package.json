@@ -7,7 +7,7 @@
     "publish": "node publish.js",
     "fetch": "node fetch-prices.js",
     "backfill": "node backfill-earnings.js",
-    "test": "node fetch-prices.js --selftest && node signals.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest && node backfill-earnings.js --selftest && node fetch-hk-board.js --selftest",
+    "test": "node fetch-prices.js --selftest && node signals.js --selftest && node fetch-filing-dates.js --selftest && node portfolio.js --selftest && node extract-portfolio.js --selftest && node backfill-earnings.js --selftest && node fetch-hk-board.js --selftest",
     "start": "npx --yes serve .",
     "promote": "node -e \"require('fs').copyFileSync('preview/index.html','index.html')\" && echo \"promoted preview -> live\"",
     "preview": "npx --yes serve .",
@@ -15,7 +15,8 @@
     "hkdates": "node fetch-hk-dates.js",
     "hkboard": "node fetch-hk-board.js",
     "signals": "node signals.js",
-    "pot-report": "node pot/report.js"
+    "pot-report": "node pot/report.js",
+    "filings": "node fetch-filing-dates.js"
   },
   "repository": {
     "type": "git",

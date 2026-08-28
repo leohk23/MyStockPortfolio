@@ -26,7 +26,9 @@ Not fixable from this endpoint. It would need a different source, and a blank ce
 
 ### Point-in-time report dates for HK, beyond the latest period
 `npm run hkdates` now records each HK name's **latest** annual and interim announcement date from webb-database.com, and `check-interim` uses the interim lag instead of a flat 60-day window. What it does **not** give is history: the reporting-speed table carries one row per company, and the per-company pages carry no results dates at all.
-So `REPORT_LAG_DAYS = 90` in [fetch-prices.js](fetch-prices.js) is still a flat guess everywhere, including in `troughPe`, where a wrong date means a low is priced against earnings the market could not yet see. Real per-year dates for HK names would need the SQL dump at [github.com/renavondata/webbsite](https://github.com/renavondata/webbsite) — a bigger job than an HTML fetch, and worth sizing before starting.
+US filers are now solved: `npm run filings` reads actual 10-K/20-F filing dates from SEC EDGAR into `filing-dates.json`, and `reportedBy()` prefers them. Real lags are **21–47 days**, not 90 — the guess was wrong by two to three times, and it moved 14 of 64 troughs (NVDA 38.50x → 31.71x; MRVL 53.73 → 28.62; ARM 97 → 141, correctly dearer once its pre-IPO years stop being treated as public).
+
+`REPORT_LAG_DAYS = 90` remains the fallback for **non-US filers** — Hong Kong, Japan, Europe — where no equivalent source is wired up. That is where a wrong date still means a low priced against earnings the market could not yet see. Real per-year dates for HK names would need the SQL dump at [github.com/renavondata/webbsite](https://github.com/renavondata/webbsite) — a bigger job than an HTML fetch, and worth sizing before starting.
 Actual HK lags for reference: **annual 57–89 days** (mean 78, against our assumed 90), **interim 43–60 days**.
 
 ### Five tickers' 1D baseline still disagrees with the intraday feed
