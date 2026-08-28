@@ -60,6 +60,12 @@ I want to scale up of my investment end to end process by having utilitzing AI w
 
 This pot is aimed to be largely managed by AI.
 
+⚠ **Follow-up.** Recorded as decided — return *is* the goal, not just process. One factual caveat so
+nothing is misread later: at roughly a dozen decisions a year, a 24-month run gives ~24 of them,
+which is far too few to separate skill from luck whichever way it goes. That is not an argument
+against the aim; it is an argument for §9.2 carrying real weight, because the process measures will
+say something long before the return does.
+
 ---
 
 ## 2. Philosophy — what makes something a buy
@@ -198,6 +204,14 @@ normal size — or a dozen at a size that means nothing.
 
 No min., I prefer the pot to spray actually, unless there are implications of transaction fees e.g. custody fees when buying OTC shares.
 
+⚠ **Follow-up.** Noted and taken as decided — but two consequences worth seeing before it is coded.
+At £250/month, spraying means tickets of roughly **£50–80**. Your main book already carries **29
+names under 1% each**, 13.5% of it combined, so the pot would produce more of the thing you have
+most of. And your own caveat needs a number: OTC ADR **custody fees run ~$0.01–0.05 per share per
+year**, which on a £60 ticket can be 1–3% annually — enough to decide the outcome by itself. The
+codeable version of your answer is probably *"no fixed minimum, but refuse a ticket whose first-year
+costs exceed X% of it."* What is X?
+
 **4.2** Maximum position, as a share of the pot. `[auto]`
 
 > **Suggested: 35%.** Early on the pot is small and any first position is 100% of it — so this
@@ -327,6 +341,13 @@ fire at £750 uninvested, and again every £250 after.
 
 Every week.
 
+⚠ **Follow-up.** Reading this two ways. The question was *"should a thesis reaching its own review
+date wake the agent?"* — a yes/no. "Every week" sounds instead like **review everything weekly**,
+regardless of the dates proposals set for themselves. That is a different and stronger rule, and it
+changes §8.4: if everything is reviewed weekly anyway, a per-proposal review date is decoration.
+It also moves the Review lane from monthly to weekly, which is four times the sessions. Which did
+you mean — fire on the date each thesis names, or sweep them all every week?
+
 **6.6** Anything else that should wake it?
 
 > Candidates: a holding's dividend cut, a 52-week high, an insider/buyback disclosure, a currency
@@ -336,6 +357,13 @@ Every week.
 → **ANSWER:**
 
 Ground breaking news e.g. another tariff war declared by Trump.
+
+⚠ **Follow-up.** This one cannot be `[auto]` — there is no local data that knows a tariff war was
+declared, so no deterministic check can detect it. It belongs to the **Sweep** lane, which reads
+the world. Two honest options: leave it to the weekly Sweep and accept up to seven days' latency,
+or add a cheap proxy the Scan *can* see — `^VIX` jumping, or an index gapping — which catches the
+market's reaction rather than the news itself. The proxy is usually same-day; the Sweep explains
+what happened. Which do you want, or both?
 
 ---
 
@@ -423,6 +451,12 @@ Pot TWR · your main book's TWR · S&P 500.
 
 How much thinking the agent did.
 
+⚠ **Follow-up.** Needs one more turn of the screw before it can be counted. "How much thinking"
+could mean session length or tokens spent — cheap to record, but it measures effort, not judgement,
+and an agent can burn tokens going nowhere. The version worth having is probably **how good the
+case-against was**: did the agent name the risk that actually materialised? That is scoreable at
+review time, in hindsight, against the falsifier it wrote. Which did you mean?
+
 **9.3** When do you call the experiment, and on what basis? `[agent]`
 
 > **Suggested: review at 24 months, no earlier.** Deciding at 12 is reading noise. Worth writing
@@ -451,4 +485,71 @@ Three things the plan depends on that are not rules:
 
 No broker constraint as I'm executing.
 
+⚠ **Follow-up.** Fine, but it settles an open question elsewhere by ruling one option out. The pot's
+trades were going to be identified *either* by a dedicated broker account *or* by an explicit tag.
+With no broker constraint, a trade on IB could belong to either pot, so **the Tradelog needs a new
+column** — call it `Pot`, blank for the human book. Without it the two cannot be told apart, and
+D4 (tracking the pot separately) has nothing to stand on.
+
 ISA qualified shares prefered of course, but not necessarily.
+
+---
+
+## 11. Standing orders
+
+Hard rules that fire with **no LLM judgement at all**. The Scan detects the condition and emits an
+*instruction*, not a candidate — a rule already decided gains nothing from being argued with.
+
+Different from §6 triggers, which only wake the agent to go and think.
+
+### 11.1 VIX ≥ 40 → buy the S&P 500
+
+> **The rule as stated:** when `^VIX` closes at or above 40, buy the S&P 500.
+
+Backtested before writing it down — full detail and caveats in
+[pot-design.md](pot-design.md) §6. In short: `^VIX` has closed ≥ 40 on **208 days since 1990**, but
+**125 of those were 2008 alone**. Fired per qualifying day, this rule would have emptied the pot
+inside a single drawdown. With a re-arm it becomes 10 fires in 37 years — one every 3.7 years,
+8 of them higher a year later, median +25%.
+
+So the threshold is not the rule. These five parameters are the rule, and none is answered yet:
+
+**11.1.a Re-arm.** After firing, what has to happen before it may fire again?
+
+> **Suggested: ten consecutive closes below 25.** That is the definition the backtest used, and it
+> is what turns 208 firing days into 10.
+
+→ **ANSWER:**
+
+**11.1.b Size.** How much does it buy?
+
+> All available pot cash? A fixed £? A fraction? Note the interaction: at one fire every 3.7 years,
+> whatever is not spent here waits years for another chance.
+
+→ **ANSWER:**
+
+**11.1.c Instrument.** Which S&P 500 line?
+
+> You hold **VOO** (USD) and **VUSA.L** (GBP). §10 says no broker constraint, so this is a free
+> choice — but it must be *one* named ticker, or the instruction is not executable.
+
+→ **ANSWER:**
+
+**11.1.d No cash.** If the pot holds nothing when it fires — skip, or queue until the next £250?
+
+> A queued order can arrive weeks after the panic it was meant to buy. Skipping is honest; queueing
+> is optimistic. Either is fine, but the file has to say which.
+
+→ **ANSWER:**
+
+**11.1.e Precedence.** Does it override §4?
+
+> §4.2 caps a position at 50% of the pot. A VIX buy with all available cash will breach that early
+> on. **Suggested: yes, standing orders outrank position limits** — otherwise the rule quietly
+> stops working in exactly the conditions it exists for.
+
+→ **ANSWER:**
+
+### 11.2 Others
+
+→ **ANSWER (add any):**
