@@ -20,12 +20,12 @@ Two markers tell you what an answer becomes:
 
 Cash and decisions run on **separate clocks**. This is the whole design:
 
-| Clock | Cadence | Costs |
-|---|---|---|
-| **Funding** — £250 arrives, sits as pot cash | monthly, calendar | nothing |
-| **Signals** — scan for anything worth a look | continuous, every CI run | nothing |
-| **Decision** — research, then a buy/sell instruction | *only when a signal fires, or you ask* | one LLM session |
-| **Review** — re-read open theses against their falsifiers | monthly, calendar | one LLM session |
+| Clock                                                            | Cadence                                  | Costs           |
+| ---------------------------------------------------------------- | ---------------------------------------- | --------------- |
+| **Funding** — £250 arrives, sits as pot cash             | monthly, calendar                        | nothing         |
+| **Signals** — scan for anything worth a look              | continuous, every CI run                 | nothing         |
+| **Decision** — research, then a buy/sell instruction      | *only when a signal fires, or you ask* | one LLM session |
+| **Review** — re-read open theses against their falsifiers | monthly, calendar                        | one LLM session |
 
 The expensive step is gated behind the free one. A signal scan over `prices.json`, `earnings.json`
 and `peBands` is ordinary JavaScript — it can run every fifteen minutes forever and cost nothing.
@@ -54,6 +54,12 @@ What is this pot *for*? It changes what counts as success.
 
 → **ANSWER:**
 
+Beat or at least on par with the index return, also to explore stocks out of my interest radar or my existing holdings.
+
+I want to scale up of my investment end to end process by having utilitzing AI which learns and inherits my investment philoshophy and style, while getting inputs from the world more timely and efficient than a human does, so to perform better than mine which I believe it should, as I don't have time and resource to do so.
+
+This pot is aimed to be largely managed by AI.
+
 ---
 
 ## 2. Philosophy — what makes something a buy
@@ -81,6 +87,14 @@ person, not as criteria. `[agent]`
 
 → **ANSWER:**
 
+A balance of growth and valuation. I'm very skeptical and I only buy shares that I'm familiar enough with. E.g. I bought NVDA long time ago when ChatGPT was first introduced to the world. I knew it would be revolutionary as I tried it myself and I knew the next would be the computing power, chips, etc and therefore I kept buying and holding without influenced by my emotions.
+
+I also like to discover investment opportunities from day to day first handed observations. E.g. I bought M&S because I noticed they were trying to ditch their old-school impressions and pushing many new innovative food products as I went there shopping from time to time.
+
+I'm inspired by Peter Lynch very much and Warren Buffet of course.
+
+I'm a qualified CPA myself and I look at annual reports. I'm not a fan of technical analysis and I prefer looking at the fundamentals and buy for long term.
+
 **2.2** Name two things you own that you are *proud* of buying, and why — and one you regret.
 `[agent]`
 
@@ -88,6 +102,14 @@ person, not as criteria. `[agent]`
 > hands, including one that went wrong for reasons you can articulate.
 
 → **ANSWER:**
+
+NVDA as explained above.
+
+2800.HK actually although I didn't buy much. I think HSI in general is very biased towards mainland shares and very often the earning quality is questioned by public.
+
+However in terms of Valuation it was dropped to a point the valuation is so cheap and therefore I tried to analyse it objectively and therefore it's outperforming now.
+
+I regret buying 7532.T, blinded by the tourist rebound without looking at the fundamentals, valuation, forward prospectus and yen depreciation carefully.
 
 **2.3** Which of these are you actually willing to own? `[agent]`
 
@@ -101,6 +123,10 @@ person, not as criteria. `[agent]`
 
 → **ANSWER:**
 
+Loss making companies but very carefully as it's hard to value it.
+
+I also hold some gold and crypto ETF purely to diversify by holding a few % of alternative investments in my portfolio.
+
 **2.4** Is valuation a **filter** (never pay above X) or an **input** (pay up for quality)? `[agent]`
 
 > Your tooling implies filter — the entire trough-P/E and "P/E paid" apparatus exists to ask "is
@@ -109,6 +135,10 @@ person, not as criteria. `[agent]`
 > otherwise pick whichever reading suits its argument.
 
 → **ANSWER:**
+
+It's definitely a filter to me.
+
+Earning quality to me is the margin %, the consistency of that and the growth, it's further than just looking at P/E.
 
 ---
 
@@ -121,12 +151,16 @@ person, not as criteria. `[agent]`
 
 → **ANSWER:**
 
+No constraints, for now I will execute it myself until it's ready to be fully automated technically.
+
 **3.2** Anything permanently excluded — sectors, countries, structures? `[auto]`
 
 > Ethical exclusions, or things you simply refuse to hold. Cheap to enforce, impossible to
 > retrofit honestly once the agent has already recommended one.
 
 → **ANSWER:**
+
+No.
 
 **3.3** May the pot buy something already in the main book? `[auto]`
 
@@ -136,12 +170,16 @@ person, not as criteria. `[agent]`
 
 → **ANSWER:**
 
+Yes.
+
 **3.4** Single stocks only, or funds too? `[auto]`
 
 > **Suggested: single stocks only.** An index fund in the pot is a bet on nothing in particular and
 > makes the experiment unreadable — if you want index exposure you already hold VOO and VUSA.
 
 → **ANSWER:**
+
+Both yes.
 
 ---
 
@@ -158,6 +196,8 @@ normal size — or a dozen at a size that means nothing.
 
 → **ANSWER:**
 
+No min., I prefer the pot to spray actually, unless there are implications of transaction fees e.g. custody fees when buying OTC shares.
+
 **4.2** Maximum position, as a share of the pot. `[auto]`
 
 > **Suggested: 35%.** Early on the pot is small and any first position is 100% of it — so this
@@ -165,11 +205,15 @@ normal size — or a dozen at a size that means nothing.
 
 → **ANSWER:**
 
+50%.
+
 **4.3** How many positions should the pot hold at once? `[auto]`
 
 > **Suggested: 4–8.** Below four it is a coin flip; above eight, £3k/year cannot maintain it.
 
 → **ANSWER:**
+
+No limit.
 
 **4.4** Is the pot allowed to hold cash deliberately, and up to what point? `[auto]`
 
@@ -179,12 +223,16 @@ normal size — or a dozen at a size that means nothing.
 
 → **ANSWER:**
 
+Yes.
+
 **4.5** May the pot top up an existing pot position rather than open a new one? `[agent]`
 
 > **Suggested: yes, and it should count as a distinct decision** with its own thesis — averaging
 > down into a broken thesis is the single most common way a small pot dies.
 
 → **ANSWER:**
+
+Yes.
 
 ---
 
@@ -193,6 +241,7 @@ normal size — or a dozen at a size that means nothing.
 **5.1** What are the *only* valid reasons to sell? `[agent]`
 
 > **Suggested, and I would keep this tight:**
+>
 > 1. A falsifier from the original thesis has tripped.
 > 2. The thesis has played out — the target the thesis named has been reached.
 > 3. The position breached a hard limit in section 4.
@@ -202,6 +251,11 @@ normal size — or a dozen at a size that means nothing.
 
 → **ANSWER:**
 
+* A falsifier from the original thesis has tripped.
+* The thesis has played out — the target the thesis named has been reached.
+* The position breached a hard limit in section 4.
+* Personally I seldom sell.
+
 **5.2** Minimum holding period before a sell may even be considered? `[auto]`
 
 > **Suggested: 6 months, waived if a falsifier trips.** Your CAGR column already refuses to
@@ -209,12 +263,16 @@ normal size — or a dozen at a size that means nothing.
 
 → **ANSWER:**
 
+No min.
+
 **5.3** Trim, or all-or-nothing? `[agent]`
 
 > **Suggested: all-or-nothing.** At £400–1,000 a position, a partial sale is not worth the
 > accounting or the thinking.
 
 → **ANSWER:**
+
+Trim.
 
 ---
 
@@ -231,11 +289,15 @@ you want; they become the signal scan.
 
 → **ANSWER (threshold):**
 
+fire when the current multiple is within 15% of the ticker's lowest band
+
 **6.2 Drawdown** `[auto]` — a watchlist or held name falls hard, fast.
 
 > **Suggested: −15% in 7 days, or −25% in 30.** Both columns already exist in the table.
 
 → **ANSWER:**
+
+−15% in 7 days, or −25% in 30
 
 **6.3 Results** `[auto]` — a pot holding reports.
 
@@ -245,12 +307,16 @@ you want; they become the signal scan.
 
 → **ANSWER:**
 
+fire the day after results for anything the pot holds
+
 **6.4 Dry powder** `[auto]` — cash has piled up with nothing done.
 
 > **Suggested: fire at £750 uninvested, and again every £250 after.** A nudge, not an order —
 > "hold" remains a valid answer under 4.4.
 
 → **ANSWER:**
+
+fire at £750 uninvested, and again every £250 after.
 
 **6.5 Review due** `[auto]` — a thesis has reached its own review date.
 
@@ -259,6 +325,8 @@ you want; they become the signal scan.
 
 → **ANSWER:**
 
+Every week.
+
 **6.6** Anything else that should wake it?
 
 > Candidates: a holding's dividend cut, a 52-week high, an insider/buyback disclosure, a currency
@@ -266,6 +334,8 @@ you want; they become the signal scan.
 > new feed is a bigger job.
 
 → **ANSWER:**
+
+Ground breaking news e.g. another tariff war declared by Trump.
 
 ---
 
@@ -278,6 +348,8 @@ you want; they become the signal scan.
 
 → **ANSWER:**
 
+No limit.
+
 **7.2** Must every proposal be checked against local data before you execute? `[auto]`
 
 > **Suggested: yes, and this is the guard I would least want to give up.** Any name the agent
@@ -287,6 +359,8 @@ you want; they become the signal scan.
 
 → **ANSWER:**
 
+Yes.
+
 **7.3** May the agent act on anything it cannot show you a source for? `[agent]`
 
 > **Suggested: no.** Every figure in a proposal carries a link or a local file reference. This is
@@ -294,6 +368,8 @@ you want; they become the signal scan.
 > than no number.
 
 → **ANSWER:**
+
+No.
 
 ---
 
@@ -314,6 +390,15 @@ The contract. An instruction missing any of these is not executable.
 
 → **ANSWER (add/remove):**
 
+1. **Order** — ticker, exchange, buy/sell, amount in £, order type.
+2. **Thesis** — three sentences. Why this, why now, what the market is missing.
+3. **Falsifier** — what specific, observable thing would prove this wrong. Not "the price falls".
+   Something like "FY27 gross margin below 40%" or "the Q3 order book shrinks again".
+4. **Review date** — when to look, regardless of price.
+5. **The numbers as of today** — price, multiple, whatever the thesis rests on, each sourced. So
+   that in two years you can tell what was known from what was hindsight.
+6. **The case against** — the strongest argument for not buying, stated by the agent itself.
+
 ---
 
 ## 9. Scoring
@@ -326,6 +411,8 @@ The contract. An instruction missing any of these is not executable.
 
 → **ANSWER (which index):**
 
+Pot TWR · your main book's TWR · S&P 500.
+
 **9.2** Beyond return, what is worth counting? `[agent]`
 
 > **Suggested: thesis outcomes.** How many falsifiers tripped, and did you act when they did. Over
@@ -334,6 +421,8 @@ The contract. An instruction missing any of these is not executable.
 
 → **ANSWER:**
 
+How much thinking the agent did.
+
 **9.3** When do you call the experiment, and on what basis? `[agent]`
 
 > **Suggested: review at 24 months, no earlier.** Deciding at 12 is reading noise. Worth writing
@@ -341,6 +430,8 @@ The contract. An instruction missing any of these is not executable.
 > "give it more time" and a good one becomes proof.
 
 → **ANSWER:**
+
+Review at 24 months.
 
 ---
 
@@ -357,3 +448,7 @@ Three things the plan depends on that are not rules:
   good — but note it when it happens, or "parallel" quietly stops being true.
 
 → **ANSWERS:**
+
+No broker constraint as I'm executing.
+
+ISA qualified shares prefered of course, but not necessarily.
