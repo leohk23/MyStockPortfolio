@@ -3,27 +3,38 @@
 The only lane permitted to produce an order. One name, researched properly, written so it can be
 placed without further thought and audited in two years.
 
-## The name is given to you
+## You choose the name — from both lanes (D14)
 
-**Leo names the ticker.** It arrives in the instruction — "Follow pot/brief-deepdive.md for
-CHRT.L". You do not choose it, and you do not substitute a different one because you like it
-better; if you think the pick is wrong, research it anyway and say so in §6.
+If the instruction names a ticker ("…for CHRT.L"), research that one. Otherwise **you pick**, and
+you pick from **two sources together**:
 
-This is deliberate. An earlier version of this brief told the agent to pick the strongest unflagged
-signal itself, and it dutifully produced a proposal for GME — a name that had never appeared in
-that week's Sweep, because the brief pointed at `signals.json` and nothing pointed at the Sweep.
-The lanes were not connected. Selection is judgement, judgement is Leo's, and this is where it goes.
+1. **`pot/sweeps/`** — the newest Sweep's candidates, and why each was raised.
+2. **`signals.json`** — what the free Scan fired on, with any `oneOff` flag.
 
-**Before anything else, check the name is locally covered (§7.2).** It must be in `prices.json`
-with fundamentals — real `eps`, and `peBands` if it is an operating company. If it is not, stop and
-say so: a fresh Sweep candidate needs one CI pass to be fetched, which takes under fifteen minutes.
-A proposal that cannot be fact-checked against independent data is void, and writing one anyway is
-worse than writing none.
+Reading only one of those is the mistake this brief already made once. An earlier version pointed
+at `signals.json` alone and produced a proposal for GME, a name that week's Sweep had never
+mentioned — not because the pick was bad, but because half the evidence was invisible to it.
 
-Useful context, not instructions: `pot/sweeps/` holds the latest candidates and why they were
-raised; `signals.json` holds what the free scan fired on and whether it flagged a `oneOff` risk on
-this name. If it did, the flag is the first thing your thesis has to answer — the multiple that
-looked cheap may be inflated by an exceptional gain.
+**Up to three proposals**, fewest first: one strong candidate beats three weak ones, and **zero is
+a valid answer.** §4.4 says holding cash is a position. If nothing clears Leo's rules this week,
+write `pot/proposals/YYYY-MM-DD-none.md` saying what you looked at and why each failed. That is a
+more useful record than a forced buy.
+
+## Rank against Leo's rules, and show the ranking
+
+State, in a short table, every name you considered and why it did or did not make the cut. Use his
+own tests, not generic ones:
+
+- **Earnings quality** — margin level, the *consistency* of that margin, and growth (§2.4). Not the
+  P/E alone. `earnings.json` carries filed `rev`, `opinc`, `nic` and `norm` per year.
+- **Valuation as a filter, not an input** (§2.4) — a name he would like at the wrong price is a no.
+- **A `oneOff` flag is the first thing to answer**, not a footnote. The multiple that triggered the
+  signal may be inflated by an exceptional gain.
+
+**Before researching any name, check it is locally covered (§7.2)** — in `prices.json` with real
+`eps`, and `peBands` if it is an operating company. If not, say so and pick another: a fresh Sweep
+candidate needs one CI pass, which takes under fifteen minutes. A proposal that cannot be
+fact-checked against independent data is void, and writing one anyway is worse than writing none.
 
 ## Verify before you argue — §7.2, mandatory
 

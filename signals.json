@@ -1,19 +1,19 @@
 {
- "generated": "2026-08-28T17:08:18.060Z",
- "pricesAt": "2026-08-28T16:33:16.681Z",
+ "generated": "2026-08-28T17:45:10.780Z",
+ "pricesAt": "2026-08-28T17:11:31.143Z",
  "vix": {
-  "close": 14.53,
-  "day": 0.0014
+  "close": 14.52,
+  "day": 0.0007
  },
- "spxDay": -0.0014642367924417865,
+ "spxDay": -0.003767952099278382,
  "fired": [
   {
    "rule": "6.1 valuation",
    "ticker": "GME",
    "where": "watchlist",
-   "pe": 13.473880597014924,
-   "floor": 23.4445,
-   "vsFloor": -0.42528607575273847
+   "pe": 13.440298507462687,
+   "floor": 23.3961,
+   "vsFloor": -0.42553252433257305
   },
   {
    "rule": "6.1 valuation",
@@ -31,13 +31,13 @@
    "rule": "6.1 valuation",
    "ticker": "AMZN",
    "where": "HELD",
-   "pe": 21.419951729686243,
+   "pe": 21.29847144006436,
    "floor": 29.2566,
-   "vsFloor": -0.26785915896972845,
+   "vsFloor": -0.2720113943498438,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 41.764967937053726,
-    "recurringVsFloor": 0.42754004009535373
+    "recurringPe": 41.52810370574875,
+    "recurringVsFloor": 0.41944394446889754
    }
   },
   {
@@ -52,37 +52,37 @@
    "rule": "6.1 valuation",
    "ticker": "NVDA",
    "where": "HELD",
-   "pe": 33.71056661562021,
+   "pe": 33.42725880551301,
    "floor": 38.4968,
-   "vsFloor": -0.12432808400645745
+   "vsFloor": -0.131687340103255
   },
   {
    "rule": "6.1 valuation",
    "ticker": "PLTR",
    "where": "watchlist",
-   "pe": 158.60577991215627,
+   "pe": 158.6399603506913,
    "floor": 179.254,
-   "vsFloor": -0.11518973126314458
+   "vsFloor": -0.11499904966867514
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NFLX",
    "where": "HELD",
-   "pe": 25.71069182389937,
+   "pe": 25.657232704402517,
    "floor": 27.253,
-   "vsFloor": -0.05659223484022413
+   "vsFloor": -0.05855382143607979
   },
   {
    "rule": "6.1 valuation",
    "ticker": "GOOG",
    "where": "HELD",
-   "pe": 17.214357429718877,
+   "pe": 17.176204819277107,
    "floor": 18.0424,
-   "vsFloor": -0.04589425853994611,
+   "vsFloor": -0.04800886693138906,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 33.90348318717064,
-    "recurringVsFloor": 0.8791005180669225
+    "recurringPe": 33.828342050364334,
+    "recurringVsFloor": 0.8749358206427267
    }
   },
   {
@@ -105,17 +105,17 @@
    "rule": "6.1 valuation",
    "ticker": "META",
    "where": "HELD",
-   "pe": 21.657680722891566,
+   "pe": 21.65963855421687,
    "floor": 20.6975,
-   "vsFloor": 0.04639114496396002
+   "vsFloor": 0.046485737611637434
   },
   {
    "rule": "6.1 valuation",
    "ticker": "CCOEY",
    "where": "HELD",
-   "pe": 27.152461681139187,
+   "pe": 27.05099508292865,
    "floor": 24.2613,
-   "vsFloor": 0.11916763244917572
+   "vsFloor": 0.11498539167021771
   }
  ],
  "instructions": [],
@@ -180,5 +180,62 @@
   "0823.HK": "2026-11-19",
   "ROK": "2026-11-05"
  },
+ "macro": [
+  {
+   "sym": "^IXIC",
+   "name": "Nasdaq",
+   "group": "Equity",
+   "mixed": true,
+   "inGBP": 0.2278
+  },
+  {
+   "sym": "^HSI",
+   "name": "Hang Seng",
+   "group": "Equity",
+   "mixed": true,
+   "inGBP": 0.0128
+  },
+  {
+   "sym": "^N225",
+   "name": "Nikkei 225",
+   "group": "Equity",
+   "mixed": true,
+   "inGBP": 0.4618,
+   "says": "55% locally is 46% to a sterling holder"
+  },
+  {
+   "sym": "GC=F",
+   "name": "Gold",
+   "group": "Commodity",
+   "real": 0.28390000000000004,
+   "says": "28% net of the dollar — a real move, not currency",
+   "mixed": true
+  },
+  {
+   "sym": "CL=F",
+   "name": "Crude (WTI)",
+   "group": "Commodity",
+   "real": 0.2852,
+   "says": "30% over a year but -9% over three months — cooling",
+   "cooling": -0.0939,
+   "mixed": true
+  },
+  {
+   "sym": "HG=F",
+   "name": "Copper",
+   "group": "Commodity",
+   "real": 0.4534,
+   "says": "45% net of the dollar — a real move, not currency"
+  },
+  {
+   "sym": "BTC-USD",
+   "name": "Bitcoin",
+   "group": "Commodity",
+   "real": -0.30189999999999995,
+   "says": "-28% over a year but 5% over three months — cooling",
+   "cooling": 0.0546,
+   "mixed": true
+  }
+ ],
  "dryPowderAlerted": 0
 }

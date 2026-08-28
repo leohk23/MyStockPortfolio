@@ -137,6 +137,74 @@ function reportedSince(previousDue, quotes, today) {
     return out;
 }
 
+// ---------------------------------------------------------------- macro, made deterministic
+//
+// Harvested from what the Sweep actually did with the macro block on 28 Aug 2026. Its useful
+// inferences were not readings of single numbers — they were all RELATIONS between two series,
+// and a relation is arithmetic. Computing them here means the next Sweep is handed the inference
+// rather than re-deriving it, and it costs nothing.
+//
+// Four patterns, each taken from a real line it wrote:
+//
+//  real      "Copper +47% with the dollar nearly flat points at demand, not currency."
+//            A commodity's move net of the dollar's. Big and positive = a real move.
+//  cooling   "WTI +45% YTD but −9% over three months; the long move remains large, the recent
+//            move is cooling." Long and short windows disagreeing in sign.
+//  inGBP     "Nikkei +55% while USD/JPY +9% — flatters an operating rebound but erodes a GBP
+//            investor's return." A foreign index move as a sterling holder actually received it.
+//  mixed     "Gold +30% over a year but −14% over six months; these are reversals, not one clean
+//            signal." Enough disagreement across windows that no direction can be claimed.
+//
+// ponytail: inGBP composes two percentage moves rather than dividing index levels by an FX rate,
+// which is right to a second-order term (the cross-product of two moves). Over a year of ±50% that
+// is a percentage point or two — irrelevant to "did the currency eat the gain?", and the exact
+// version would need level history for every pair, which is a different fetch.
+const MACRO_REAL_MIN = 0.15;      // net of the dollar, below this it is noise
+const MACRO_COOLING_MIN = 0.05;   // a 3m move must contradict by this much to count
+const CCY_FOR = { '^N225': 'USDJPY=X', '^HSI': 'USDHKD=X', '^STOXX50E': 'EURUSD=X', '^FTSE': null };
+
+function macroNotes(macro, gbp) {
+    if (!macro || !Object.keys(macro).length) return null;
+    const dxy = macro['DX-Y.NYB']?.['1y'];
+    const out = [];
+    for (const [sym, m] of Object.entries(macro)) {
+        const y = m['1y'], q = m['3m'], h = m['6m'];
+        const note = { sym, name: m.name, group: m.group };
+        if (m.group === 'Commodity' && typeof y === 'number' && typeof dxy === 'number') {
+            note.real = y - dxy;
+            if (Math.abs(note.real) >= MACRO_REAL_MIN) {
+                note.says = `${(note.real * 100).toFixed(0)}% net of the dollar — a real move, not currency`;
+            }
+        }
+        if (typeof y === 'number' && typeof q === 'number'
+            && Math.sign(y) !== Math.sign(q) && Math.abs(q) >= MACRO_COOLING_MIN) {
+            note.cooling = q;
+            note.says = `${(y * 100).toFixed(0)}% over a year but ${(q * 100).toFixed(0)}% over three months — cooling`;
+        }
+        if (typeof y === 'number' && typeof h === 'number' && typeof q === 'number'
+            && new Set([Math.sign(y), Math.sign(h), Math.sign(q)]).size === 2) {
+            note.mixed = true;
+        }
+        // A foreign index as a sterling holder received it: the local move, less the currency's
+        // move against the dollar, less the dollar's move against sterling.
+        const pair = CCY_FOR[sym];
+        if (m.group === 'Equity' && typeof y === 'number' && typeof gbp === 'number') {
+            const fx = pair ? macro[pair]?.['1y'] : 0;
+            if (typeof fx === 'number') {
+                // USDJPY/USDHKD are quoted USD-per-unit-inverted, so a rise is a WEAKER local
+                // currency and costs the sterling holder; EURUSD is the other way round.
+                const drag = /^USD/.test(pair || '') ? -fx : fx;
+                note.inGBP = y + drag - gbp;
+                if (Math.abs(note.inGBP - y) >= 0.05) {
+                    note.says = `${(y * 100).toFixed(0)}% locally is ${(note.inGBP * 100).toFixed(0)}% to a sterling holder`;
+                }
+            }
+        }
+        if (note.says || note.mixed) out.push(note);
+    }
+    return out.length ? out : null;
+}
+
 // The S&P's one-day move. It is a benchmark, so it lives in history.json rather than in quotes.
 function spxDailyMove(history) {
     const c = history?.closes?.['^GSPC'] || [];
@@ -204,6 +272,7 @@ function scan(state, today) {
         vix: vix ? { close: vix.price, day: vix['1d'] } : null,
         spxDay: spx,
         fired, instructions, quiet, blocked, resultsDue,
+        macro: macroNotes(prices.macro, prices.macro?.['GBPUSD=X']?.['1y']),
         dryPowderAlerted: fired.find(f => f.rule === '6.4 dry powder')?.level
             ?? previous?.dryPowderAlerted ?? 0,
     };
@@ -315,6 +384,36 @@ function selftest() {
     assert.ok(Math.abs(spxDailyMove({ closes: { '^GSPC': [100, null, 110] } }) - 0.1) < 1e-9);
     assert.strictEqual(spxDailyMove({ closes: {} }), null);
 
+// macroNotes: the Sweep's own inferences, computed. Each case below is a line it actually
+    // wrote on 28 Aug 2026, turned into arithmetic.
+    const M = {
+        'DX-Y.NYB': { name: 'Dollar index', group: 'Currency', '1y': 0.019 },
+        'GBPUSD=X': { name: 'GBP/USD', group: 'Currency', '1y': 0.002 },
+        'USDJPY=X': { name: 'USD/JPY', group: 'Currency', '1y': 0.091 },
+        'HG=F': { name: 'Copper', group: 'Commodity', '1y': 0.47, '6m': 0.13, '3m': 0.10 },
+        'CL=F': { name: 'Crude', group: 'Commodity', '1y': 0.30, '6m': 0.12, '3m': -0.094 },
+        'GC=F': { name: 'Gold', group: 'Commodity', '1y': 0.30, '6m': -0.145, '3m': 0.02 },
+        '^N225': { name: 'Nikkei', group: 'Equity', '1y': 0.555, '6m': 0.2, '3m': 0.1 },
+    };
+    const notes = macroNotes(M, M['GBPUSD=X']['1y']);
+    const by = Object.fromEntries(notes.map(n => [n.sym, n]));
+    // "Copper +47% with the dollar nearly flat points at demand, not currency."
+    assert.ok(Math.abs(by['HG=F'].real - (0.47 - 0.019)) < 1e-9);
+    assert.ok(/net of the dollar/.test(by['HG=F'].says));
+    // "WTI +30% over a year but −9% over three months — the recent move is cooling."
+    assert.strictEqual(by['CL=F'].cooling, -0.094);
+    assert.ok(/cooling/.test(by['CL=F'].says));
+    // "Gold +30% over a year but −14.5% over six months — reversals, not one clean signal."
+    assert.strictEqual(by['GC=F'].mixed, true);
+    // "Nikkei +55% locally, but the yen weakened 9% against a dollar flat to sterling."
+    assert.ok(Math.abs(by['^N225'].inGBP - (0.555 - 0.091 - 0.002)) < 1e-9);
+    assert.ok(/sterling holder/.test(by['^N225'].says));
+    // A move too small to be worth saying anything about produces no note at all.
+    assert.strictEqual(macroNotes({ 'DX-Y.NYB': { group: 'Currency', '1y': 0.02 },
+        'HG=F': { name: 'C', group: 'Commodity', '1y': 0.10, '6m': 0.05, '3m': 0.03 } }, 0), null);
+    assert.strictEqual(macroNotes(null, 0), null);
+    assert.strictEqual(macroNotes({}, 0), null);
+
     // Blocked and quiet are different states: with no pot, 6.3/6.4 are blocked, never "clean".
     const s = scan({ prices: { quotes: {} }, history: null, held: new Set(),
         potPositions: null, previous: null }, T);
@@ -327,4 +426,4 @@ function selftest() {
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main();
-module.exports = { nearOwnFloor, oneOffRisk, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
+module.exports = { nearOwnFloor, oneOffRisk, macroNotes, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };

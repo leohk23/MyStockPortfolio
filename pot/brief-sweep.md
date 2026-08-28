@@ -20,8 +20,21 @@ watchlist. That is the point of this lane.
 
 ## Then
 
-1. **Macro state.** `signals.json` carries VIX and the S&P's move. Say in two sentences what the
-   current regime looks like. State, then interpretation — do not fetch what you were handed.
+1. **Macro state — and show your working.** `prices.json` now carries a `macro` block: 17 series
+   across Equity, Rates, Currency and Commodity, each with 1d/7d/1m/3m/6m/1y/ytd moves. It is
+   already fetched. **Do not look any of it up** — that is a third of a session spent re-acquiring
+   numbers you were handed, and a chance to get them wrong.
+
+   Write a **Macro** section with two distinct parts, kept apart on purpose:
+
+   - **What the numbers say.** Which series actually moved, over which window. Quote the figures.
+   - **What you infer from it**, and — this is the part that matters — **which specific series
+     drove which candidate below.** Not "the macro backdrop is supportive". Something a rule could
+     be written from: *"copper +47% over a year with the dollar flat points at physical demand
+     rather than currency, which is why X is here."*
+
+   Name any series you looked at and **discarded as irrelevant this week**, in one line. Knowing
+   what did *not* matter is how this eventually becomes a deterministic check that costs nothing.
 2. **Leo's reading.** For each entry in `pot/reading.md` not yet actioned: what has the price done
    *since* the article? Say if the argument no longer holds, or is already in the price.
 3. **Candidates.** Up to **five**. For each: ticker, exchange, one line on why, and one line on

@@ -37,8 +37,8 @@ checked against it.
 | #   | Decision                                                                                                                                                                                                                                                    | Date        |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | D1  | A separate pot, funded**£250/month**, managed on AI recommendations, run in parallel to the human book.                                                                                                                                              | 26 Aug 2026 |
-| D2  | **Execution is manual.** The system produces instructions; Leo places the orders. Nothing automated ever touches a broker.                                                                                                                            | 26 Aug 2026 |
-| D3  | **No metered API spend.** The LLM runs through an existing subscription on the always-on PC, not a pay-per-token key.                                                                                                                                 | 26 Aug 2026 |
+| D2  | **Execution is manual — for now, and because of us, not by preference.** The system produces instructions; Leo places the orders. *Revised 28 Aug 2026: this is a technical limitation, not a principle. Automating execution is wanted once it can be done safely; until then nothing automated touches a broker, and that constraint is real while it lasts.*                     | 26 Aug, rev 28 Aug 2026 |
+| D3  | **No metered API spend — for now.** The LLM runs through an existing subscription on the always-on PC. *Revised 28 Aug 2026: open to metered credits once the pot is stable and showing promise. This is why D12 records tokens: the ledger has to be comparable across the switch.*                                                                                             | 26 Aug, rev 28 Aug 2026 |
 | D4  | This dashboard must**track the pot's performance separately**, alongside the human-managed book.                                                                                                                                                      | 26 Aug 2026 |
 | D5  | The universe is unrestricted — new names*or* existing holdings.                                                                                                                                                                                          | 26 Aug 2026 |
 | D6  | **The monthly £250 is a funding cadence, not a decision cadence.** Recommendations must be timely and event-driven, produced when there is a reason, not on a calendar.                                                                              | 27 Aug 2026 |
@@ -48,7 +48,8 @@ checked against it.
 | D10 | **Thesis review is weekly**, and sweeps every open thesis rather than waiting for the review date each proposal named.                                                                                                                                | 28 Aug 2026 |
 | D11 | The VIX order takes**no re-arm** — it fires on every qualifying close, buys with all available cash (**VUAG**), outranks the §4 position limits, and alerts when the pot is empty rather than queueing.                                       | 28 Aug 2026 |
 | D12 | What gets recorded per proposal is**provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
-| D13 | **Leo names the ticker for a Deep dive.** The Sweep proposes, he picks, the agent researches what it is given — it may argue against the pick in §6 but may not substitute another.                                                                 | 28 Aug 2026 |
+| ~~D13~~ | ~~Leo names the ticker for a Deep dive~~ — **superseded by D14.** Held for one day. The reasoning stands and is why the lanes got joined: a Deep dive that reads only signals.json cannot see what the Sweep found.                                                                                                              | 28 Aug 2026 |
+| D14 | **The agent picks the ticker(s), from the Sweep's candidates AND the Scan's signals together.** Ranked against Leo's own rules, and it may produce more than one proposal. Leo can still run a Deep dive ad hoc on anything he likes; that is an extra door, not the main one.                                                | 28 Aug 2026 |
 
 ### AGREED — the design
 
@@ -207,7 +208,7 @@ instructions provided"* — already draws this line in the right place.
 - Publishing is a **separate deterministic script**, not the agent: commit and push those two paths
   and no others. An agent that can write files is fine; an agent that can push anything it likes is
   a different risk.
-- No lane touches a broker. D2 is structural, not a policy anyone has to remember.
+- No lane touches a broker. That is structural today rather than a policy anyone has to remember — and D2 as revised says it is a limitation, not the goal. When execution is automated it will be a deliberate change to this section, not a side effect of one.
 
 ### 4.6 What automation does not fix
 

@@ -211,6 +211,9 @@
            gets the width down; a cap on top of it only buys a wrap nobody wanted. */
         #macro-table td:first-child { line-height: 1.3; }
         #macro-table .macro-sym { display: block; font-size: 10px; color: var(--text-muted); }
+        /* The reading is prose, so it wraps and is the one column allowed to. */
+        #macro-table td.macro-says { text-align: left; white-space: normal; font-size: 11px;
+            color: var(--text-secondary); min-width: 22ch; line-height: 1.4; }
         /* Macro group headings: a label row inside the table, not a sortable column. Sticky under
            the header so the group a row belongs to is still on screen once you have scrolled past
            its heading — with four groups and seventeen rows, that is most of the time.
@@ -635,6 +638,7 @@
                 <th>Series</th><th>Level</th>
                 <th title="Change since the previous close">1D</th>
                 <th>7D</th><th>1M</th><th>3M</th><th>6M</th><th>1Y</th><th>YTD</th>
+                <th title="The reading, not the level: a commodity net of the dollar, a foreign index net of its currency, or a long move contradicted by a short one. Computed by npm run signals — the same figures the Sweep is handed.">Says</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -2795,17 +2799,32 @@
                 note.textContent = 'No macro state in prices.json — run npm run fetch.';
                 return;
             }
+            // The reading, not just the level. These are relations between two series — a
+            // commodity net of the dollar, a foreign index net of its currency, a long move
+            // contradicted by a short one — and they are exactly the inferences the Sweep was
+            // writing out by hand until signals.js started computing them. Same function, so the
+            // page and the agent can never disagree about what the macro says.
+            // Read from signals.json rather than recomputed here, so the page and the agent can
+            // never disagree about what the macro says — there is one implementation, in
+            // signals.js, and both read its output.
+            const notes = {};
+            for (const n of (STATE.signals?.macro || [])) {
+                if (n.says) notes[n.sym] = n.says;
+                else if (n.mixed) notes[n.sym] = 'mixed across windows — no clean direction';
+            }
             const rows = [];
             for (const group of MACRO_GROUPS) {
                 const inGroup = syms.filter(s => macro[s].group === group);
                 if (!inGroup.length) continue;
-                rows.push(`<tr class="macro-head"><td colspan="9">${group}</td></tr>`);
+                rows.push(`<tr class="macro-head"><td colspan="10">${group}</td></tr>`);
                 for (const s of inGroup) {
                     const m = macro[s];
                     const level = m.unit === '%' ? `${num2(m.price)}%` : num2(m.price);
+                    const note = notes[s];
                     rows.push(`<tr><td>${escapeHTML(m.name)}<span class="macro-sym">${escapeHTML(s)}</span></td>`
                         + `<td>${level}</td>`
                         + portfolioLib.PERIODS.map(p => `<td class="${cls(m[p])}">${pct(m[p])}</td>`).join('')
+                        + `<td class="macro-says">${note ? escapeHTML(note) : ''}</td>`
                         + '</tr>');
                 }
             }
@@ -2957,7 +2976,10 @@
             fetch(DATA + 'prices.json' + bust).then(r => r.json()),
             // Optional: an empty or absent watchlist must not take the dashboard down with it.
             fetch(DATA + 'watchlist.json' + bust).then(r => r.ok ? r.json() : []).catch(() => []),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, nav, performance }, watchlist]) => {
+            // The scan's output, optional in the same way: this page predates it, and a checkout
+            // where nobody has run `npm run signals` still has a working dashboard.
+            fetch(DATA + 'signals.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, nav, performance }, watchlist, signals]) => {
             RATES = rates;
             // Held names are dropped: once you own it, the holdings table is the truth. This
             // keeps a stock that was on the list and then bought from appearing twice.
@@ -2973,7 +2995,7 @@
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, nav, performance, firstTrade, dim };
+            STATE = { holdings, rates, quotes, macro, signals, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
