@@ -1328,19 +1328,19 @@
                 // Usually one row, the year in progress. Occasionally two, where a fiscal year has
                 // closed and simply not been filed yet — which is why each is labelled from what
                 // it actually is rather than all being called "to date".
-                const bandRow = allBands.filter(b => !shownYears.has(b.end)).map(b => {
+                const bandRows = allBands.filter(b => !shownYears.has(b.end)).map(b => {
                     const tip = b.partial
                         ? `Part year: ${b.weeks} weeks from the last filed year end to ${ymd(b.end)}. No accounts are filed for it yet, so only the multiple can be shown.`
                         : `A full fiscal year — ${b.weeks} weeks to ${ymd(b.end)} — whose accounts have not been filed yet, so only the multiple can be shown.`;
                     const tag = b.partial
                         ? '<span class="tag" title="Not a reported period — the fiscal year now running, priced to the latest weekly close.">part year</span>'
                         : '<span class="tag" title="A complete fiscal year that has not been reported yet. The prices are all in; the accounts are not.">not filed</span>';
-                    return `<tr class="band-row">
+                    return { fy: b.fy, partial: b.partial, html: `<tr class="band-row">
                         <td title="${escapeHTML(tip)}">FY${b.fy}${b.partial ? ' to date' : ''} ${tag}</td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                         ${bandOf(b)}
-                    </tr>`;
-                }).join('');
+                    </tr>` };
+                });
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
@@ -1357,12 +1357,12 @@
                     return `<td>${v == null ? '<span class="muted">–</span>' : plain(v)}${change == null ? '' :
                         `<span class="yoy ${cls(change)}">${change >= 0 ? '+' : '−'}${Math.abs(change * 100).toFixed(1)}pp</span>`}</td>`;
                 };
-                const body = years.map((y, i) => {
+                const filedRows = years.map((y, i) => {
                     // Only against the year immediately before. Yahoo's history has holes
                     // (NTDOY skips FY2025), and growth across a two-year gap is not "YoY".
                     const before = years[i - 1];
                     const p = before && fy(y) - fy(before) === 1 ? before : null;
-                    return `<tr>
+                    return { fy: fy(y), html: `<tr>
                         <td title="Fiscal year ended ${ymd(y.date)}">${fy(y)}</td>
                         ${cell(y.rev, yoy(y.rev, p?.rev))}
                         ${cell(y.opinc, yoy(y.opinc, p?.opinc))}
@@ -1373,8 +1373,16 @@
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
                         ${cell(recEps(y), p ? yoy(recEps(y), recEps(p)) : null, false, num2)}
                         ${bandCell(y)}
-                    </tr>`;
-                }).join('');
+                    </tr>` };
+                });
+
+                // One chronological run. Unfiled years are not all in the future: peBands reaches
+                // back further than earnings.json does, so a filer like NVDA has FY2017-2020 with
+                // prices but no accounts BELOW its filed range and FY2027 to date above it.
+                // Appending them in a block put the oldest years under the newest.
+                const body = [...filedRows, ...bandRows]
+                    .sort((a, b) => a.fy - b.fy || (a.partial ? 1 : 0) - (b.partial ? 1 : 0))
+                    .map(r => r.html).join('');
 
                 // Compound over the calendar span, not the row count — a gap year still counts
                 // as elapsed time, so it must divide the growth.
@@ -1640,7 +1648,7 @@
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
                         <th title="Cheapest and dearest multiple the market struck inside that fiscal year, with the year's average beneath. Weekly closes ÷ the annual EPS already PUBLISHED by each date — so it is not the price divided by the EPS on the same row: results land months after the year they describe. The bands run back to the first year with earnings on file, so on a long history the lowest low here can sit BELOW the five-year P/E low in Valuation — that is the two windows differing, not a disagreement.">P/E paid</th>
                     </tr></thead>
-                    <tbody>${body}${bandRow}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
+                    <tbody>${body}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
                 ${notesBlock([
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
