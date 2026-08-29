@@ -89,20 +89,28 @@ try {
 
     # ---- 4. Scan, now covering whatever the Sweep added.
     node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
-    git add prices.json history.json earnings.json intraday.json signals.json 2>&1 | Out-Null
+    # Only signals.json is committed. The price files belong to CI, which rewrites them every
+    # 15 minutes on weekdays and on every push, so committing our copy races it for nothing:
+    # the 29 Aug attempt collided on prices.json, history.json and intraday.json at once. The
+    # local fetch above has already done its job by handing the Deep dive current data.
+    git add signals.json 2>&1 | Out-Null
     if (git diff --cached --name-only) {
-        git commit --quiet -m "prices and scan: $started, covering this cycle’s new candidates"
-        Note 'prices and scan committed'
+        git commit --quiet -m "scan: $started, covering this cycle’s new candidates"
+        Note 'scan committed'
         if (-not $NoPush) {
             git fetch --quiet origin main 2>&1 | Out-Null
             git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'rebase conflicted - left local' }
-            else { git push --quiet origin main 2>&1 | Out-Null; Note 'prices and scan pushed' }
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase conflicted - left local' }
+            else { git push --quiet origin main 2>&1 | Out-Null; Note 'scan pushed' }
         }
     }
 
     # ---- 5. Deep dive, the only lane that may produce an order.
     Invoke-Lane 'pot\brief-deepdive.md'
+
+    # Drop the local price fetch now it has been read. Leaving it modified would make the next
+    # cycle's ff-only pull fail, and CI's copy is the one that should survive.
+    git checkout -- prices.json history.json earnings.json intraday.json 2>&1 | Out-Null
 
     # ---- 6. The report, and the bundle the dashboard Pot tab reads.
     node pot\report.js 2>&1 | ForEach-Object { Note "  $_" }
