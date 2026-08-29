@@ -47,3 +47,11 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 ## Entries
 
 <!-- newest first -->
+
+- 2026-04-14 · Ivan Li 李聲揚, 狼耳街華人 · <https://www.patreon.com/posts/155555787>
+  · saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
+  **Why:** it reinforces the philosophy. Convexity — a share can only fall 100%, but it can rise
+  many multiples of that — is the argument against two instincts I want to resist: **rushing to cut
+  a loss**, and **refusing to spray**. A loser caps itself; a winner does not, so the total
+  portfolio still gains. Empirically even the S&P 500's value is driven by only a few names, and I
+  cannot know in advance which of mine they are.
