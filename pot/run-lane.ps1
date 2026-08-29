@@ -1,4 +1,4 @@
-# Runs one agent lane unattended, for Windows Task Scheduler.
+﻿# Runs one agent lane unattended, for Windows Task Scheduler.
 #
 # The agent is given a brief and nothing else. Everything around it — pulling fresh CI data,
 # deciding what may be committed, pushing — is deterministic PowerShell, because an agent that
@@ -34,7 +34,7 @@ Add-Content -Path $log -Value "`n=== $started  $Agent  $Brief ===" -Encoding utf
 # Fresh CI data first — the whole point of the free lane is that the agent reads current numbers.
 # ff-only: a scheduled task must never be the thing that resolves a merge.
 git pull --ff-only --quiet origin main 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged or offline) — continuing on local data'; }
+if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) - continuing on local data'; }
 
 # Only these paths may change. Anything else the agent touches is reverted below, not committed.
 $allowed = @('pot/*', 'watchlist.json')
@@ -70,8 +70,22 @@ git commit --quiet -m "pot: $Agent ran $(Split-Path $Brief -Leaf) at $started"
 if ($LASTEXITCODE -ne 0) { Note 'git commit failed'; exit 2 }
 
 if ($Push) {
+    # The prices CI commits every 15 minutes and a lane takes ten, so origin has almost always moved
+    # by the time we get here — every run on 29 Aug failed its push for exactly this reason. Rebase
+    # our one commit onto the remote first, which shrinks the race from ten minutes to a second.
+    #
+    # Only pot/ and watchlist.json are ever staged here, and the CI only ever touches the data JSONs,
+    # so there is nothing to collide over in practice. If that ever stops being true, abandon the
+    # rebase: an unattended task must not leave a conflicted tree for the next run to trip over.
+    git fetch --quiet origin main 2>&1 | Out-Null
+    git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        git rebase --abort 2>&1 | Out-Null
+        Note 'rebase onto origin/main conflicted - aborted, commit stays local'
+        exit 0
+    }
     git push --quiet origin main 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Note 'git push failed — commit is local, will go with the next run' }
+    if ($LASTEXITCODE -ne 0) { Note 'git push failed - commit is local, will go with the next run' }
     else { Note 'pushed' }
 } else {
     Note 'committed locally (-Push not set)'
