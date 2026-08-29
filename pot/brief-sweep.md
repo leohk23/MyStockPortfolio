@@ -110,6 +110,13 @@ and yen depreciation carefully."* Ask of every candidate: **is this the 7532.T m
 
 - **No figure without a source.** A URL, or a file in this repo. §7.3 — if you cannot source it,
   do not write it.
+- **Which source is settled by [`pot/sources.md`](sources.md) — read it.** In short: anything this
+  repo already holds (price, EPS, P/E, percentile, FX) is quoted from the repo, company numbers
+  come from the company's own filing or IR release, macro from the agency that publishes it, and
+  the press is for narrative and for finding names — never as the sole source of a figure. It also
+  carries the short list of aggregators and promotional sites never to cite. There is no
+  approved-domain list, and that is deliberate: finding a name anywhere is fine, citing anything
+  but the best available source is not.
 - Anything you claim that overlaps local data will be checked against it. Say where they differ
   rather than picking the flattering one.
 - Write to `pot/sweeps/YYYY-MM-DD-HHMM.md`, the time in **UTC** — Leo runs this lane several times

@@ -151,7 +151,10 @@ so answer, explicitly, **why this is not that mistake again.**
 ## Rules
 
 - Write only `pot/proposals/…`. Touch nothing else.
-- No figure without a source (§7.3).
+- No figure without a source (§7.3), and **which source is settled by [`pot/sources.md`](sources.md)
+  — read it.** Numbers this repo holds are quoted from the repo, company numbers from that
+  company's filing or IR release, macro from the publishing agency, broker costs from the broker's
+  own schedule. It also carries the list of aggregators and promotional sites never to cite.
 - You are proposing, not deciding. Leo executes.
 
 ## Header your output with a provenance line
