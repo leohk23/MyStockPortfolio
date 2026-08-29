@@ -230,6 +230,31 @@
         #world-table th[aria-sort="descending"]::after { content: " ▼"; }
         #world-table tr.world-dead td { color: var(--text-muted); }
         #world-table tr.world-dead td:first-child { text-decoration: line-through; }
+        /* A reading column, not a table: measured line length, generous leading. */
+        #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+        #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
+            color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border);
+            border-radius: 6px; }
+        #pot-when { font-size: 12px; }
+        #pot-body { max-width: 68ch; font-size: 15px; line-height: 1.65; }
+        #pot-body h1 { font-size: 21px; margin: 0 0 14px; }
+        #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+        #pot-body h3, #pot-body h4 { font-size: 15px; margin: 22px 0 8px; }
+        #pot-body p { margin: 0 0 13px; }
+        #pot-body li { margin-bottom: 7px; }
+        #pot-body blockquote { margin: 0 0 13px; padding: 2px 0 2px 14px;
+            border-left: 3px solid var(--border); color: var(--text-muted); }
+        #pot-body code { font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+        #pot-body pre { background: var(--surface-2); padding: 11px; border-radius: 6px; overflow-x: auto; }
+        #pot-body pre code { background: none; padding: 0; }
+        #pot-body hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+        /* Tables inside a proposal are wide and must scroll themselves, never the page. */
+        #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; }
+        #pot-body table { border-collapse: collapse; font-size: 12.5px; }
+        #pot-body th, #pot-body td { border: 1px solid var(--border); padding: 5px 8px;
+            text-align: left; vertical-align: top; }
+        #pot-body th { background: var(--surface-2); white-space: nowrap; }
+        @media (max-width: 640px) { #pot-body { font-size: 15.5px; } #pot-doc { width: 100%; } }
         #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
             padding-top: 14px; text-align: left;
@@ -555,6 +580,7 @@
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
             <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
             <button data-dim="macro" aria-pressed="false" title="Index, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
+            <button data-dim="pot" aria-pressed="false" title="What the AI pot has produced: the summary, every proposal awaiting a decision, and the sweeps behind them. Rendered from the same markdown the agents write.">Pot</button>
         </div>
     </div>
 
@@ -653,6 +679,18 @@
          peak. A MONITOR: none of these is on the watchlist, because owning them individually is
          not the intent. Dead funds are shown struck through rather than dropped — four of the 47
          have been wound up and Yahoo still quotes their last price forever. -->
+    <!-- The pot writes markdown, because a proposal has to be readable in two years without
+         this page. So the page renders what it wrote rather than owning a second copy: the
+         HTML in pot.json comes from pot/bundle.js, and a document that is not on disk simply
+         does not appear here. -->
+    <div id="pot" hidden>
+        <div id="pot-pick">
+            <select id="pot-doc" aria-label="Pot document"></select>
+            <span id="pot-when" class="muted"></span>
+        </div>
+        <article id="pot-body"></article>
+    </div>
+
     <div class="table-responsive" id="world" hidden>
         <table id="world-table">
             <thead><tr>
@@ -745,6 +783,7 @@
         /* ---------------- state ---------------- */
         let STATE = null;        // { holdings, rates, quotes, nav, firstTrade, rows, total, dim }
         let WATCH = [];          // watched-not-owned rows; never part of STATE/totals
+        let POT = null;
         let HISTORY = null;      // lazy-loaded history.json
         let historyPromise = null;
         let EARNINGS = null;     // lazy-loaded earnings.json (deep dive only)
@@ -2889,11 +2928,12 @@
         // beneath it — one table area, one control.
         function applyView() {
             const dim = STATE.dim;
-            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world';
+            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot';
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
             document.getElementById('macro').hidden = dim !== 'macro';
             document.getElementById('world').hidden = dim !== 'world';
+            document.getElementById('pot').hidden = dim !== 'pot';
         }
 
         // Ranked by distance below the all-time high, deepest first — so the top of the table IS
@@ -2902,6 +2942,53 @@
         // Default: furthest below its own peak first. Text sorts ascending, numbers descending —
         // the same convention the other tables use, so a click means the same thing everywhere.
         let worldSort = { key: 'fromAth', dir: -1 };
+// The pot documents, grouped the way they are read: what needs a decision first, the evidence
+// behind it after. The HTML is rendered by pot/bundle.js, so nothing here parses markdown —
+// this only chooses a document and puts it on the screen.
+//
+// A <select> rather than a row of tabs on purpose: there are already 38 documents and the list
+// only grows, and a native picker is the one control a phone renders well without help.
+const POT_GROUPS = [
+    ['summary', 'Summary'], ['proposal', 'Proposals'], ['sweep', 'Sweeps'],
+    ['scan', 'Scan'], ['runs', 'Runs and cost'], ['archive', 'Past run reports'],
+];
+let potDoc = localStorage.getItem('potDoc') || null;
+
+function renderPot() {
+    const sel = document.getElementById('pot-doc');
+    const body = document.getElementById('pot-body');
+    const when = document.getElementById('pot-when');
+    const docs = POT?.docs || [];
+    if (!docs.length) {
+        sel.innerHTML = '';
+        when.textContent = '';
+        body.innerHTML = '<p class="muted">No pot report yet. Run <code>npm run pot-report</code> '
+            + 'to generate one, or wait for the daily cycle.</p>';
+        return;
+    }
+    // Rebuild the picker only once: re-rendering it on every view switch would throw away
+    // the open dropdown on a phone mid-tap.
+    if (!sel.options.length) {
+        sel.innerHTML = POT_GROUPS.map(([kind, label]) => {
+            const mine = docs.filter(d => d.kind === kind);
+            if (!mine.length) return '';
+            return `<optgroup label="${label}">` + mine.map(d =>
+                `<option value="${escapeHTML(d.id)}">${escapeHTML(d.title)}</option>`).join('') + '</optgroup>';
+        }).join('');
+        sel.addEventListener('change', () => {
+            potDoc = sel.value;
+            localStorage.setItem('potDoc', potDoc);
+            renderPot();
+            document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
+        });
+    }
+    // A remembered document that has since been renamed must not blank the tab.
+    const doc = docs.find(d => d.id === potDoc) || docs[0];
+    sel.value = doc.id;
+    when.textContent = doc.updated ? stamp(doc.updated) : '';
+    body.innerHTML = doc.html;
+}
+
         function renderWorld() {
             const tbody = document.querySelector('#world-table tbody');
             const note = document.getElementById('world-note');
@@ -2953,6 +3040,7 @@
                         ? { key: k, dir: -worldSort.dir }
                         : { key: k, dir: k === 'country' ? 1 : -1 };
                     renderWorld();
+                    renderPot();
                 };
             });
             const deep = live.filter(c => c.fromAth > 0.5).length;
@@ -3026,6 +3114,7 @@
             renderCalendar();
             renderMacro();
             renderWorld();
+            renderPot();
             renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
@@ -3157,15 +3246,19 @@
             // The scan's output, optional in the same way: this page predates it, and a checkout
             // where nobody has run `npm run signals` still has a working dashboard.
             fetch(DATA + 'signals.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, countries, nav, performance }, watchlist, signals]) => {
+            // The pot reports, optional in the same way: a checkout that has never run the pot
+            // still has a working dashboard, and the Pot tab says so rather than breaking.
+            fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, countries, nav, performance }, watchlist, signals, pot]) => {
             RATES = rates;
+            POT = pot;
             // Held names are dropped: once you own it, the holdings table is the truth. This
             // keeps a stock that was on the list and then bought from appearing twice.
             const held = new Set(holdings.map(h => h.yahoo));
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world'];
+            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world', 'pot'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));

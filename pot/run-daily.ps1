@@ -46,7 +46,7 @@ try {
         '''[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint e);''; ' +
         '[W.P]::SetThreadExecutionState(0x80000001); while($true){Start-Sleep 60}')
 
-    # ---- 1. Scan. Free, deterministic, and the Deep dive reads its output.
+    # ---- 1. Scan, so the Sweep has current levels to check its own figures against.
     git pull --ff-only --quiet origin main 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) - continuing on local data' }
     node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
@@ -63,16 +63,48 @@ try {
         }
     } else { Note 'scan found nothing new to commit' }
 
-    # ---- 2 and 3. The two agent lanes, in dependency order.
-    foreach ($brief in @('pot\brief-sweep.md', 'pot\brief-deepdive.md')) {
+    # Each lane is its own process so a failure stops the cycle rather than poisoning the next.
+    function Invoke-Lane($brief) {
         Note "--- $brief"
-        $args = @('-Brief', $brief, '-Repo', $Repo)
-        if (-not $NoPush) { $args += '-Push' }
-        & (Join-Path $Repo 'pot\run-lane.ps1') @args
+        $laneArgs = @('-Brief', $brief, '-Repo', $Repo)
+        if (-not $NoPush) { $laneArgs += '-Push' }
+        & (Join-Path $Repo 'potun-lane.ps1') @laneArgs
         if ($LASTEXITCODE -ne 0) { Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1 }
     }
 
-    # ---- 4. The report is what Leo actually opens in the morning.
+    # ---- 2. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
+    # what we already track (A14-A16), and it writes any new name into watchlist.json.
+    Invoke-Lane 'pot\brief-sweep.md'
+
+    # ---- 3. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
+    #
+    # Without this the cycle defeats itself. The Sweep exists to find names we do not carry;
+    # the Deep dive must fact-check every figure against prices.json (§7.2) and so throws out
+    # anything not in it. On 29 Aug it ranked Haidilao and Scorpio Tankers last, "no local
+    # quote, real EPS or P/E bands" - names its own Sweep had raised eleven minutes earlier.
+    # One fetch takes about three minutes and gives a new ticker price, EPS and P/E bands,
+    # which is everything §7.2 asks for.
+    node fetch-prices.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
+    if ($LASTEXITCODE -ne 0) { Note "fetch-prices exited $LASTEXITCODE - the Deep dive may lack data for new names" }
+
+    # ---- 4. Scan, now covering whatever the Sweep added.
+    node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
+    git add prices.json history.json earnings.json intraday.json signals.json 2>&1 | Out-Null
+    if (git diff --cached --name-only) {
+        git commit --quiet -m "prices and scan: $started, covering this cycle’s new candidates"
+        Note 'prices and scan committed'
+        if (-not $NoPush) {
+            git fetch --quiet origin main 2>&1 | Out-Null
+            git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'rebase conflicted - left local' }
+            else { git push --quiet origin main 2>&1 | Out-Null; Note 'prices and scan pushed' }
+        }
+    }
+
+    # ---- 5. Deep dive, the only lane that may produce an order.
+    Invoke-Lane 'pot\brief-deepdive.md'
+
+    # ---- 6. The report, and the bundle the dashboard Pot tab reads.
     node pot\report.js 2>&1 | ForEach-Object { Note "  $_" }
     Note 'cycle complete'
 }

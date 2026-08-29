@@ -15,7 +15,7 @@
     "hkdates": "node fetch-hk-dates.js",
     "hkboard": "node fetch-hk-board.js",
     "signals": "node signals.js",
-    "pot-report": "node pot/report.js",
+    "pot-report": "node pot/report.js && node pot/bundle.js",
     "filings": "node fetch-filing-dates.js"
   },
   "repository": {

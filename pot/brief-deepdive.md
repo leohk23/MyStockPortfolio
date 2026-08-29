@@ -84,7 +84,8 @@ own tests, not generic ones:
 
 **Before researching any name, check it is locally covered (§7.2)** — in `prices.json` with real
 `eps`, and `peBands` if it is an operating company. If not, say so and pick another: a fresh Sweep
-candidate needs one CI pass, which takes under fifteen minutes. A proposal that cannot be
+candidate needs one price fetch, and the daily cycle now runs one between the Sweep and this
+lane for exactly that reason, so a name raised this morning should already be covered.
 fact-checked against independent data is void, and writing one anyway is worse than writing none.
 
 ## Verify before you argue — §7.2, mandatory
