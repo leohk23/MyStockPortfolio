@@ -29,6 +29,13 @@ Appended by the Sweep. Format:
 
 <!-- newest first -->
 
+- 2026-08-29 · global electricity demand, grid investment and connection queues · used the IEA
+  Electricity 2026 and mid-year update. Wanted on each publication, not weekly; it distinguished
+  physical power demand from company promotion.
+- 2026-08-29 · company order/backlog conversion and GLP-1 realised pricing/volume · used AMSC,
+  OSI Systems and Novo Nordisk releases and filings. Wanted on results dates, not weekly; price and
+  trailing earnings alone could not test whether backlog or a low multiple represented durable
+  economics.
 - 2026-08-29 · US payrolls, real earnings and real consumer spending · used the US Bureau of
   Labor Statistics and Bureau of Economic Analysis. Wanted monthly, with the latest release carried
   into each weekly Sweep. Drove the value-retail read.
