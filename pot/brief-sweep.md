@@ -58,6 +58,10 @@ observation and the inference visibly apart: *what is true*, then *what you take
   where an entry is missing. A file dropped in that folder and never listed used to be invisible to
   this lane, which is the wrong way round: saving the whole article is *more* effort than listing
   it, so it cannot be the thing that gets ignored.
+- [`pot/sources.md`](sources.md) lists **voices worth seeking out** — people whose thinking Leo
+  rates. Go and look for them. Most are paywalled, so what you will actually find is whatever he
+  saved into `pot/reading/`; treat those pieces as strong leads, and still verify every number
+  against the filing.
 
 For each: what has the price done *since* the article, and does the argument still hold or is it
 already priced?

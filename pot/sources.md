@@ -59,9 +59,31 @@ covers.
 
 ---
 
+<!-- VOICES LIST — Leo maintains this. Add a line at the bottom of the list below:
+       Name — where to find them — how to get it
+     This list ADDS, it never restricts: D16's "no approved-domain list" still stands, and a name
+     arriving from anywhere else is as welcome as it ever was. -->
+
+## Voices worth seeking out
+
+People whose thinking Leo rates. **Actively look for them** rather than waiting to stumble on
+them, and when a saved piece of theirs is in `pot/reading/`, treat it as a strong lead and say
+what has happened to the price since they wrote.
+
+**This does not promote them to sources of fact.** Rule 5 still applies with no exception: their
+argument is a reason to go and look, their numbers are not evidence. If one of them says a company
+earns X, the figure in a proposal still comes from that company's filing. A voice worth reading is
+still a voice, and the filing is still the filing.
+
+- **Michael Burry** — <https://substack.com/@michaeljburry> — **paywalled.** The agent cannot open
+  it. Leo reads it and saves the text to `pot/reading/YYYY-MM-DD-slug.md` with the URL on line 1,
+  which is what makes it available at all. Worth the effort: the whole point of him is that he is
+  early and unpopular, which is exactly the input a screen cannot generate.
+
 <!-- NEVER-CITE LIST — Leo maintains this. Add a line at the bottom, keep the format:
        domain.com — what it is
      Domain only, no https://, no path. A domain here also covers its subdomains.
+     Keep this list last in the file.
      `npm run pot-report` reads THIS list and flags any run that cited one, so adding a line is
      all that is needed to arm the check. Delete a line to un-ban a site. -->
 
