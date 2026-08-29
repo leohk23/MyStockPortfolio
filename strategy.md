@@ -27,7 +27,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 5.1  | Valid sell reasons                       | falsifier tripped · thesis played out · breached a §4 limit                                                      |
 | 5.2  | Minimum holding period                   | None                                                                                                                |
 | 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
-| 6.1  | Valuation signal                         | within**15%** of the ticker's lowest band low                                                                 |
+| 6.1  | Valuation signal                         | in the **cheapest 10%** of its own **5-year** multiple history (3y/10y/all kept as reference)      |
 | 6.2  | Drawdown signal                          | **−15% in 7 days**, or **−25% in 30**                                                                 |
 | 6.3  | Results signal                           | the day after results, for anything the pot holds                                                                   |
 | 6.4  | Dry-powder signal                        | at**£750** uninvested, then every **£250**                                                            |
@@ -41,15 +41,13 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 10   | Broker                                   | unconstrained — so the Tradelog gains a**`Pot` column**                                                    |
 | 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
 
-**Still open:** §9.2 (what "how much thinking the agent did" should mean in practice) and §11.2
-(any further standing orders). §11.1.a carries an unresolved consequence — see the follow-up there.
+**Nothing open.** All 34 questions answered; §6.1 revised 29 Aug 2026 (see below).
 
-Fill in the `→` lines. Every question carries a suggested default, drawn from what your existing
-book actually does, so you are editing rather than writing from scratch — "default is fine" is a
-complete answer. Delete the commentary once you have answered; what survives becomes the rules an
-agent is held to.
+Each question was asked with a suggested default drawn from what the existing book actually does.
+Those suggestions are kept as `> quoted` history rather than deleted: where an answer departs from
+one, the pair records that the departure was deliberate.
 
-Two markers tell you what an answer becomes:
+Two markers say what an answer becomes:
 
 - **`[auto]`** — becomes a deterministic check in code. Runs free, on data CI already fetches, no
   LLM involved. These are what make the thing timely.
@@ -342,6 +340,24 @@ you want; they become the signal scan.
 > low.** This is the signal your last two weeks of work accidentally built.
 
 **A (threshold)** — fire when the current multiple is within 15% of the ticker's lowest band
+
+⚠ **Revised 29 Aug 2026, on Leo's objection.** A minimum reaching back a decade is precise and
+unusable: Apple's cheapest week was 8.9× in April 2013 — true, and about a company selling into a
+market that no longer exists. A floor nobody expects to see again cannot say whether today is cheap.
+
+**A (revised)** — **the cheapest 10% of its own five-year distribution.** Two changes, both his:
+
+- **Five years, not all time.** Long enough to hold a cycle, short enough that the business is
+  recognisable. **3y, 10y and all-time are still computed and kept** in `peHistory` as reference —
+  the long view is the right context for *"has this ever been hated?"*, just the wrong yardstick
+  for *"should I buy it this week"*.
+- **A percentile, not a distance to the minimum.** A minimum is one observation, often one panicked
+  week; a percentile uses every week in the window. NVDA at the **0th percentile** — cheaper than
+  any week in five years — says more than a trough from 2011. AAPL at the **87th** says it is dear
+  by its own recent standards, which an all-time low of 8.9× actively hides.
+
+The minimum still travels with the signal, because *how cheap it has actually got* is worth knowing
+once the better question has been asked. It is context now, not the trigger.
 
 **Q 6.2** Drawdown `[auto]` — a watchlist or held name falls hard, fast.
 

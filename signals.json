@@ -1,6 +1,6 @@
 {
- "generated": "2026-08-29T01:16:10.911Z",
- "pricesAt": "2026-08-29T01:14:51.444Z",
+ "generated": "2026-08-29T02:00:09.924Z",
+ "pricesAt": "2026-08-29T01:56:17.530Z",
  "vix": {
   "close": 14.43,
   "day": -0.0055
@@ -9,38 +9,44 @@
  "fired": [
   {
    "rule": "6.1 valuation",
-   "ticker": "0006.HK",
-   "where": "watchlist",
-   "pe": 7.142857142857142,
-   "floor": 12.3785,
-   "vsFloor": -0.4229626252892401,
-   "oneOff": {
-    "why": "trailing EPS is 2.9x the last filed year (2024)",
-    "epsJump": 2.926829268292683
-   }
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "0066.HK",
-   "where": "watchlist",
-   "pe": 8.850136239782016,
-   "floor": 10.2232,
-   "vsFloor": -0.13430860789361299
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "7532.T",
+   "ticker": "NVDA",
    "where": "HELD",
-   "pe": 22.03320631464344,
-   "floor": 21.7371,
-   "vsFloor": 0.013622162783602176
+   "pe": 27.503160556257903,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 27.5032,
+   "floorDate": "2026-08-28",
+   "p5": 32.8821,
+   "median": 56.75,
+   "vsFloor": -0.0000014341510113924372
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "GME",
+   "where": "watchlist",
+   "pe": 13.335820895522389,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 127,
+   "floor": 13.3358,
+   "floorDate": "2026-08-28",
+   "p5": 16.1791,
+   "median": 44.5094,
+   "vsFloor": 0.0000015668743074126468
   },
   {
    "rule": "6.1 valuation",
    "ticker": "RSGN.SW",
    "where": "watchlist",
    "pe": 12.698717948717947,
+   "pctile": 0.01676,
+   "window": "5y",
+   "weeks": 179,
    "floor": 12.5,
+   "floorDate": "2026-08-07",
+   "p5": 14.0099,
+   "median": 44.0198,
    "vsFloor": 0.015897435897435752
   },
   {
@@ -48,12 +54,18 @@
    "ticker": "AMZN",
    "where": "HELD",
    "pe": 21.434432823813356,
+   "pctile": 0.008032,
+   "window": "5y",
+   "weeks": 249,
    "floor": 20.8069,
+   "floorDate": "2026-08-21",
+   "p5": 29.0275,
+   "median": 46.8822,
    "vsFloor": 0.030159842351016097,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 41.79320340833512,
-    "recurringVsFloor": 1.0086223035788664
+    "recurringVsFloor": 0.20152726324439585
    }
   },
   {
@@ -61,27 +73,98 @@
    "ticker": "RMS.PA",
    "where": "HELD",
    "pe": 37.180083759888326,
+   "pctile": 0.02165,
+   "window": "5y",
+   "weeks": 231,
    "floor": 35.5584,
+   "floorDate": "2026-07-31",
+   "p5": 37.7891,
+   "median": 54.3333,
    "vsFloor": 0.045606207250279196
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "CCOEY",
+   "ticker": "9961.HK",
    "where": "HELD",
-   "pe": 27.09158172221286,
-   "floor": 24.2613,
-   "vsFloor": 0.11665828798180078
+   "pe": 6.607311990907369,
+   "pctile": 0.02793,
+   "window": "5y",
+   "weeks": 179,
+   "floor": 5.49388,
+   "floorDate": "2026-06-26",
+   "p5": 6.46233,
+   "median": 23.5427,
+   "vsFloor": 0.20266769403543017
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "LRE.L",
-   "where": "watchlist",
-   "pe": 6.484210526315789,
-   "floor": 5.66471,
-   "vsFloor": 0.1446676928414321,
+   "ticker": "GOOG",
+   "where": "HELD",
+   "pe": 17.212851405622487,
+   "pctile": 0.0613,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 13.3611,
+   "floorDate": "2022-11-04",
+   "p5": 15.5386,
+   "median": 23.7145,
+   "vsFloor": 0.28828101021790764,
    "oneOff": {
-    "why": "trailing EPS is 73.1x the last filed year (2024)",
-    "epsJump": 73.07692307692308
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 33.90051708966513,
+    "recurringVsFloor": 0.5972501844426026
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "XIACY",
+   "where": "HELD",
+   "pe": 18.27215241849388,
+   "pctile": 0.09346,
+   "window": "5y",
+   "weeks": 107,
+   "floor": 11.363,
+   "floorDate": "2026-06-26",
+   "p5": 13.6717,
+   "median": 37.6019,
+   "vsFloor": 0.6080394630373918,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 24.949435343818635,
+    "recurringVsFloor": 0.03431925509993672
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "NFLX",
+   "where": "HELD",
+   "pe": 25.69811320754717,
+   "pctile": 0.06897,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 15.5925,
+   "floorDate": "2026-07-17",
+   "p5": 17.3185,
+   "median": 43.7797,
+   "vsFloor": 0.6481073084846671
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "NOW",
+   "where": "HELD",
+   "pe": 89.88198757763975,
+   "pctile": 0.09579,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 43.9413,
+   "floorDate": "2026-07-24",
+   "p5": 53.0069,
+   "median": 169.449,
+   "vsFloor": 1.0455013296748104,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 90.44375,
+    "recurringVsFloor": 0.010763785669742898
    }
   }
  ],
@@ -251,7 +334,7 @@
    "name": "Hang Seng",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.012099999999999998
+   "inGBP": -0.0094
   },
   {
    "sym": "^N225",
@@ -289,9 +372,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3057,
-   "says": "-29% over a year but 6% over three months — cooling",
-   "cooling": 0.0556,
+   "real": -0.3044,
+   "says": "-28% over a year but 6% over three months — cooling",
+   "cooling": 0.0575,
    "mixed": true
   }
  ],

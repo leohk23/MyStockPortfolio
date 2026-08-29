@@ -17,7 +17,7 @@ const fs = require('fs');
 
 // Every threshold in strategy.md's rules-at-a-glance, in one place. Change them there first.
 const RULES = {
-    valuationBand: 0.15,      // §6.1  within 15% of the ticker's own lowest band low
+    valuationPctile: 0.10,    // §6.1  in the cheapest 10% of its own five-year history
     drawdown7d: -0.15,        // §6.2  −15% in 7 days
     drawdown1m: -0.25,        // §6.2  ...or −25% in 30
     dryPowderFirst: 750,      // §6.4  £750 uninvested, then...
@@ -31,6 +31,9 @@ const RULES = {
     newsSpxDrop: -0.025,
 };
 
+// 1st, 2nd, 3rd, 4th — because "2th pctile" in a valuation report undermines every other number
+// on the page.
+const ordinal = n => n + ([, 'st', 'nd', 'rd'][n % 100 >> 3 ^ 1 && n % 10] || 'th');
 const iso = d => d.toISOString().slice(0, 10);
 const read = (f, fallback = null) => {
     try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return fallback; }
@@ -77,20 +80,33 @@ function oneOffRisk(quote, entry, floor, band) {
         : null;
 }
 
-function nearOwnFloor(quote, band = RULES.valuationBand, entry = null) {
-    if (!quote?.peBands?.length || !(quote.eps > 0) || !(quote.price > 0)) return null;
+// Where today's multiple sits in the stock's OWN five-year distribution — not how close it is to
+// a single cheapest week.
+//
+// A minimum is one observation, and often one panicked week about a company that no longer exists
+// in that form. Apple's cheapest was 8.9x in April 2013; a floor nobody expects to see again
+// cannot tell you whether today is cheap. A percentile uses every week in the window instead:
+// Nvidia sits at the 0th percentile of its own five years — cheaper than any week in it — which
+// says far more than a trough from 2011, and Apple at the 87th says it is dear by its own recent
+// standards, which the all-time low actively hides.
+//
+// The minimum is still reported alongside, because "how cheap has it actually got" is worth
+// knowing once the better question has been asked.
+function nearOwnFloor(quote, pctile = RULES.valuationPctile, entry = null) {
+    const window = quote?.peWindow || '5y';
+    const h = quote?.peHistory?.[window];
+    if (!h || typeof quote.pePctile !== 'number') return null;
+    if (!(quote.eps > 0) || !(quote.price > 0) || !(h.low > 0)) return null;
+    if (quote.pePctile > pctile) return null;
     const pe = quote.price / quote.eps;
-    const floor = Math.min(...quote.peBands.map(b => b.lo));
-    if (!(floor > 0)) return null;
-    // Compare the ratio rather than `pe > floor * (1 + band)`: it is the same quantity that gets
-    // reported, so the number in the output is the number that was tested. Neither form is exact
-    // at the boundary — 12 x 1.15 is 13.799999999999999 and 13.8 / 12 - 1 is 0.15000000000000013 —
-    // so a name sitting on precisely 15.000000% falls either way. That is a property of binary
-    // floats, not a bug worth an epsilon, and it cannot matter at this scale.
-    const vsFloor = pe / floor - 1;
-    if (vsFloor > band) return null;
-    const oneOff = oneOffRisk(quote, entry, floor, band);
-    return { pe, floor, vsFloor, ...(oneOff ? { oneOff } : {}) };
+    // The one-off check has to move onto the same footing. Comparing recurring earnings against
+    // the five-year MINIMUM fired on almost every hit, because a name only reaches the cheapest
+    // decile when it is already near that minimum. The question is the same one the signal asks:
+    // on recurring earnings, is it still in the cheap quarter of its own history?
+    const oneOff = oneOffRisk(quote, entry, h.p25, 0);
+    return { pe, pctile: quote.pePctile, window, weeks: h.weeks,
+        floor: h.low, floorDate: h.lowDate, p5: h.p5, median: h.median,
+        vsFloor: pe / h.low - 1, ...(oneOff ? { oneOff } : {}) };
 }
 
 // §6.2 — fell hard, fast. Either window qualifies on its own.
@@ -315,7 +331,7 @@ function scan(state, today) {
     const valuation = [];
     for (const [t, q] of Object.entries(quotes)) {
         const entry = state.earnings?.eps?.[t];
-        const hit = nearOwnFloor(q, RULES.valuationBand, entry);
+        const hit = nearOwnFloor(q, RULES.valuationPctile, entry);
         if (!hit) continue;
         // A stale denominator can flip the answer, so it rides with the signal rather than being
         // something the reader has to remember to check.
@@ -401,7 +417,7 @@ function main() {
     for (const [rule, list] of Object.entries(by)) {
         console.log(`\n  ${rule} — ${list.length}`);
         for (const f of list.slice(0, 8)) {
-            if (f.vsFloor != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} vs own floor ${f.floor.toFixed(1)}  (${pct(f.vsFloor)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS: ' + f.epsStale.behind + 'd' : ''}`);
+            if (f.pctile != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} = ${ordinal(Math.round(f.pctile*100))} pctile of ${f.window} (low ${f.floor.toFixed(1)} ${f.floorDate}, median ${f.median.toFixed(1)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS' : ''}`);
             else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
             else console.log(`     ${JSON.stringify(f)}`);
         }
@@ -415,33 +431,26 @@ function main() {
 function selftest() {
     const assert = require('assert');
 
-    // §6.1 — inside the band fires, outside does not, and the floor is the CHEAPEST band.
-    const bands = [{ lo: 20 }, { lo: 12 }, { lo: 30 }];
-    // The floor is 12 — the cheapest band, not the first or the latest — so the line sits at 13.8.
-    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, peBands: bands }), null);  // PE 20, well clear
-    assert.ok(nearOwnFloor({ price: 137, eps: 10, peBands: bands }));                 // 13.7, inside the band
-    assert.strictEqual(nearOwnFloor({ price: 139, eps: 10, peBands: bands }), null);  // 13.9, outside
-    assert.strictEqual(nearOwnFloor({ price: 125, eps: 10, peBands: bands }).floor, 12);
-    // A loss, no price, or no bands is not a signal — it is an absence of one.
-    assert.strictEqual(nearOwnFloor({ price: 100, eps: -1, peBands: bands }), null);
-    assert.strictEqual(nearOwnFloor({ price: 100, eps: 10, peBands: [] }), null);
+    // §6.1 — a percentile of the stock's OWN five-year distribution, not a distance to one week.
+    const H = { peWindow: '5y', peHistory: { '5y':
+        { low: 20, lowDate: '2022-10-07', p5: 22, median: 30, weeks: 260 } } };
+    const at = p => ({ ...H, price: 200, eps: 10, pePctile: p });
+    assert.ok(nearOwnFloor(at(0.04)), 'inside the cheapest 10% fires');
+    assert.strictEqual(nearOwnFloor(at(0.11)), null, 'outside it does not');
+    assert.strictEqual(nearOwnFloor(at(0.10)).pctile, 0.10, 'the boundary is inclusive');
+    // The minimum rides along: "how cheap has it actually got" is still worth knowing, it is just
+    // not the question that should decide anything.
+    const fired = nearOwnFloor(at(0));
+    assert.strictEqual(fired.floor, 20);
+    assert.strictEqual(fired.floorDate, '2022-10-07');
+    assert.strictEqual(fired.window, '5y');
+    assert.ok(Math.abs(fired.vsFloor) < 1e-9, 'PE 20 against a floor of 20 sits level with it');
+    // Absences are absences, never a signal: no history, no percentile, a loss, no price.
+    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, pePctile: 0 }), null);
+    assert.strictEqual(nearOwnFloor({ ...H, price: 200, eps: 10 }), null);
+    assert.strictEqual(nearOwnFloor({ ...H, price: 200, eps: -1, pePctile: 0 }), null);
+    assert.strictEqual(nearOwnFloor({ ...H, price: 0, eps: 10, pePctile: 0 }), null);
     assert.strictEqual(nearOwnFloor(undefined), null);
-
-// The one-off detector, from the first Sweep. Alphabet and Amazon both looked below their
-    // floor on headline EPS and are well above it on recurring — flag, never suppress.
-    const bandsF = [{ lo: 20 }];
-    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, normEps: 10, peBands: bandsF }).oneOff, undefined);
-    const flagged = nearOwnFloor({ price: 200, eps: 10, normEps: 4, peBands: bandsF });
-    assert.ok(flagged, 'still fires — the flag does not suppress');
-    assert.ok(flagged.oneOff.recurringPe === 50 && flagged.oneOff.recurringVsFloor > 0.15);
-    // Recurring still cheap -> no flag.
-    assert.strictEqual(nearOwnFloor({ price: 200, eps: 10, normEps: 9, peBands: bandsF }).oneOff, undefined);
-    // No normalized figure (the Hong Kong case): fall back to the last filed annual EPS.
-    const hk = { price: 60, eps: 8.4, normEps: 8.4, peBands: [{ lo: 12.4 }] };
-    const entry = { years: [{ date: '2024-12-31', eps: 2.87 }, { date: '2025-12-31' }] };
-    assert.ok(/2.9x the last filed year/.test(nearOwnFloor(hk, 0.15, entry).oneOff.why));
-    assert.strictEqual(nearOwnFloor(hk, 0.15, { years: [{ date: '2025-12-31', eps: 7 }] }).oneOff, undefined);
-    assert.strictEqual(nearOwnFloor(hk, 0.15, null).oneOff, undefined);   // nothing to compare to
 
     // §6.2 — either window on its own, and both reported when both trip.
     assert.strictEqual(fellHard({ '7d': -0.14, '1m': -0.24 }), null);

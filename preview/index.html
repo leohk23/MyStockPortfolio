@@ -651,6 +651,7 @@
                 <th data-wsort="athDay" title="The week that high was set. Sorting by it separates a market that peaked last month from one that peaked in 2008 — the same drawdown means a very different thing.">ATH set</th>
                 <th data-wsort="fromAth" aria-sort="descending" title="How far it must RISE to regain that high — the gap over today's price, which is the convention in Leo's own sheet.">From ATH</th>
                 <th data-wsort="range1y" title="Where it sits inside its own last 12 months: 0% at the low, 100% at the high.">1y range</th>
+                <th data-wsort="oneYear">1Y</th>
                 <th data-wsort="ytd">YTD</th>
                 <th data-wsort="volRatio" title="Latest weekly volume over the average of the last year.">Vol</th>
             </tr></thead>
@@ -2851,6 +2852,7 @@
                 + `<td class="muted">${c.athDay ? ymd(c.athDay) : '–'}</td>`
                 + `<td class="${c.fromAth > 0.5 ? 'loss' : ''}">${pct(c.fromAth)}</td>`
                 + `<td>${c.range1y == null ? '–' : plain(c.range1y)}</td>`
+                + `<td class="${cls(c.oneYear)}">${pct(c.oneYear)}</td>`
                 + `<td class="${cls(c.ytd)}">${pct(c.ytd)}</td>`
                 + `<td class="muted">${c.volRatio == null ? '–' : num2(c.volRatio) + '×'}</td></tr>`;
             // A wound-up fund keeps its row and says so. Dropping it would look like a fetch that
@@ -2858,10 +2860,10 @@
             const deadRow = c => `<tr class="world-dead"><td>${escapeHTML(c.country)}`
                 + `<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
                 + `<td>${c.price == null ? '–' : num2(c.price)}</td>`
-                + `<td colspan="6">${c.gone ? 'gone from the data source entirely'
+                + `<td colspan="7">${c.gone ? 'gone from the data source entirely'
                     : `wound up — last traded ${ymd(c.lastSeen)}, ${c.staleDays} days ago, still quoted`}</td></tr>`;
             tbody.innerHTML = live.map(row).join('')
-                + (dead.length ? `<tr class="macro-head"><td colspan="8">No longer trading</td></tr>`
+                + (dead.length ? `<tr class="macro-head"><td colspan="9">No longer trading</td></tr>`
                     + dead.map(deadRow).join('') : '');
             // Rebound off the live table each render, because innerHTML replaced the old rows.
             document.querySelectorAll('#world-table th[data-wsort]').forEach(th => {

@@ -200,6 +200,8 @@ async function fetchCountry(ticker) {
     const last52 = bars.filter(b => b.day >= yearAgo);
     const hi1y = Math.max(...last52.map(b => b.hi).filter(v => v != null));
     const lo1y = Math.min(...last52.map(b => b.lo).filter(v => v != null));
+    // A year back on the same weekly grid, for the 1Y column.
+    const aYearAgo = bars.filter(b => b.day <= yearAgo).pop() || bars[0];
     const jan1 = `${new Date().getUTCFullYear()}-01-01`;
     const first = bars.find(b => b.day >= jan1) || bars[bars.length - 1];
 
@@ -216,6 +218,7 @@ async function fetchCountry(ticker) {
         hi1y: pc(hi1y), lo1y: pc(lo1y),
         // Where it sits in its own year: 0 at the low, 1 at the high.
         range1y: hi1y > lo1y ? pc((price - lo1y) / (hi1y - lo1y)) : null,
+        oneYear: aYearAgo?.close > 0 ? pc(price / aYearAgo.close - 1) : null,
         ytd: first?.close > 0 ? pc(price / first.close - 1) : null,
         volRatio: avgVol ? pc(bars[bars.length - 1].vol / avgVol) : null,
         weeks: bars.length, since: bars[0].day,
@@ -864,6 +867,71 @@ const epsAsOf = (known, day) => {
     for (const k of known) { if (k.from <= day) e = k.eps; else break; }
     return e > 0 ? e : null;
 };
+
+// The same weekly multiples, summarised over several horizons.
+//
+// An all-time minimum is precise and not usable. Apple's cheapest week was 8.9x in April 2013 —
+// true, and about a company that sold iPhones into a market that no longer exists. A floor nobody
+// expects to see again cannot tell you whether today is cheap.
+//
+// So the headline horizon is FIVE YEARS: long enough to contain a cycle, short enough that the
+// business is recognisable. 3y, 10y and all-time are kept alongside rather than discarded — the
+// long view is the right context for "has this ever been hated?", it is simply the wrong yardstick
+// for "should I buy it this week".
+//
+// And the headline measure is a PERCENTILE, not the minimum. A minimum is one observation, quite
+// possibly one panicked week; a percentile uses every week in the window. Nvidia sits at the 0th
+// percentile of its own five years — cheaper than any week in it — which says far more than
+// "its trough was 12.7x in 2011". Apple at the 87th says it is dear by its own recent standards,
+// which an all-time trough of 8.9x actively hides. The minimum is kept beside it, because "how
+// cheap has it actually got" is still worth knowing once you have asked the better question.
+const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
+const HEADLINE_HORIZON = '5y';
+
+function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, today = null) {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
+    if (!known) return null;
+    const now = today || (days.length ? days[days.length - 1] : null);
+    if (!now) return null;
+
+    // One pass over the weekly closes; every horizon is a filter on the same points.
+    const points = [];
+    for (let i = 0; i < days.length; i++) {
+        const c = closes[i];
+        if (c == null) continue;
+        const e = epsAsOf(known, days[i]);
+        if (e == null) continue;
+        points.push({ day: days[i], pe: c / e, price: c, eps: e });
+    }
+    if (!points.length) return null;
+    const current = points[points.length - 1].pe;
+
+    const out = {};
+    for (const [name, years] of Object.entries(TROUGH_HORIZONS)) {
+        let from = '';
+        if (years) {
+            const d = new Date(now + 'T00:00:00Z');
+            d.setUTCFullYear(d.getUTCFullYear() - years);
+            from = d.toISOString().slice(0, 10);
+        }
+        const win = points.filter(p => p.day >= from);
+        // A horizon with almost nothing in it would report a percentile off two observations.
+        if (win.length < 26) continue;
+        const sorted = [...win].sort((a, b) => a.pe - b.pe);
+        const at = f => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * f))].pe;
+        const low = sorted[0];
+        out[name] = {
+            weeks: win.length, from: win[0].day,
+            low: Number(low.pe.toPrecision(6)), lowDate: low.day,
+            lowPrice: Number(low.price.toPrecision(6)), lowEps: Number(low.eps.toPrecision(6)),
+            p5: Number(at(0.05).toPrecision(6)), p25: Number(at(0.25).toPrecision(6)),
+            median: Number(at(0.5).toPrecision(6)),
+            // Where today sits in that window: 0 means cheaper than every week in it.
+            pctile: Number((win.filter(p => p.pe < current).length / win.length).toPrecision(4)),
+        };
+    }
+    return Object.keys(out).length ? { current: Number(current.toPrecision(6)), horizons: out } : null;
+}
 
 // The cheapest multiple the market ever put on this stock's PUBLISHED earnings: each weekly
 // close ÷ the latest annual EPS already reported by that date, minimum across history.
@@ -1935,13 +2003,16 @@ async function main() {
             }));
             bandOk++;
         }
-        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t]);
-        if (!low) { troughMissing++; continue; }
+        // Every horizon in one pass; the headline is the five-year window (see peHistory).
+        const hist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
+            quotes[t].currency, rates, filedOn, filedQuarters[t]);
+        const head = hist?.horizons?.[HEADLINE_HORIZON] || hist?.horizons?.all;
+        if (!head) { troughMissing++; continue; }
         Object.assign(quotes[t], {
-            peLow: Number(low.peLow.toPrecision(6)),
-            lowPrice: Number(low.lowPrice.toPrecision(6)),
-            lowEps: Number(low.lowEps.toPrecision(6)),
-            lowDate: low.lowDate,
+            peLow: head.low, lowPrice: head.lowPrice, lowEps: head.lowEps, lowDate: head.lowDate,
+            pePctile: head.pctile,
+            peWindow: hist.horizons[HEADLINE_HORIZON] ? HEADLINE_HORIZON : 'all',
+            peHistory: hist.horizons,
         });
         troughOk++;
     }
