@@ -30,6 +30,19 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-29 — US inflation, payroll revisions and the goods/services spending split.**
+  Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis.
+  Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation
+  context determined whether weak employment could safely be read as imminent rate relief.
+- **2026-08-29 — China retail and catering demand.**
+  Fetched from the National Bureau of Statistics of China. Wanted monthly; it distinguished
+  Haidilao's company-specific self-help from a consumer recovery that has not yet arrived.
+- **2026-08-29 — refined-product flows, refinery margins and product-tanker rates.**
+  Fetched from the IEA Oil Market Report and Scorpio Tankers' results. Wanted monthly from the IEA
+  while Hormuz remains disrupted and on company results dates for TCE rates and fleet changes.
+- **2026-08-29 — off-universe price and valuation history, second reach.**
+  Fetched provisionally from Yahoo Finance for Haidilao and PDD. Wanted only until candidates enter
+  `watchlist.json`; CI should then replace the manual lookup with the repo's own data.
 - **2026-08-29 — global electricity demand, grid investment and connection queues.**
   Fetched from the IEA Electricity 2026 report and its mid-year update. Wanted on each
   publication rather than weekly; it distinguished physical power demand from company promotion.
