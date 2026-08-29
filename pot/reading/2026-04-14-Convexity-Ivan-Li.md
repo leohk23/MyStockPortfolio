@@ -1,4 +1,4 @@
-https://www.patreon.com/posts/155555787  <!-- reconstructed from the patreon-media post id in this file; the saved text carried no canonical URL -->
+Ivan Li 李聲揚 · 狼耳街華人 · 14 April 2026 · subscriber-only, no public URL — this saved text is the record
 
 [請剪存] Convexity：股票A年年升25%，股票B年年跌25%。我各買一半。一年後會點？五年呢？十年呢？（一）　　—　　　一隻股票只能跌100%，但可以升100萬倍。所以，股票是好東西。但點先可以升100萬倍？
 Ivan Li 李聲揚 狼耳街華人

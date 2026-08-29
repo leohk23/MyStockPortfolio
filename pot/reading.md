@@ -33,7 +33,9 @@ wade through; a list of things that made you think is a list it can work from.
 ## Paywalls and link rot
 
 If a piece is paywalled, or matters enough that you will want it in two years, save the text
-alongside the link:
+alongside the link — and where there is no link worth keeping, because the piece sits entirely
+behind a subscription, say so and let the saved text be the record. Author, publication and date
+are the citation then. A guessed URL is worse than none.
 
 ```
 pot/reading/2026-08-27-japanese-shipyards.md
@@ -48,7 +50,7 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 
 <!-- newest first -->
 
-- 2026-04-14 · Ivan Li 李聲揚, 狼耳街華人 · <https://www.patreon.com/posts/155555787>
+- 2026-04-14 · Ivan Li 李聲揚, 狼耳街華人 · subscriber-only, no public URL
   · saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
   **Why:** it reinforces the philosophy. Convexity — a share can only fall 100%, but it can rise
   many multiples of that — is the argument against two instincts I want to resist: **rushing to cut
