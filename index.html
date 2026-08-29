@@ -210,7 +210,9 @@
            which broke "Hang Seng" across two lines with plenty of room to spare. Stacking alone
            gets the width down; a cap on top of it only buys a wrap nobody wanted. */
         #macro-table td:first-child { line-height: 1.3; }
-        #macro-table .macro-sym { display: block; font-size: 10px; color: var(--text-muted); }
+        /* Shared by both monitors: the ticker under the name, the ATH date under the price.
+           Scoped to #macro-table alone it left World rendering "IndonesiaEIDO" and "36.482013-05-20". */
+        #macro-table .macro-sym, #world-table .macro-sym { display: block; font-size: 10px; color: var(--text-muted); }
         /* The reading is prose, so it wraps and is the one column allowed to. */
         #macro-table td.macro-says { text-align: left; white-space: normal; font-size: 11px;
             color: var(--text-secondary); min-width: 22ch; line-height: 1.4; }
@@ -220,6 +222,9 @@
            --macro-head-top is measured from the live header by renderMacro, because the header's
            height is a rendered fact (font, padding, border) and not a number to hardcode. */
         #world-table td:first-child { text-align: left; line-height: 1.3; }
+        #world-table th[data-wsort] { cursor: pointer; user-select: none; }
+        #world-table th[aria-sort="ascending"]::after { content: " ▲"; }
+        #world-table th[aria-sort="descending"]::after { content: " ▼"; }
         #world-table tr.world-dead td { color: var(--text-muted); }
         #world-table tr.world-dead td:first-child { text-decoration: line-through; }
         #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
@@ -641,12 +646,12 @@
     <div class="table-responsive" id="world" hidden>
         <table id="world-table">
             <thead><tr>
-                <th>Country</th><th>Price</th>
-                <th title="Highest weekly high in the fund's whole history, and when.">All-time high</th>
-                <th title="How far it must RISE to regain that high — the gap over today's price, which is the convention in Leo's own sheet.">From ATH</th>
-                <th title="Where it sits inside its own last 12 months: 0% at the low, 100% at the high.">1y range</th>
-                <th>YTD</th>
-                <th title="Latest weekly volume over the average of the last year.">Vol</th>
+                <th data-wsort="country">Country</th><th data-wsort="price">Price</th>
+                <th data-wsort="ath" title="Highest weekly high in the fund's whole history, and when.">All-time high</th>
+                <th data-wsort="fromAth" aria-sort="descending" title="How far it must RISE to regain that high — the gap over today's price, which is the convention in Leo's own sheet.">From ATH</th>
+                <th data-wsort="range1y" title="Where it sits inside its own last 12 months: 0% at the low, 100% at the high.">1y range</th>
+                <th data-wsort="ytd">YTD</th>
+                <th data-wsort="volRatio" title="Latest weekly volume over the average of the last year.">Vol</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -2814,6 +2819,9 @@
         // Ranked by distance below the all-time high, deepest first — so the top of the table IS
         // the answer to "where in the world is washed out". Not grouped by region: the whole point
         // is a single ordering across every market, and grouping would hide it.
+        // Default: furthest below its own peak first. Text sorts ascending, numbers descending —
+        // the same convention the other tables use, so a click means the same thing everywhere.
+        let worldSort = { key: 'fromAth', dir: -1 };
         function renderWorld() {
             const tbody = document.querySelector('#world-table tbody');
             const note = document.getElementById('world-note');
@@ -2823,10 +2831,20 @@
                 note.textContent = 'No world data in prices.json — run npm run fetch.';
                 return;
             }
-            const live = all.filter(c => !c.dead && !c.gone).sort((a, b) => b.fromAth - a.fromAth);
+            // Deepest drawdown first by default — the question this view exists to answer — but
+            // every column sorts, because "which is closest to its high" and "what moved on
+            // unusual volume" are the other two ways in.
+            const dir = worldSort.dir;
+            const key = worldSort.key;
+            const live = all.filter(c => !c.dead && !c.gone).sort((a, b) => {
+                const x = a[key], y = b[key];
+                if (x == null && y == null) return 0;
+                if (x == null) return 1;
+                if (y == null) return -1;
+                return typeof x === 'string' ? dir * x.localeCompare(y) : dir * (x - y);
+            });
             const dead = all.filter(c => c.dead || c.gone);
-            const row = c => `<tr><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}`
-                + `${c.zh ? ' · ' + escapeHTML(c.zh) : ''}</span></td>`
+            const row = c => `<tr><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
                 + `<td>${num2(c.price)}</td>`
                 + `<td>${num2(c.ath)}<span class="macro-sym">${c.athDay || ''}</span></td>`
                 + `<td class="${c.fromAth > 0.5 ? 'loss' : ''}">${pct(c.fromAth)}</td>`
@@ -2843,6 +2861,18 @@
             tbody.innerHTML = live.map(row).join('')
                 + (dead.length ? `<tr class="macro-head"><td colspan="7">No longer trading</td></tr>`
                     + dead.map(deadRow).join('') : '');
+            // Rebound off the live table each render, because innerHTML replaced the old rows.
+            document.querySelectorAll('#world-table th[data-wsort]').forEach(th => {
+                th.setAttribute('aria-sort', th.dataset.wsort === worldSort.key
+                    ? (worldSort.dir === 1 ? 'ascending' : 'descending') : 'none');
+                th.onclick = () => {
+                    const k = th.dataset.wsort;
+                    worldSort = worldSort.key === k
+                        ? { key: k, dir: -worldSort.dir }
+                        : { key: k, dir: k === 'country' ? 1 : -1 };
+                    renderWorld();
+                };
+            });
             const deep = live.filter(c => c.fromAth > 0.5).length;
             note.textContent = `${live.length} country funds, ranked by how far each must rise to `
                 + `regain its own all-time high. ${deep} of ${live.length} need more than 50%. `

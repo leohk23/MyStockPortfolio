@@ -117,6 +117,14 @@ function worldSection(sig) {
     return `${w.says}.\n\n| furthest below its own all-time high | | |\n|---|---:|---|\n${rows}${dead}`;
 }
 
+// Same reason as worldSection: nested template literals inside a map, kept out of the big one.
+function unannotatedLines(files) {
+    if (!files.length) return '';
+    return files.map(f => `- **Saved but not listed** — [${f}](reading/${f}) sits in \`pot/reading/\` `
+        + 'with no entry in [reading.md](reading.md). The one line saying why you kept it is the '
+        + 'part no machine can supply.').join('\n') + '\n';
+}
+
 // ---------------------------------------------------------------- build
 
 function build() {
@@ -241,6 +249,21 @@ A quiet rule and a blocked one are both silent. Keeping them apart is the only w
 does not look exactly like a healthy one.
 `);
 
+    // Saved articles nobody has said anything about.
+    //
+    // `pot/reading/` holds full text; `pot/reading.md` holds the one line saying WHY it was kept —
+    // and that line is the only part of an entry a machine could not have produced. Saving the
+    // whole article is more work than listing it, so a saved-but-unlisted file is the likeliest
+    // thing to fall through, and it used to do so in silence.
+    const unannotated = (() => {
+        try {
+            const listed = fs.readFileSync('pot/reading.md', 'utf8');
+            return fs.readdirSync('pot/reading')
+                .filter(f => f.endsWith('.md') && f !== 'README.md')
+                .filter(f => !listed.includes(f.replace(/\.md$/, '')));
+        } catch { return []; }
+    })();
+
     // ---- the entry point
     const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
 
@@ -260,7 +283,7 @@ everything else hangs off it._
 ${sig?.instructions?.length
         ? sig.instructions.map(i => `- **STANDING ORDER FIRED** — ${i.action} (${i.rule}, VIX ${i.close})`).join('\n')
         : '- No standing order has fired.'}
-${openProposals.length
+${unannotatedLines(unannotated)}${openProposals.length
         ? openProposals.map(f => `- **Proposal awaiting your decision** — [${f.replace(/\.md$/, '')}](proposals/${f})`).join('\n')
         : '- No proposal is waiting.'}
 

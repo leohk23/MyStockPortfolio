@@ -51,8 +51,21 @@ So:
 that is. Use our macro block where it is relevant and say where you went beyond it. Keep the
 observation and the inference visibly apart: *what is true*, then *what you take from it*.
 
-**2. Leo's reading.** For each entry in `pot/reading.md` not yet actioned: what has the price done
-*since* the article, and does the argument still hold or is it already priced?
+**2. Leo's reading.** Two places, and read both:
+
+- `pot/reading.md` — the list, each entry with a **`Why:`** line saying what caught his eye.
+- `pot/reading/*.md` — full text he saved. **Read these even when they are not listed**, and say so
+  where an entry is missing. A file dropped in that folder and never listed used to be invisible to
+  this lane, which is the wrong way round: saving the whole article is *more* effort than listing
+  it, so it cannot be the thing that gets ignored.
+
+For each: what has the price done *since* the article, and does the argument still hold or is it
+already priced?
+
+**Not everything is a stock idea, and say so when it is not.** A piece about method — position
+sizing, holding period, when to sell — bears on `strategy.md`, not on the watchlist. Where a
+reading argues against a rule Leo has written down, that is worth a paragraph and no candidate.
+Forcing a ticker out of an essay about compounding is how this lane goes wrong.
 
 **3. Candidates.** Up to five. Ticker, exchange, one line on why, one line on what would have to be
 true. Anything already in the 80 is a *re-look*, label it so.

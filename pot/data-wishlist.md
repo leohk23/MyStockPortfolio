@@ -29,8 +29,18 @@ Appended by the Sweep. Format:
 
 <!-- newest first -->
 
-_Nothing yet — this file was created 29 Aug 2026, at the same time the Sweep was decoupled from
-the Scan. The first sweep to run under the new brief will be the first to add to it._
+- 2026-08-29 · US payrolls, real earnings and real consumer spending · used the US Bureau of
+  Labor Statistics and Bureau of Economic Analysis. Wanted monthly, with the latest release carried
+  into each weekly Sweep. Drove the value-retail read.
+- 2026-08-29 · AI and power-infrastructure order intake/backlog · used NVIDIA, R&S Group and
+  Ameresco company releases. Wanted on results dates, not weekly; company-specific backlog quality
+  mattered more than a broad capex estimate.
+- 2026-08-29 · specialty-insurance pricing cycle and underwriting margin · used Lancashire and
+  Beazley results as an imperfect substitute for a consistent market series. Wanted quarterly, not
+  weekly; it determined whether Lancashire's low multiple was a bargain or peak-cycle earnings.
+- 2026-08-29 · off-universe price and valuation history · used FT Markets and Yahoo Finance.
+  Wanted only until a candidate enters `watchlist.json`; the existing pipeline should then replace
+  this manual lookup.
 
 ## Already built from this loop
 
