@@ -407,6 +407,11 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
             avgPrice: single ? single.avgQuote : null,
             // Same single-instrument rule as PE: a basket has no meaningful trough multiple.
             peLow: single ? single.peLow : null,
+            // Where today sits in that same window. Travels with peLow because it is the half
+            // that decides anything: a low of 20x says nothing until you know today is dearer
+            // than 87% of the last five years.
+            pePctile: single ? single.quote.pePctile ?? null : null,
+            peWindow: single ? single.quote.peWindow || null : null,
             implied: single ? single.implied : null,
             vsLow: single ? single.vsLow : null,
             lowDate: single ? single.lowDate || null : null,

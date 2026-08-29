@@ -37,7 +37,7 @@
         h1 { font-size: 20px; margin: 0 0 2px; }
         #updated-row { display: flex; flex-wrap: wrap; align-items: center;
             justify-content: space-between; gap: 6px 12px; margin-bottom: 14px; }
-        #updated { color: var(--text-muted); font-size: 12px; }
+        #updated { color: var(--text-muted); font-size: 12px; margin-right: auto; }
 
         #totals { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 18px; }
         #totals > div { min-width: 104px; }
@@ -240,6 +240,7 @@
         #deep-fin tr.guidance-row td:first-child, #deep-fin tr.guidance-row a { color: var(--series-port); }
         /* Each metric's prior-year change sits directly under its value. */
         #deep-fin .yoy { display: block; font-size: 11px; }
+        .pctile { display: block; font-size: 11px; }
         .deep-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
         ul.deep-note { padding-left: 17px; margin-bottom: 0; }
         ul.deep-note li + li { margin-top: 3px; }
@@ -450,6 +451,10 @@
     <div id="updated-row">
         <div id="updated">Loading…</div>
         <div class="btns" id="ccy-switch" role="group" aria-label="Display currency"></div>
+        <div class="btns" id="privacy">
+            <button id="priv-toggle" type="button" aria-pressed="false"
+                title="Hide every absolute amount — value, cost, gain, income, share counts — for reading this on a train. Percentages, HELD and CAGR stay: they say nothing about how much is in here.">Hide amounts</button>
+        </div>
     </div>
 
     <div id="totals"></div>
@@ -583,10 +588,10 @@
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
                     <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet isn't flattered by investment gains. A manual meta.json figure (FFO, adjusted EPS) overrides it; falls back to the normal PE where Yahoo has no normalized figure.">Special PE</th>
-                    <th data-sort="peLow" title="Cheapest the market has priced published earnings: each weekly close ÷ the latest annual EPS already reported by that date (fiscal end + 90 days), minimum over ~4-5y. Point-in-time — never earnings the market hadn't seen yet. Derived online — nothing to maintain.">PE Low</th>
+                    <th data-sort="peLow" title="The cheapest the market has priced this stock over the LAST FIVE YEARS: each weekly close divided by the trailing-twelve-month earnings that were actually public on that date. Point-in-time — never earnings the market had not seen. Five years rather than all time because a floor from 2013 is precise and unusable; 3y, 10y and all-time are kept in the deep panel as reference. Beneath it, where today sits in that same five years — the number that decides anything.">PE Low (5y)</th>
                     <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
-                    <th data-sort="implied" title="What the price would be at its cheapest-ever multiple, on today's EPS: PE Low × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
-                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest-ever multiple; positive (red) = dearer than it has ever been on these earnings.">vs Low</th>
+                    <th data-sort="implied" title="What the price would be at its cheapest multiple of the last five years, on today's EPS: PE Low (5y) × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
+                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest multiple of the last five years; positive (red) = dearer than at any point in those five years, on these earnings.">vs Low</th>
                     <th data-sort="trades" title="How many trades built this position, across every listing in the row. Sits at the end, out of the pinned block, because it was widening the position name — the one column that has to stay on screen. Expand the row (chevron) for the trades themselves.">Trades</th>
                 </tr>
             </thead>
@@ -607,10 +612,12 @@
     <div class="table-responsive" id="watch" hidden>
         <table id="watchlist" class="pinned">
             <thead><tr>
-                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th><th data-sort="pe">P/E</th><th data-sort="peLow">P/E Low</th>
-                <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
-                <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
+                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th>
                 <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
+                <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
+                <th data-sort="pe">P/E</th>
+                <th data-sort="peLow" title="The cheapest the market has priced this stock over the LAST FIVE YEARS, on the earnings that were public at the time. Beneath it, where today’s multiple sits in that same five years — the same basis as the Stock tab.">PE Low (5y)</th>
+                <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -702,12 +709,18 @@
         // rates.GBP is "USD per 1 GBP", so a GBP figure is usd / rates.GBP.
         const CURRENCIES = { USD: '$', GBP: '£', HKD: 'HK$' };
         let display = CURRENCIES[localStorage.getItem('ccy')] ? localStorage.getItem('ccy') : 'USD';
+        let priv = localStorage.getItem('priv') === '1';
         let RATES = { USD: 1 };
 
+        // ponytail: every absolute amount in the page already goes through money(), so hiding
+        // is one branch here rather than a flag threaded through thirty call sites.
+        const HIDDEN = '•••';
         const money = usd => {
+            if (priv) return HIDDEN;
             const v = usd / RATES[display];
             return (v < 0 ? '-' : '') + CURRENCIES[display] + Math.round(Math.abs(v)).toLocaleString();
         };
+        const qtyCell = n => priv ? HIDDEN : num2(n);
         const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
         const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
@@ -847,6 +860,19 @@
 
             const q = leg.quote, c = q.currency;
             const px = n => n == null ? '–' : c + ' ' + num2(n);
+            // Today's multiple against its own five-year distribution. Absent whenever the
+            // history is: a percentile needs a window, and a guess would be worse than a dash.
+            const pctileRow = q => typeof q?.pePctile !== 'number' ? '<span class="muted">–</span>'
+                : `<span class="${q.pePctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(q.pePctile * 100))} percentile</span>`
+                    + ` <span class="muted">— cheaper than ${(100 - q.pePctile * 100).toFixed(0)}% of the last ${q.peWindow || '5y'}</span>`;
+            const horizonRow = q => {
+                const h = q?.peHistory;
+                if (!h) return '<span class="muted">–</span>';
+                const parts = ['3y', '5y', '10y', 'all'].filter(k => h[k]?.low != null).map(k =>
+                    `<span title="${h[k].lowDate || ''}${h[k].weeks ? ` · ${h[k].weeks} weeks` : ''}">`
+                        + `<span class="muted">${k}</span> ${num2(h[k].low)}×</span>`);
+                return parts.length ? parts.join('<span class="muted"> · </span>') : '<span class="muted">–</span>';
+            };
             const rows = [
                 ['Price', px(q.price)],
                 ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
@@ -874,7 +900,14 @@
                 leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
                 ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
-                ['P/E (cheapest)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
+                // The five-year low, and — the row that actually decides anything — where today
+                // sits inside that same five years. A low on its own is one panicked week; the
+                // percentile is every week in the window. §6.1 fires in the cheapest 10%.
+                ['P/E low (5y)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
+                ['vs own 5y', pctileRow(leg.quote)],
+                // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
+                // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
+                ['Cheapest by horizon', horizonRow(leg.quote)],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
                 ['PEG (TTM)', '<span id="deep-peg" class="muted">…</span>'],
                 ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
@@ -1257,7 +1290,7 @@
                 // What the market actually PAID for these earnings, year by year: the cheapest and
                 // dearest multiple struck inside each fiscal year, with the year's average beneath.
                 //
-                // The same point-in-time figure as "P/E (cheapest)" in Valuation, sliced by year
+                // The same point-in-time figure as "P/E low (5y)" in Valuation, sliced by year
                 // instead of minimised over all of history — so the lowest low here IS that number,
                 // by construction, and the page cannot contradict itself.
                 //
@@ -1602,7 +1635,7 @@
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
                         <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
-                        <th title="Cheapest and dearest multiple the market struck inside that fiscal year, with the year's average beneath. Weekly closes ÷ the annual EPS already PUBLISHED by each date — so it is not the price divided by the EPS on the same row: results land months after the year they describe. The lowest low here is the P/E (cheapest) figure in Valuation, by construction.">P/E paid</th>
+                        <th title="Cheapest and dearest multiple the market struck inside that fiscal year, with the year's average beneath. Weekly closes ÷ the annual EPS already PUBLISHED by each date — so it is not the price divided by the EPS on the same row: results land months after the year they describe. The bands run back to the first year with earnings on file, so on a long history the lowest low here can sit BELOW the five-year P/E low in Valuation — that is the two windows differing, not a disagreement.">P/E paid</th>
                     </tr></thead>
                     <tbody>${body}${bandRow}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
                 </table>
@@ -1754,7 +1787,7 @@
             return {
                 days,
                 series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
-                fmtY: v => money(v * RATES[display]),
+                fmtY: v => priv ? '' : money(v * RATES[display]),
                 // Value-weighted across every holding — matching the table's total row, and for a
                 // ONE-day window the weighting distortion that makes the longer periods there
                 // misleading (see BACKLOG.md) has had no time to accumulate.
@@ -1787,7 +1820,7 @@
                 days,
                 series: [{ label: group.name, color: PORT_COLOR, values, area: true }],
                 markers, markersByIndex: byIndex,
-                fmtY: v => money(v * RATES[display]),
+                fmtY: v => priv ? '' : money(v * RATES[display]),
                 // Value-weighted across this group's instruments — the same number its row in the
                 // table shows, so the two cannot disagree.
                 headline: money(last * RATES[display])
@@ -1865,7 +1898,7 @@
                 fmtY: fmt,
                 headline: `<span class="${cls(q['1d'])}">${pct(q['1d'])}</span> `
                     + `<span class="muted">${fmt(last)}</span>`,
-                sub: `${watch ? 'not held · watchlist' : (holding?.qty || 0) + ' shares'} · today's session · `
+                sub: `${watch ? 'not held · watchlist' : priv ? HIDDEN : (holding?.qty || 0) + ' shares'} · today's session · `
                     + `${clock(bar.t[0])} → ${clock(bar.t[bar.t.length - 1])}`,
                 title: name,
                 note: `Today's session in ${q.currency}, ${INTRADAY.interval || '15m'} bars. The headline `
@@ -1930,7 +1963,7 @@
             const watch = watchOf(yahoo);
             const name = holding ? `${holding.group} · ${yahoo}`
                 : watch ? `${watch.name} · ${yahoo}` : yahoo;
-            const fmt = gainMode ? (v => money(v * RATES[display])) : (v => nativePrice(v, q.currency));
+            const fmt = gainMode ? (v => priv ? '' : money(v * RATES[display])) : (v => nativePrice(v, q.currency));
             const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
             const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
             const gainPct = lastCostUSD ? last * RATES[display] / lastCostUSD : null;
@@ -2313,6 +2346,23 @@
         // loss-making company isn't a meaningful multiple), so this only ever formats positives.
         const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
             : `<span${label ? ` title="${label}"` : ''}>${n.toFixed(1)}x</span>`;
+        // 1st, 2nd, 3rd — "2th percentile" in a valuation column undermines every number beside it.
+        const ordinal = n => n + ([, 'st', 'nd', 'rd'][n % 100 >> 3 ^ 1 && n % 10] || 'th');
+        // The five-year low, with where TODAY sits in that same five years underneath it.
+        //
+        // Two views of one thing, so they share a cell rather than taking a 31st column. The low
+        // answers "how cheap has it got"; the percentile answers "is it cheap now", and the second
+        // is the one that decides anything — a low of 20.3x means nothing until you know Apple is
+        // dearer today than 87% of the last five years.
+        const peLowCell = (low, pctile, window) => {
+            if (low == null) return '<span class="muted">–</span>';
+            const p = typeof pctile === 'number'
+                ? `<span class="pctile ${pctile <= 0.10 ? 'gain' : 'muted'}" title="Today's multiple is `
+                    + `cheaper than ${(100 - pctile * 100).toFixed(0)}% of the last ${window || '5y'}. `
+                    + `The signal fires in the cheapest 10%.">${ordinal(Math.round(pctile * 100))} pct</span>`
+                : '';
+            return `<span title="Cheapest weekly close ÷ the earnings public at the time, over the last ${window || '5y'}">${low.toFixed(1)}x</span>${p}`;
+        };
         // Implied price at the trough multiple, in the quote's own currency (EPS and price are
         // both native, so no FX belongs here). The tooltip shows the low that produced it.
         const num2 = v => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -2344,7 +2394,7 @@
             return `<td><span class="muted" title="${escapeHTML(why)}">–</span></td>`;
         };
         const impliedCell = (r) => r.implied == null ? '<span class="muted">–</span>'
-            : `<span title="PE Low ${r.peLow.toFixed(1)}x × today's EPS`
+            : `<span title="PE Low (5y) ${r.peLow.toFixed(1)}x × today's EPS`
                 + `${r.lowPrice != null && r.lowEps != null ? ` — from a low of ${num2(r.lowPrice)} on EPS ${num2(r.lowEps)}` : ''}`
                 + `${r.lowDate ? ` (${ymd(r.lowDate)})` : ''}`
                 + `">`
@@ -2445,6 +2495,12 @@
                 .map(c => `<button data-ccy="${c}" aria-pressed="${c === display}">${c}</button>`).join('');
             document.querySelectorAll('[data-ccy]').forEach(b =>
                 b.addEventListener('click', () => { display = b.dataset.ccy; localStorage.setItem('ccy', display); renderAll(); }));
+            const pb = document.getElementById('priv-toggle');
+            const paint = () => { pb.setAttribute('aria-pressed', String(priv));
+                pb.textContent = priv ? 'Show amounts' : 'Hide amounts'; };
+            paint();
+            pb.onclick = () => { priv = !priv; localStorage.setItem('priv', priv ? '1' : '0');
+                paint(); renderAll(); };
         }
 
         function renderTable() {
@@ -2475,7 +2531,7 @@
                     <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
                     <td>${heldCell(r.held)}</td>
                     ${cagrHeldCell(r.cagr, r.held)}
-                    <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? num2(r.legs[0].qty) : '–'}</td>
+                    <td class="${r.legs.length === 1 ? '' : 'muted'}">${r.legs.length === 1 ? qtyCell(r.legs[0].qty) : '–'}</td>
                     <td>${money(r.cost)}</td>
                     <td>${money(r.value)}</td>
                     <td class="${cls(r.gain)}">${money(r.gain)}</td>
@@ -2486,7 +2542,7 @@
                     <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
                     <td>${peCell(r.pe)}</td>
                     <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
-                    <td>${peCell(r.peLow)}</td>
+                    <td>${peLowCell(r.peLow, r.pePctile, r.peWindow)}</td>
                     <td>${lowDateCell(r.lowDate)}</td>
                     <td>${impliedCell(r)}</td>
                     <td>${vsLowCell(r.vsLow)}</td>
@@ -2501,7 +2557,7 @@
                     el.dataset.yahoo = leg.yahoo;
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
-                        <td>${leg.yahoo} <span class="muted">${leg.qty} sh</span></td>
+                        <td>${leg.yahoo} <span class="muted">${priv ? HIDDEN : leg.qty + ' sh'}</span></td>
                         <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
@@ -2513,7 +2569,7 @@
                             const age = portfolioLib.holdingAge(leg.trades, TODAY, c => rateOf(c === 'Gbpence' ? 'GBp' : c));
                             return `<td>${heldCell(age)}</td>${cagrHeldCell(portfolioLib.annualised(leg.value, leg.cost, age), age)}`;
                         })()}
-                        <td>${num2(leg.qty)}</td>
+                        <td>${qtyCell(leg.qty)}</td>
                         <td>${money(leg.cost)}</td>
                         <td>${money(leg.value)}</td>
                         <td class="${cls(gain)}">${money(gain)}</td>
@@ -2524,7 +2580,7 @@
                         <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
                         <td>${peCell(leg.pe)}</td>
                         <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
-                        <td>${peCell(leg.peLow)}</td>
+                        <td>${peLowCell(leg.peLow, leg.quote.pePctile, leg.quote.peWindow)}</td>
                         <td>${lowDateCell(leg.lowDate)}</td>
                         <td>${impliedCell(leg)}</td>
                         <td>${vsLowCell(leg.vsLow)}</td>
@@ -2680,13 +2736,13 @@
                 tr.innerHTML = `
                     <td>${w.name} <span class="muted">${w.yahoo}</span></td>
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
+                    ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
+                    <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
                     <td>${peCell(w.pe)}</td>
-                    <td>${peCell(w.peLow)}</td>
+                    <td>${peLowCell(w.peLow, w.quote.pePctile, w.quote.peWindow)}</td>
                     <td>${lowDateCell(w.lowDate)}</td>
                     <td>${impliedCell(w)}</td>
-                    <td>${vsLowCell(w.vsLow)}</td>
-                    <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
-                    ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}`;
+                    <td>${vsLowCell(w.vsLow)}</td>`;
                 tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(w.yahoo); fix(); });
                 tbody.appendChild(tr);
             }
