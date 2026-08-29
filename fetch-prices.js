@@ -144,6 +144,84 @@ async function fetchWeekly(ticker, attempts = 3) {
     throw lastErr;
 }
 
+// World breadth: 47 single-country ETFs, one per market, from Leo's Book1.xlsx Monitor_WW.
+//
+// A MONITOR, not a buy list — deliberately kept out of watchlist.json, where 47 lines nobody
+// intends to own individually would swamp the one table that is about intent.
+//
+// The headline measure is **distance from the all-time high**, which is Leo's own revision of the
+// spreadsheet: a country that has fallen for five years sits comfortably inside its 1-year range
+// while being 60% below its peak, and the 1-year window cannot see that at all.
+//
+// One weekly full-history request per fund answers everything — all-time high, the 1-year range,
+// year-to-date, and a volume ratio — so 47 funds cost 47 calls and about fifteen seconds.
+//
+// ponytail: raw closes, not adjusted. So this is the PRICE drawdown, which is what the sheet
+// measures and what a chart shows, and it will read permanently deep for a high-distributing
+// market whose total return recovered long ago. Adjusted closes would answer a different question
+// and disagree with every chart Leo looks at.
+async function fetchCountry(ticker) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`
+        + `?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const r = (await res.json()).chart?.result?.[0];
+    if (!r?.timestamp?.length) throw new Error('no history');
+    const q = r.indicators?.quote?.[0] || {};
+    const price = r.meta?.regularMarketPrice;
+    if (!(price > 0)) throw new Error('no price');
+
+    const bars = r.timestamp.map((t, i) => ({
+        day: new Date(t * 1000).toISOString().slice(0, 10),
+        hi: q.high?.[i], lo: q.low?.[i], close: q.close?.[i], vol: q.volume?.[i],
+    })).filter(b => b.close != null);
+    if (!bars.length) throw new Error('no bars');
+
+    // Dead funds. Four of the 47 in the source spreadsheet have been wound up — PAK and PGAL
+    // stopped trading in June 2025, EGPT in March 2024, NGE has gone from Yahoo entirely — and
+    // Yahoo keeps serving each one's LAST price forever. The spreadsheet shows PAK at 16.79 to
+    // this day, a figure that has not moved in over a year and reads exactly like a live quote.
+    //
+    // So say "this fund is gone" rather than dropping the row. A missing row looks like a fetch
+    // that failed; a row marked dead is a fact about the world, and it is the one thing this
+    // monitor could tell Leo that his spreadsheet cannot.
+    const lastBar = bars[bars.length - 1].day;
+    const staleDays = Math.round((Date.now() - Date.parse(lastBar)) / 86400e3);
+    if (bars.length < 8 || staleDays > 45) {
+        return { price: Number(price.toPrecision(6)), currency: r.meta?.currency || 'USD',
+            dead: true, lastSeen: lastBar, staleDays, weeks: bars.length };
+    }
+
+    // All-time, on the highest weekly high — and the week it happened, because "how long ago"
+    // is most of what makes a drawdown interesting.
+    let ath = -Infinity, athDay = null;
+    for (const b of bars) if (b.hi > ath) { ath = b.hi; athDay = b.day; }
+    const yearAgo = new Date(Date.now() - 365 * DAY * 1000).toISOString().slice(0, 10);
+    const last52 = bars.filter(b => b.day >= yearAgo);
+    const hi1y = Math.max(...last52.map(b => b.hi).filter(v => v != null));
+    const lo1y = Math.min(...last52.map(b => b.lo).filter(v => v != null));
+    const jan1 = `${new Date().getUTCFullYear()}-01-01`;
+    const first = bars.find(b => b.day >= jan1) || bars[bars.length - 1];
+
+    const vols = last52.map(b => b.vol).filter(v => v > 0);
+    const avgVol = vols.length > 4 ? vols.slice(0, -1).reduce((a, b) => a + b, 0) / (vols.length - 1) : null;
+
+    const pc = n => n == null ? null : Number(n.toPrecision(6));
+    return {
+        price: pc(price), currency: r.meta?.currency || 'USD',
+        ath: pc(ath), athDay,
+        // Leo's convention, from the sheet: the gap divided by TODAY'S price — "how far it must
+        // rise to get back", not "how far it fell". The two differ and his is the actionable one.
+        fromAth: pc(ath / price - 1),
+        hi1y: pc(hi1y), lo1y: pc(lo1y),
+        // Where it sits in its own year: 0 at the low, 1 at the high.
+        range1y: hi1y > lo1y ? pc((price - lo1y) / (hi1y - lo1y)) : null,
+        ytd: first?.close > 0 ? pc(price / first.close - 1) : null,
+        volRatio: avgVol ? pc(bars[bars.length - 1].vol / avgVol) : null,
+        weeks: bars.length, since: bars[0].day,
+    };
+}
+
 // Today's session, bar by bar, for the 1D chart range.
 //
 // The daily series cannot draw a 1D line — over one day it is two points. This is the only fetch
@@ -1712,6 +1790,22 @@ async function main() {
     }
     console.log(`ok   macro state for ${macroOk}/${Object.keys(MACRO).length} series`);
 
+    // World breadth. Best-effort per fund, same as the macro block: one that fails is a blank
+    // row in a monitor, never a broken price file.
+    const countries = {};
+    let worldOk = 0;
+    try {
+        const list = JSON.parse(fs.readFileSync('countries.json', 'utf8')).funds || [];
+        for (const c of list) {
+            try { countries[c.yahoo] = { ...c, ...await fetchCountry(c.yahoo) }; worldOk++; }
+            catch (e) { countries[c.yahoo] = { ...c, gone: true, why: e.message }; console.error(`gone world ${c.yahoo}: ${e.message}`); }
+            await sleep();
+        }
+        const dead = Object.values(countries).filter(c => c.dead || c.gone).length;
+        console.log(`ok   world breadth for ${worldOk}/${list.length} country funds`
+            + (dead ? ` (${dead} wound up or delisted — flagged, not dropped)` : ''));
+    } catch { console.log('note no countries.json — world breadth skipped'); }
+
     // Per-instrument close history (native currency) for charting a single stock,
     // plus the benchmarks, on one shared calendar. Separate file, loaded by the page
     // only when needed (stock click, benchmark toggle, or long range) so first paint stays lean.
@@ -1913,6 +2007,9 @@ async function main() {
         // Kept out of `quotes` on purpose: an index or a currency pair is not a holding, and
         // anything that lands in quotes has to be defended against every table that walks it.
         macro,
+        // A monitor, kept beside the quotes rather than inside them: 47 country funds nobody
+        // intends to own individually would swamp every table that walks the holdings.
+        countries,
         nav,
         performance,
         failed,

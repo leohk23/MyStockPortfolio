@@ -198,6 +198,37 @@ function epsStale(quote, entry, today) {
             + `lag — about ${behind} period${behind === 1 ? '' : 's'} of earnings we do not have` };
 }
 
+// World breadth, as a macro fact rather than a buy list.
+//
+// The 47 country funds are a MONITOR — Leo was explicit — so this produces no signal on any
+// individual market. What it produces is a state of the world nothing else here can say: how many
+// national markets are near their own peak, and how many are still far below it. Our macro block
+// carries six equity indices; this carries forty-odd countries, and "9 of 43 need to double to
+// regain their high" is a regime, not a stock tip.
+const DEEP_BELOW_ATH = 0.5;      // must rise 50%+ to regain its peak
+const NEAR_ATH = 0.05;           // within 5% of it
+function worldBreadth(countries) {
+    const live = Object.values(countries || {}).filter(c => !c.dead && !c.gone && typeof c.fromAth === 'number');
+    if (live.length < 5) return null;
+    const sorted = [...live].sort((a, b) => b.fromAth - a.fromAth);
+    const deep = sorted.filter(c => c.fromAth >= DEEP_BELOW_ATH);
+    const near = sorted.filter(c => c.fromAth <= NEAR_ATH);
+    const dead = Object.values(countries).filter(c => c.dead || c.gone);
+    return {
+        counted: live.length,
+        nearHigh: near.length, deepBelow: deep.length,
+        medianFromAth: sorted[Math.floor(sorted.length / 2)].fromAth,
+        deepest: sorted.slice(0, 5).map(c => ({ country: c.country, yahoo: c.yahoo, fromAth: c.fromAth, athDay: c.athDay })),
+        strongest: near.slice(-5).reverse().map(c => ({ country: c.country, yahoo: c.yahoo, fromAth: c.fromAth })),
+        // Worth surfacing because a monitor built on a wound-up fund quietly reports its last
+        // price forever, and the spreadsheet this came from has been doing exactly that.
+        notTrading: dead.map(c => ({ country: c.country, yahoo: c.yahoo, lastSeen: c.lastSeen || null })),
+        says: `${near.length} of ${live.length} country markets are within 5% of their own all-time high `
+            + `and ${deep.length} still need 50% or more to regain theirs; the median market must rise `
+            + `${(sorted[Math.floor(sorted.length / 2)].fromAth * 100).toFixed(0)}%`,
+    };
+}
+
 // ---------------------------------------------------------------- macro, made deterministic
 //
 // Harvested from what the Sweep actually did with the macro block on 28 Aug 2026. Its useful
@@ -339,6 +370,7 @@ function scan(state, today) {
         vix: vix ? { close: vix.price, day: vix['1d'] } : null,
         spxDay: spx,
         fired, instructions, quiet, blocked, resultsDue,
+        world: worldBreadth(prices.countries),
         macro: macroNotes(prices.macro, prices.macro?.['GBPUSD=X']?.['1y']),
         dryPowderAlerted: fired.find(f => f.rule === '6.4 dry powder')?.level
             ?? previous?.dryPowderAlerted ?? 0,
@@ -515,4 +547,4 @@ function selftest() {
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main();
-module.exports = { nearOwnFloor, oneOffRisk, epsStale, macroNotes, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
+module.exports = { nearOwnFloor, oneOffRisk, epsStale, macroNotes, worldBreadth, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };

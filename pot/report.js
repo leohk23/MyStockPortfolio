@@ -102,6 +102,21 @@ function renderTranscript(run) {
     return out.join('\n');
 }
 
+// The world-breadth block, as its own function rather than inline: it nests a template literal
+// inside a template literal inside a map, which is where the last three attempts at this file
+// went wrong.
+function worldSection(sig) {
+    const w = sig?.world;
+    if (!w) return '_No world data — run `npm run fetch`._';
+    const rows = w.deepest.map(d =>
+        `| ${d.country} (\`${d.yahoo}\`) | ${(d.fromAth * 100).toFixed(0)}% | peak ${d.athDay} |`).join('\n');
+    const dead = w.notTrading.length
+        ? '\n\n**No longer trading:** ' + w.notTrading.map(d => `${d.country} (\`${d.yahoo}\`)`).join(', ')
+            + ' — wound up, and still quoted at the last price each ever traded at.'
+        : '';
+    return `${w.says}.\n\n| furthest below its own all-time high | | |\n|---|---:|---|\n${rows}${dead}`;
+}
+
 // ---------------------------------------------------------------- build
 
 function build() {
@@ -212,6 +227,10 @@ ${list[0].pe != null
 The reading, not the level — each is a relation between two series, computed rather than inferred.
 
 ${(sig?.macro || []).map(n => `- **${n.name}** — ${n.says || 'mixed across windows, no clean direction'}`).join('\n') || '_No macro state._'}
+
+## World breadth
+
+${worldSection(sig)}
 
 ## Health
 

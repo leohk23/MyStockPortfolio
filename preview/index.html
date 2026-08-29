@@ -219,7 +219,10 @@
            its heading — with four groups and seventeen rows, that is most of the time.
            --macro-head-top is measured from the live header by renderMacro, because the header's
            height is a rendered fact (font, padding, border) and not a number to hardcode. */
-        #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
+        #world-table td:first-child { text-align: left; line-height: 1.3; }
+        #world-table tr.world-dead td { color: var(--text-muted); }
+        #world-table tr.world-dead td:first-child { text-decoration: line-through; }
+        #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
             padding-top: 14px; text-align: left;
             position: sticky; top: var(--macro-head-top, 29px); left: 0;
@@ -539,6 +542,7 @@
             <button data-dim="geography" aria-pressed="false">Geography</button>
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
+            <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
             <button data-dim="macro" aria-pressed="false" title="Index, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
         </div>
     </div>
@@ -626,6 +630,27 @@
             <tbody></tbody>
         </table>
         <p id="cal-none" class="deep-note"></p>
+    </div>
+
+    <!-- World breadth. One ETF per country, ranked by distance below its own all-time high —
+         Leo's own measure, and a stronger one than position in a 1-year range: a market that has
+         fallen for five years sits comfortably inside its recent range while being 60% below its
+         peak. A MONITOR: none of these is on the watchlist, because owning them individually is
+         not the intent. Dead funds are shown struck through rather than dropped — four of the 47
+         have been wound up and Yahoo still quotes their last price forever. -->
+    <div class="table-responsive" id="world" hidden>
+        <table id="world-table">
+            <thead><tr>
+                <th>Country</th><th>Price</th>
+                <th title="Highest weekly high in the fund's whole history, and when.">All-time high</th>
+                <th title="How far it must RISE to regain that high — the gap over today's price, which is the convention in Leo's own sheet.">From ATH</th>
+                <th title="Where it sits inside its own last 12 months: 0% at the low, 100% at the high.">1y range</th>
+                <th>YTD</th>
+                <th title="Latest weekly volume over the average of the last year.">Vol</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="world-note" class="deep-note"></p>
     </div>
 
     <!-- Macro state. Not a portfolio view — it is the regime the holdings sit inside, and the
@@ -2350,7 +2375,7 @@
             const t = searchTerms();
             const cal = () => calendarRows().filter(e => matches([e.name, e.yahoo].join(' ').toLowerCase(), t));
             const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
-                : STATE.dim === 'macro' ? [0, 0]
+                : STATE.dim === 'macro' || STATE.dim === 'world' ? [0, 0]
                 : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
                 : [visibleRows().length, STATE.rows.length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
@@ -2602,7 +2627,7 @@
             const table = document.getElementById('portfolio');
             const footRow = table.tFoot?.rows[0];
             // Watchlist and calendar views have no totals to float; nor does an empty table.
-            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || STATE.dim === 'macro' || !footRow || !table.tBodies[0]?.rows.length) {
+            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || STATE.dim === 'macro' || STATE.dim === 'world' || !footRow || !table.tBodies[0]?.rows.length) {
                 el.classList.remove('show');
                 el.innerHTML = '';
                 return;
@@ -2779,10 +2804,50 @@
         // beneath it — one table area, one control.
         function applyView() {
             const dim = STATE.dim;
-            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro';
+            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world';
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
             document.getElementById('macro').hidden = dim !== 'macro';
+            document.getElementById('world').hidden = dim !== 'world';
+        }
+
+        // Ranked by distance below the all-time high, deepest first — so the top of the table IS
+        // the answer to "where in the world is washed out". Not grouped by region: the whole point
+        // is a single ordering across every market, and grouping would hide it.
+        function renderWorld() {
+            const tbody = document.querySelector('#world-table tbody');
+            const note = document.getElementById('world-note');
+            const all = Object.values(STATE.countries || {});
+            if (!all.length) {
+                tbody.innerHTML = '';
+                note.textContent = 'No world data in prices.json — run npm run fetch.';
+                return;
+            }
+            const live = all.filter(c => !c.dead && !c.gone).sort((a, b) => b.fromAth - a.fromAth);
+            const dead = all.filter(c => c.dead || c.gone);
+            const row = c => `<tr><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}`
+                + `${c.zh ? ' · ' + escapeHTML(c.zh) : ''}</span></td>`
+                + `<td>${num2(c.price)}</td>`
+                + `<td>${num2(c.ath)}<span class="macro-sym">${c.athDay || ''}</span></td>`
+                + `<td class="${c.fromAth > 0.5 ? 'loss' : ''}">${pct(c.fromAth)}</td>`
+                + `<td>${c.range1y == null ? '–' : plain(c.range1y)}</td>`
+                + `<td class="${cls(c.ytd)}">${pct(c.ytd)}</td>`
+                + `<td class="muted">${c.volRatio == null ? '–' : num2(c.volRatio) + '×'}</td></tr>`;
+            // A wound-up fund keeps its row and says so. Dropping it would look like a fetch that
+            // failed, and Yahoo goes on quoting the last price it ever traded at indefinitely.
+            const deadRow = c => `<tr class="world-dead"><td>${escapeHTML(c.country)}`
+                + `<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
+                + `<td>${c.price == null ? '–' : num2(c.price)}</td>`
+                + `<td colspan="5">${c.gone ? 'gone from the data source entirely'
+                    : `wound up — last traded ${ymd(c.lastSeen)}, ${c.staleDays} days ago, still quoted`}</td></tr>`;
+            tbody.innerHTML = live.map(row).join('')
+                + (dead.length ? `<tr class="macro-head"><td colspan="7">No longer trading</td></tr>`
+                    + dead.map(deadRow).join('') : '');
+            const deep = live.filter(c => c.fromAth > 0.5).length;
+            note.textContent = `${live.length} country funds, ranked by how far each must rise to `
+                + `regain its own all-time high. ${deep} of ${live.length} need more than 50%. `
+                + 'Price only — a market that pays a lot out will read permanently deep even where '
+                + 'total return recovered. A monitor: none of these is on the watchlist.';
         }
 
         // Levels, not holdings — so no currency conversion and no position sizing. A yield is
@@ -2848,6 +2913,7 @@
             renderWatchlist();
             renderCalendar();
             renderMacro();
+            renderWorld();
             renderDeep();   // STATE.rows was just rebuilt; the open panel points into the old one
             drawChart();
         }
@@ -2979,7 +3045,7 @@
             // The scan's output, optional in the same way: this page predates it, and a checkout
             // where nobody has run `npm run signals` still has a working dashboard.
             fetch(DATA + 'signals.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, nav, performance }, watchlist, signals]) => {
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, countries, nav, performance }, watchlist, signals]) => {
             RATES = rates;
             // Held names are dropped: once you own it, the holdings table is the truth. This
             // keeps a stock that was on the list and then bought from appearing twice.
@@ -2987,7 +3053,7 @@
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro'];
+            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));
@@ -2995,7 +3061,7 @@
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, signals, nav, performance, firstTrade, dim };
+            STATE = { holdings, rates, quotes, macro, countries, signals, nav, performance, firstTrade, dim };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
