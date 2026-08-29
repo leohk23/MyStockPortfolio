@@ -5,11 +5,14 @@ named `YYYY-MM-DD-slug.md`. Line 1 carries the source: a URL where there is a us
 otherwise author, publication and date, with a note that it is subscriber-only. A guessed URL
 is worse than none.
 
-## These files are local only
+## Local by default
 
-They are **other people's copyrighted work**, most of it behind a subscription, and this repo
-is public. `.gitignore` excludes everything here except this README, so the text stays on the
-machine and is read by whichever agent is running locally.
+These are **other people's copyrighted work**, much of it behind a subscription, and this repo
+is public. So `.gitignore` excludes this folder by default: the text stays on the machine and
+is read by whichever agent is running locally.
+
+Publishing one anyway is a per-file decision, and Leo's alone. Add a `!` line for it in
+`.gitignore` and commit it — `2026-04-14-Convexity-Ivan-Li.md` is in on that basis.
 
 What *is* published is `../reading.md` — the citation and the **Why** line. Those are Leo's own
 notes about something he read, which is what a reading list is, and the Sweep needs them to

@@ -21,9 +21,12 @@ pot/summaries/
 pot/logs/
 pot/scan.md
 
-# Saved article text is other people's copyrighted work, most of it subscriber-only.
-# This repo is public, so the full text stays on Leo's machine and never leaves it.
-# reading.md is kept: the citations and the "Why" lines are his own notes, and the Sweep
-# needs them. The articles themselves are read locally by whichever agent is running.
+# Saved article text is other people's copyrighted work and this repo is public, so the
+# default is OFF: the text stays on Leo's machine and the agent reads it locally.
+# reading.md is always published - the citations and the "Why" lines are his own notes,
+# and the Sweep needs them to know what he rates and why.
+#
+# Publishing one anyway is his call, per file: add a "!" line below and commit it.
 pot/reading/*.md
 !pot/reading/README.md
+!pot/reading/2026-04-14-Convexity-Ivan-Li.md
