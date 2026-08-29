@@ -23,6 +23,21 @@ What that means in practice:
 
 Corollary: don't gold-plate. No design systems, no component frameworks, no build step. Plain HTML/CSS/JS that a future session can read top-to-bottom is the point — the repo has no dependencies at runtime and should stay that way.
 
+## Writing style for anything Leo reads
+
+Applies to briefs, proposals, sweeps, summaries, commit messages, console output, tooltips —
+anything with a human reader.
+
+- **Do not chain facts together with interpuncts.** `14 agent runs · 71m44s wall · 1,763,288
+  fresh input tokens · £0` is a list pretending to be a sentence: it reads as one dense run-on
+  and nothing in it is emphasised. Use commas, or put the facts on separate lines, or use a
+  table when there are more than about four. `14 agent runs, 71m44s wall, 1,763,288 fresh input
+  tokens, £0` says the same thing and can be read at a glance.
+- The same goes for stacking em-dashes, slashes and pipes as separators. One separator doing one
+  job per sentence.
+- A table is not a decoration. Where the content really is a record with fields, write a table
+  and let the header name the fields, rather than repeating labels inline on every row.
+
 ## Ponytail mode
 
 Use **Ponytail lite** by default for coding work in this repository. It may be turned off at the owner's request. Never enable `full` or `ultra` in this repository.

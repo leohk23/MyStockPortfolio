@@ -112,7 +112,7 @@ this lane several times a day while testing, and a date alone makes the second r
 overwrite the first. Never reuse a filename that exists.
 
 ```
-model: <model> · lane: deep-dive · date: <today> · tokens: <if known>
+model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 
 # <TICKER> — <company>
 
@@ -162,7 +162,7 @@ so answer, explicitly, **why this is not that mistake again.**
 Write it exactly like this, placeholders and all — **do not try to fill it in**:
 
 ```
-model: pending · lane: deep-dive · date: <today> · tokens: pending
+model: pending, lane: deep-dive, date: <today>, tokens: pending
 ```
 
 `npm run pot-report` overwrites that line with the runtime's own figures: the exact model, wall

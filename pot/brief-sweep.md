@@ -135,7 +135,7 @@ and yen depreciation carefully."* Ask of every candidate: **is this the 7532.T m
 Write it exactly like this, placeholders and all — **do not try to fill it in**:
 
 ```
-model: pending · lane: sweep · date: <today> · tokens: pending
+model: pending, lane: sweep, date: <today>, tokens: pending
 ```
 
 `npm run pot-report` overwrites that line with the runtime's own figures: the exact model, wall

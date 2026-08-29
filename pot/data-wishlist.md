@@ -20,43 +20,36 @@ by then it is a recurring input, not a one-off. Roughly, a candidate feed wants 
 
 ## Entries
 
-Appended by the Sweep. Format:
+Appended by the Sweep. Date and subject lead the entry; everything else is a sentence.
 
 ```
-- 2026-09-04 · China GDP, quarterly YoY · used tradingeconomics.com
-  Wanted weekly. Drove the Hang Seng read; had to be fetched by hand.
+- **2026-09-04 — China GDP, quarterly YoY.**
+  Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be
+  fetched by hand.
 ```
 
 <!-- newest first -->
 
-- 2026-08-29 · global electricity demand, grid investment and connection queues · used the IEA
-  Electricity 2026 and mid-year update. Wanted on each publication, not weekly; it distinguished
-  physical power demand from company promotion.
-- 2026-08-29 · company order/backlog conversion and GLP-1 realised pricing/volume · used AMSC,
-  OSI Systems and Novo Nordisk releases and filings. Wanted on results dates, not weekly; price and
-  trailing earnings alone could not test whether backlog or a low multiple represented durable
-  economics.
-- 2026-08-29 · US payrolls, real earnings and real consumer spending · used the US Bureau of
-  Labor Statistics and Bureau of Economic Analysis. Wanted monthly, with the latest release carried
-  into each weekly Sweep. Drove the value-retail read.
-- 2026-08-29 · AI and power-infrastructure order intake/backlog · used NVIDIA, R&S Group and
-  Ameresco company releases. Wanted on results dates, not weekly; company-specific backlog quality
-  mattered more than a broad capex estimate.
-- 2026-08-29 · specialty-insurance pricing cycle and underwriting margin · used Lancashire and
-  Beazley results as an imperfect substitute for a consistent market series. Wanted quarterly, not
-  weekly; it determined whether Lancashire's low multiple was a bargain or peak-cycle earnings.
-- 2026-08-29 · off-universe price and valuation history · used FT Markets and Yahoo Finance.
-  Wanted only until a candidate enters `watchlist.json`; the existing pipeline should then replace
-  this manual lookup.
-
-## Already built from this loop
-
-For the record, the pattern working before the file existed:
-
-- **17 macro series** (indices, US 5y/10y, five currency pairs, gold, crude, copper, bitcoin) — the
-  first Sweep quoted VIX and the S&P from `signals.json` and had nothing else, so they were added
-  to `fetch-prices.js` and now come free on every CI run.
-- **`macroNotes()`** — the second Sweep's macro reasoning turned out to be four repeatable
-  relations (a commodity net of the dollar, a foreign index net of its currency, a long move
-  contradicted by a short one, mixed-across-windows). All four are now computed deterministically,
-  so the Sweep is handed the inference rather than re-deriving it.
+- **2026-08-29 — global electricity demand, grid investment and connection queues.**
+  Fetched from the IEA Electricity 2026 report and its mid-year update. Wanted on each
+  publication rather than weekly; it distinguished physical power demand from company promotion.
+- **2026-08-29 — company order/backlog conversion, and GLP-1 realised pricing and volume.**
+  Fetched from AMSC, OSI Systems and Novo Nordisk releases and filings. Wanted on results dates
+  rather than weekly; price and trailing earnings alone could not test whether a backlog or a low
+  multiple represented durable economics.
+- **2026-08-29 — US payrolls, real earnings and real consumer spending.**
+  Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly,
+  with the latest release carried into each weekly Sweep. Drove the value-retail read.
+- **2026-08-29 — AI and power-infrastructure order intake and backlog.**
+  Fetched from NVIDIA, R&S Group and Ameresco company releases. Wanted on results dates rather
+  than weekly; company-specific backlog quality mattered more than a broad capex estimate.
+- **2026-08-29 — specialty-insurance pricing cycle and underwriting margin.**
+  Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market
+  series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a
+  bargain or peak-cycle earnings.
+- **2026-08-29 — off-universe price and valuation history.**
+  Fetched from FT Markets and Yahoo Finance. Wanted only until a candidate enters
+  `watchlist.json`; the existing pipeline should then replace this manual lookup.
+- **2026-09-04 — China GDP, quarterly YoY.**
+  Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be
+  fetched by hand.

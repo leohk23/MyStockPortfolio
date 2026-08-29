@@ -8,7 +8,7 @@ input to candidate generation.
 One line is enough:
 
 ```
-- 2026-08-27 · https://example.com/the-article
+- 2026-08-27, https://example.com/the-article
   Why: shipbuilding order books are the tightest since 2008 and nobody links it to Japanese yards.
 ```
 
@@ -50,9 +50,9 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 
 <!-- newest first -->
 
-- 2026-03-11 · Michael Burry, *Cassandra Unchained* · "Hong Kong Stocks: Structure & Strategy —
-  Common Stocks & Uncommon Value" · subscriber-only, no public URL
-  · saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)
+- 2026-03-11, Michael Burry, *Cassandra Unchained*, "Hong Kong Stocks: Structure & Strategy —
+  Common Stocks & Uncommon Value", subscriber-only, no public URL
+ , saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)
   **Why:** one fact stopped me — the Hang Seng Tech Index is the only major index in recorded
   history whose companies' revenue and earnings **grew** through a 1929-style collapse in the share
   prices. That is a sentiment de-rating, not a business failure — and I own the index itself
@@ -66,9 +66,9 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
   not to buy on his say-so.
   target are names to check for myself, not to buy on his say-so.
 
-- 2026-02-26 · Michael Burry, *Cassandra Unchained* · "Hong Kong Stocks: Structure & Strategy —
-  VIEs: Vulnerability, Virtue & Value" · subscriber-only, no public URL
-  · saved: [`reading/2026-02-26-HKS1-Michael-Burry.md`](reading/2026-02-26-HKS1-Michael-Burry.md)
+- 2026-02-26, Michael Burry, *Cassandra Unchained*, "Hong Kong Stocks: Structure & Strategy —
+  VIEs: Vulnerability, Virtue & Value", subscriber-only, no public URL
+ , saved: [`reading/2026-02-26-HKS1-Michael-Burry.md`](reading/2026-02-26-HKS1-Michael-Burry.md)
   **Why:** I own Chinese tech through VIEs without ever having read what I actually hold. His point
   2 is the one to keep: **buying these shares means I do not own shares in the operating business.**
   The structure is technically illegal under Chinese law, Beijing has never blessed it, and in 2011
@@ -79,8 +79,8 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
   rotation of Western money into the small free float of clean non-VIE Hong Kong listings. So VIE
   exposure is a **sizing** decision, not a research one, and that is the part that changes what I do.
 
-- 2026-04-14 · Ivan Li 李聲揚, 狼耳街華人 · subscriber-only, no public URL
-  · saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
+- 2026-04-14, Ivan Li 李聲揚, 狼耳街華人, subscriber-only, no public URL
+ , saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
   **Why:** it reinforces the philosophy. Convexity — a share can only fall 100%, but it can rise
   many multiples of that — is the argument against two instincts I want to resist: **rushing to cut
   a loss**, and **refusing to spray**. A loser caps itself; a winner does not, so the total

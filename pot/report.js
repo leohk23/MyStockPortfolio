@@ -80,8 +80,8 @@ function renderTranscript(run) {
     const items = run.lines.filter(l => l.payload?.type === 'item_completed').map(l => l.payload.item);
     const out = [
         `# ${run.lane} — ${when(run.started)}`, '',
-        `\`${run.model}\` · ${mmss(run.seconds)} · ${fmt(run.usage?.total_tokens)} tokens`,
-        `· [${path.basename(run.file)}](${run.file.replace(/\\/g, '/')}) (raw)`, '',
+        `\`${run.model}\`, ${mmss(run.seconds)}, ${fmt(run.usage?.total_tokens)} tokens`,
+        `[${path.basename(run.file)}](${run.file.replace(/\\/g, '/')}) (raw)`, '',
     ];
     let searches = 0, commands = 0;
     for (const it of items) {
@@ -109,7 +109,7 @@ function renderTranscript(run) {
             }
         }
     }
-    out.splice(4, 0, `${searches} web search${searches === 1 ? '' : 'es'} · ${commands} command${commands === 1 ? '' : 's'}`, '');
+    out.splice(4, 0, `${searches} web search${searches === 1 ? '' : 'es'}, ${commands} command${commands === 1 ? '' : 's'}`, '');
     return out.join('\n');
 }
 
@@ -126,10 +126,10 @@ function renderTranscript(run) {
 // hand-written file is never touched.
 function stampProvenance(run, claimed = new Set()) {
     const fresh = (run.usage?.input_tokens ?? 0) - (run.usage?.cached_input_tokens ?? 0);
-    const line = `model: \`${run.model}\` · lane: ${run.lane} · ${when(run.started)} · `
-        + `${mmss(run.seconds)} · ${fmt(run.usage?.total_tokens)} tokens `
-        + `(${fmt(fresh)} fresh, ${fmt(run.usage?.cached_input_tokens)} cached, ${fmt(run.usage?.output_tokens)} out) `
-        + `· stamped from the session log, not self-reported`;
+    const line = `model: \`${run.model}\`, lane: ${run.lane}, ${when(run.started)}, `
+        + `${mmss(run.seconds)}, ${fmt(run.usage?.total_tokens)} tokens `
+        + `(${fmt(fresh)} fresh, ${fmt(run.usage?.cached_input_tokens)} cached, ${fmt(run.usage?.output_tokens)} out), `
+        + `stamped from the session log rather than self-reported`;
     let stamped = 0;
     for (const abs of run.wrote || []) {
         const rel = abs.replace(/\\/g, '/').replace(/^.*?MyStockPortfolio\//, '');
@@ -387,7 +387,7 @@ ${violations.length
 ${sig?.blocked?.length ? `**Blocked:** ${sig.blocked.map(b => `${b.rule} (${b.why})`).join('; ')}\n` : ''}
 ## Cost so far
 
-${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalFresh)} fresh input tokens ·
+${runs.length} agent runs, ${mmss(totalSecs)} wall, ${fmt(totalFresh)} fresh input tokens,
 **£0 cash** (subscription, not metered). Full breakdown: **[runs.md](runs.md)**.
 
 ## Everything else
@@ -420,7 +420,7 @@ ${past.length > 20 ? `\n_…and ${past.length - 20} older, in [summaries/](summa
 
     console.log(`wrote ${dated}, pot/SUMMARY.md, pot/runs.md and ${runs.length} transcript(s)`);
     if (stamped) console.log(`  stamped provenance onto ${stamped} file(s) from the session logs`);
-    console.log(`  ${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalTokens)} tokens · £0`);
+    console.log(`  ${runs.length} agent runs, ${mmss(totalSecs)} wall, ${fmt(totalTokens)} tokens, £0`);
     if (openProposals.length) console.log(`  ${openProposals.length} proposal(s) awaiting a decision`);
     if (violations.length) {
         console.log(`  ${violations.length} file(s) cited a never-cite source:`);
