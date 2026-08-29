@@ -57,6 +57,7 @@ checked against it.
 | D12 | What gets recorded per proposal is**provenance, not a score**: model, lane, tokens, wall time. Judgement is already measured by the return; this exists so a later change of model or a move to API credits can be compared against what came before. | 28 Aug 2026 |
 | ~~D13~~ | ~~Leo names the ticker for a Deep dive~~ — **superseded by D14.** Held for one day. The reasoning stands and is why the lanes got joined: a Deep dive that reads only signals.json cannot see what the Sweep found.                                                                                                              | 28 Aug 2026 |
 | D14 | **The agent picks the ticker(s), from the Sweep's candidates AND the Scan's signals together.** Ranked against Leo's own rules, and it may produce more than one proposal. Leo can still run a Deep dive ad hoc on anything he likes; that is an extra door, not the main one.                                                | 28 Aug 2026 |
+| D15 | **A pending proposal is not a position.** Unexecuted drafts in `pot/proposals/` must not change what a later run proposes: if a name is still the best on today's evidence, it is proposed again. Only `pot/positions.json` — cash and what was actually bought — constrains sizing. Lane outputs are stamped `YYYY-MM-DD-HHMM` UTC so repeated test runs never overwrite each other. | 29 Aug 2026 |
 
 ### AGREED — the design
 

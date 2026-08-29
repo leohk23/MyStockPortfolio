@@ -112,7 +112,9 @@ and yen depreciation carefully."* Ask of every candidate: **is this the 7532.T m
   do not write it.
 - Anything you claim that overlaps local data will be checked against it. Say where they differ
   rather than picking the flattering one.
-- Write to `pot/sweeps/YYYY-MM-DD.md`; append any data gaps to `pot/data-wishlist.md`; and if you
+- Write to `pot/sweeps/YYYY-MM-DD-HHMM.md`, the time in **UTC** — Leo runs this lane several times
+  a day while testing, and a date alone makes the second run overwrite the first. Never reuse a
+  filename that exists. Append any data gaps to `pot/data-wishlist.md`; and if you
   have candidates, add them to `watchlist.json` (`{"yahoo": "...", "name": "...",
   "geography": "..."}`), keeping the file valid JSON.
 - Touch nothing else.

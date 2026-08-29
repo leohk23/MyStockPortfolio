@@ -17,8 +17,26 @@ mentioned — not because the pick was bad, but because half the evidence was in
 
 **Up to three proposals**, fewest first: one strong candidate beats three weak ones, and **zero is
 a valid answer.** §4.4 says holding cash is a position. If nothing clears Leo's rules this week,
-write `pot/proposals/YYYY-MM-DD-none.md` saying what you looked at and why each failed. That is a
+write `pot/proposals/<stamp>-none.md` saying what you looked at and why each failed. That is a
 more useful record than a forced buy.
+
+## A pending proposal is not a position — rank as if it did not exist
+
+Older files in `pot/proposals/` are **drafts awaiting Leo's decision, not commitments**, and they
+must not change what you propose. If NVDA is the best name on today's evidence, propose NVDA —
+even if last week's run said so too, even if an unexecuted NVDA draft is sitting in the same
+directory you are writing to. Two runs reaching the same conclusion from the same rules is the
+system working; **silently declining to write up your own top-ranked name because a file with a
+similar name already exists is the system failing quietly.** A run must be readable on its own.
+
+The 29 August run ranked NVDA first and then refused to write it up, "already covered by the
+pending 28-Aug proposal". Nothing in this brief asked for that. It read the directory, inferred a
+rule, and the output no longer said what the evidence said.
+
+**What DOES constrain you is `pot/positions.json`** — the cash and the holdings actually bought.
+That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecided draft is not in
+it. If you want to note that a name has been proposed before, put it in the ranking table as a
+remark; never let it downgrade a rank or suppress a proposal.
 
 ## The multiple is not the thesis
 
@@ -89,7 +107,9 @@ is void.
 
 ## Write the proposal — §8, all six, none optional
 
-To `pot/proposals/YYYY-MM-DD-<ticker>.md`:
+To `pot/proposals/<stamp>-<ticker>.md`, where `<stamp>` is **`YYYY-MM-DD-HHMM` in UTC** — Leo runs
+this lane several times a day while testing, and a date alone makes the second run of a day
+overwrite the first. Never reuse a filename that exists.
 
 ```
 model: <model> · lane: deep-dive · date: <today> · tokens: <if known>
