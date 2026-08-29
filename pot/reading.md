@@ -50,6 +50,30 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 
 <!-- newest first -->
 
+- 2026-03-11 · Michael Burry, *Cassandra Unchained* · "Hong Kong Stocks: Structure & Strategy —
+  Common Stocks & Uncommon Value" · subscriber-only, no public URL
+  · saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)
+  **Why:** one fact stopped me — the Hang Seng Tech Index is the only major index in recorded
+  history whose companies' revenue and earnings **grew** through a 1929-style collapse in the share
+  prices. That is a sentiment de-rating, not a business failure, and it is the clearest statement I
+  have read of why I hold Hong Kong at all. It also prices what I already own: he rates **BYD
+  (1211.HK) 7/10, full position at HK$75**, and I hold it at HK$91.95 — 23% above his level, which
+  says my position is a hold, not an add. Haidilao (6862.HK) 8/10 at HK$17 and PDD 6/10 with no
+  target are names to check for myself, not to buy on his say-so.
+
+- 2026-02-26 · Michael Burry, *Cassandra Unchained* · "Hong Kong Stocks: Structure & Strategy —
+  VIEs: Vulnerability, Virtue & Value" · subscriber-only, no public URL
+  · saved: [`reading/2026-02-26-HKS1-Michael-Burry.md`](reading/2026-02-26-HKS1-Michael-Burry.md)
+  **Why:** I own Chinese tech through VIEs without ever having read what I actually hold. His point
+  2 is the one to keep: **buying these shares means I do not own shares in the operating business.**
+  The structure is technically illegal under Chinese law, Beijing has never blessed it, and in 2011
+  Jack Ma moved Alipay out of Alibaba's VIE without telling shareholders. Voting rights are
+  practically irrelevant, and since the SAMR database closed there is no independent way to verify
+  the revenue. What I want to take from it is the **tiering**: Tier 1, full kinetic war, cannot be
+  hedged by stock picking at all — only by how much I hold. Tier 2 is survivable, and forces a
+  rotation of Western money into the small free float of clean non-VIE Hong Kong listings. So VIE
+  exposure is a **sizing** decision, not a research one, and that is the part that changes what I do.
+
 - 2026-04-14 · Ivan Li 李聲揚, 狼耳街華人 · subscriber-only, no public URL
   · saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
   **Why:** it reinforces the philosophy. Convexity — a share can only fall 100%, but it can rise

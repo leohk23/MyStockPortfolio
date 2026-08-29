@@ -1,4 +1,19 @@
 # Saved article text
 
 Full text of paywalled or rot-prone pieces listed in ../reading.md. One file per article,
-named `YYYY-MM-DD-slug.md`. Keep the source URL on the first line.
+named `YYYY-MM-DD-slug.md`. Line 1 carries the source: a URL where there is a usable one, and
+otherwise author, publication and date, with a note that it is subscriber-only. A guessed URL
+is worse than none.
+
+## These files are local only
+
+They are **other people's copyrighted work**, most of it behind a subscription, and this repo
+is public. `.gitignore` excludes everything here except this README, so the text stays on the
+machine and is read by whichever agent is running locally.
+
+What *is* published is `../reading.md` — the citation and the **Why** line. Those are Leo's own
+notes about something he read, which is what a reading list is, and the Sweep needs them to
+know what he rates and why.
+
+**So a fresh clone will not have these articles.** That is intended. The Sweep reads whatever
+is present and says nothing about what is not.
