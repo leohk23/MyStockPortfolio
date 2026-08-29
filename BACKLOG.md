@@ -24,6 +24,17 @@ So do **not** de-duplicate `buildWatchlist` on `group`, and do **not** drop a wa
 Quarters filled from `quoteSummary` ([fetch-prices.js](fetch-prices.js), `fallbackQuarters`) carry revenue and net income only — Yahoo's `incomeStatementHistoryQuarterly` returns `operatingIncome` as absent and several other fields as a placeholder zero. So Op income and Op margin are blank on those rows for every Japanese name.
 Not fixable from this endpoint. It would need a different source, and a blank cell is the correct rendering of "we do not know" in the meantime.
 
+### The trough is on a TTM basis for US filers only
+
+`troughPe` and `peBands` now divide by a rolling twelve months built from SEC quarterly filings —
+the same basis as the headline P/E, so the two are comparable. That only reaches **US filers**.
+Hong Kong, Japan and Europe still use the latest ANNUAL EPS, and where a company has grown since
+its year end that reads dear against a TTM headline. Two names currently show a "cheapest ever"
+*dearer* than today — **0006.HK** (7.1x current, 12.4x trough) and **0066.HK** (8.9x, 10.2x) —
+which is not a market fact, it is the basis mismatch showing through. Fixing it needs a quarterly
+EPS source for those markets; HKEXnews carries the interim announcements but only two periods a
+year, so a TTM would still be a half-year approximation.
+
 ### Point-in-time report dates for HK, beyond the latest period
 `npm run hkdates` now records each HK name's **latest** annual and interim announcement date from webb-database.com, and `check-interim` uses the interim lag instead of a flat 60-day window. What it does **not** give is history: the reporting-speed table carries one row per company, and the per-company pages carry no results dates at all.
 US filers are now solved: `npm run filings` reads actual 10-K/20-F filing dates from SEC EDGAR into `filing-dates.json`, and `reportedBy()` prefers them. Real lags are **21–47 days**, not 90 — the guess was wrong by two to three times, and it moved 14 of 64 troughs (NVDA 38.50x → 31.71x; MRVL 53.73 → 28.62; ARM 97 → 141, correctly dearer once its pre-IPO years stop being treated as public).

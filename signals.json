@@ -1,20 +1,12 @@
 {
- "generated": "2026-08-29T00:10:55.908Z",
- "pricesAt": "2026-08-28T23:59:38.222Z",
+ "generated": "2026-08-29T01:16:10.911Z",
+ "pricesAt": "2026-08-29T01:14:51.444Z",
  "vix": {
   "close": 14.43,
   "day": -0.0055
  },
  "spxDay": -0.002487391653591575,
  "fired": [
-  {
-   "rule": "6.1 valuation",
-   "ticker": "GME",
-   "where": "watchlist",
-   "pe": 13.335820895522389,
-   "floor": 23.2078,
-   "vsFloor": -0.42537332726400656
-  },
   {
    "rule": "6.1 valuation",
    "ticker": "0006.HK",
@@ -29,19 +21,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "AMZN",
-   "where": "HELD",
-   "pe": 21.434432823813356,
-   "floor": 27.7252,
-   "vsFloor": -0.22689708915306817,
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 41.79320340833512,
-    "recurringVsFloor": 0.5074085455951667
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "0066.HK",
    "where": "watchlist",
    "pe": 8.850136239782016,
@@ -50,48 +29,32 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "NVDA",
-   "where": "HELD",
-   "pe": 27.503160556257903,
-   "floor": 31.7086,
-   "vsFloor": -0.13262772382704058
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "PLTR",
-   "where": "watchlist",
-   "pe": 159.22222222222223,
-   "floor": 179.254,
-   "vsFloor": -0.11175079930030996
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "NFLX",
-   "where": "HELD",
-   "pe": 25.69811320754717,
-   "floor": 27.253,
-   "vsFloor": -0.05705378462748434
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "GOOG",
-   "where": "HELD",
-   "pe": 17.212851405622487,
-   "floor": 18.0424,
-   "vsFloor": -0.0459777299238191,
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 33.90051708966513,
-    "recurringVsFloor": 0.8789361221159673
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "7532.T",
    "where": "HELD",
    "pe": 22.03320631464344,
    "floor": 21.7371,
    "vsFloor": 0.013622162783602176
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "RSGN.SW",
+   "where": "watchlist",
+   "pe": 12.698717948717947,
+   "floor": 12.5,
+   "vsFloor": 0.015897435897435752
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "AMZN",
+   "where": "HELD",
+   "pe": 21.434432823813356,
+   "floor": 20.8069,
+   "vsFloor": 0.030159842351016097,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 41.79320340833512,
+    "recurringVsFloor": 1.0086223035788664
+   }
   },
   {
    "rule": "6.1 valuation",
@@ -108,6 +71,18 @@
    "pe": 27.09158172221286,
    "floor": 24.2613,
    "vsFloor": 0.11665828798180078
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "LRE.L",
+   "where": "watchlist",
+   "pe": 6.484210526315789,
+   "floor": 5.66471,
+   "vsFloor": 0.1446676928414321,
+   "oneOff": {
+    "why": "trailing EPS is 73.1x the last filed year (2024)",
+    "epsJump": 73.07692307692308
+   }
   }
  ],
  "instructions": [],
@@ -170,7 +145,10 @@
   "1810.HK": "2026-11-17",
   "0823.HK": "2026-11-19",
   "ROK": "2026-11-05",
-  "EPI-A.ST": "2026-10-28"
+  "EPI-A.ST": "2026-10-28",
+  "RSGN.SW": "2026-09-16",
+  "AMRC": "2026-11-02",
+  "BME.L": "2026-11-11"
  },
  "world": {
   "counted": 43,
@@ -280,8 +258,8 @@
    "name": "Nikkei 225",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.464,
-   "says": "55% locally is 46% to a sterling holder"
+   "inGBP": 0.4835,
+   "says": "57% locally is 48% to a sterling holder"
   },
   {
    "sym": "GC=F",
@@ -311,9 +289,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3017,
-   "says": "-28% over a year but 6% over three months — cooling",
-   "cooling": 0.055,
+   "real": -0.3057,
+   "says": "-29% over a year but 6% over three months — cooling",
+   "cooling": 0.0556,
    "mixed": true
   }
  ],

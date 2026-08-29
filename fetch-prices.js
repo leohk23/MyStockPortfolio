@@ -808,15 +808,52 @@ const reportedBy = (date, filed) =>
 // A year with no EPS and no net income (Yahoo's per-field cap) carries no information and is
 // transparent; a published LOSS is kept — it genuinely voids the multiple until the next
 // profit prints. Shared by troughPe and peBands so both price the same denominator.
-function publishedEps(entry, quoteCurrency, rates, filedOn = null) {
+// Rolling twelve-month EPS as it became public, quarter by quarter.
+//
+// The trough was struck on the latest ANNUAL EPS while the headline P/E uses trailing twelve
+// months — two different denominators, and the result was not merely imprecise. GameStop showed a
+// "cheapest ever" of 23.21x against a current 13.34x: a cheapest dearer than today, which is not a
+// number but a category error. A cheapest-ever must be comparable with today or it means nothing.
+//
+// Each 10-Q publication date carries the sum of the four most recent quarters known by then; the
+// 10-K's does too, where that sum is the audited year by construction. EDGAR gives ~70 quarters per
+// filer back to 2008 against Yahoo's four, so this is also the difference between a history and a
+// handful of points.
+//
+// ponytail: US filers only, because this comes from EDGAR. Hong Kong, Japan and Europe keep the
+// annual basis, so their troughs stay on the coarser denominator and read slightly dear against a
+// TTM headline. Mixed, and documented rather than hidden — the alternative is a wrong number for
+// everyone instead of a right one for half.
+function ttmSteps(quarters, toQuote) {
+    const qs = [...(quarters || [])].filter(q => q.end && q.filed && typeof q.eps === 'number')
+        .sort((a, b) => a.end.localeCompare(b.end));
+    if (qs.length < 4) return [];
+    const steps = [];
+    for (let i = 3; i < qs.length; i++) {
+        const window = qs.slice(i - 3, i + 1);
+        // Published when the LAST of the four was filed — a window is only knowable once its
+        // final quarter is out, and a late filing must not back-date the whole window.
+        const from = window.reduce((a, q) => q.filed > a ? q.filed : a, window[0].filed);
+        steps.push({ from, eps: window.reduce((a, q) => a + q.eps, 0) * toQuote, ttm: true,
+            through: window[3].end });
+    }
+    return steps;
+}
+
+function publishedEps(entry, quoteCurrency, rates, filedOn = null, quarters = null) {
     const years = entry?.years || [];
     const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
     const fxQuote = rateFor(quoteCurrency, rates);
     if (!fxReport || !fxQuote) return null;
     const toQuote = fxReport / fxQuote;
     const normalised = normaliseEps(years);   // onto the latest year's share basis
-    return years
+    const annual = years
         .map((y, i) => ({ from: reportedBy(y.date, filedOn?.[y.date]), eps: normalised[i] * toQuote }))
+        .filter(k => Number.isFinite(k.eps));
+    // Both bases in one ordered list, latest publication winning at any date. They agree where
+    // they meet: a 10-K's trailing four quarters ARE the audited year, so the two never contradict
+    // each other on the day the annual lands — the quarterly steps simply keep moving in between.
+    return [...annual, ...ttmSteps(quarters, toQuote)]
         .filter(k => Number.isFinite(k.eps))
         .sort((a, b) => a.from < b.from ? -1 : 1);
 }
@@ -847,8 +884,8 @@ const epsAsOf = (known, day) => {
 // rateFor for BOTH sides means the GBp/pence case falls out for free (GBp is GBP/100, so a
 // GBP-reported EPS scales by 100 into a pence-quoted price) — no special case needed.
 // Returns null if we lack an FX rate for either side, rather than a wrong multiple.
-function troughPe(entry, days, closes, quoteCurrency, rates, filedOn = null) {
-    const known = publishedEps(entry, quoteCurrency, rates, filedOn);
+function troughPe(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null) {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
     if (!known) return null;
     let best = null;
     for (let i = 0; i < days.length; i++) {
@@ -879,8 +916,8 @@ function troughPe(entry, days, closes, quoteCurrency, rates, filedOn = null) {
 // ponytail: weekly closes, so the band is narrower than the true intraday range (HKEX's 2024
 // high reads 376 against an intraday 398). Deliberate — this is the same series peLow is struck
 // on, and a wider band here would disagree with the headline number on the same page.
-function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null) {
-    const known = publishedEps(entry, quoteCurrency, rates, filedOn);
+function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null) {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
     if (!known) return null;
     const plusYear = (d, n = 1) => {
         const x = new Date(d + 'T00:00:00Z');
@@ -1881,14 +1918,15 @@ async function main() {
     // Real publication dates where SEC EDGAR has them (npm run filings). Optional: without the
     // file every ticker falls back to the flat 90-day guess, exactly as before.
     let filedDates = {};
-    try { filedDates = JSON.parse(fs.readFileSync('filing-dates.json', 'utf8')).dates || {}; }
+    let filedQuarters = {};
+    try { const f = JSON.parse(fs.readFileSync('filing-dates.json', 'utf8')); filedDates = f.dates || {}; filedQuarters = f.quarters || {}; }
     catch { console.log('note no filing-dates.json — every year falls back to the 90-day lag'); }
     let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         const filedOn = filedDates[t] || null;
         if (filedOn && Object.keys(filedOn).length) realDated++;
-        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn);
+        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t]);
         if (bands) {
             quotes[t].peBands = bands.map(b => ({
                 fy: b.fy, end: b.end, weeks: b.weeks, ...(b.partial ? { partial: true } : {}),
@@ -1897,7 +1935,7 @@ async function main() {
             }));
             bandOk++;
         }
-        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn);
+        const low = troughPe(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t]);
         if (!low) { troughMissing++; continue; }
         Object.assign(quotes[t], {
             peLow: Number(low.peLow.toPrecision(6)),
@@ -2455,6 +2493,40 @@ function selftest() {
     assert.strictEqual(troughPe({ currency: 'GBP', years: [{ date: '2024-12-31', eps: 0.5 }] }, days, px, 'GBp', fx).peLow, 1);
     // No FX rate for the reporting currency -> null, never a wrong multiple.
     assert.strictEqual(troughPe({ currency: 'CNY', years: [{ date: '2024-12-31', eps: 5 }] }, days, px, 'USD', fx), null);
+
+
+    // ttmSteps: a rolling twelve months as it became public, so the trough is on the SAME basis
+    // as the headline P/E. GameStop showed a "cheapest ever" of 23.21x against a current 13.34x —
+    // a cheapest dearer than today, which is a category error rather than a rounding one.
+    const qs = [
+        { end: '2025-04-30', eps: 0.09, filed: '2025-06-10' },
+        { end: '2025-07-31', eps: 0.31, filed: '2025-09-09' },
+        { end: '2025-10-31', eps: 0.13, filed: '2025-12-09' },
+        { end: '2026-01-31', eps: 0.24, filed: '2026-03-24' },
+        { end: '2026-04-30', eps: 0.66, filed: '2026-06-11' },
+    ];
+    const steps = ttmSteps(qs, 1);
+    assert.strictEqual(steps.length, 2, 'five quarters give two complete windows');
+    // The first window closes when its LAST quarter is filed, not when the window ends.
+    assert.strictEqual(steps[0].from, '2026-03-24');
+    assert.ok(Math.abs(steps[0].eps - 0.77) < 1e-9, 'the four to Jan 2026 are the audited year');
+    assert.strictEqual(steps[1].from, '2026-06-11');
+    assert.ok(Math.abs(steps[1].eps - 1.34) < 1e-9, 'and the next window is the current TTM');
+    // Fewer than four quarters is not a window; nothing is asserted from a partial year.
+    assert.deepStrictEqual(ttmSteps(qs.slice(0, 3), 1), []);
+    assert.deepStrictEqual(ttmSteps(null, 1), []);
+    // FX applies to the sum exactly as it does to an annual figure.
+    assert.ok(Math.abs(ttmSteps(qs, 2)[1].eps - 2.68) < 1e-9);
+    // A quarter filed late must not back-date its window: the window opens on the LATEST filing.
+    const lateFiled = [...qs.slice(0, 3), { end: '2026-01-31', eps: 0.24, filed: '2026-09-01' }];
+    assert.strictEqual(ttmSteps(lateFiled, 1)[0].from, '2026-09-01');
+
+    // publishedEps merges annual and TTM steps, latest publication winning at any date.
+    const merged = publishedEps({ currency: 'USD', years: [{ date: '2026-01-31', eps: 0.77 }] },
+        'USD', fx, { '2026-01-31': '2026-03-24' }, qs);
+    // Float sum, so a tolerance: 0.09+0.31+0.13+0.66 lands on 1.3399999999999999.
+    assert.ok(Math.abs(merged[merged.length - 1].eps - 1.34) < 1e-9, 'the June TTM is the newest figure');
+    assert.ok(merged.some(k => k.from === '2026-03-24'), 'the annual is still in the series');
 
 // The real filing date beats the flat lag, and the NVDA case is the reason it exists.
     // FY2025 ends 2025-01-31. The 90-day rule makes it public on 2025-05-01; EDGAR says the 10-K
