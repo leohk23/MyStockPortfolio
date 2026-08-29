@@ -55,10 +55,15 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
   · saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)
   **Why:** one fact stopped me — the Hang Seng Tech Index is the only major index in recorded
   history whose companies' revenue and earnings **grew** through a 1929-style collapse in the share
-  prices. That is a sentiment de-rating, not a business failure, and it is the clearest statement I
-  have read of why I hold Hong Kong at all. It also prices what I already own: he rates **BYD
-  (1211.HK) 7/10, full position at HK$75**, and I hold it at HK$91.95 — 23% above his level, which
-  says my position is a hold, not an add. Haidilao (6862.HK) 8/10 at HK$17 and PDD 6/10 with no
+  prices. That is a sentiment de-rating, not a business failure — and I own the index itself
+  (**3067.HK**, iShares Hang Seng TECH, 1,000 units, HK$9.73 and −20.3% over the year), so this is
+  the thesis for a position I already hold rather than an observation about someone else's market.
+  If he is right, what I am holding through is the de-rating and not a deterioration, and the
+  question is only whether I keep adding while sentiment is still against it.
+  It also prices the single names: he rates **BYD (1211.HK) 7/10, full position at HK$75**, and I
+  hold it at HK$91.95 — 23% above his level, which says that position is a hold, not an add.
+  Haidilao (6862.HK) 8/10 at HK$17 and PDD 6/10 with no target are names to check for myself,
+  not to buy on his say-so.
   target are names to check for myself, not to buy on his say-so.
 
 - 2026-02-26 · Michael Burry, *Cassandra Unchained* · "Hong Kong Stocks: Structure & Strategy —
