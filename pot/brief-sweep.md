@@ -117,8 +117,16 @@ and yen depreciation carefully."* Ask of every candidate: **is this the 7532.T m
   "geography": "..."}`), keeping the file valid JSON.
 - Touch nothing else.
 
-## Header your output with provenance (§9.2)
+## Header your output with a provenance line
+
+Write it exactly like this, placeholders and all — **do not try to fill it in**:
 
 ```
-model: <the model you are> · lane: sweep · date: <today> · tokens: <if known>
+model: pending · lane: sweep · date: <today> · tokens: pending
 ```
+
+`npm run pot-report` overwrites that line with the runtime's own figures: the exact model, wall
+time, and total/fresh/cached/output tokens, read from the session log. You cannot see your own
+token accounting, and guessing at the model produces a confident wrong answer — the last Sweep
+headed its output "model: Codex (GPT-5) · tokens: unknown" where the runtime recorded
+`gpt-5.6-sol` and 4,460,184 tokens. The line just has to exist and start with `model:`.

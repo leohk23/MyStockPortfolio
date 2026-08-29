@@ -81,6 +81,7 @@ checked against it.
 | A17 | **World breadth** — 47 single-country ETFs from Leo's Book1.xlsx, ranked by distance below each fund's own all-time high. His revision of the source sheet, and a stronger measure than position in a 1-year range: a market that has fallen for five years sits comfortably inside its recent range while being 60% below its peak. | 29 Aug 2026 |
 | A18 | **A monitor, not a buy list.** Deliberately kept out of `watchlist.json` and producing no per-country signal — only a breadth READING for the Scan, because 47 lines nobody intends to own individually would swamp the one table that is about intent. | 29 Aug 2026 |
 | A19 | **A wound-up fund keeps its row and says so.** Four of the 47 have been liquidated and Yahoo still serves each one's last price forever — the source spreadsheet has shown Pakistan at 16.79 for 444 days. Dropping the row would look like a failed fetch; marking it dead is a fact about the world. | 29 Aug 2026 |
+| A20 | **Provenance is stamped from the session log, not written by the agent.** `npm run pot-report` rewrites each output file's `model:` header with the runtime's exact model, wall time and token breakdown, using the log's own record of which files that run wrote. A model cannot see its own accounting: asked to try, one Sweep headed its output "Codex (GPT-5) · tokens: unknown" where the runtime had `gpt-5.6-sol` and 4,460,184 tokens. | 29 Aug 2026 |
 
 ### OPEN
 

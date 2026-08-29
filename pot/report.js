@@ -46,7 +46,14 @@ function summarise(file) {
     const blob = JSON.stringify(lines);
     const started = lines[0].timestamp || null, ended = lines[lines.length - 1].timestamp || null;
     const totals = [...blob.matchAll(/"total_token_usage":(\{[^}]*\})/g)].pop();
-    const brief = (blob.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1] || null;
+    // The lane comes from the INSTRUCTION, not from anywhere in the transcript. Searching the
+    // whole blob found the first `brief-*.md` mentioned anywhere — and a deep dive reads the
+    // sweep's output, while AGENTS.md names every brief — so a deep-dive run was being filed as a
+    // sweep, and its proposal stamped with another run's model and token count.
+    const asked = lines.find(l => l.payload?.item?.type === 'UserMessage')
+        ?.payload.item.content?.map(c => c.text).join(' ') || '';
+    const brief = (asked.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1]
+        || (blob.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1] || null;
     return {
         file, started, ended, brief, lines,
         lane: brief ? brief.replace(/-/g, ' ') : 'unknown',
@@ -54,6 +61,10 @@ function summarise(file) {
         seconds: started && ended ? Math.round((Date.parse(ended) - Date.parse(started)) / 1000) : null,
         usage: totals ? JSON.parse(totals[1]) : null,
         repo: /MyStockPortfolio/.test((blob.match(/"cwd":"([^"]+)"/) || [])[1] || ''),
+        // Which files this run wrote — so its provenance header can be stamped from the log
+        // rather than from the agent's own guess at what model it is.
+        wrote: [...new Set(lines.filter(l => l.payload?.item?.type === 'FileChange')
+            .flatMap(l => Object.keys(l.payload.item.changes || {})))],
     };
 }
 
@@ -102,6 +113,41 @@ function renderTranscript(run) {
     return out.join('\n');
 }
 
+// Stamp a run's provenance onto the files that run produced.
+//
+// D12 says the record is provenance, and that it comes from the log rather than from the agent —
+// and the agent is measurably unreliable here. The last Sweep headed its own output
+// "model: Codex (GPT-5) · tokens: unknown" when the runtime recorded `gpt-5.6-sol` and 4,460,184
+// tokens. It is not being careless: a model genuinely cannot see its own accounting, and asking it
+// to try invites a confident wrong answer instead of an honest blank.
+//
+// The log also says which files each run wrote, so there is no guessing about what to stamp.
+// Rewrites the first line only, and only when it already looks like a provenance header, so a
+// hand-written file is never touched.
+function stampProvenance(run, claimed = new Set()) {
+    const fresh = (run.usage?.input_tokens ?? 0) - (run.usage?.cached_input_tokens ?? 0);
+    const line = `model: \`${run.model}\` · lane: ${run.lane} · ${when(run.started)} · `
+        + `${mmss(run.seconds)} · ${fmt(run.usage?.total_tokens)} tokens `
+        + `(${fmt(fresh)} fresh, ${fmt(run.usage?.cached_input_tokens)} cached, ${fmt(run.usage?.output_tokens)} out) `
+        + `· stamped from the session log, not self-reported`;
+    let stamped = 0;
+    for (const abs of run.wrote || []) {
+        const rel = abs.replace(/\\/g, '/').replace(/^.*?MyStockPortfolio\//, '');
+        if (!rel.startsWith('pot/') || !rel.endsWith('.md')) continue;
+        // Runs arrive newest-first, so the first to claim a file is the one that last wrote it.
+        if (claimed.has(rel)) continue;
+        claimed.add(rel);
+        try {
+            const body = fs.readFileSync(rel, 'utf8');
+            const nl = body.indexOf('\n');
+            if (nl < 0 || !/^model:/i.test(body.slice(0, nl))) continue;
+            const next = body.slice(0, nl) === line ? null : line + body.slice(nl);
+            if (next) { fs.writeFileSync(rel, next); stamped++; }
+        } catch { /* the file may have been renamed or removed since; not worth failing over */ }
+    }
+    return stamped;
+}
+
 // The world-breadth block, as its own function rather than inline: it nests a template literal
 // inside a template literal inside a map, which is where the last three attempts at this file
 // went wrong.
@@ -131,6 +177,12 @@ function build() {
     fs.mkdirSync(LOGS, { recursive: true });
     const runs = sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief);
     runs.sort((a, b) => (b.started || '').localeCompare(a.started || ''));
+
+    // Stamp each run's own outputs before anything reads them, so the model and token counts
+    // on a proposal are the runtime's numbers rather than the agent's recollection.
+    let stamped = 0;
+    const claimed = new Set();
+    for (const r of runs) stamped += stampProvenance(r, claimed);
 
     // Readable transcript per run, named so it sorts with the run.
     for (const r of runs) {
@@ -336,6 +388,7 @@ ${past.length > 20 ? `\n_…and ${past.length - 20} older, in [summaries/](summa
 `);
 
     console.log(`wrote ${dated}, pot/SUMMARY.md, pot/runs.md and ${runs.length} transcript(s)`);
+    if (stamped) console.log(`  stamped provenance onto ${stamped} file(s) from the session logs`);
     console.log(`  ${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalTokens)} tokens · £0`);
     if (openProposals.length) console.log(`  ${openProposals.length} proposal(s) awaiting a decision`);
 }

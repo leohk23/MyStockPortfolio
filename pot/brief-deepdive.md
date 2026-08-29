@@ -133,3 +133,17 @@ so answer, explicitly, **why this is not that mistake again.**
 - Write only `pot/proposals/…`. Touch nothing else.
 - No figure without a source (§7.3).
 - You are proposing, not deciding. Leo executes.
+
+## Header your output with a provenance line
+
+Write it exactly like this, placeholders and all — **do not try to fill it in**:
+
+```
+model: pending · lane: deep-dive · date: <today> · tokens: pending
+```
+
+`npm run pot-report` overwrites that line with the runtime's own figures: the exact model, wall
+time, and total/fresh/cached/output tokens, read from the session log. You cannot see your own
+token accounting, and guessing at the model produces a confident wrong answer — the last Sweep
+headed its output "model: Codex (GPT-5) · tokens: unknown" where the runtime recorded
+`gpt-5.6-sol` and 4,460,184 tokens. The line just has to exist and start with `model:`.
