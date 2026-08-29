@@ -124,6 +124,34 @@ function renderTranscript(run) {
 // The log also says which files each run wrote, so there is no guessing about what to stamp.
 // Rewrites the first line only, and only when it already looks like a provenance header, so a
 // hand-written file is never touched.
+// The log records the path the agent SAID it wrote, which is not always the path that
+// survived. The 29 Aug deep dive announced pot/proposals/2026-08-29-1322-NVDA.md and then
+// renamed its output to ...-1442-... before exiting, so this read a file that no longer
+// existed, swallowed the ENOENT, and published two proposals still headed "model: pending".
+//
+// When the logged path is gone, look in the same directory for a file this run plausibly left:
+// still carrying an unstamped header, and modified after the run began. Narrow enough not to
+// claim somebody else's file, and it is the rename case in practice.
+function renamedOutput(dir, run, claimed) {
+    const startedMs = Date.parse(run.started || 0) || 0;
+    const NL = String.fromCharCode(10);
+    let best = null, entries = [];
+    try { entries = fs.readdirSync(dir); } catch { return null; }
+    for (const name of entries) {
+        const rel = dir + '/' + name;
+        if (!name.endsWith('.md') || claimed.has(rel)) continue;
+        let st, head;
+        try {
+            st = fs.statSync(rel);
+            head = fs.readFileSync(rel, 'utf8').split(NL)[0].trim();
+        } catch { continue; }
+        if (st.mtimeMs < startedMs) continue;
+        if (!/^model:[ ]*(pending|.?<)/i.test(head)) continue;
+        if (!best || st.mtimeMs > best.mtimeMs) best = { rel, mtimeMs: st.mtimeMs };
+    }
+    return best && best.rel;
+}
+
 function stampProvenance(run, claimed = new Set()) {
     const fresh = (run.usage?.input_tokens ?? 0) - (run.usage?.cached_input_tokens ?? 0);
     const line = `model: \`${run.model}\`, lane: ${run.lane}, ${when(run.started)}, `
@@ -134,15 +162,18 @@ function stampProvenance(run, claimed = new Set()) {
     for (const abs of run.wrote || []) {
         const rel = abs.replace(/\\/g, '/').replace(/^.*?MyStockPortfolio\//, '');
         if (!rel.startsWith('pot/') || !rel.endsWith('.md')) continue;
+        const onDisk = fs.existsSync(rel) ? rel
+            : renamedOutput(rel.slice(0, rel.lastIndexOf('/')), run, claimed);
+        if (!onDisk) continue;
         // Runs arrive newest-first, so the first to claim a file is the one that last wrote it.
-        if (claimed.has(rel)) continue;
-        claimed.add(rel);
+        if (claimed.has(onDisk)) continue;
+        claimed.add(onDisk);
         try {
-            const body = fs.readFileSync(rel, 'utf8');
+            const body = fs.readFileSync(onDisk, 'utf8');
             const nl = body.indexOf('\n');
             if (nl < 0 || !/^model:/i.test(body.slice(0, nl))) continue;
             const next = body.slice(0, nl) === line ? null : line + body.slice(nl);
-            if (next) { fs.writeFileSync(rel, next); stamped++; }
+            if (next) { fs.writeFileSync(onDisk, next); stamped++; }
         } catch { /* the file may have been renamed or removed since; not worth failing over */ }
     }
     return stamped;
