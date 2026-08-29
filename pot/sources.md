@@ -38,11 +38,8 @@ Not because everything on them is false, but because everything on them is **dow
 number is always available upstream, so citing one of these is never the best available answer,
 and several of them are paid promotion or SEO output wearing the clothes of research.
 
-MarketBeat · Zacks · Benzinga · The Motley Fool (fool.com, fool.co.uk) · Simply Wall St ·
-InvestorPlace · Seeking Alpha contributor posts · TipRanks · GuruFocus · Insider Monkey ·
-24/7 Wall St · WallStreetZen · Stocktwits · InvestorsObserver · stockanalysis.com ·
-financecharts.com · Fox Business quote pages · Nasdaq.com syndicated articles · any
-"top N stocks to buy" listicle · any newsletter or blog whose author is not identified.
+**The list lives at the bottom of this file** so it is always the last thing here and Leo can add
+to it without touching anything else. Match on the domain.
 
 **Finding is not citing.** If one of these puts a name in front of you, that is fine — take the
 name, then verify every figure against the hierarchy above and cite what you verified against.
@@ -59,3 +56,42 @@ The 29 August runs are the worked example. Of 155 citations, 149 were filings, I
 statistical agencies, broker schedules or HMRC. The other 6 were price aggregators — and every
 one of the 6 was cited for a **price or market cap**, the one class of number rule 1 already
 covers.
+
+---
+
+<!-- NEVER-CITE LIST — Leo maintains this. Add a line at the bottom, keep the format:
+       domain.com — what it is
+     Domain only, no https://, no path. A domain here also covers its subdomains.
+     `npm run pot-report` reads THIS list and flags any run that cited one, so adding a line is
+     all that is needed to arm the check. Delete a line to un-ban a site. -->
+
+## The never-cite list
+
+- marketbeat.com — MarketBeat
+- zacks.com — Zacks
+- benzinga.com — Benzinga
+- fool.com — The Motley Fool
+- fool.co.uk — The Motley Fool UK
+- simplywall.st — Simply Wall St
+- investorplace.com — InvestorPlace
+- seekingalpha.com — Seeking Alpha contributor posts
+- tipranks.com — TipRanks
+- gurufocus.com — GuruFocus
+- insidermonkey.com — Insider Monkey
+- 247wallst.com — 24/7 Wall St
+- wallstreetzen.com — WallStreetZen
+- stocktwits.com — Stocktwits
+- investorsobserver.com — InvestorsObserver
+- stockanalysis.com — stockanalysis.com
+- financecharts.com — financecharts.com
+- foxbusiness.com — Fox Business quote pages
+- barchart.com — Barchart (data is upstream at the exchange)
+- investing.com — Investing.com
+- finbold.com — Finbold
+- marketrealist.com — Market Realist
+- thestreet.com — TheStreet
+
+Two rules that no list can enumerate, so they are stated instead of named:
+
+- **Any "top N stocks to buy" listicle**, wherever it is published.
+- **Any newsletter, blog or forum post whose author is not identified.**

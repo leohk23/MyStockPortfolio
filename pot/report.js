@@ -316,6 +316,34 @@ does not look exactly like a healthy one.
         } catch { return []; }
     })();
 
+    // A never-cite list nobody checks is a wish, not a rule. The list is read from sources.md
+    // itself, so Leo adding one line there is all it takes to arm this — there is nothing here
+    // to keep in step, which is the whole point of it living in one place.
+    const banned = (() => {
+        try {
+            const doc = fs.readFileSync('pot/sources.md', 'utf8');
+            const list = doc.slice(doc.indexOf('## The never-cite list'));
+            return [...list.matchAll(/^- ([a-z0-9-]+[.][a-z.]+) /gm)].map(m => m[1]);
+        } catch { return []; }
+    })();
+    // Only what the lanes actually publish. A domain covers its subdomains and nothing else:
+    // finance.example.com is example.com, notexample.com is not.
+    const violations = (() => {
+        const hits = [];
+        for (const dir of ['pot/sweeps', 'pot/proposals']) {
+            let files = [];
+            try { files = fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch { continue; }
+            for (const f of files) {
+                const text = fs.readFileSync(dir + '/' + f, 'utf8');
+                const cited = new Set([...text.matchAll(new RegExp('https?://([a-z0-9.-]+)', 'gi'))]
+                    .map(m => (m[1].toLowerCase().startsWith('www.') ? m[1].slice(4) : m[1]).toLowerCase()));
+                const bad = banned.filter(b => [...cited].some(c => c === b || c.endsWith('.' + b)));
+                if (bad.length) hits.push({ file: dir + '/' + f, bad });
+            }
+        }
+        return hits;
+    })();
+
     // ---- the entry point
     const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
 
@@ -338,6 +366,9 @@ ${sig?.instructions?.length
 ${unannotatedLines(unannotated)}${openProposals.length
         ? openProposals.map(f => `- **Proposal awaiting your decision** — [${f.replace(/\.md$/, '')}](proposals/${f})`).join('\n')
         : '- No proposal is waiting.'}
+${violations.length
+        ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))
+        : ''}
 
 ## The pot
 
@@ -391,6 +422,12 @@ ${past.length > 20 ? `\n_…and ${past.length - 20} older, in [summaries/](summa
     if (stamped) console.log(`  stamped provenance onto ${stamped} file(s) from the session logs`);
     console.log(`  ${runs.length} agent runs · ${mmss(totalSecs)} wall · ${fmt(totalTokens)} tokens · £0`);
     if (openProposals.length) console.log(`  ${openProposals.length} proposal(s) awaiting a decision`);
+    if (violations.length) {
+        console.log(`  ${violations.length} file(s) cited a never-cite source:`);
+        for (const v of violations) console.log(`    ${v.file} — ${v.bad.join(', ')}`);
+    } else if (banned.length) {
+        console.log(`  no never-cite source in any sweep or proposal (${banned.length} on the list)`);
+    }
 }
 
 if (require.main === module) build();
