@@ -1,6 +1,6 @@
 {
- "generated": "2026-08-29T02:41:23.305Z",
- "pricesAt": "2026-08-29T02:02:56.737Z",
+ "generated": "2026-08-29T13:09:58.639Z",
+ "pricesAt": "2026-08-29T13:04:51.548Z",
  "vix": {
   "close": 14.43,
   "day": -0.0055
@@ -9,31 +9,17 @@
  "fired": [
   {
    "rule": "6.1 valuation",
-   "ticker": "NVDA",
-   "where": "HELD",
-   "pe": 27.503160556257903,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 27.5032,
-   "floorDate": "2026-08-28",
-   "p5": 32.8821,
-   "median": 56.75,
-   "vsFloor": -0.0000014341510113924372
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "GME",
+   "ticker": "AMSC",
    "where": "watchlist",
-   "pe": 13.335820895522389,
+   "pe": 9.402640264026402,
    "pctile": 0,
    "window": "5y",
-   "weeks": 127,
-   "floor": 13.3358,
+   "weeks": 61,
+   "floor": 9.34098,
    "floorDate": "2026-08-28",
-   "p5": 16.1791,
-   "median": 44.5094,
-   "vsFloor": 0.0000015668743074126468
+   "p5": 10.0066,
+   "median": 274.226,
+   "vsFloor": 0.006601048715060065
   },
   {
    "rule": "6.1 valuation",
@@ -48,6 +34,20 @@
    "p5": 14.0099,
    "median": 44.0198,
    "vsFloor": 0.015897435897435752
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "GME",
+   "where": "watchlist",
+   "pe": 13.641221374045802,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 127,
+   "floor": 13.3358,
+   "floorDate": "2026-08-28",
+   "p5": 16.1791,
+   "median": 44.5094,
+   "vsFloor": 0.02290236611570373
   },
   {
    "rule": "6.1 valuation",
@@ -66,6 +66,13 @@
     "why": "recurring earnings put it above its floor",
     "recurringPe": 41.79320340833512,
     "recurringVsFloor": 0.20152726324439585
+   },
+   "epsStale": {
+    "mrq": "2026-06-30",
+    "behind": 1,
+    "period": 91,
+    "impliedLag": 121,
+    "why": "the trailing EPS in use is summed to 2026-03-31; with the next results on 2026-10-29 and a 91-day cycle, that implies a 121-day reporting lag — about 1 period of earnings we do not have"
    }
   },
   {
@@ -84,23 +91,51 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "NVDA",
+   "where": "HELD",
+   "pe": 28.814569536423843,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 27.5032,
+   "floorDate": "2026-08-28",
+   "p5": 32.8821,
+   "median": 56.75,
+   "vsFloor": 0.047680616670927156
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "NVO",
+   "where": "watchlist",
+   "pe": 11.12439024390244,
+   "pctile": 0.08939,
+   "window": "5y",
+   "weeks": 179,
+   "floor": 10.2408,
+   "floorDate": "2026-03-27",
+   "p5": 11.5333,
+   "median": 34.8878,
+   "vsFloor": 0.08628136902414263
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "9961.HK",
    "where": "HELD",
-   "pe": 6.607311990907369,
+   "pe": 6.609816183437559,
    "pctile": 0.02793,
    "window": "5y",
    "weeks": 179,
-   "floor": 5.49388,
+   "floor": 5.49019,
    "floorDate": "2026-06-26",
-   "p5": 6.46233,
-   "median": 23.5427,
-   "vsFloor": 0.20266769403543017
+   "p5": 6.45799,
+   "median": 23.5268,
+   "vsFloor": 0.2039321377652792
   },
   {
    "rule": "6.1 valuation",
    "ticker": "GOOG",
    "where": "HELD",
-   "pe": 17.212851405622487,
+   "pe": 17.22149673530889,
    "pctile": 0.0613,
    "window": "5y",
    "weeks": 261,
@@ -108,7 +143,7 @@
    "floorDate": "2022-11-04",
    "p5": 15.5386,
    "median": 23.7145,
-   "vsFloor": 0.28828101021790764,
+   "vsFloor": 0.28892806245809766,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 33.90051708966513,
@@ -123,22 +158,22 @@
    "pctile": 0.09346,
    "window": "5y",
    "weeks": 107,
-   "floor": 11.363,
+   "floor": 11.3554,
    "floorDate": "2026-06-26",
-   "p5": 13.6717,
-   "median": 37.6019,
-   "vsFloor": 0.6080394630373918,
+   "p5": 13.6625,
+   "median": 37.5766,
+   "vsFloor": 0.6091156998867395,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 24.949435343818635,
-    "recurringVsFloor": 0.03431925509993672
+    "recurringVsFloor": 0.035014367893444476
    }
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NFLX",
    "where": "HELD",
-   "pe": 25.69811320754717,
+   "pe": 25.144615384615385,
    "pctile": 0.06897,
    "window": "5y",
    "weeks": 261,
@@ -146,7 +181,7 @@
    "floorDate": "2026-07-17",
    "p5": 17.3185,
    "median": 43.7797,
-   "vsFloor": 0.6481073084846671
+   "vsFloor": 0.6126096126096128
   },
   {
    "rule": "6.1 valuation",
@@ -178,6 +213,7 @@
  ],
  "blocked": [],
  "resultsDue": {
+  "1211.HK": "2026-10-29",
   "5332.T": "2026-10-30",
   "6288.HK": "2026-10-08",
   "7532.T": "2026-11-12",
@@ -192,6 +228,7 @@
   "ASML": "2026-10-14",
   "DIS": "2026-11-12",
   "BLK": "2026-10-14",
+  "BYDDY": "2026-10-29",
   "AMZN": "2026-10-29",
   "BRK-B": "2026-11-07",
   "QCOM": "2026-10-29",
@@ -231,7 +268,10 @@
   "EPI-A.ST": "2026-10-28",
   "RSGN.SW": "2026-09-16",
   "AMRC": "2026-11-02",
-  "BME.L": "2026-11-11"
+  "BME.L": "2026-11-11",
+  "AMSC": "2026-11-04",
+  "OSIS": "2026-10-29",
+  "NVO": "2026-11-04"
  },
  "world": {
   "counted": 43,
@@ -348,33 +388,33 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.27709999999999996,
-   "says": "28% net of the dollar — a real move, not currency",
+   "real": 0.2632,
+   "says": "26% net of the dollar — a real move, not currency",
    "mixed": true
   },
   {
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.284,
-   "says": "30% over a year but -9% over three months — cooling",
-   "cooling": -0.0946,
+   "real": 0.2585,
+   "says": "27% over a year but -10% over three months — cooling",
+   "cooling": -0.0951,
    "mixed": true
   },
   {
    "sym": "HG=F",
    "name": "Copper",
    "group": "Commodity",
-   "real": 0.44999999999999996,
-   "says": "45% net of the dollar — a real move, not currency"
+   "real": 0.4443,
+   "says": "44% net of the dollar — a real move, not currency"
   },
   {
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.30460000000000004,
-   "says": "-29% over a year but 6% over three months — cooling",
-   "cooling": 0.0571,
+   "real": -0.2999,
+   "says": "-29% over a year but 5% over three months — cooling",
+   "cooling": 0.0546,
    "mixed": true
   }
  ],
