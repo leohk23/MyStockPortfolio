@@ -647,7 +647,8 @@
         <table id="world-table">
             <thead><tr>
                 <th data-wsort="country">Country</th><th data-wsort="price">Price</th>
-                <th data-wsort="ath" title="Highest weekly high in the fund's whole history, and when.">All-time high</th>
+                <th data-wsort="ath" title="Highest weekly high in the fund's whole history.">All-time high</th>
+                <th data-wsort="athDay" title="The week that high was set. Sorting by it separates a market that peaked last month from one that peaked in 2008 — the same drawdown means a very different thing.">ATH set</th>
                 <th data-wsort="fromAth" aria-sort="descending" title="How far it must RISE to regain that high — the gap over today's price, which is the convention in Leo's own sheet.">From ATH</th>
                 <th data-wsort="range1y" title="Where it sits inside its own last 12 months: 0% at the low, 100% at the high.">1y range</th>
                 <th data-wsort="ytd">YTD</th>
@@ -2846,7 +2847,8 @@
             const dead = all.filter(c => c.dead || c.gone);
             const row = c => `<tr><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
                 + `<td>${num2(c.price)}</td>`
-                + `<td>${num2(c.ath)}<span class="macro-sym">${c.athDay || ''}</span></td>`
+                + `<td>${num2(c.ath)}</td>`
+                + `<td class="muted">${c.athDay ? ymd(c.athDay) : '–'}</td>`
                 + `<td class="${c.fromAth > 0.5 ? 'loss' : ''}">${pct(c.fromAth)}</td>`
                 + `<td>${c.range1y == null ? '–' : plain(c.range1y)}</td>`
                 + `<td class="${cls(c.ytd)}">${pct(c.ytd)}</td>`
@@ -2856,10 +2858,10 @@
             const deadRow = c => `<tr class="world-dead"><td>${escapeHTML(c.country)}`
                 + `<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
                 + `<td>${c.price == null ? '–' : num2(c.price)}</td>`
-                + `<td colspan="5">${c.gone ? 'gone from the data source entirely'
+                + `<td colspan="6">${c.gone ? 'gone from the data source entirely'
                     : `wound up — last traded ${ymd(c.lastSeen)}, ${c.staleDays} days ago, still quoted`}</td></tr>`;
             tbody.innerHTML = live.map(row).join('')
-                + (dead.length ? `<tr class="macro-head"><td colspan="7">No longer trading</td></tr>`
+                + (dead.length ? `<tr class="macro-head"><td colspan="8">No longer trading</td></tr>`
                     + dead.map(deadRow).join('') : '');
             // Rebound off the live table each render, because innerHTML replaced the old rows.
             document.querySelectorAll('#world-table th[data-wsort]').forEach(th => {
