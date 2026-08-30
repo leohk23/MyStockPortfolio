@@ -16,7 +16,19 @@ const META = 'meta.json';
 // Tradelog columns (0-indexed). "Non US date" is the trade date; "Exec Time" is the
 // bulk-import stamp. "Adjusted Price/Qty" are split-adjusted so they stay comparable to
 // today's spot. "Bal Qty"/"Average Purchase Price" are the running position and cost.
-const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24 };
+//
+// Column 25, `Pot`, is how a trade says it belongs to the AI pot rather than the main book
+// (strategy §10). Leo records the decision where he already records everything else, so the
+// pot needs no second ledger to keep in step with this one.
+//
+// Put the PROPOSAL ID in the cell - the filename without .md, e.g. 2026-08-30-1330-NVDA -
+// so the trade is tied to the exact thesis it executes. Four NVDA proposals exist; a bare
+// "Y" could not say which one this trade was testing, and the Review lane has to check a
+// position against the falsifier that was actually agreed. A bare Y is still accepted for a
+// pot trade with no proposal behind it, such as the §11.1 VIX standing order.
+//
+// The column is optional. Until it exists every trade reads as main-book, which is correct.
+const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24, pot: 25 };
 
 // The workbook prices its Japanese holdings off the US ADR, because its data provider has no
 // Tokyo coverage. So those rows record the price in USD as `=3976/rngUSDJPY` with Currency
@@ -70,6 +82,7 @@ function parseTrade(r, row, local = null) {
     }
     const comment = String(r[TRADE.comment] ?? '').trim();
     const platform = String(r[TRADE.platform] ?? '').trim(); // broker: IB, TD, SC, T212; page badges IB as IBKR
+    const pot = String(r[TRADE.pot] ?? '').trim();          // proposal id, or Y, or empty
     const k = local ? local.scale : 1;   // USD -> the price's real currency (see LOCAL_PRICE)
     return {
         symbol: String(r[TRADE.symbol]),
@@ -81,6 +94,7 @@ function parseTrade(r, row, local = null) {
         avgPrice: (r[TRADE.avgPrice] ?? 0) * k,
         currency: local ? local.currency : String(r[TRADE.currency] || 'USD'),
         ...(platform ? { platform } : {}),
+        ...(pot ? { pot } : {}),
         ...(comment ? { comment } : {}),
     };
 }

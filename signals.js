@@ -271,6 +271,38 @@ const MACRO_REAL_MIN = 0.15;      // net of the dollar, below this it is noise
 const MACRO_COOLING_MIN = 0.05;   // a 3m move must contradict by this much to count
 const CCY_FOR = { '^N225': 'USDJPY=X', '^HSI': 'USDHKD=X', '^STOXX50E': 'EURUSD=X', '^FTSE': null };
 
+// §6.5 — every open thesis, every week (D10). Deliberately NOT "those whose review date has
+// passed": Leo was asked and chose to sweep them all, so a review date is a prompt to look
+// harder rather than permission to ignore the rest.
+//
+// This half is arithmetic only. It answers what changed and how far the position is from the
+// numbers its thesis named; whether the falsifier has actually tripped needs the filing, and
+// that is the LLM lane's job. Everything here is handed over so the agent never has to look
+// up a price it could have been given.
+function reviewDue(pot, quotes, today) {
+    const open = (pot?.proposals || []).filter(p => p.state === 'accepted');
+    return open.map(p => {
+        const q = quotes[p.ticker] || {};
+        const held = (pot.holdings || {})[p.ticker];
+        const entry = p.executed?.price ?? null;
+        const since = entry && q.price ? q.price / entry - 1 : null;
+        return {
+            rule: '6.5 thesis review',
+            id: p.id, ticker: p.ticker, where: p.ticker,
+            since, price: q.price ?? null, entry,
+            qty: held?.qty ?? null,
+            reviewBy: p.reviewBy || null,
+            // Past its own date is not a different rule, it is a louder version of this one.
+            overdue: p.reviewBy ? p.reviewBy <= today : false,
+            // Handed over verbatim. The agent must check what was agreed, not re-derive it.
+            warning: p.warning || null,
+            break: p.break || null,
+            noFalsifier: !p.break,
+            resultsOn: q.earnings?.date || null,
+        };
+    });
+}
+
 function macroNotes(macro, gbp) {
     if (!macro || !Object.keys(macro).length) return null;
     const dxy = macro['DX-Y.NYB']?.['1y'];
@@ -354,6 +386,7 @@ function scan(state, today) {
     if (!potPositions) {
         blocked.push({ rule: '6.3 results', why: 'the pot holds nothing yet (pot/positions.json absent)' });
         blocked.push({ rule: '6.4 dry powder', why: 'no pot cash balance to read yet' });
+        blocked.push({ rule: '6.5 thesis review', why: 'no pot book yet (run npm run pot-book)' });
     } else {
         const potTickers = new Set(Object.keys(potPositions.holdings || {}));
         const rep = reportedSince(previous?.resultsDue, quotes, today)
@@ -362,6 +395,8 @@ function scan(state, today) {
                    : quiet.push('6.3 results');
         const dp = dryPowder(potPositions.cashGBP, previous?.dryPowderAlerted || 0);
         dp ? fired.push({ rule: '6.4 dry powder', ...dp }) : quiet.push('6.4 dry powder');
+        const rev = reviewDue(potPositions, quotes, today);
+        rev.length ? fired.push(...rev) : quiet.push('6.5 thesis review');
     }
 
     const vix = quotes['^VIX'];

@@ -235,6 +235,7 @@ function build() {
         } catch { return []; }
     };
     const sweep = byTime("pot/sweeps")[0] || null;
+    const review = byTime("pot/reviews")[0] || null;
     const proposals = byTime("pot/proposals");
 
     const lastOf = lane => runs.find(r => r.brief === lane);
@@ -465,6 +466,7 @@ ${strandedSweep
 | lane | last run | what it produced | transcript |
 |---|---|---|---|
 | **Scan** (free) | ${when(sig?.generated) || '–'} | [${fired.length} fired](scan.md)${Object.keys(byRule).length ? ' — ' + Object.entries(byRule).map(([r, n]) => `${r} ×${n}`).join(', ') : ''} | _no session_ |
+| **Review** | ${when(lastOf('review')?.started) || '–'} | ${review ? `[${review.replace(/.md$/, '')}](reviews/${review})` : '–'} | ${lastOf('review') ? `[read](${lastOf('review').log.replace('pot/','')})` : '–'} |
 | **Sweep** | ${when(lastOf('sweep')?.started) || '–'} | ${sweep ? `[${sweep.replace(/\.md$/, '')}](sweeps/${sweep})` : '–'} | ${lastOf('sweep') ? `[read](${lastOf('sweep').log.replace('pot/','')})` : '–'} |
 | **Deep dive** | ${when(lastOf('deepdive')?.started) || '–'} | ${proposals[0] ? `[${proposals[0].replace(/\.md$/, '')}](proposals/${proposals[0]})` : '–'} | ${lastOf('deepdive') ? `[read](${lastOf('deepdive').log.replace('pot/','')})` : '–'} |
 

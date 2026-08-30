@@ -150,6 +150,7 @@ function build() {
         { dir: 'pot', file: 'SUMMARY.md', kind: 'summary', title: 'Summary' },
         ...listDir('pot/proposals', 'proposal'),
         ...listDir('pot/sweeps', 'sweep'),
+        ...listDir('pot/reviews', 'review'),
         { dir: 'pot', file: 'runs.md', kind: 'runs', title: 'Runs and cost' },
         { dir: 'pot', file: 'scan.md', kind: 'scan', title: 'Scan' },
         ...listDir('pot/summaries', 'archive'),

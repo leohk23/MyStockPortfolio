@@ -1,9 +1,9 @@
-﻿# One full cycle of the pot: Scan, then Sweep, then Deep dive. For Windows Task Scheduler.
+# One full cycle of the pot: the book, the Scan, then Review, Sweep and Deep dive. For Task Scheduler.
 #
-# The order is a dependency, not a preference. The Scan writes signals.json from the latest CI
-# prices; the Sweep looks outside it; the Deep dive reads BOTH and is the only lane that may
-# produce an order (D14). Running them out of order gives the Deep dive yesterday's evidence.
-#
+# The order is a dependency, not a preference. The book is derived from the Tradelog so the Scan
+# can compute §6.3-§6.5 from it; the Review judges what is already held BEFORE the Sweep goes
+# looking for anything new (pot-design §2); the Deep dive reads both lanes and is the only one
+# that may produce a buy order (D14). Out of order, each lane gets yesterday’s evidence.
 #   ./pot/run-daily.ps1              # the whole cycle, pushing each lane as it finishes
 #   ./pot/run-daily.ps1 -NoPush      # same, commits stay local
 #
@@ -45,6 +45,10 @@ try {
         '$s=[void][Console]::In; Add-Type -Name P -Namespace W -MemberDefinition ' +
         '''[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint e);''; ' +
         '[W.P]::SetThreadExecutionState(0x80000001); while($true){Start-Sleep 60}')
+
+    # ---- 0. The pot book, derived from the Tradelog and the proposals. The Scan reads it for
+    # §6.3, §6.4 and §6.5, so it has to be current before the Scan runs, not after.
+    node pot/positions.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
 
     # ---- 1. Scan, so the Sweep has current levels to check its own figures against.
     git pull --ff-only --quiet origin main 2>&1 | Out-Null
@@ -90,11 +94,16 @@ try {
         }
     }
 
-    # ---- 2. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
+    # ---- 2. Review, and it runs BEFORE the Sweep on purpose (pot-design §2). An agent that has
+    # just spent an hour finding exciting new names is not the right agent to judge the thesis it
+    # wrote last month. Judge first, discover afterwards.
+    Invoke-Lane 'pot/brief-review.md'
+
+    # ---- 3. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
     Invoke-Lane 'pot/brief-sweep.md'
 
-    # ---- 3. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
+    # ---- 4. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
     #
     # Without this the cycle defeats itself. The Sweep exists to find names we do not carry;
     # the Deep dive must fact-check every figure against prices.json (§7.2) and so throws out
@@ -105,7 +114,7 @@ try {
     node fetch-prices.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
     if ($LASTEXITCODE -ne 0) { Note "fetch-prices exited $LASTEXITCODE - the Deep dive may lack data for new names" }
 
-    # ---- 4. Scan, now covering whatever the Sweep added.
+    # ---- 5. Scan, now covering whatever the Sweep added.
     node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
     # Only signals.json is committed. The price files belong to CI, which rewrites them every
     # 15 minutes on weekdays and on every push, so committing our copy races it for nothing:
@@ -123,21 +132,21 @@ try {
         }
     }
 
-    # ---- 5. Deep dive, the only lane that may produce an order.
+    # ---- 6. Deep dive, the only lane that may produce an order.
     Invoke-Lane 'pot/brief-deepdive.md'
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
     git checkout -- prices.json history.json earnings.json intraday.json 2>&1 | Out-Null
 
-    # ---- 6. The report, and the bundle the dashboard Pot tab reads.
+    # ---- 7. The report, and the bundle the dashboard Pot tab reads.
     #
     # The comment above used to be a lie: only report.js ran, so pot.json never got rebuilt and
     # the Pot tab served whatever the last manual run left behind.
     node pot/report.js 2>&1 | ForEach-Object { Note "  $_" }
     node pot/bundle.js 2>&1 | ForEach-Object { Note "  $_" }
 
-    # ---- 7. Commit what the report itself produced.
+    # ---- 8. Commit what the report itself produced.
     #
     # report.js stamps provenance onto the lane output AFTER that lane has already committed, so
     # every proposal reaches git headed "model: pending" and the real figures live only on this

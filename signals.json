@@ -1,6 +1,6 @@
 {
- "generated": "2026-08-30T13:25:07.019Z",
- "pricesAt": "2026-08-30T13:25:06.887Z",
+ "generated": "2026-08-30T19:55:56.959Z",
+ "pricesAt": "2026-08-30T18:24:56.640Z",
  "vix": {
   "close": 14.43,
   "day": -0.0055
@@ -9,43 +9,15 @@
  "fired": [
   {
    "rule": "6.1 valuation",
-   "ticker": "NVDA",
-   "where": "HELD",
-   "pe": 27.468434343434346,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 27.5032,
-   "floorDate": "2026-08-28",
-   "p5": 32.8821,
-   "median": 56.75,
-   "vsFloor": -0.0012640586028408451
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "GME",
-   "where": "watchlist",
-   "pe": 13.335820895522389,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 127,
-   "floor": 13.3358,
-   "floorDate": "2026-08-28",
-   "p5": 16.1791,
-   "median": 44.5094,
-   "vsFloor": 0.0000015668743074126468
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "AMSC",
    "where": "watchlist",
    "pe": 9.402640264026402,
    "pctile": 0,
    "window": "5y",
-   "weeks": 61,
+   "weeks": 62,
    "floor": 9.34098,
    "floorDate": "2026-08-28",
-   "p5": 10.0066,
+   "p5": 9.83934,
    "median": 274.226,
    "vsFloor": 0.006601048715060065
   },
@@ -54,14 +26,28 @@
    "ticker": "RSGN.SW",
    "where": "watchlist",
    "pe": 12.698717948717947,
-   "pctile": 0.01676,
+   "pctile": 0.02098,
    "window": "5y",
-   "weeks": 179,
+   "weeks": 143,
    "floor": 12.5,
    "floorDate": "2026-08-07",
-   "p5": 14.0099,
-   "median": 44.0198,
+   "p5": 13.2692,
+   "median": 33.6689,
    "vsFloor": 0.015897435897435752
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "GME",
+   "where": "watchlist",
+   "pe": 13.641221374045802,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 128,
+   "floor": 13.3358,
+   "floorDate": "2026-08-28",
+   "p5": 16.0597,
+   "median": 44.5094,
+   "vsFloor": 0.02290236611570373
   },
   {
    "rule": "6.1 valuation",
@@ -73,26 +59,40 @@
    "weeks": 249,
    "floor": 20.8069,
    "floorDate": "2026-08-21",
-   "p5": 29.0275,
-   "median": 46.8822,
+   "p5": 28.9637,
+   "median": 46.8158,
    "vsFloor": 0.029331739583852823,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 41.79320340833512,
-    "recurringVsFloor": 0.20152726324439585
+    "recurringVsFloor": 0.20167927221412674
    }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "NVDA",
+   "where": "HELD",
+   "pe": 28.814569536423843,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 27.5032,
+   "floorDate": "2026-08-28",
+   "p5": 32.3338,
+   "median": 56.6245,
+   "vsFloor": 0.047680616670927156
   },
   {
    "rule": "6.1 valuation",
    "ticker": "RMS.PA",
    "where": "HELD",
    "pe": 38.01141769743102,
-   "pctile": 0.02165,
+   "pctile": 0.02155,
    "window": "5y",
-   "weeks": 231,
+   "weeks": 232,
    "floor": 35.5584,
    "floorDate": "2026-07-31",
-   "p5": 37.7891,
+   "p5": 37.7525,
    "median": 54.3333,
    "vsFloor": 0.06898560389193609
   },
@@ -101,23 +101,37 @@
    "ticker": "NVO",
    "where": "watchlist",
    "pe": 11.15158924205379,
-   "pctile": 0.08939,
+   "pctile": 0.08889,
    "window": "5y",
-   "weeks": 179,
+   "weeks": 180,
    "floor": 10.2408,
    "floorDate": "2026-03-27",
-   "p5": 11.5333,
+   "p5": 12.0348,
    "median": 34.8878,
    "vsFloor": 0.08893731369168334
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "PDD",
+   "where": "watchlist",
+   "pe": 9.145144076840982,
+   "pctile": 0.07778,
+   "window": "5y",
+   "weeks": 180,
+   "floor": 7.79468,
+   "floorDate": "2026-06-26",
+   "p5": 8.56753,
+   "median": 18.8363,
+   "vsFloor": 0.1732545886221093
   },
   {
    "rule": "6.1 valuation",
    "ticker": "9961.HK",
    "where": "HELD",
    "pe": 6.609816183437559,
-   "pctile": 0.02793,
+   "pctile": 0.02778,
    "window": "5y",
-   "weeks": 179,
+   "weeks": 180,
    "floor": 5.49019,
    "floorDate": "2026-06-26",
    "p5": 6.45799,
@@ -135,12 +149,12 @@
    "floor": 13.3611,
    "floorDate": "2022-11-04",
    "p5": 15.5386,
-   "median": 23.7145,
+   "median": 23.6887,
    "vsFloor": 0.28828101021790764,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 33.90051708966513,
-    "recurringVsFloor": 0.5972501844426026
+    "recurringVsFloor": 0.5982441782682242
    }
   },
   {
@@ -148,9 +162,9 @@
    "ticker": "XIACY",
    "where": "HELD",
    "pe": 18.27215241849388,
-   "pctile": 0.09346,
+   "pctile": 0.09259,
    "window": "5y",
-   "weeks": 107,
+   "weeks": 108,
    "floor": 11.3554,
    "floorDate": "2026-06-26",
    "p5": 13.6625,
@@ -173,7 +187,7 @@
    "floor": 15.5925,
    "floorDate": "2026-07-17",
    "p5": 17.3185,
-   "median": 43.7797,
+   "median": 43.7597,
    "vsFloor": 0.6481073084846671
   },
   {
@@ -187,12 +201,12 @@
    "floor": 43.9413,
    "floorDate": "2026-07-24",
    "p5": 53.0069,
-   "median": 169.449,
+   "median": 169.421,
    "vsFloor": 1.0455013296748104,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 90.44375,
-    "recurringVsFloor": 0.010763785669742898
+    "recurringVsFloor": 0.02369372408047954
    }
   },
   {
@@ -211,6 +225,7 @@
  "quiet": [
   "6.3 results",
   "6.4 dry powder",
+  "6.5 thesis review",
   "6.6 news proxy",
   "11.1 standing order"
  ],
@@ -276,7 +291,8 @@
   "OSIS": "2026-10-29",
   "NVO": "2026-11-04",
   "STNG": "2026-10-29",
-  "ROST": "2026-11-19"
+  "ROST": "2026-11-19",
+  "PDD": "2026-11-18"
  },
  "world": {
   "counted": 43,
@@ -417,9 +433,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.2859,
-   "says": "-27% over a year but 10% over three months — cooling",
-   "cooling": 0.1035,
+   "real": -0.2843,
+   "says": "-27% over a year but 11% over three months — cooling",
+   "cooling": 0.1059,
    "mixed": true
   }
  ],

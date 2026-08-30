@@ -59,6 +59,11 @@ $stray = git status --porcelain | ForEach-Object { $_.Substring(3) } |
 if ($stray) {
     Note "reverting $($stray.Count) file(s) outside the allowlist: $($stray -join ', ')"
     git checkout -- $stray 2>&1 | Out-Null
+    # A revert that fails must not be shrugged off: the point of the allowlist is that nothing
+    # outside it reaches a commit, and carrying on regardless commits exactly what it was there to
+    # stop. A zero-byte file named U+00B7, committed by accident on 28 Aug from a mangled shell
+    # redirect, was enough to break the checkout and take the whole revert down with it.
+    if ($LASTEXITCODE -ne 0) { Note "revert failed - refusing to commit files this lane may not have written"; exit 2 }
 }
 
 git add -- pot watchlist.json 2>&1 | Out-Null
