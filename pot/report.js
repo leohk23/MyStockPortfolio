@@ -223,10 +223,20 @@ function build() {
 
     const sig = read('signals.json');
     const pos = read('pot/positions.json', { cashGBP: 0, holdings: {} });
-    const newest = dir => { try { return fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort().pop(); } catch { return null; } };
-    const sweep = newest('pot/sweeps'), proposals = (() => {
-        try { return fs.readdirSync('pot/proposals').filter(f => f.endsWith('.md')).sort().reverse(); } catch { return []; }
-    })();
+    // By modification time. Sorting these by NAME put "smoke.md" after every dated sweep and
+    // "2026-08-29-RSGN.SW.md" after "2026-08-29-1442-...", so the summary confidently named the
+    // wrong output for both lanes: a smoke test as the latest Sweep, and a proposal four runs
+    // old as the latest Deep dive.
+    const byTime = dir => {
+        try {
+            return fs.readdirSync(dir).filter(f => f.endsWith(".md") && f !== "README.md")
+                .map(f => ({ f, at: fs.statSync(dir + "/" + f).mtimeMs }))
+                .sort((a, b) => b.at - a.at).map(x => x.f);
+        } catch { return []; }
+    };
+    const sweep = byTime("pot/sweeps")[0] || null;
+    const proposals = byTime("pot/proposals");
+
     const lastOf = lane => runs.find(r => r.brief === lane);
 
     const fresh = u => (u?.input_tokens ?? 0) - (u?.cached_input_tokens ?? 0);
@@ -359,6 +369,9 @@ does not look exactly like a healthy one.
     })();
     // Only what the lanes actually publish. A domain covers its subdomains and nothing else:
     // finance.example.com is example.com, notexample.com is not.
+    const propWhen = f => {
+        try { return when(fs.statSync("pot/proposals/" + f).mtime.toISOString()); } catch { return "–"; }
+    };
     const violations = (() => {
         const hits = [];
         for (const dir of ['pot/sweeps', 'pot/proposals']) {
@@ -384,10 +397,9 @@ does not look exactly like a healthy one.
     fs.mkdirSync('pot/summaries', { recursive: true });
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     const dated = 'pot/summaries/' + stamp + '.md';
-    const body = `# AI pot — ${when(new Date().toISOString())}
+    const body = `# AI pot
 
-_Generated ${when(new Date().toISOString())} by \`npm run pot-report\`. This is the entry point;
-everything else hangs off it._
+`+ `_${when(new Date().toISOString())}, from \`npm run pot-report\`. Everything else hangs off this page._
 
 ## Needs you
 
@@ -395,7 +407,10 @@ ${sig?.instructions?.length
         ? sig.instructions.map(i => `- **STANDING ORDER FIRED** — ${i.action} (${i.rule}, VIX ${i.close})`).join('\n')
         : '- No standing order has fired.'}
 ${unannotatedLines(unannotated)}${openProposals.length
-        ? openProposals.map(f => `- **Proposal awaiting your decision** — [${f.replace(/\.md$/, '')}](proposals/${f})`).join('\n')
+        ? '- **' + openProposals.length + ' proposal' + (openProposals.length === 1 ? '' : 's')
+            + ' awaiting your decision**' + String.fromCharCode(10) + String.fromCharCode(10)
+            + '| proposal | written |' + String.fromCharCode(10) + '|---|---|' + String.fromCharCode(10)
+            + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} |`).join(String.fromCharCode(10))
         : '- No proposal is waiting.'}
 ${violations.length
         ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))
@@ -445,8 +460,12 @@ ${runs.length} agent runs, ${mmss(totalSecs)} wall, ${fmt(totalFresh)} fresh inp
 
 ## Previous runs
 
-${past.slice(0, 20).map((f, i) => `- ${i === 0 ? '**' : ''}[${f.replace(/\.md$/, '').replace(/-(\d\d)-(\d\d)$/, ' $1:$2')}](summaries/${f})${i === 0 ? '** — this one' : ''}`).join('\n')}
-${past.length > 20 ? `\n_…and ${past.length - 20} older, in [summaries/](summaries/)._` : ''}
+${past.slice(0, 6).map((f, k) => {
+        const s = f.replace(".md", "");
+        const label = s.slice(0, 10) + " " + s.slice(11, 13) + ":" + s.slice(14, 16);
+        return "- " + (k === 0 ? "**" : "") + "[" + label + "](summaries/" + f + ")" + (k === 0 ? "** — this one" : "");
+    }).join(String.fromCharCode(10))}
+${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + " older. In the app they are all in the picker under Past run reports._" : ""}
 `);
 
     console.log(`wrote ${dated}, pot/SUMMARY.md, pot/runs.md and ${runs.length} transcript(s)`);

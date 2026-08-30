@@ -248,6 +248,8 @@
         #pot-body pre { background: var(--surface-2); padding: 11px; border-radius: 6px; overflow-x: auto; }
         #pot-body pre code { background: none; padding: 0; }
         #pot-body hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+        #pot-body a { color: var(--series-port); }
+        #pot-body a[data-pot] { text-decoration-style: dotted; }
         /* Tables inside a proposal are wide and must scroll themselves, never the page. */
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
@@ -2987,6 +2989,14 @@ function renderPot() {
     sel.value = doc.id;
     when.textContent = doc.updated ? stamp(doc.updated) : '';
     body.innerHTML = doc.html;
+    // A link into another pot document switches the picker instead of leaving the page.
+    body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
+        e.preventDefault();
+        potDoc = a.dataset.pot;
+        localStorage.setItem('potDoc', potDoc);
+        renderPot();
+        document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
+    }));
 }
 
         function renderWorld() {
