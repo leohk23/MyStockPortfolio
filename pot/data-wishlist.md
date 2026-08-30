@@ -30,6 +30,22 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-30 — US corporate profits, private domestic demand and PCE inflation.**
+  Fetched from the Bureau of Economic Analysis. Wanted quarterly rather than weekly; the mix of
+  slowing real GDP, strong private demand, high inflation and sharply higher profits changed the
+  interpretation of elevated US yields from a simple growth scare to a pricing-power test.
+- **2026-08-30 — derivatives volume by asset class and market-data revenue.**
+  Fetched from CME Group's monthly volume release and quarterly results. Wanted monthly while CME
+  is on the watchlist; it tests whether the exchange is gaining durable participation across
+  products or merely enjoying a short volatility spike.
+- **2026-08-30 — power-cable growth, capacity and segment margins.**
+  Fetched from Prysmian and Nexans results, with Quanta Services' backlog used as a demand-side
+  cross-check. Wanted on results dates rather than weekly; these measures distinguish a physical
+  grid and data bottleneck from an AI-themed revenue label.
+- **2026-08-30 — European industrial activity and business investment.**
+  Fetched from Eurostat and the UK Office for National Statistics. Wanted monthly and quarterly,
+  not weekly; it tested whether cable and grid demand sits on broad capital formation or only on
+  a narrow group of projects.
 - **2026-08-30 — China industrial profit mix, inventories and receivables.**
   Fetched from the National Bureau of Statistics of China. Wanted monthly; the sharp gap between
   electronics and non-ferrous profit growth and falling auto profit materially changed the BYD
