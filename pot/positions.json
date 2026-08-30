@@ -1,6 +1,6 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-08-30T23:02:46.563Z",
+ "generated": "2026-08-30T23:54:48.698Z",
  "cashGBP": 0,
  "contributions": [],
  "holdings": {},
@@ -15,7 +15,10 @@
    "limit": 20,
    "warning": "In the final H1 report on **16 September 2026**, a revision of backlog below",
    "break": "At the FY2026 annual report on **1 April 2027**, net sales below **CHF410m** or EBITDA margin below **19.0%** would disprove the claim that signed backlog was merely shifting revenue while preserving economics; either outcome puts the position under §5.1. Also break if the company reports material cancellations or credit losses in the CHF357.9m H1 backlog, because that would invalidate the evidence this thesis uses for future demand ([company calendar and H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-30-2257-NVDA.md",
@@ -27,7 +30,10 @@
    "limit": 220,
    "warning": "In the Q3 FY2027 filing scheduled for **17 November 2026**, trigger a full re-read if quarter-end receivable days exceed **65 days** (`accounts receivable ÷ quarterly revenue × 91`, versus 59.6 days now), or if any disclosed customer-support category—equity investments and commitments, AI-cloud agreements and third-party leases, or guarantees—grows by more than **20%** while Data Center revenue grows more slowly. This is the earliest disclosed evidence that credit and support may be pulling demand forward; it is not an automatic sale ([Q2 filing](https://investor.nvidia.com/files/doc_financials/2027/NVDA-2027-Q2-10Q-Final-including-exhibits.pdf), [local result date](../../prices.json)).",
    "break": "By the FY2027 annual filing, checkable on **1 March 2027**, the position should go under §5.1 if NVIDIA reports a material customer or partner default, a called guarantee, or a credit-loss provision tied to these support arrangements; it also breaks if receivable days remain above 65 for two consecutive quarters **and** a support category continues growing faster than Data Center revenue in both. That combination would show that reported growth is increasingly dependent on NVIDIA's balance sheet rather than customers' cash-backed demand ([Q2 filing](https://investor.nvidia.com/files/doc_financials/2027/NVDA-2027-Q2-10Q-Final-including-exhibits.pdf)). The company does not disclose how much revenue comes from customers it invests in, finances or guarantees, so the central circular-demand risk is **not fully falsifiable today**. The reduced £75 size, rather than the £125 maximum, is the cost of that missing disclosure.",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-30-2146-RSGN.SW.md",
@@ -39,7 +45,10 @@
    "limit": 20,
    "warning": "On **16 September 2026**, a final H1 report that revises FY2026 sales guidance below",
    "break": "On **1 April 2027**, FY2026 results reporting either net sales below **CHF410m** or an EBITDA margin below **19.0%** would disprove the claim that signed backlog was merely shifting revenue while preserving economics; the position should then go under §5.1 ([company calendar](https://ir.the-rsgroup.com/media-overview/calendar), [H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": "2026-08-30-2257-RSGN.SW",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-30-2146-NVDA.md",
@@ -51,7 +60,10 @@
    "limit": 220,
    "warning": "At the Q3 FY2027 result scheduled for 17 November 2026, revenue below **$105.84bn** or GAAP gross margin below **73.5%** would miss the bottom of management's stated ranges and trigger a full re-read at the next review, not an automatic sale ([Q2 outlook](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx), [local result date](../../prices.json)).",
    "break": "At that same dated result, GAAP gross margin below **70.0%** would put Rubin economics at least 3.5 points below the guided floor while revenue is scaling and would break the high-margin platform thesis; the position should then go under §5.1.",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": "2026-08-30-2257-NVDA",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-30-1330-RSGN.SW.md",
@@ -63,7 +75,10 @@
    "limit": 20,
    "warning": null,
    "break": "The thesis is false if R&S Group's FY2026 results report an **EBITDA margin below 19.0%**. That is below management's stated 19%–21% range and would show that delayed deliveries, product mix or the capacity ramp is eroding the economics rather than merely shifting revenue between periods ([H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": "2026-08-30-2257-RSGN.SW",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-30-1330-NVDA.md",
@@ -75,7 +90,10 @@
    "limit": 220,
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": "2026-08-30-2257-NVDA",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-29-RSGN.SW.md",
@@ -87,7 +105,10 @@
    "limit": 20,
    "warning": null,
    "break": "The thesis is false if R&S Group's FY2026 results report an **EBITDA margin below 19.0%**. That is below management's stated 19%–21% range and would show that delayed deliveries, the product-mix shift or capacity ramp is eroding the economics rather than merely moving revenue between periods ([2025 annual report](https://ir.the-rsgroup.com/media/document/0fec9fb0-b91a-4deb-aef1-5cb2afb265d8/assets/RSG_Annual_report_2025_def.pdf?disposition=inline), [H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": "2026-08-30-2257-RSGN.SW",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-29-1442-RSGN.SW.md",
@@ -99,7 +120,10 @@
    "limit": 20,
    "warning": null,
    "break": "The thesis is false if R&S Group's FY2026 results report an **EBITDA margin below 19.0%**. That is below management's stated 19%–21% range and would show that delayed deliveries, product mix or the capacity ramp is eroding the economics rather than merely shifting revenue between periods ([FY2025 results](https://ir.the-rsgroup.com/news/rands-group-reports-solid-ebitda-margin-for-fy2025/e1b9c123-bd25-42ce-978a-8576e31d0be1), [H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": "2026-08-30-2257-RSGN.SW",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-29-1442-NVDA.md",
@@ -111,7 +135,10 @@
    "limit": 220,
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": "2026-08-30-2257-NVDA",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-29-1042-RSGN.SW.md",
@@ -123,7 +150,10 @@
    "limit": 20,
    "warning": null,
    "break": "The thesis is false if R&S Group's FY2026 results report an **EBITDA margin below 19.0%**. That is below management's stated 19%–21% range and would show that delayed deliveries, product mix or the capacity ramp is eroding the economics rather than merely shifting revenue between periods ([2025 annual report](https://ir.the-rsgroup.com/media/document/0fec9fb0-b91a-4deb-aef1-5cb2afb265d8/assets/RSG_Annual_report_2025_def.pdf?disposition=inline), [H1 update](https://ir.the-rsgroup.com/news/rands-group-provides-trading-update-for-h1-2026/bb41967c-ac88-4041-be50-200b3f26951b)).",
-   "reviewBy": "2026-09-17"
+   "reviewBy": "2026-09-17",
+   "supersededBy": "2026-08-30-2257-RSGN.SW",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-29-1042-NVDA.md",
@@ -135,7 +165,10 @@
    "limit": 220,
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": "2026-08-30-2257-NVDA",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-28-NVDA.md",
@@ -147,7 +180,10 @@
    "limit": 220,
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 4.0 percentage points below management's 74.0% guide midpoint and would show that the economics of the Rubin ramp are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
-   "reviewBy": "2026-11-20"
+   "reviewBy": "2026-11-20",
+   "supersededBy": "2026-08-30-2257-NVDA",
+   "phase": "pre-live",
+   "counts": false
   },
   {
    "file": "2026-08-28-GME.md",
@@ -159,7 +195,10 @@
    "limit": null,
    "warning": null,
    "break": "GameStop's Q2 FY2026 filing reports **gross margin below 35.0%**. That would erase almost all of Q1's expansion over the 34.5% prior-year comparator and disprove the higher-margin collectibles-mix thesis ([Q1 10-Q](https://www.sec.gov/Archives/edgar/data/1326380/000132638026000025/gme-20260502.htm)).",
-   "reviewBy": "2026-09-09"
+   "reviewBy": "2026-09-09",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
   }
  ],
  "open": [],

@@ -59,6 +59,18 @@ the day it was written to the price now. **Report it every run as a short table*
 
 | proposal | written | entry | now | move | state |
 
+**One row per decision, not per file.** Six NVDA proposals are one judgement about NVIDIA, and a
+table that scores all six reads as a book half made of NVDA. Each entry carries `supersededBy`:
+where it is set, a later proposal for that name replaced this one, so **list it but do not score
+it**. Only entries with `counts: true` belong in any average.
+
+**Say which phase you are reporting.** `phase` is `pre-live` for everything written before the pot
+had money, which is all of it so far. Those were produced while the rules were still moving —
+before falsifiers had two tiers, before P3 had to answer P6, while RSGN's percentile still carried
+the SPAC it listed through. Report them, and say plainly that they measure the scaffolding rather
+than the system. Nothing is deleted: choosing which proposals to keep once their outcomes are
+visible is how a track record gets faked.
+
 This is the only measurement that exists before the pot is funded, and it answers the question the
 experiment was set up to ask — is the agent's judgement worth money? Waiting for real positions to
 find out would throw away everything the first nine proposals could have taught.

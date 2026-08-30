@@ -313,6 +313,8 @@ function shadowBook(pot, quotes, history, today) {
         const days2 = Math.round((Date.parse(today) - Date.parse(p.written)) / 86400e3);
         return {
             id: p.id, ticker: p.ticker, state: p.state, written: p.written, days: days2,
+            // One entry per DECISION, not per file: six NVDA proposals are one judgement.
+            supersededBy: p.supersededBy || null, phase: p.phase || 'pre-live', counts: !!p.counts,
             entry, now, move,
             basis: p.executed ? 'filled' : onDay != null ? 'close on the day it was written'
                 : 'no price on that date',

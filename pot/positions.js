@@ -135,6 +135,31 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         };
     }).filter(Boolean);
 
+    // Thirteen proposals, three decisions: NVDA six times, RSGN.SW six, GME once. Scoring every
+    // FILE would read as a book that is 46% NVDA and 46% RSGN, measuring one judgement six times
+    // and calling it six results. So the newest proposal for a ticker is the live one and the
+    // earlier ones are marked superseded — kept and readable, not counted.
+    //
+    // Deleting them would be worse than double-counting. Choosing which proposals to keep after
+    // their outcomes are visible is how a track record gets faked, however honest the intent.
+    const newestFor = new Map();
+    for (const p of proposals) {
+        if (p.state === 'accepted') continue;              // an executed thesis is never superseded
+        const seen = newestFor.get(p.ticker);
+        if (!seen || p.id > seen) newestFor.set(p.ticker, p.id);
+    }
+    // Everything written before the pot had money is a test-phase artefact: the rules were still
+    // moving under it (no two-tier falsifier, no P3-answers-P6, RSGN's percentile still carrying
+    // the SPAC it listed through). Judging the experiment on those would judge the scaffolding.
+    const funded = (prev.contributions || []).map(c => c.date).sort()[0] || null;
+    for (const p of proposals) {
+        const live = newestFor.get(p.ticker);
+        p.supersededBy = p.state !== 'accepted' && live && live !== p.id ? live : null;
+        p.phase = !funded || p.written < funded ? 'pre-live' : 'live';
+        // One entry per decision, and only from the phase that is being judged.
+        p.counts = !p.supersededBy && p.phase === 'live';
+    }
+
     const book = potHoldings(trades);
     const contributions = prev.contributions || [];
     const paidIn = contributions.reduce((a, c) => a + (c.amountGBP || 0), 0);
@@ -160,8 +185,12 @@ if (require.main === module) {
     const out = build();
     fs.writeFileSync(p('pot/positions.json'), JSON.stringify(out, null, 1) + '\n');
     const by = s => out.proposals.filter(x => x.state === s).length;
+    const live = out.proposals.filter(x => !x.supersededBy).length;
+    const counting = out.proposals.filter(x => x.counts).length;
     console.log(`wrote pot/positions.json: ${Object.keys(out.holdings).length} holding(s), `
         + `${out.proposals.length} proposal(s) — ${by('accepted')} accepted, ${by('open')} open, ${by('expired')} expired`);
+    console.log(`  ${live} live decision(s), ${out.proposals.length - live} superseded, `
+        + `${counting} scored (the rest are pre-live)`);
     const noFalsifier = out.proposals.filter(x => x.state === 'accepted' && !x.break);
     if (noFalsifier.length) console.log(`  ${noFalsifier.length} accepted proposal(s) carry no break condition: `
         + noFalsifier.map(x => x.id).join(', '));
@@ -224,6 +253,20 @@ if (process.argv.includes('--selftest')) {
     const book = potHoldings(trades);
     assert.strictEqual(book.NVDA.qty, 1);
     assert.ok(!('GME' in book), 'a closed position is still on the book');
+
+    // Superseding collapses files to decisions, and must never touch an executed thesis.
+    {
+        const mk = (id, ticker, state) => ({ id, ticker, state });
+        const rows = [mk("2026-08-30-2257-NVDA","NVDA","open"), mk("2026-08-28-NVDA","NVDA","open"),
+                      mk("2026-08-29-GME","GME","accepted"), mk("2026-08-30-GME","GME","open")];
+        const newest = new Map();
+        for (const r of rows) { if (r.state === "accepted") continue;
+            const seen = newest.get(r.ticker); if (!seen || r.id > seen) newest.set(r.ticker, r.id); }
+        const supersededBy = r => r.state !== "accepted" && newest.get(r.ticker) !== r.id ? newest.get(r.ticker) : null;
+        assert.strictEqual(supersededBy(rows[0]), null, "newest proposal was superseded");
+        assert.strictEqual(supersededBy(rows[1]), "2026-08-30-2257-NVDA", "older one not superseded");
+        assert.strictEqual(supersededBy(rows[2]), null, "an EXECUTED thesis must never be superseded");
+    }
 
     console.log('selftest ok');
 }
