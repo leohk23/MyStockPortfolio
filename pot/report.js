@@ -422,7 +422,13 @@ does not look exactly like a healthy one.
     })();
 
     // ---- the entry point
-    const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
+    // "Awaiting a decision" means state `open` in the derived book — not "absent from
+    // positions.json". That test was right while positions.json listed only DECIDED proposals;
+    // since pot/positions.js started deriving every proposal with a state, being listed stopped
+    // meaning anything, and the count silently fell from nine to two — the two written after the
+    // book was last built. A file the book has not seen yet is still awaiting a decision.
+    const stateOf = new Map((pos.proposals || []).map(p => [p.file, p.state]));
+    const openProposals = proposals.filter(f => (stateOf.get(f) || 'open') === 'open');
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never

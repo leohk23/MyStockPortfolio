@@ -122,7 +122,7 @@ try {
     # local fetch above has already done its job by handing the Deep dive current data.
     git add signals.json 2>&1 | Out-Null
     if (git diff --cached --name-only) {
-        git commit --quiet -m "scan: $started, covering this cycle’s new candidates"
+        git commit --quiet -m "scan: $started, covering this cycle's new candidates"
         Note 'scan committed'
         if (-not $NoPush) {
             git fetch --quiet origin main 2>&1 | Out-Null
@@ -153,7 +153,7 @@ try {
     # machine. Unattended, nobody would notice; on 30 Aug the stamps sat uncommitted until a human
     # ran git by hand. Same for pot.json, which is outside the lanes' allowlist and so is reverted
     # by every lane that touches it.
-    git add pot.json pot/proposals pot/sweeps 2>&1 | Out-Null
+    git add pot.json pot/proposals pot/sweeps pot/reviews 2>&1 | Out-Null
     if (git diff --cached --name-only) {
         git commit --quiet -m "pot: provenance stamps and the app bundle for $started"
         Note 'stamps and bundle committed'
