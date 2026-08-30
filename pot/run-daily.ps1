@@ -131,7 +131,30 @@ try {
     git checkout -- prices.json history.json earnings.json intraday.json 2>&1 | Out-Null
 
     # ---- 6. The report, and the bundle the dashboard Pot tab reads.
+    #
+    # The comment above used to be a lie: only report.js ran, so pot.json never got rebuilt and
+    # the Pot tab served whatever the last manual run left behind.
     node pot/report.js 2>&1 | ForEach-Object { Note "  $_" }
+    node pot/bundle.js 2>&1 | ForEach-Object { Note "  $_" }
+
+    # ---- 7. Commit what the report itself produced.
+    #
+    # report.js stamps provenance onto the lane output AFTER that lane has already committed, so
+    # every proposal reaches git headed "model: pending" and the real figures live only on this
+    # machine. Unattended, nobody would notice; on 30 Aug the stamps sat uncommitted until a human
+    # ran git by hand. Same for pot.json, which is outside the lanes' allowlist and so is reverted
+    # by every lane that touches it.
+    git add pot.json pot/proposals pot/sweeps 2>&1 | Out-Null
+    if (git diff --cached --name-only) {
+        git commit --quiet -m "pot: provenance stamps and the app bundle for $started"
+        Note 'stamps and bundle committed'
+        if (-not $NoPush) {
+            git fetch --quiet origin main 2>&1 | Out-Null
+            git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'stamp rebase conflicted - left local' }
+            else { git push --quiet origin main 2>&1 | Out-Null; Note 'stamps and bundle pushed' }
+        }
+    }
     Note 'cycle complete'
 }
 finally {
