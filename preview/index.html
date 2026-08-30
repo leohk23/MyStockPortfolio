@@ -235,7 +235,10 @@
            picker above it. Same markup, and prose keeps a readable measure either way — a
            68ch column is right for reading, so the width goes to navigation, not to longer
            lines. Tables are the exception and take the whole column. */
-        #pot { display: grid; gap: 22px; align-items: start; }
+        /* :not([hidden]) or the attribute loses: a UA [hidden] rule is display:none, but any
+           id rule with a display beats it, so #pot rendered on every tab and sat under Macro and
+           World. Every other view here is display:block by default and never hit this. */
+        #pot:not([hidden]) { display: grid; gap: 22px; align-items: start; }
         #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
             color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border);
