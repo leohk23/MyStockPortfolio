@@ -412,6 +412,10 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
             // than 87% of the last five years.
             pePctile: single ? single.quote.pePctile ?? null : null,
             peWindow: single ? single.quote.peWindow || null : null,
+            // What the window actually covers, not what it is labelled. A five-year
+            // percentile drawn from 2.7 years is a different claim.
+            peFrom: single ? single.quote.peFrom || null : null,
+            peWeeks: single ? single.quote.peWeeks ?? null : null,
             implied: single ? single.implied : null,
             vsLow: single ? single.vsLow : null,
             lowDate: single ? single.lowDate || null : null,

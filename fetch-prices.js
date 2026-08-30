@@ -885,10 +885,26 @@ const epsAsOf = (known, day) => {
 // "its trough was 12.7x in 2011". Apple at the 87th says it is dear by its own recent standards,
 // which an all-time trough of 8.9x actively hides. The minimum is kept beside it, because "how
 // cheap has it actually got" is still worth knowing once you have asked the better question.
+// Where a ticker's price history stops being THIS company's history.
+//
+// Yahoo keeps one continuous series per symbol, so a de-SPAC, a reverse merger or a re-listing
+// silently carries the previous entity's prices into the valuation window. RSGN.SW is the
+// worked example: R&S Group listed on 13 Dec 2023, and before that the same line was VT5
+// Acquisition Company, a SPAC trading near its cash value. Dividing a SPAC price by R&S
+// earnings is not a valuation observation, and 37 such weeks were sitting inside what the app
+// called a five-year distribution - flattering the percentile that the signal fires on.
+//
+// Leo found this reviewing a proposal. Add a line when another one turns up; there is no way
+// to detect it from the price series itself, and guessing from a gap or a name change would
+// invent a rule that is wrong somewhere else.
+const HISTORY_FROM = {
+    'RSGN.SW': '2023-12-13',   // de-SPAC from VT5 Acquisition Company
+};
+
 const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
 const HEADLINE_HORIZON = '5y';
 
-function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, today = null) {
+function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, histFrom = null, today = null) {
     const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
     if (!known) return null;
     const now = today || (days.length ? days[days.length - 1] : null);
@@ -899,6 +915,7 @@ function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, qu
     for (let i = 0; i < days.length; i++) {
         const c = closes[i];
         if (c == null) continue;
+        if (histFrom && days[i] < histFrom) continue;
         const e = epsAsOf(known, days[i]);
         if (e == null) continue;
         points.push({ day: days[i], pe: c / e, price: c, eps: e });
@@ -984,7 +1001,7 @@ function troughPe(entry, days, closes, quoteCurrency, rates, filedOn = null, qua
 // ponytail: weekly closes, so the band is narrower than the true intraday range (HKEX's 2024
 // high reads 376 against an intraday 398). Deliberate — this is the same series peLow is struck
 // on, and a wider band here would disagree with the headline number on the same page.
-function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null) {
+function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, histFrom = null) {
     const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
     if (!known) return null;
     const plusYear = (d, n = 1) => {
@@ -996,7 +1013,7 @@ function peBands(entry, days, closes, quoteCurrency, rates, filedOn = null, quar
     const band = (from, to) => {
         let lo = null, hi = null, sum = 0, n = 0;
         for (let i = 0; i < days.length; i++) {
-            if (days[i] <= from || days[i] > to) continue;
+            if (days[i] <= from || days[i] > to || (histFrom && days[i] < histFrom)) continue;
             const c = closes[i];
             if (c == null) continue;
             const e = epsAsOf(known, days[i]);
@@ -1994,7 +2011,7 @@ async function main() {
         if (!quotes[t]) continue;
         const filedOn = filedDates[t] || null;
         if (filedOn && Object.keys(filedOn).length) realDated++;
-        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t]);
+        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
         if (bands) {
             quotes[t].peBands = bands.map(b => ({
                 fy: b.fy, end: b.end, weeks: b.weeks, ...(b.partial ? { partial: true } : {}),
@@ -2005,13 +2022,15 @@ async function main() {
         }
         // Every horizon in one pass; the headline is the five-year window (see peHistory).
         const hist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
-            quotes[t].currency, rates, filedOn, filedQuarters[t]);
+            quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
         const head = hist?.horizons?.[HEADLINE_HORIZON] || hist?.horizons?.all;
         if (!head) { troughMissing++; continue; }
         Object.assign(quotes[t], {
             peLow: head.low, lowPrice: head.lowPrice, lowEps: head.lowEps, lowDate: head.lowDate,
             pePctile: head.pctile,
             peWindow: hist.horizons[HEADLINE_HORIZON] ? HEADLINE_HORIZON : 'all',
+            peFrom: head.from || null,
+            peWeeks: head.weeks ?? null,
             peHistory: hist.horizons,
         });
         troughOk++;
@@ -2635,6 +2654,27 @@ function selftest() {
     const bEntry = { currency: 'USD', years: [
         { date: '2023-12-31', eps: 4 }, { date: '2024-12-31', eps: 5 },
         { date: '2025-12-31', eps: 6 }] };
+    // histFrom: where a ticker stops being the company it is now. RSGN.SW carried 37 weeks of
+    // VT5 SPAC pricing inside what the app called its five-year distribution, which flattered
+    // the percentile the §6.1 signal fires on.
+    {
+        const hDays = weeks('2024-01-05', 104);
+        const hPx = hDays.map(() => 40);
+        hPx[hDays.indexOf('2024-07-05')] = 8;            // the 'previous entity' low
+        const hEntry = { currency: 'USD', years: [
+            { date: '2023-12-31', eps: 4 }, { date: '2024-12-31', eps: 5 }] };
+
+        const whole = peHistory(hEntry, hDays, hPx, 'USD', fx, null, null, null, '2025-12-26');
+        const cut = peHistory(hEntry, hDays, hPx, 'USD', fx, null, null, '2024-10-01', '2025-12-26');
+        // The cheap week is inside the full window and outside the truncated one.
+        assert.ok(whole.horizons.all.low < 3, `expected the 8 low, got ${whole.horizons.all.low}`);
+        assert.ok(cut.horizons.all.low > 3, `the pre-cutoff low survived truncation`);
+        assert.ok(cut.horizons.all.from >= '2024-10-01', 'window starts at the cutoff');
+        assert.ok(cut.horizons.all.weeks < whole.horizons.all.weeks, `truncation dropped weeks`);
+        // And the cutoff must not invent history where there is none.
+        assert.strictEqual(peHistory(hEntry, hDays, hPx, 'USD', fx, null, null, '2099-01-01', '2025-12-26'), null);
+    }
+
     const bands = peBands(bEntry, bDays, bPx, 'USD', fx);
     assert.deepStrictEqual(bands.map(b => b.fy), ['2024', '2025']);
     // The closes stop inside FY2025, so there is no year in progress beyond it to report.

@@ -38,6 +38,48 @@ That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecid
 it. If you want to note that a name has been proposed before, put it in the ranking table as a
 remark; never let it downgrade a rank or suppress a proposal.
 
+## A falsifier has two tiers, and the first one has to bite early
+
+A single hard threshold is a switch that only flips once the argument is already lost. The 30
+August NVDA proposal said the thesis fails if Q3 GAAP gross margin drops below 70%. But management
+had already guided Q4 to roughly 71–72% on memory costs, so 70% was not an early warning at all —
+it was a level the company was openly steering towards, and by the time it printed there would be
+nothing left to decide.
+
+So write two:
+
+- **Warning** — the earliest observable that says the thesis is under strain. Usually **a miss
+  against management's own stated guidance or range**, because that is the first hard evidence
+  that exists and the company has already committed to it in public. NVDA's would have been "Q3
+  gross margin below the guided 73.5% floor, or a material cut to FY28 growth expectations".
+  A warning triggers a re-read at the next review, not a sale.
+- **Break** — the observable that says the thesis is wrong and the position should go under §5.1.
+
+Both must be checkable and dated. If you cannot name a warning that could fire before the break,
+say so and explain why — a thesis whose only failure mode is catastrophic is worth flagging as
+such, not padding with an invented middle tier.
+
+## State what the valuation window actually covers
+
+`peWindow` says "5y". That is a **label**, not a measurement, and for a recently listed company it
+can be badly wrong: RSGN.SW's five-year percentile was drawn from 179 weeks beginning in March
+2023, of which the first 37 were VT5 Acquisition Company, the SPAC that R&S listed through in
+December 2023. A SPAC trades near its cash value, so those weeks are not valuation observations of
+this business at all — and they sat in the distribution making today look cheaper than it is.
+
+So whenever you quote a percentile, quote its span with it: `peFrom` and `peWeeks` are on the
+quote for exactly this. Write "1.7th percentile of 143 weeks from 2023-12-13", never "1.7th
+percentile of its five-year history" when the history is not five years long.
+
+**Under about three years of weeks, the percentile is indicative and you must say so.** An IPO, a
+spin-off, a de-SPAC or a re-listing all produce a short window, and a short window has not seen a
+cycle. It does not disqualify a candidate — it means the multiple cannot carry much of the
+argument, which §2.4 says it should not be carrying anyway.
+
+If you find a ticker whose price history plainly predates the current business and is not in
+`HISTORY_FROM` in `fetch-prices.js`, say so in §5. That is a data-quality finding worth more
+than the proposal it turned up in.
+
 ## The multiple is not the thesis
 
 **A proposal whose case is "it is cheap against its own history" is rejected.** That comparison is
@@ -126,8 +168,11 @@ Expected first-year costs: <breakdown>, <x>% of the ticket.
  About the BUSINESS. See "The multiple is not the thesis" below.>
 
 ## 3. Falsifier
-<One specific observable that would prove this wrong. Not "the price falls".
- A number, a date, a disclosure. Something you could check and be told "no".>
+**Warning:** <the first observable that says the thesis is under strain. Usually a miss against
+ management's OWN stated guidance or range, because that is the earliest hard evidence available.
+ Trips a re-read, not a sale.>
+**Break:** <the observable that says the thesis is wrong and the position should go. A number, a
+ date, a disclosure. Not "the price falls".>
 
 ## 4. Review date
 <a date, regardless of price>

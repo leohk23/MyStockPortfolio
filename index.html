@@ -931,7 +931,8 @@
             // history is: a percentile needs a window, and a guess would be worse than a dash.
             const pctileRow = q => typeof q?.pePctile !== 'number' ? '<span class="muted">–</span>'
                 : `<span class="${q.pePctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(q.pePctile * 100))} percentile</span>`
-                    + ` <span class="muted">— cheaper than ${(100 - q.pePctile * 100).toFixed(0)}% of the last ${q.peWindow || '5y'}</span>`;
+                    + ` <span class="muted">— cheaper than ${(100 - q.pePctile * 100).toFixed(0)}% of the last ${q.peWindow || '5y'}</span>`
+                + (q.peFrom ? ` <span class="muted">(from ${ymd(q.peFrom)}, ${q.peWeeks} weeks)</span>` : '');
             const horizonRow = q => {
                 const h = q?.peHistory;
                 if (!h) return '<span class="muted">–</span>';
@@ -2428,10 +2429,16 @@
         // Where today's multiple sits in that same window. Green inside the cheapest 10%, the decile
         // §6.1 fires on. The low next door says how cheap it has got; this says whether it is cheap
         // now, and only the second one decides anything.
-        const pctileCell = (pctile, window) => typeof pctile !== 'number' ? '<span class="muted">–</span>'
+        // The window names its own span. RSGN.SW was labelled "5y" over 179 weeks that began
+        // in 2023 and included the SPAC the company de-merged from, so "5y" was doing work
+        // the data could not support. A short window is not wrong, it is just a weaker claim.
+        const spanNote = (from, weeks) => !from ? ''
+            : ` Drawn from ${ymd(from)} onward, ${weeks} weekly closes` +
+              `${weeks < 156 ? " — under three years, so treat the percentile as indicative" : ""}.`;
+        const pctileCell = (pctile, window, from, weeks) => typeof pctile !== 'number' ? '<span class="muted">–</span>'
             : `<span class="${pctile <= 0.10 ? 'gain' : ''}" title="Today's multiple is cheaper than `
                 + `${(100 - pctile * 100).toFixed(0)}% of the last ${window || '5y'}. The signal fires `
-                + `in the cheapest 10%.">${ordinal(Math.round(pctile * 100))}</span>`;
+                + `in the cheapest 10%.${spanNote(from, weeks)}">${ordinal(Math.round(pctile * 100))}</span>`;
         // Implied price at the trough multiple, in the quote's own currency (EPS and price are
         // both native, so no FX belongs here). The tooltip shows the low that produced it.
         const num2 = v => v.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -2626,7 +2633,7 @@
                     <td>${peCell(r.pe)}</td>
                     <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
                     <td>${peLowCell(r.peLow, r.peWindow)}</td>
-                    <td>${pctileCell(r.pePctile, r.peWindow)}</td>
+                    <td>${pctileCell(r.pePctile, r.peWindow, r.peFrom, r.peWeeks)}</td>
                     <td>${lowDateCell(r.lowDate)}</td>
                     <td>${impliedCell(r)}</td>
                     <td>${vsLowCell(r.vsLow)}</td>
@@ -2665,7 +2672,7 @@
                         <td>${peCell(leg.pe)}</td>
                         <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
                         <td>${peLowCell(leg.peLow, leg.quote.peWindow)}</td>
-                        <td>${pctileCell(leg.quote.pePctile, leg.quote.peWindow)}</td>
+                        <td>${pctileCell(leg.quote.pePctile, leg.quote.peWindow, leg.quote.peFrom, leg.quote.peWeeks)}</td>
                         <td>${lowDateCell(leg.lowDate)}</td>
                         <td>${impliedCell(leg)}</td>
                         <td>${vsLowCell(leg.vsLow)}</td>
@@ -2825,7 +2832,7 @@
                     <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
                     <td>${peCell(w.pe)}</td>
                     <td>${peLowCell(w.peLow, w.quote.peWindow)}</td>
-                    <td>${pctileCell(w.quote.pePctile, w.quote.peWindow)}</td>
+                    <td>${pctileCell(w.quote.pePctile, w.quote.peWindow, w.quote.peFrom, w.quote.peWeeks)}</td>
                     <td>${lowDateCell(w.lowDate)}</td>
                     <td>${impliedCell(w)}</td>
                     <td>${vsLowCell(w.vsLow)}</td>`;
