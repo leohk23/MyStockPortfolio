@@ -279,6 +279,50 @@ const CCY_FOR = { '^N225': 'USDJPY=X', '^HSI': 'USDHKD=X', '^STOXX50E': 'EURUSD=
 // numbers its thesis named; whether the falsifier has actually tripped needs the filing, and
 // that is the LLM lane's job. Everything here is handed over so the agent never has to look
 // up a price it could have been given.
+// The paper track record: what every proposal WOULD have done, executed or not.
+//
+// This is the only measurement available before the pot is funded, and it is the one that
+// answers the question the whole experiment exists to ask - is the agent's judgement worth
+// money? Waiting for real positions to find out would mean learning nothing from the first
+// nine proposals, which is most of what has been produced so far.
+//
+// Priced from the CLOSE on the day the proposal was written, not from the limit it named. A
+// $220 day limit on a stock at $217.55 fills near 217.55, not at 220, so scoring against the
+// limit understates the result and would flatter every future comparison. The limit is only a
+// ceiling on what would have been paid; the close is what would actually have been paid.
+//
+// An executed trade uses its real fill, which beats both.
+function shadowBook(pot, quotes, history, today) {
+    const days = history?.days || [];
+    const closes = history?.closes || {};
+    // The close on that date, or the last one before it if the market was shut.
+    const closeOn = (ticker, day) => {
+        const series = closes[ticker];
+        if (!series) return null;
+        for (let i = days.length - 1; i >= 0; i--) {
+            if (days[i] <= day && series[i] != null) return series[i];
+        }
+        return null;
+    };
+    return (pot?.proposals || []).map(p => {
+        const q = quotes[p.ticker] || {};
+        const onDay = closeOn(p.ticker, p.written);
+        const entry = p.executed?.price ?? onDay ?? null;
+        const now = q.price ?? null;
+        const move = entry && now ? now / entry - 1 : null;
+        const days2 = Math.round((Date.parse(today) - Date.parse(p.written)) / 86400e3);
+        return {
+            id: p.id, ticker: p.ticker, state: p.state, written: p.written, days: days2,
+            entry, now, move,
+            basis: p.executed ? 'filled' : onDay != null ? 'close on the day it was written'
+                : 'no price on that date',
+            // Kept so a limit that today's price has left behind is visible beside the result.
+            limit: p.limit ?? null,
+            currency: q.currency || null,
+        };
+    }).sort((a, b) => (b.move ?? -Infinity) - (a.move ?? -Infinity));
+}
+
 function reviewDue(pot, quotes, today) {
     const open = (pot?.proposals || []).filter(p => p.state === 'accepted');
     return open.map(p => {
@@ -383,6 +427,7 @@ function scan(state, today) {
 
     // §6.3 is scoped to what the POT holds, so it stays blocked rather than quiet until there is
     // a pot. Blocked and quiet are different states and must not be conflated.
+    let shadow = [];
     if (!potPositions) {
         blocked.push({ rule: '6.3 results', why: 'the pot holds nothing yet (pot/positions.json absent)' });
         blocked.push({ rule: '6.4 dry powder', why: 'no pot cash balance to read yet' });
@@ -395,6 +440,7 @@ function scan(state, today) {
                    : quiet.push('6.3 results');
         const dp = dryPowder(potPositions.cashGBP, previous?.dryPowderAlerted || 0);
         dp ? fired.push({ rule: '6.4 dry powder', ...dp }) : quiet.push('6.4 dry powder');
+        shadow = shadowBook(potPositions, quotes, history, today);
         const rev = reviewDue(potPositions, quotes, today);
         rev.length ? fired.push(...rev) : quiet.push('6.5 thesis review');
     }
@@ -420,7 +466,7 @@ function scan(state, today) {
         pricesAt: prices.updated || null,
         vix: vix ? { close: vix.price, day: vix['1d'] } : null,
         spxDay: spx,
-        fired, instructions, quiet, blocked, resultsDue,
+        fired, instructions, quiet, blocked, resultsDue, shadow,
         world: worldBreadth(prices.countries),
         macro: macroNotes(prices.macro, prices.macro?.['GBPUSD=X']?.['1y']),
         dryPowderAlerted: fired.find(f => f.rule === '6.4 dry powder')?.level

@@ -1,12 +1,40 @@
 {
- "generated": "2026-08-30T19:55:56.959Z",
- "pricesAt": "2026-08-30T18:24:56.640Z",
+ "generated": "2026-08-30T20:43:26.040Z",
+ "pricesAt": "2026-08-30T20:02:31.820Z",
  "vix": {
   "close": 14.43,
   "day": -0.0055
  },
  "spxDay": -0.002487391653591575,
  "fired": [
+  {
+   "rule": "6.1 valuation",
+   "ticker": "RSGN.SW",
+   "where": "watchlist",
+   "pe": 12.459119496855344,
+   "pctile": 0.02098,
+   "window": "5y",
+   "weeks": 143,
+   "floor": 12.5,
+   "floorDate": "2026-08-07",
+   "p5": 13.2692,
+   "median": 33.6689,
+   "vsFloor": -0.003270440251572526
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "GME",
+   "where": "watchlist",
+   "pe": 13.335820895522389,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 128,
+   "floor": 13.3358,
+   "floorDate": "2026-08-28",
+   "p5": 16.0597,
+   "median": 44.5094,
+   "vsFloor": 0.0000015668743074126468
+  },
   {
    "rule": "6.1 valuation",
    "ticker": "AMSC",
@@ -20,34 +48,6 @@
    "p5": 9.83934,
    "median": 274.226,
    "vsFloor": 0.006601048715060065
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "RSGN.SW",
-   "where": "watchlist",
-   "pe": 12.698717948717947,
-   "pctile": 0.02098,
-   "window": "5y",
-   "weeks": 143,
-   "floor": 12.5,
-   "floorDate": "2026-08-07",
-   "p5": 13.2692,
-   "median": 33.6689,
-   "vsFloor": 0.015897435897435752
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "GME",
-   "where": "watchlist",
-   "pe": 13.641221374045802,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 128,
-   "floor": 13.3358,
-   "floorDate": "2026-08-28",
-   "p5": 16.0597,
-   "median": 44.5094,
-   "vsFloor": 0.02290236611570373
   },
   {
    "rule": "6.1 valuation",
@@ -118,11 +118,11 @@
    "pctile": 0.07778,
    "window": "5y",
    "weeks": 180,
-   "floor": 7.79468,
+   "floor": 7.79992,
    "floorDate": "2026-06-26",
-   "p5": 8.56753,
-   "median": 18.8363,
-   "vsFloor": 0.1732545886221093
+   "p5": 8.57329,
+   "median": 18.8489,
+   "vsFloor": 0.17246639412211673
   },
   {
    "rule": "6.1 valuation",
@@ -132,11 +132,11 @@
    "pctile": 0.02778,
    "window": "5y",
    "weeks": 180,
-   "floor": 5.49019,
+   "floor": 5.49388,
    "floorDate": "2026-06-26",
-   "p5": 6.45799,
-   "median": 23.5268,
-   "vsFloor": 0.2039321377652792
+   "p5": 6.46233,
+   "median": 23.5427,
+   "vsFloor": 0.20312350896589648
   },
   {
    "rule": "6.1 valuation",
@@ -165,15 +165,15 @@
    "pctile": 0.09259,
    "window": "5y",
    "weeks": 108,
-   "floor": 11.3554,
+   "floor": 11.363,
    "floorDate": "2026-06-26",
-   "p5": 13.6625,
-   "median": 37.5766,
-   "vsFloor": 0.6091156998867395,
+   "p5": 13.6717,
+   "median": 37.6019,
+   "vsFloor": 0.6080394630373918,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 24.949435343818635,
-    "recurringVsFloor": 0.035014367893444476
+    "recurringVsFloor": 0.03431925509993672
    }
   },
   {
@@ -294,6 +294,125 @@
   "ROST": "2026-11-19",
   "PDD": "2026-11-18"
  },
+ "shadow": [
+  {
+   "id": "2026-08-30-1330-RSGN.SW",
+   "ticker": "RSGN.SW",
+   "state": "open",
+   "written": "2026-08-30",
+   "days": 0,
+   "entry": 19.81,
+   "now": 19.81,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 20,
+   "currency": "CHF"
+  },
+  {
+   "id": "2026-08-30-1330-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-30",
+   "days": 0,
+   "entry": 217.55,
+   "now": 217.55,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-29-RSGN.SW",
+   "ticker": "RSGN.SW",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 1,
+   "entry": 19.81,
+   "now": 19.81,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 20,
+   "currency": "CHF"
+  },
+  {
+   "id": "2026-08-29-1442-RSGN.SW",
+   "ticker": "RSGN.SW",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 1,
+   "entry": 19.81,
+   "now": 19.81,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 20,
+   "currency": "CHF"
+  },
+  {
+   "id": "2026-08-29-1442-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 1,
+   "entry": 217.55,
+   "now": 217.55,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-29-1042-RSGN.SW",
+   "ticker": "RSGN.SW",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 1,
+   "entry": 19.81,
+   "now": 19.81,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 20,
+   "currency": "CHF"
+  },
+  {
+   "id": "2026-08-29-1042-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 1,
+   "entry": 217.55,
+   "now": 217.55,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-28-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-28",
+   "days": 2,
+   "entry": 217.55,
+   "now": 217.55,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-28-GME",
+   "ticker": "GME",
+   "state": "open",
+   "written": "2026-08-28",
+   "days": 2,
+   "entry": 17.87,
+   "now": 17.87,
+   "move": 0,
+   "basis": "close on the day it was written",
+   "limit": null,
+   "currency": "USD"
+  }
+ ],
  "world": {
   "counted": 43,
   "nearHigh": 16,
@@ -388,21 +507,21 @@
    "name": "Nasdaq",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.2385
+   "inGBP": 0.2384
   },
   {
    "sym": "^HSI",
    "name": "Hang Seng",
    "group": "Equity",
    "mixed": true,
-   "inGBP": -0.0091
+   "inGBP": -0.0092
   },
   {
    "sym": "^N225",
    "name": "Nikkei 225",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.4838,
+   "inGBP": 0.48339999999999994,
    "says": "57% locally is 48% to a sterling holder"
   },
   {
@@ -433,9 +552,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.2843,
+   "real": -0.2841,
    "says": "-27% over a year but 11% over three months — cooling",
-   "cooling": 0.1059,
+   "cooling": 0.1061,
    "mixed": true
   }
  ],
