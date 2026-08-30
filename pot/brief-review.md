@@ -18,8 +18,8 @@ under `6.5 thesis review`: entry price, price now, move since, quantity, review 
 was asked that exact question and chose all of them. A review date makes you look harder; it is not
 permission to skip the rest.
 
-**If there are no accepted proposals, write nothing and say so in one line.** An empty pot is the
-normal early state and inventing work for it wastes a session and pollutes the record.
+**If there are no accepted proposals there is still the paper record below**, and that is the whole
+of your job that week. Do not invent thesis reviews for positions nobody holds.
 
 ## The two tiers, checked separately
 
@@ -52,10 +52,32 @@ sell reason, and Leo wrote the rule specifically to exclude them. With roughly a
 year, churn is the enemy. If you believe a position should go for a reason not in the table, say so
 in prose and produce **no instruction**; that is a proposal for Leo to change §5.1, not a trade.
 
+## The paper record — always, funded or not
+
+`signals.json` carries a `shadow` array: every proposal, executed or not, priced from the close on
+the day it was written to the price now. **Report it every run as a short table**, newest first:
+
+| proposal | written | entry | now | move | state |
+
+This is the only measurement that exists before the pot is funded, and it answers the question the
+experiment was set up to ask — is the agent's judgement worth money? Waiting for real positions to
+find out would throw away everything the first nine proposals could have taught.
+
+Three things to say about it, in no more than a paragraph:
+
+- **Anything that has moved materially against its proposal**, and whether the reason is in the
+  thesis or outside it.
+- **Where the same name has been proposed repeatedly**, whether the later proposals were better or
+  merely later. Four NVDA proposals exist; if they are indistinguishable, say so.
+- **Where an entry is missing** — a proposal that named no limit cannot be scored, which is a fault
+  in that proposal, not in the record.
+
+Be honest about elapsed time. A proposal written yesterday has no result, and "+0.0% over zero
+market days" is a fact about the calendar, not about the judgement. Say that rather than dressing
+it up.
+
 ## Also report, briefly
 
-- **What the position has done since the proposal was written**, whether or not that changes
-  anything. This is the track record §9.1 asks for and it accrues nowhere else.
 - **Any thesis with no break condition at all** — `signals.json` flags these as `noFalsifier`.
   A position that cannot be proven wrong cannot be reviewed, and the fix is a re-proposal.
 - **Anything the proposal asserted that has since turned out to be wrong**, even where the
