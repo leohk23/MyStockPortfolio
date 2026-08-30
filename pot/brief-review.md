@@ -83,6 +83,10 @@ it up.
 - **Anything the proposal asserted that has since turned out to be wrong**, even where the
   falsifier is untouched. A thesis can be right about the outcome and wrong about the reason, and
   only this lane will ever notice.
+- **A falsifier that cannot see the risk its own P6 names.** If P6 says the danger is financed
+  demand and P3 tests gross margin, both tiers will read "not tripped" all the way to the point of
+  failure, and this lane will report calm while the thesis rots. Say so, and say what P3 should
+  have tested — that is a re-proposal, not a sale.
 
 ## Sources
 

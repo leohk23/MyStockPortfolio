@@ -23,6 +23,19 @@ What that means in practice:
 
 Corollary: don't gold-plate. No design systems, no component frameworks, no build step. Plain HTML/CSS/JS that a future session can read top-to-bottom is the point — the repo has no dependencies at runtime and should stay that way.
 
+## Two numbering schemes, and which § means which
+
+This project has two, and using the bare symbol for either is ambiguous:
+
+- **`strategy.md`'s own sections.** §3 Universe, §4 Sizing, §5 Selling, §6 Signals, §7 Guardrails,
+  §8 What a proposal must contain. Written plainly: **§5.1**, **§6.1**, **§7.2**.
+- **The six sections of a proposal**, the contract §8 defines. Written with a **P**: **P1** Order,
+  **P2** Thesis, **P3** Falsifier, **P4** Review date, **P5** Numbers as of today, **P6** The case
+  against.
+
+So "§5.1" is the sell rule and "P5" is a proposal's numbers table. They were both being written
+"§5" and the reader had to guess from context.
+
 ## Writing style for anything Leo reads
 
 Applies to briefs, proposals, sweeps, summaries, commit messages, console output, tooltips —

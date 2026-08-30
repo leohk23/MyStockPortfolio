@@ -38,6 +38,34 @@ That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecid
 it. If you want to note that a name has been proposed before, put it in the ranking table as a
 remark; never let it downgrade a rank or suppress a proposal.
 
+## The falsifier must test what the case against says is the real risk
+
+**P3 answers P6.** Whatever P6 names as the strongest argument for not buying, P3 has to be
+checkable against *that*. They are currently allowed to drift apart, and they do.
+
+The 30 August NVDA proposal is the worked example. P6 named the risk exactly — "NVIDIA is
+increasingly helping finance and underwrite the ecosystem that buys its products… **if
+NVIDIA-supported financing is masking end demand**, earnings and the multiple can contract
+together" — and then P3 tested revenue against guidance and gross margin against 73.5% and 70%.
+Neither would move in the scenario P6 describes: financed demand still books revenue at full
+margin. That is what the illusion looks like from the income statement. The falsifier stayed green
+precisely while the risk was building, and would only trip once the financing stopped — by which
+time nobody needs a falsifier to notice.
+
+**Why this keeps happening:** guidance is where the crisp numbers live, so every falsifier drifts
+towards metrics management has already quantified. A company does not publish guidance on the risk
+that its demand is partly its own money.
+
+So: after writing P6, go back to P3 and ask whether either tier would actually move under it. If
+not, find a disclosed, dated figure that would. For circular or vendor financing that is a real
+list — related-party revenue as a share of segment revenue, receivable days extending against
+revenue growth, the equity- and guarantee-commitment balance growing faster than revenue, customer
+concentration in the 10-K. All quarterly, all in the filing, all checkable by the Review lane.
+
+**If the strongest risk genuinely cannot be falsified, say so in P3 and count it against the
+position.** An unfalsifiable main risk is a reason to size smaller or wait, not a reason to test
+something easier and call it a falsifier.
+
 ## A falsifier has two tiers, and the first one has to bite early
 
 A single hard threshold is a switch that only flips once the argument is already lost. The 30
@@ -86,8 +114,8 @@ than the proposal it turned up in.
 the trigger that woke you — it is not a reason to own a business, and §2.4 says valuation is a
 **filter**: a filter screens things out, it never argues you in.
 
-So the floor comparison belongs in §5 with the other numbers, as a gate the name passed. The thesis
-in §2 has to stand on the business: what it does, whether the earnings are any good (margin level,
+So the floor comparison belongs in P5 with the other numbers, as a gate the name passed. The thesis
+in P2 has to stand on the business: what it does, whether the earnings are any good (margin level,
 the *consistency* of that margin, growth — §2.4), and what the market is missing. Leo's own two
 proud buys were NVDA *because he used ChatGPT and reasoned about what compute would be worth*, and
 M&S *because he kept noticing the food range changing in the shops* — neither was a screen result.
@@ -148,7 +176,7 @@ is void.
 - The pot's cash is in `pot/positions.json`. **If it is £0, size against the next £250 contribution
   and say the order is pending funding.** Do not invent a balance.
 
-## Write the proposal — §8, all six, none optional
+## Write the proposal — the §8 contract, P1 to P6, none optional
 
 To `pot/proposals/<stamp>-<ticker>.md`, where `<stamp>` is **`YYYY-MM-DD-HHMM` in UTC** — Leo runs
 this lane several times a day while testing, and a date alone makes the second run of a day
