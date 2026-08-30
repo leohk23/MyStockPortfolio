@@ -63,12 +63,30 @@ observation and the inference visibly apart: *what is true*, then *what you take
   saved into `pot/reading/`; treat those pieces as strong leads, and still verify every number
   against the filing.
 
-For each: what has the price done *since* the article, and does the argument still hold or is it
-already priced?
+**The reading list is slow-moving, and this section should be too.** Leo adds an article every few
+weeks, not every day. A sweep that re-argues the same three essays every morning is spending his
+attention on something that has not changed — the 30 August sweep gave 56 of its 160 lines to
+readings and reported nothing new about any of them.
 
-**Not everything is a stock idea, and say so when it is not.** A piece about method — position
-sizing, holding period, when to sell — bears on `strategy.md`, not on the watchlist. Where a
-reading argues against a rule Leo has written down, that is worth a paragraph and no candidate.
+So each entry carries a **`Kind:`** line, and the two kinds are handled differently.
+
+- **`Kind: method`** — about how to invest: position sizing, holding period, when to sell,
+  convexity. **Write nothing about it.** Absorb it, let it inform how you weigh candidates, and
+  move on. It bears on `strategy.md`, never on the watchlist, and pricing the tickers an essay
+  happens to mention teaches nobody anything. The single exception: if it argues against a rule
+  Leo has actually written down, say that once, in one paragraph — then check the previous sweep
+  and do not say it again if you already have.
+- **`Kind: idea`** — names instruments, or an argument that implies some. Give it a short
+  paragraph: what the price has done *since* publication, and whether the argument still holds or
+  is now priced. One paragraph, not a section per name.
+
+An entry with no `Kind:` line is an **idea**. Leo writes these by hand and the tag is optional.
+
+**Stop repeating yourself.** Before writing this section, read the previous sweep in
+`pot/sweeps/`. If your paragraph would say substantially what you said last time, replace it with
+one line — "unchanged since [date]" — and spend the space on section 3 instead. The whole section
+should run to a dozen lines on a quiet week.
+
 Forcing a ticker out of an essay about compounding is how this lane goes wrong.
 
 **3. Candidates.** Up to five. Ticker, exchange, one line on why, one line on what would have to be

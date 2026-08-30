@@ -388,6 +388,38 @@ does not look exactly like a healthy one.
         return hits;
     })();
 
+    // Rule 3 of sources.md lets a Sweep quote a provisional price for a name we do not carry, on
+    // condition it adds the ticker to watchlist.json so the next fetch makes it local. That second
+    // half is the one that closes the loop, and it is the one that gets forgotten: on 30 Aug the
+    // Sweep quoted PDD's March close, labelled it provisional exactly as asked, and never added
+    // PDD - so the same external lookup would have recurred every week for good.
+    //
+    // Only the newest Sweep is checked. Older ones are a record of what was true then, and
+    // nagging about a name added since would be noise.
+    // No ticker parsing. Two earlier attempts failed in opposite directions: matching a ticker to
+    // the word "provisional" by proximity missed the very case it was written for, and listing
+    // every ticker-shaped token returned VIE, WTI and NBS alongside two names we already hold
+    // under their local codes. The invariant does not need the tickers at all — rule 3 says a
+    // provisional price obliges an addition to watchlist.json, so the question is simply whether
+    // the sweep that quoted one also touched that file in the same commit.
+    const strandedSweep = (() => {
+        if (!sweep) return null;
+        const rel = 'pot/sweeps/' + sweep;
+        let text;
+        try { text = fs.readFileSync(rel, 'utf8'); } catch { return null; }
+        if (!/provisional/i.test(text)) return null;
+        try {
+            const sha = require('child_process')
+                .execSync(`git log -1 --format=%H -- "${rel}"`, { stdio: ['ignore', 'pipe', 'ignore'] })
+                .toString().trim();
+            if (!sha) return null;
+            const touched = require('child_process')
+                .execSync(`git show --name-only --format= ${sha}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+                .toString();
+            return touched.includes('watchlist.json') ? null : sweep;
+        } catch { return null; }
+    })();
+
     // ---- the entry point
     const openProposals = proposals.filter(f => !(pos.proposals || []).some(p => p.file === f));
 
@@ -414,6 +446,12 @@ ${unannotatedLines(unannotated)}${openProposals.length
         : '- No proposal is waiting.'}
 ${violations.length
         ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))
+        : ''}
+${strandedSweep
+        ? '- **Provisional price, nothing added to the watchlist** — ['
+            + strandedSweep.replace('.md', '') + '](sweeps/' + strandedSweep + ')'
+            + ' quoted a price for a name we do not carry. Rule 3 of [sources.md](sources.md) says '
+            + 'add the ticker to `watchlist.json`, so the next fetch makes it local.'
         : ''}
 
 ## The pot
@@ -478,6 +516,7 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
     } else if (banned.length) {
         console.log(`  no never-cite source in any sweep or proposal (${banned.length} on the list)`);
     }
+    if (strandedSweep) console.log(`  ${strandedSweep} quoted a provisional price but added nothing to watchlist.json`);
 }
 
 if (require.main === module) build();

@@ -12,6 +12,16 @@ One line is enough:
   Why: shipbuilding order books are the tightest since 2008 and nobody links it to Japanese yards.
 ```
 
+Add a **`Kind:`** line too, one word:
+
+- **`Kind: method`** — about *how* to invest. Convexity, position sizing, when to sell. The Sweep
+  absorbs these and writes nothing about them, because they do not change week to week and a
+  paragraph re-arguing them every morning is noise.
+- **`Kind: idea`** — names instruments, or implies some. The Sweep reports what the price has
+  done since publication and whether the argument still holds.
+
+No `Kind:` line means **idea**, so it is safe to leave off.
+
 **The `Why:` line is the point of this file.** An agent can read the article perfectly well on its
 own — what it cannot know is why *you* stopped on it. That single sentence carries your judgement,
 and it is the only part of an entry that could not have been generated. If you write nothing else,
@@ -53,6 +63,7 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 - 2026-03-11, Michael Burry, *Cassandra Unchained*, "Hong Kong Stocks: Structure & Strategy —
   Common Stocks & Uncommon Value", subscriber-only, no public URL
  , saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)
+  **Kind:** idea
   **Why:** one fact stopped me — the Hang Seng Tech Index is the only major index in recorded
   history whose companies' revenue and earnings **grew** through a 1929-style collapse in the share
   prices. That is a sentiment de-rating, not a business failure — and I own the index itself
@@ -69,6 +80,7 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 - 2026-02-26, Michael Burry, *Cassandra Unchained*, "Hong Kong Stocks: Structure & Strategy —
   VIEs: Vulnerability, Virtue & Value", subscriber-only, no public URL
  , saved: [`reading/2026-02-26-HKS1-Michael-Burry.md`](reading/2026-02-26-HKS1-Michael-Burry.md)
+  **Kind:** idea
   **Why:** I own Chinese tech through VIEs without ever having read what I actually hold. His point
   2 is the one to keep: **buying these shares means I do not own shares in the operating business.**
   The structure is technically illegal under Chinese law, Beijing has never blessed it, and in 2011
@@ -81,6 +93,7 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 
 - 2026-04-14, Ivan Li 李聲揚, 狼耳街華人, subscriber-only, no public URL
  , saved: [`reading/2026-04-14-Convexity-Ivan-Li.md`](reading/2026-04-14-Convexity-Ivan-Li.md)
+  **Kind:** method
   **Why:** it reinforces the philosophy. Convexity — a share can only fall 100%, but it can rise
   many multiples of that — is the argument against two instincts I want to resist: **rushing to cut
   a loss**, and **refusing to spray**. A loser caps itself; a winner does not, so the total

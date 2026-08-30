@@ -2,11 +2,18 @@
 
 Read by both lanes. One file rather than a copy in each brief, because two copies drift.
 
-The rule is about **what kind of claim you are making**, not about which websites are nice. There
-is deliberately **no approved-domain list**: the Sweep exists to find things the Scan cannot see,
-and deciding in advance where an idea may come from is the same narrowing the Scan/Sweep
-separation was built to prevent (D15, A14–A16). AMSC, OSIS and Novo Nordisk all arrived from
-company IR pages that no sensible pre-approved list would have contained.
+The rule is about **what kind of claim you are making**, not about which websites are nice.
+
+**Discovery is unrestricted; citation is not.** There is deliberately no approved list of places an
+*idea* may come from — the Sweep exists to find what the Scan cannot see, and deciding in advance
+where an idea may originate is the narrowing the Scan/Sweep separation was built to prevent (D15,
+A14–A16). AMSC, OSIS and Novo Nordisk all arrived from company IR pages no sensible pre-approved
+list would have held.
+
+Citing a *figure* is the opposite case, and always has been: the hierarchy below names a source for
+each kind of claim, which is an approved list in everything but name. Every rule here has worked
+that way from the start — SEC for filings, BLS for macro, IBKR for costs. Naming one for market
+prices closes a hole rather than reversing the principle.
 
 ## The hierarchy — best available source wins, every time
 
@@ -21,16 +28,28 @@ company IR pages that no sensible pre-approved list would have contained.
    backlog, book-to-bill, net debt, guidance, share count: all of it exists at the source, and the
    source is free.
 
-3. **A macro number comes from the agency that publishes it.** BLS, BEA, ONS, Eurostat, IEA, IMF,
+3. **A market price we do not carry comes from Yahoo Finance, and is labelled provisional.**
+   This is the case rule 1 could not cover: a price or a price move for a name outside
+   `holdings.json` and `watchlist.json`, which happens constantly when a reading list article
+   names a stock we do not follow. Yahoo is where this repo's own pipeline gets every price, so
+   it is the same number by the same route — it is simply not local yet.
+
+   **Two obligations come with it.** Say the figure is **provisional**, and **add the ticker to
+   `watchlist.json`**, which makes the next cycle's fetch carry it properly and retires the
+   external citation for good. Skipping the second is what leaves the same gap open forever: on
+   30 August the Sweep needed PDD's March close, correctly called it provisional, and never added
+   PDD — so the next run would have reached outside again.
+
+4. **A macro number comes from the agency that publishes it.** BLS, BEA, ONS, Eurostat, IEA, IMF,
    OECD, a central bank. Not a news story *about* the release.
 
-4. **A cost or tax figure comes from the broker or the tax authority.** IBKR's and Trading 212's
+5. **A cost or tax figure comes from the broker or the tax authority.** IBKR's and Trading 212's
    own schedules, HMRC.
 
-5. **Secondary press is for narrative and for finding candidates — never as the sole source of a
+6. **Secondary press is for narrative and for finding candidates — never as the sole source of a
    figure.** Reuters, the FT, Bloomberg, the trade press: excellent for what is going on and why,
    and a perfectly good way to notice a company exists. Once you want to state a *number* from
-   one, go and get it from 2, 3 or 4 instead.
+   one, go and get it from 2 to 5 instead.
 
 ## Never cite these
 
@@ -40,6 +59,11 @@ and several of them are paid promotion or SEO output wearing the clothes of rese
 
 **The list lives at the bottom of this file** so it is always the last thing here and Leo can add
 to it without touching anything else. Match on the domain.
+
+**If you reached for one of these, the answer is above, not nowhere.** Every ban here has a
+sanctioned alternative: a price from rule 1 or 3, a company figure from rule 2, a macro series
+from rule 4. A ban with no alternative is a rule that will be broken by anyone actually trying to
+do the work — which is exactly how financecharts.com ended up in the 30 August Sweep.
 
 **Finding is not citing.** If one of these puts a name in front of you, that is fine — take the
 name, then verify every figure against the hierarchy above and cite what you verified against.

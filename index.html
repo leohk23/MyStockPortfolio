@@ -231,17 +231,25 @@
         #world-table tr.world-dead td { color: var(--text-muted); }
         #world-table tr.world-dead td:first-child { text-decoration: line-through; }
         /* A reading column, not a table: measured line length, generous leading. */
-        #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+        /* Wide screens get a document list beside the reading column; phones get a native
+           picker above it. Same markup, and prose keeps a readable measure either way — a
+           68ch column is right for reading, so the width goes to navigation, not to longer
+           lines. Tables are the exception and take the whole column. */
+        #pot { display: grid; gap: 22px; align-items: start; }
+        #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
             color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border);
             border-radius: 6px; }
         #pot-when { font-size: 12px; }
-        #pot-body { max-width: 68ch; font-size: 15px; line-height: 1.65; }
+        #pot-list { display: none; }
+        #pot-body { font-size: 15px; line-height: 1.65; min-width: 0; }
+        #pot-body > * { max-width: 72ch; }
         #pot-body h1 { font-size: 21px; margin: 0 0 14px; }
         #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
         #pot-body h3, #pot-body h4 { font-size: 15px; margin: 22px 0 8px; }
         #pot-body p { margin: 0 0 13px; }
         #pot-body li { margin-bottom: 7px; }
+        #pot-body ul, #pot-body ol { padding-left: 22px; }
         #pot-body blockquote { margin: 0 0 13px; padding: 2px 0 2px 14px;
             border-left: 3px solid var(--border); color: var(--text-muted); }
         #pot-body code { font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
@@ -250,13 +258,27 @@
         #pot-body hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
         #pot-body a { color: var(--series-port); }
         #pot-body a[data-pot] { text-decoration-style: dotted; }
-        /* Tables inside a proposal are wide and must scroll themselves, never the page. */
-        #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; }
+        /* A ranking table has a dozen columns of prose. Let it use the full width and scroll. */
+        #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
         #pot-body th, #pot-body td { border: 1px solid var(--border); padding: 5px 8px;
             text-align: left; vertical-align: top; }
         #pot-body th { background: var(--surface-2); white-space: nowrap; }
-        @media (max-width: 640px) { #pot-body { font-size: 15.5px; } #pot-doc { width: 100%; } }
+
+        @media (min-width: 900px) {
+            #pot { grid-template-columns: 232px minmax(0, 1fr); }
+            #pot-pick { display: none; }
+            #pot-list { display: block; position: sticky; top: 12px; max-height: calc(100vh - 40px);
+                overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--border); padding-right: 14px; }
+            #pot-list .pot-group { text-transform: uppercase; letter-spacing: .04em; font-size: 10px;
+                color: var(--text-muted); margin: 14px 0 5px; }
+            #pot-list .pot-group:first-child { margin-top: 0; }
+            #pot-list button { display: block; width: 100%; text-align: left; background: none;
+                border: 0; padding: 4px 7px; margin: 0 0 1px; border-radius: 5px; cursor: pointer;
+                color: var(--text-muted); font: inherit; font-size: 12.5px; }
+            #pot-list button:hover { background: var(--surface-2); color: var(--text-primary); }
+            #pot-list button[aria-current="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }
+        }
         #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
             padding-top: 14px; text-align: left;
@@ -686,6 +708,7 @@
          HTML in pot.json comes from pot/bundle.js, and a document that is not on disk simply
          does not appear here. -->
     <div id="pot" hidden>
+        <nav id="pot-list" aria-label="Pot documents"></nav>
         <div id="pot-pick">
             <select id="pot-doc" aria-label="Pot document"></select>
             <span id="pot-when" class="muted"></span>
@@ -2956,6 +2979,14 @@ const POT_GROUPS = [
 ];
 let potDoc = localStorage.getItem('potDoc') || null;
 
+// One way in, whichever control was used.
+function showPotDoc(id) {
+    potDoc = id;
+    localStorage.setItem('potDoc', id);
+    renderPot();
+    document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
+}
+
 function renderPot() {
     const sel = document.getElementById('pot-doc');
     const body = document.getElementById('pot-body');
@@ -2970,32 +3001,37 @@ function renderPot() {
     }
     // Rebuild the picker only once: re-rendering it on every view switch would throw away
     // the open dropdown on a phone mid-tap.
+    // Two controls over one list: a <select> on phones, a sidebar on wide screens. Built
+    // together so they can never disagree about what exists.
+    const groups = POT_GROUPS.map(([kind, label]) => [label, docs.filter(d => d.kind === kind)])
+        .filter(([, mine]) => mine.length);
     if (!sel.options.length) {
-        sel.innerHTML = POT_GROUPS.map(([kind, label]) => {
-            const mine = docs.filter(d => d.kind === kind);
-            if (!mine.length) return '';
-            return `<optgroup label="${label}">` + mine.map(d =>
-                `<option value="${escapeHTML(d.id)}">${escapeHTML(d.title)}</option>`).join('') + '</optgroup>';
-        }).join('');
-        sel.addEventListener('change', () => {
-            potDoc = sel.value;
-            localStorage.setItem('potDoc', potDoc);
-            renderPot();
-            document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
+        sel.innerHTML = groups.map(([label, mine]) =>
+            `<optgroup label="${label}">` + mine.map(d =>
+                `<option value="${escapeHTML(d.id)}">${escapeHTML(d.title)}</option>`).join('') + '</optgroup>').join('');
+        sel.addEventListener('change', () => showPotDoc(sel.value));
+    }
+    const nav = document.getElementById('pot-list');
+    if (!nav.children.length) {
+        nav.innerHTML = groups.map(([label, mine]) =>
+            `<div class="pot-group">${escapeHTML(label)}</div>` + mine.map(d =>
+                `<button type="button" data-id="${escapeHTML(d.id)}">${escapeHTML(d.title)}</button>`).join('')).join('');
+        nav.addEventListener('click', e => {
+            const b = e.target.closest('button[data-id]');
+            if (b) showPotDoc(b.dataset.id);
         });
     }
     // A remembered document that has since been renamed must not blank the tab.
     const doc = docs.find(d => d.id === potDoc) || docs[0];
     sel.value = doc.id;
+    nav.querySelectorAll('button[data-id]').forEach(b =>
+        b.setAttribute('aria-current', String(b.dataset.id === doc.id)));
     when.textContent = doc.updated ? stamp(doc.updated) : '';
     body.innerHTML = doc.html;
     // A link into another pot document switches the picker instead of leaving the page.
     body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
-        potDoc = a.dataset.pot;
-        localStorage.setItem('potDoc', potDoc);
-        renderPot();
-        document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
+        showPotDoc(a.dataset.pot);
     }));
 }
 
