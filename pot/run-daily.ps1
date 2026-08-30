@@ -4,19 +4,19 @@
 # prices; the Sweep looks outside it; the Deep dive reads BOTH and is the only lane that may
 # produce an order (D14). Running them out of order gives the Deep dive yesterday's evidence.
 #
-#   .\pot\run-daily.ps1              # the whole cycle, pushing each lane as it finishes
-#   .\pot\run-daily.ps1 -NoPush      # same, commits stay local
+#   ./pot/run-daily.ps1              # the whole cycle, pushing each lane as it finishes
+#   ./pot/run-daily.ps1 -NoPush      # same, commits stay local
 #
 # Exit codes: 0 finished, 1 a lane failed, 3 another run already holds the lock.
 
 param(
     [switch]$NoPush,
-    [string]$Repo = 'C:\Users\leohk\MyStockPortfolio'
+    [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
 $ErrorActionPreference = 'Continue'
 Set-Location $Repo
-$log = 'pot\run-log.txt'
+$log = 'pot/run-log.txt'
 function Note($msg) {
     $line = "$((Get-Date).ToUniversalTime().ToString('HH:mm:ss'))  $msg"
     Write-Output $line
@@ -25,7 +25,7 @@ function Note($msg) {
 
 # A scheduled run must never collide with one Leo started by hand: two agents writing the same
 # proposals directory, and two git processes racing to push, is a mess to unpick afterwards.
-$lock = Join-Path $Repo 'pot\.daily-lock'
+$lock = Join-Path $Repo 'pot/.daily-lock'
 if (Test-Path $lock) {
     $held = Get-Content $lock -ErrorAction SilentlyContinue
     $alive = $held -and (Get-Process -Id ([int]($held -split ' ')[0]) -ErrorAction SilentlyContinue)
@@ -64,17 +64,35 @@ try {
     } else { Note 'scan found nothing new to commit' }
 
     # Each lane is its own process so a failure stops the cycle rather than poisoning the next.
+    #
+    # Splat a HASHTABLE, not an array. Splatting @('-Brief', $brief, ...) binds positionally, so
+    # run-lane.ps1 received '-Brief' as its $Brief and the path as its $Agent, and refused it for
+    # not being 'codex' or 'claude'. The 30 Aug 06:00 run failed this way and still reported
+    # success, because a parameter-binding error leaves $LASTEXITCODE untouched from the previous
+    # command. Hence the try/catch as well: exit codes alone cannot see this class of failure.
     function Invoke-Lane($brief) {
         Note "--- $brief"
-        $laneArgs = @('-Brief', $brief, '-Repo', $Repo)
-        if (-not $NoPush) { $laneArgs += '-Push' }
-        & (Join-Path $Repo 'potun-lane.ps1') @laneArgs
+        $laneArgs = @{ Brief = $brief; Repo = $Repo }
+        if (-not $NoPush) { $laneArgs.Push = $true }
+        $before = (Get-Item (Join-Path $Repo $log)).Length
+        try {
+            & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
+        } catch {
+            Note "$brief threw: $($_.Exception.Message) - stopping the cycle"
+            exit 1
+        }
         if ($LASTEXITCODE -ne 0) { Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1 }
+        # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
+        # never started, whatever the exit code says.
+        if ((Get-Item (Join-Path $Repo $log)).Length -le $before) {
+            Note "$brief wrote nothing to the log - it did not run. Stopping the cycle."
+            exit 1
+        }
     }
 
     # ---- 2. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
-    Invoke-Lane 'pot\brief-sweep.md'
+    Invoke-Lane 'pot/brief-sweep.md'
 
     # ---- 3. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
     #
@@ -106,14 +124,14 @@ try {
     }
 
     # ---- 5. Deep dive, the only lane that may produce an order.
-    Invoke-Lane 'pot\brief-deepdive.md'
+    Invoke-Lane 'pot/brief-deepdive.md'
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
     git checkout -- prices.json history.json earnings.json intraday.json 2>&1 | Out-Null
 
     # ---- 6. The report, and the bundle the dashboard Pot tab reads.
-    node pot\report.js 2>&1 | ForEach-Object { Note "  $_" }
+    node pot/report.js 2>&1 | ForEach-Object { Note "  $_" }
     Note 'cycle complete'
 }
 finally {

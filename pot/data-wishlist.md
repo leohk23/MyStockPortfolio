@@ -30,6 +30,18 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-30 — China industrial profit mix, inventories and receivables.**
+  Fetched from the National Bureau of Statistics of China. Wanted monthly; the sharp gap between
+  electronics and non-ferrous profit growth and falling auto profit materially changed the BYD
+  re-look and was not visible in the local macro file.
+- **2026-08-30 — US consumer traffic and comparable sales by retail format.**
+  Fetched from Ross Stores and Walmart results. Wanted on results dates rather than weekly; the
+  contrast between traffic-led off-price growth and slower mass-market comps was more useful than
+  a broad consumer-spending aggregate for candidate selection.
+- **2026-08-30 — BYD cash conversion and supplier funding.**
+  Fetched from BYD's interim filing: operating cash flow, trade payables and bills payable. Wanted
+  on each filing date; these figures test the saved article's supplier-financing concern more
+  directly than revenue or EPS alone.
 - **2026-08-29 — US inflation, payroll revisions and the goods/services spending split.**
   Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis.
   Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation
