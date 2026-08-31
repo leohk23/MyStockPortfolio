@@ -1874,8 +1874,21 @@
         // A % on a value line was deleted once already (056ce45) for calling deposits a gain.
         // This is the honest version of what Leo was looking for: the same number Performance
         // shows, not a ratio across a line that money was being paid into.
+        let twrFetchPending = false;
         const rangeTwr = hold => {
             try {
+                // The first paint does not come through updateChart, so on a cold load HISTORY is
+                // still null here and the return was simply missing until something else fetched
+                // it — which is why it appeared only after a trip through Performance. Ask for it
+                // ourselves and redraw once it lands, rather than depending on another view
+                // having wanted it first.
+                if (!HISTORY) {
+                    if (!twrFetchPending) {
+                        twrFetchPending = true;
+                        loadHistory().then(drawChart).catch(() => { /* value still drawn */ });
+                    }
+                    return null;
+                }
                 const history = longRange ? HISTORY.long : HISTORY;
                 if (!history?.days) return null;
                 const { mv, flow } = portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, null);
@@ -2373,7 +2386,18 @@
             if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
-            else drawChart();
+            else {
+                // The value chart draws from prices.json alone, but its headline return needs the
+                // replay in history.json. So paint immediately and upgrade when that lands: on a
+                // cold load the return was simply missing, and only appeared once a trip through
+                // Performance had fetched the history for its own reasons.
+                //
+                // Not folded into the condition above: that would delay the first paint of the
+                // default view for a figure that can arrive a moment later. loadHistory caches, so
+                // the second call is free.
+                drawChart();
+                loadHistory().then(drawChart).catch(() => { /* value still drawn; no return shown */ });
+            }
         }
 
         // Keep the row you clicked exactly where it was on screen.
