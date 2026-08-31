@@ -361,6 +361,12 @@
            the price itself. Absent means one thing only: no extended-hours data for that listing
            (Hong Kong, Tokyo, London and Paris have no such feed). */
         .ext { font-size: 10px; vertical-align: middle; opacity: .85; }
+        /* Trading right now. A dot rather than a row tint: row background already means
+           selected (tr.sel) and hover, and a third meaning on the same channel would collide
+           — and at 06:00 UK half the table would change colour for a reason that is not about
+           the position. */
+        .live { display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+            background: var(--gain); margin-left: 5px; vertical-align: middle; }
         .muted { color: var(--text-muted); }
 
         th[data-sort] { cursor: pointer; user-select: none; }
@@ -2505,6 +2511,22 @@
         // tell you. It also made this the only movement column with a size filter; 1D through YTD
         // all render whatever they are. Blank now means one thing: no extended-hours data.
         const extLabel = { post: 'after hours', pre: 'pre-market' };
+        // "Traded in the last few minutes", which is the honest form of "the market is open".
+        //
+        // Inferred from the last print rather than from exchange hours on purpose: a hardcoded
+        // calendar would need timezone, DST and holidays for New York, Hong Kong, Tokyo, London,
+        // Zurich, Milan, Paris and Seoul, and would confidently show "open" on Christmas. No
+        // print, no claim — which also covers half-days and unscheduled closures for free.
+        //
+        // The window is the CI cadence (every 15 minutes on weekdays) plus room for the fetch
+        // and the page sitting idle. Too tight and a live session blinks; too loose and a
+        // market that shut half an hour ago still looks open.
+        const LIVE_WINDOW_MIN = 20;
+        const isLive = q => {
+            if (!q?.at) return false;
+            return (Date.now() / 1000 - q.at) / 60 < LIVE_WINDOW_MIN;
+        };
+
         const freshness = q => {
             if (!q || (!q.at && !q.ext)) return { mark: '', title: '' };    // no data: claim nothing
             const traded = q.at ? `Last traded ${stamp(new Date(q.at * 1000).toISOString())}` : '';
@@ -2538,7 +2560,10 @@
         const priceCell = (native, ccy, quote) => {
             if (native == null) return '<span class="muted">–</span>';
             const { mark, title } = freshness(quote);
-            const num = `${nativePrice(native, ccy)}${mark}`;
+            // data-at lets the timer re-evaluate without a full re-render.
+            const live = quote?.at
+                ? `<span class="live" data-at="${quote.at}" title="Traded within the last ${LIVE_WINDOW_MIN} minutes" style="${isLive(quote) ? '' : 'display:none'}"></span>` : '';
+            const num = `${nativePrice(native, ccy)}${mark}${live}`;
             return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
         };
         // Negative/zero EPS already comes through as null from portfolio.js (a PE on a
@@ -3477,6 +3502,17 @@ function renderPot() {
             link(wrap, floatEl);
             link(floatEl, wrap);
             window.addEventListener('scroll', updateTotalFloat, { passive: true });
+
+            // The page fetches prices once, so without this the dots keep asserting "trading now"
+            // for as long as the tab stays open — an indicator that is wrong after the close is
+            // worse than none, because it is the one thing on the row claiming to be live.
+            // Re-evaluated in place rather than by re-rendering: a full table rebuild every minute
+            // would fight scroll position, the pinned columns and any open row.
+            setInterval(() => {
+                document.querySelectorAll('.live[data-at]').forEach(el => {
+                    el.style.display = isLive({ at: Number(el.dataset.at) }) ? '' : 'none';
+                });
+            }, 60000);
             window.addEventListener('resize', () => { pinColumns(); buildTotalFloat(); });
         }).catch(err => {
             document.getElementById('updated').textContent = `Could not load data: ${err.message}`;
