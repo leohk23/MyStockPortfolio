@@ -365,6 +365,7 @@
            selected (tr.sel) and hover, and a third meaning on the same channel would collide
            — and at 06:00 UK half the table would change colour for a reason that is not about
            the position. */
+        .live-col { width: 12px; padding-left: 6px; padding-right: 0; }
         .live { display: inline-block; width: 5px; height: 5px; border-radius: 50%;
             background: var(--good); margin-left: 5px; vertical-align: middle; }
         .muted { color: var(--text-muted); }
@@ -629,7 +630,7 @@
         <table id="portfolio" class="pinned">
             <thead>
                 <tr>
-                    <th data-sort="name">Position</th>
+                    <th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="name">Position</th>
                     <th data-sort="price">Price</th>
                     <th data-sort="1d" title="Change since the previous session close">1D</th>
                     <th data-sort="7d">7D</th>
@@ -681,7 +682,7 @@
     <div class="table-responsive" id="watch" hidden>
         <table id="watchlist" class="pinned">
             <thead><tr>
-                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th>
+                <th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th>
                 <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
                 <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
                 <th data-sort="pe">P/E</th>
@@ -2574,12 +2575,22 @@
             if (ccy === 'GBp' || ccy === 'Gbpence') return `${v}p`;
             return CCY_SIGN[ccy] ? `${CCY_SIGN[ccy]}${v}` : `${v} <span class="muted">${ccy}</span>`;
         };
+        // Its own column, left of the name, so it can be sorted on and reads as a property of
+        // the row rather than of the price. Empty when not trading — a second symbol for
+        // "closed" would be 55 rows of noise on a quiet evening.
+        const liveCell = quotes => {
+            const at = quotes.map(q => q?.at).filter(Boolean).sort((a, b) => b - a)[0];
+            if (!at) return '<td></td>';
+            return `<td class="live-col"><span class="live" data-at="${at}"`
+                + ` title="Traded within ${FEED_DELAY_MIN} minutes of the last price fetch"`
+                + ` style="${isLive({ at }) ? '' : 'display:none'}"></span></td>`;
+        };
+
         const priceCell = (native, ccy, quote) => {
             if (native == null) return '<span class="muted">–</span>';
             const { mark, title } = freshness(quote);
             // data-at lets the timer re-evaluate without a full re-render.
-            const live = quote?.at
-                ? `<span class="live" data-at="${quote.at}" title="Trading: this line printed within ${FEED_DELAY_MIN} minutes of the last price fetch" style="${isLive(quote) ? '' : 'display:none'}"></span>` : '';
+            const live = '';   // the dot has its own column now
             const num = `${nativePrice(native, ccy)}${mark}${live}`;
             return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
         };
@@ -2686,6 +2697,7 @@
             // things — so a multi-leg row has no share count, and sorts to the bottom like a blank.
             if (key === 'qty') return row.legs.length === 1 ? row.legs[0].qty : null;
             if (key === 'held') return row.held ? row.held.days : null;
+            if (key === 'live') return row.legs.some(l => isLive(l.quote)) ? 1 : 0;
             if (key === 'trades') return rowTrades(row) || null;
             return row[key];
         };
@@ -2704,6 +2716,7 @@
         // matches the displayed numbers — price stays native (as in the holdings table)
         // rather than silently reordering by USD. Movement periods live on the quote.
         const QUOTE_KEYS = new Set(['price', 'divYield', 'pePctile']);   // columns read off the quote, not the row
+        const liveOf = q => isLive(q) ? 1 : 0;
         const watchSortValue = (w, key) =>
             portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
         function sortedWatch() {
@@ -2777,6 +2790,7 @@
                 tr.dataset.yahoo = r.primaryYahoo;
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
+                    ${liveCell(r.legs.map(l => l.quote))}
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
@@ -2813,6 +2827,7 @@
                     el.dataset.yahoo = leg.yahoo;
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
+                        ${liveCell([leg.quote])}
                         <td>${leg.yahoo} <span class="muted">${priv ? HIDDEN : leg.qty + ' sh'}</span></td>
                         <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
@@ -2850,7 +2865,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="31">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="32">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
@@ -2991,6 +3006,7 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
+                    ${liveCell([w.quote])}
                     <td>${w.name} <span class="muted">${w.yahoo}</span></td>
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
