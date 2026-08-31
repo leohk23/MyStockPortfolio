@@ -30,6 +30,14 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-31 — German headline, core and energy inflation.**
+  Fetched from Destatis. Wanted monthly while the energy shock persists; the split distinguishes
+  a commodity squeeze from broad demand inflation and changes which businesses should have
+  pricing power.
+- **2026-08-31 — European technical-services organic growth, renewals, margins and cash conversion.**
+  Fetched from SPIE's quarterly and half-year releases. Wanted on results dates while SPIE is
+  tracked; the set tests whether energy-efficiency demand is recurring and whether acquisition-led
+  growth reaches shareholders.
 - **2026-08-31 — India real and nominal GDP.**
   Fetched from the Ministry of Statistics and Programme Implementation. Wanted quarterly; it adds
   world breadth and tests whether company order growth sits inside genuine domestic expansion.
