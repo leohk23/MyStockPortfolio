@@ -93,6 +93,16 @@ function toHtml(md, fromDir, ids = new Set()) {
             i++;
             const body = [];
             while (/^\s*\|.*\|\s*$/.test(lines[i + 1] || '')) body.push(cells(lines[++i].trim()));
+            // A table whose header cells are all empty is a layout table, not a data table —
+            // "Everything else" in the summary is a list of label/link pairs. Rendered as a table
+            // it needs horizontal scrolling on a phone, and the long labels push the links off
+            // screen where nobody finds them. A description list wraps instead.
+            if (head.every(c => !c.trim()) && head.length === 2) {
+                out.push('<dl class="pot-kv">' + body.map(r =>
+                    `<div><dt>${inline(r[0], fromDir, ids)}</dt><dd>${inline(r[1] ?? '', fromDir, ids)}</dd></div>`
+                ).join('') + '</dl>');
+                continue;
+            }
             out.push('<div class="pot-scroll"><table>',
                 '<thead><tr>' + head.map(c => `<th>${inline(c, fromDir, ids)}</th>`).join('') + '</tr></thead>',
                 '<tbody>' + body.map(r => '<tr>' + r.map(c => `<td>${inline(c, fromDir, ids)}</td>`).join('') + '</tr>').join('') + '</tbody>',

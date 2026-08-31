@@ -270,6 +270,18 @@
         #pot-body a { color: var(--series-port); }
         #pot-body a[data-pot] { text-decoration-style: dotted; }
         /* A ranking table has a dozen columns of prose. Let it use the full width and scroll. */
+        /* Label/link pairs from a headerless markdown table. Two columns where there is room,
+           stacked on a phone — which is the whole point: as a table the links sat off-screen
+           behind a horizontal scroll nobody thinks to try. */
+        #pot-body .pot-kv { margin: 0 0 14px; }
+        #pot-body .pot-kv > div { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+            gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+        #pot-body .pot-kv dt { min-width: 0; }
+        #pot-body .pot-kv dd { margin: 0; white-space: nowrap; }
+        @media (max-width: 560px) {
+            #pot-body .pot-kv > div { grid-template-columns: 1fr; }
+            #pot-body .pot-kv dd { white-space: normal; }
+        }
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
         #pot-body th, #pot-body td { border: 1px solid var(--border); padding: 5px 8px;
