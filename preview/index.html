@@ -1866,6 +1866,32 @@
             return s;
         };
 
+        // The return over the SAME window the value chart is showing, computed the same way
+        // Performance mode computes it: cohortMV replayed against past prices, then twr(), so
+        // deposits are removed. Returned separately from the value rather than folded into it,
+        // because the two answer different questions and the headline should show both.
+        //
+        // A % on a value line was deleted once already (056ce45) for calling deposits a gain.
+        // This is the honest version of what Leo was looking for: the same number Performance
+        // shows, not a ratio across a line that money was being paid into.
+        const rangeTwr = hold => {
+            try {
+                const history = longRange ? HISTORY.long : HISTORY;
+                if (!history?.days) return null;
+                const { mv, flow } = portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, null);
+                const { arrays } = sliceRange(history.days, [mv, flow], longRange ? STATE.firstTrade : '');
+                return lastNonNull(portfolioLib.twr(arrays[0], arrays[1]));
+            } catch { return null; }
+        };
+        // Value first, because that is what the chart draws; the return beside it, labelled, so
+        // it can never be read as the value line's own slope.
+        const valueHeadline = (last, hold) => {
+            const r = rangeTwr(hold);
+            return money(last * RATES[display])
+                + (r == null ? '' : ` <span class="${cls(r)}">${pct(r)}</span>`
+                    + ' <span class="muted">return</span>');
+        };
+
         function portfolioValueSpec() {
             const nav = longRange ? HISTORY.long.nav : STATE.nav;
             const { days, arrays } = sliceRange(nav.days, [nav.values], longRange ? STATE.firstTrade : '');
@@ -1881,7 +1907,7 @@
                 // Value-weighted across every holding — matching the table's total row, and for a
                 // ONE-day window the weighting distortion that makes the longer periods there
                 // misleading (see BACKLOG.md) has had no time to accumulate.
-                headline: money(last * RATES[display])
+                headline: valueHeadline(last, twrHoldings(STATE.holdings))
                     + dayTag(portfolioLib.weightedMove(STATE.rows.flatMap(r => r.legs), '1d')),
                 sub: `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: 'Portfolio value',
@@ -1916,7 +1942,7 @@
                 fmtY: v => priv ? '' : money(v * RATES[display]),
                 // Value-weighted across this group's instruments — the same number its row in the
                 // table shows, so the two cannot disagree.
-                headline: money(last * RATES[display])
+                headline: valueHeadline(last, twrHoldings(group.legs))
                     + dayTag(portfolioLib.weightedMove(group.legs, '1d')),
                 sub: `Asset value · ${count} instrument${count === 1 ? '' : 's'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: `${group.name} value`,
@@ -2634,7 +2660,7 @@
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
-                <div><div class="label">Return</div><div class="value ${cls(gain)}">${pct(gain / cost)}</div></div>
+                <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cls(gain)}">${pct(gain / cost)}</div></div>
                 ${perfTile('YTD Performance', perf.ytdTotal)}
                 ${perfTile('New Buys YTD', perf.ytdNew)}
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>`;
@@ -2809,7 +2835,7 @@
             put('value', `<td>${money(shownValue)}</td>`);
             put('gain', `<td class="${cls(gain)}">${money(gain)}</td>`);
             put('realized', `<td class="${realizedCls(realized)}">${money(realized)}</td>`);
-            put('gainPct', `<td class="${cls(gain)}">${pct(cost ? gain / cost : null)}</td>`);
+            put('gainPct', `<td class="${cls(gain)}" title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it.">${pct(cost ? gain / cost : null)}</td>`);
             // Mix deliberately shares data-sort="value" with the Value column (clicking Mix sorts
             // by value), so it is the LAST 'value' header, not the first.
             const mix = keys.lastIndexOf('value');
