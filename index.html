@@ -95,6 +95,9 @@
            of the series colours here would read as a fourth line on the chart. */
         .event { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 5 4; opacity: .85; }
         .event-label { fill: var(--text-secondary); font-size: 10px; }
+        /* The measure band: a wash, not a highlight. It sits behind the series so the line it is
+           measuring stays the thing you look at. */
+        .measure { fill: var(--series-port); opacity: .12; pointer-events: none; }
         .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
         .trade-guide { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .45; }
         .cursor-dot { stroke: var(--surface-3); stroke-width: 2; }
@@ -1871,6 +1874,9 @@
             return {
                 days,
                 series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
+                // A value line blends deposits with growth, so a span across it is a change in
+                // VALUE, not a return. spanText says so rather than implying performance.
+                deposits: true,
                 fmtY: v => priv ? '' : money(v * RATES[display]),
                 // Value-weighted across every holding — matching the table's total row, and for a
                 // ONE-day window the weighting distortion that makes the longer periods there
@@ -1903,6 +1909,9 @@
             return {
                 days,
                 series: [{ label: group.name, color: PORT_COLOR, values, area: true }],
+                // A value line blends deposits with growth, so a span across it is a change in
+                // VALUE, not a return. spanText says so rather than implying performance.
+                deposits: true,
                 markers, markersByIndex: byIndex,
                 fmtY: v => priv ? '' : money(v * RATES[display]),
                 // Value-weighted across this group's instruments — the same number its row in the
@@ -2097,6 +2106,10 @@
         // never show the COVID rule — which is right, it wasn't there for it.
         const CHART_EVENTS = [
             { date: '2020-03-20', label: 'COVID crash' },
+            // The research preview went public on 30 November 2022. Nothing happened to markets
+            // that day — it earns a rule because almost every large position on this page is now
+            // priced off what followed it, and the 10Y range is the only one that reaches back.
+            { date: '2022-11-30', label: 'ChatGPT' },
             // The tariffs were announced on 2 April 2025; the 7th is the session the owner asked
             // to mark, and where the selloff was steepest.
             { date: '2025-04-07', label: 'Liberation Day' },
@@ -2209,11 +2222,52 @@
             svg.innerHTML = `${gridEls}${zeroEl}${hlineEl}${eventEls}${dateEls}${lineEls}
                 <line class="trade-guide" id="trade-guide" x1="${L}" x2="${W - R}" style="display:none"/>
                 ${markerEls}
+                <rect class="measure" id="measure" y="${T}" height="${H - T - B}" style="display:none"/>
                 <line class="crosshair" id="cross" y1="${T}" y2="${H - B}" style="display:none"/>
                 <circle class="cursor-dot" id="dot" r="4" style="display:none;fill:${series[0].color}"/>
                 <rect id="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
 
             const cross = svg.querySelector('#cross'), dot = svg.querySelector('#dot'), guide = svg.querySelector('#trade-guide');
+            const band = svg.querySelector('#measure');
+
+            // Press and drag to measure between two points. The band stays after release so the
+            // reading can be read; the next press starts a new one.
+            let from = null;
+            const idxAt = ev => {
+                const rect = svg.getBoundingClientRect();
+                const point = ev.touches ? ev.touches[0] : ev;
+                const px = (point.clientX - rect.left) * (W / rect.width);
+                return Math.max(0, Math.min(days.length - 1, Math.round((px - L) / ((W - L - R) / (days.length - 1)))));
+            };
+            // A percentage chart already plots change, so two points differ by percentage POINTS.
+            // A price or value chart differs by a ratio. Using one formula for both would be wrong
+            // on half the tabs, and wrong in a way that looks plausible.
+            const spanText = (a, b) => {
+                const va = series[0].values[a], vb = series[0].values[b];
+                if (va == null || vb == null) return null;
+                const change = spec.percent ? pct(vb - va)
+                    : va === 0 ? null : pct(vb / va - 1);
+                if (change == null) return null;
+                let over = `${Math.abs(b - a)} points`;
+                if (typeof days[a] === 'string' && typeof days[b] === 'string') {
+                    const n = Math.abs(Math.round((Date.parse(days[b]) - Date.parse(days[a])) / 86400e3));
+                    over = n >= 365 ? `${(n / 365).toFixed(1)}y` : `${n} days`;
+                }
+                // Name what the number is. On a value chart it is not a return: paying money in
+                // moves the line exactly as growth does, and the portfolio line reads +975% over
+                // five years largely because it was being funded throughout.
+                const what = spec.percent ? ' <span class="muted">(percentage points)</span>'
+                    : spec.deposits ? ' <span class="muted">in value — deposits included, not a return</span>'
+                    : '';
+                return `<div class="d">${fmtX(days[Math.min(a, b)])} → ${fmtX(days[Math.max(a, b)])}</div>`
+                    + `<b>${change}</b> over ${over}${what}`;
+            };
+            const showBand = (a, b) => {
+                const x1 = Math.min(x(a), x(b)), x2 = Math.max(x(a), x(b));
+                band.setAttribute('x', x1);
+                band.setAttribute('width', Math.max(1, x2 - x1));
+                band.style.display = '';
+            };
             const move = ev => {
                 const rect = svg.getBoundingClientRect();
                 const scale = W / rect.width;
@@ -2229,17 +2283,28 @@
                 const yv = series[0].values[i];
                 if (yv != null) { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(yv)); dot.style.display = ''; }
                 else dot.style.display = 'none';
-                tip.innerHTML = `<div class="d">${fmtX(days[i])}</div>${spec.tip(i)}`;
+                // Mid-drag the question is "what happened between here and there", so the span
+                // answers it and the single-point detail gets out of the way.
+                const span = from != null && from !== i ? spanText(from, i) : null;
+                if (span) showBand(from, i);
+                tip.innerHTML = span || `<div class="d">${fmtX(days[i])}</div>${spec.tip(i)}`;
                 tip.style.left = `${cx / scale}px`;
                 tip.style.top = `${(yv != null ? y(yv) : T) / scale - 10}px`;
                 tip.style.opacity = 1;
             };
             const leave = () => { tip.style.opacity = 0; cross.style.display = 'none'; dot.style.display = 'none'; guide.style.display = 'none'; };
+            const start = ev => { from = idxAt(ev); band.style.display = 'none'; };
+            const end = () => { from = null; };
             const hit = svg.querySelector('#hit');
             hit.addEventListener('mousemove', move);
             hit.addEventListener('mouseleave', leave);
+            hit.addEventListener('mousedown', start);
+            // Release anywhere, not just over the chart: dragging past the edge and letting go
+            // outside it would otherwise leave the measurement stuck to the pointer.
+            window.addEventListener('mouseup', end);
             hit.addEventListener('touchmove', ev => { ev.preventDefault(); move(ev); }, { passive: false });
-            hit.addEventListener('touchend', leave);
+            hit.addEventListener('touchstart', ev => { start(ev); }, { passive: true });
+            hit.addEventListener('touchend', () => { end(); leave(); });
         }
 
         // Redraw, loading history first if the current mode needs it.
