@@ -2521,10 +2521,24 @@
         // The window is the CI cadence (every 15 minutes on weekdays) plus room for the fetch
         // and the page sitting idle. Too tight and a live session blinks; too loose and a
         // market that shut half an hour ago still looks open.
-        const LIVE_WINDOW_MIN = 20;
+        // Two separate questions, and conflating them is what broke the first version.
+        //
+        // 1. Was it trading when we looked? Yahoo delivers most non-US quotes on a delay -
+        //    measured live: Tokyo 17 minutes behind the fetch, Seoul 22 - so a print that
+        //    looks stale by the clock is a perfectly current quote from a delayed feed. The
+        //    comparison is print-versus-FETCH. Measuring against Date.now() instead folded in
+        //    the CI interval too, and SK Hynix went dark while it was visibly moving.
+        // 2. Is our snapshot still worth believing? That is fetch-versus-now, and it is what
+        //    makes the dot go out in a tab left open rather than asserting a closed market is
+        //    live.
+        const FEED_DELAY_MIN = 35;      // exchange feed lag, with room past Seoul's 22
+        const SNAPSHOT_MIN = 35;        // CI runs every 15 minutes on weekdays
         const isLive = q => {
-            if (!q?.at) return false;
-            return (Date.now() / 1000 - q.at) / 60 < LIVE_WINDOW_MIN;
+            if (!q?.at || !STATE?.updated) return false;
+            const fetched = Date.parse(STATE.updated) / 1000;
+            if (!(fetched > 0)) return false;
+            return (fetched - q.at) / 60 < FEED_DELAY_MIN
+                && (Date.now() / 1000 - fetched) / 60 < SNAPSHOT_MIN;
         };
 
         const freshness = q => {
@@ -2562,7 +2576,7 @@
             const { mark, title } = freshness(quote);
             // data-at lets the timer re-evaluate without a full re-render.
             const live = quote?.at
-                ? `<span class="live" data-at="${quote.at}" title="Traded within the last ${LIVE_WINDOW_MIN} minutes" style="${isLive(quote) ? '' : 'display:none'}"></span>` : '';
+                ? `<span class="live" data-at="${quote.at}" title="Trading: this line printed within ${FEED_DELAY_MIN} minutes of the last price fetch" style="${isLive(quote) ? '' : 'display:none'}"></span>` : '';
             const num = `${nativePrice(native, ccy)}${mark}${live}`;
             return title ? `<span title="${escapeHTML(title)}">${num}</span>` : num;
         };
@@ -3467,7 +3481,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, countries, signals, nav, performance, firstTrade, dim };
+            STATE = { holdings, rates, quotes, macro, countries, signals, nav, performance, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
