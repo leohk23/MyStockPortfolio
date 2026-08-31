@@ -2718,7 +2718,10 @@
         const QUOTE_KEYS = new Set(['price', 'divYield', 'pePctile']);   // columns read off the quote, not the row
         const liveOf = q => isLive(q) ? 1 : 0;
         const watchSortValue = (w, key) =>
-            portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
+            // `live` is derived, not a field: without this it read w.live, came back undefined for
+            // every row, and the column sorted into a single null bucket that never moved.
+            key === 'live' ? liveOf(w.quote)
+                : portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
         function sortedWatch() {
             return [...visibleWatch()].sort((a, b) => {
                 const x = watchSortValue(a, watchSort.key), y = watchSortValue(b, watchSort.key);
