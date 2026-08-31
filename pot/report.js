@@ -261,6 +261,23 @@ function build() {
     const totalSecs = runs.reduce((a, r) => a + (r.seconds || 0), 0);
 
     // ---- the ledger
+    // What each run ADDED to the weekly allowance, not merely what it stood at. The standing
+    // figure cannot tell a cheap review from an expensive sweep, and knowing which lane spends
+    // the budget is the reason to read a ledger per lane at all.
+    //
+    // Runs are newest-first, so a run's predecessor is the NEXT element. A window boundary
+    // (a different resets_at) ends the chain rather than subtracting across a reset.
+    const spent = new Map();
+    {
+        const seen = runs.filter(r => r.limits?.secondary);
+        for (let i = 0; i < seen.length; i++) {
+            const cur = seen[i], prev = seen[i + 1];
+            if (!prev || prev.limits.secondary.resets !== cur.limits.secondary.resets) continue;
+            const d = cur.limits.secondary.used - prev.limits.secondary.used;
+            if (d >= 0) spent.set(cur.file, d);
+        }
+    }
+
     fs.writeFileSync('pot/runs.md', `# Run ledger
 
 Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from the Codex session
@@ -280,11 +297,11 @@ comparable. **Fresh** is input not served from cache — the part a metered call
 |---|---|---:|---:|
 | ${runs.length} | ${mmss(totalSecs)} | ${fmt(totalFresh)} | ${fmt(totalTokens)} |
 
-| started | lane | model | wall | fresh in | cached in | out | total | transcript |
-|---|---|---|---|---:|---:|---:|---:|---|
+| started | lane | model | wall | fresh in | cached in | out | total | weekly | of week | transcript |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
 ${runs.map(r => `| ${when(r.started)} | ${r.lane} | \`${r.model || '?'}\` | ${mmss(r.seconds)} `
         + `| ${fmt(fresh(r.usage))} | ${fmt(r.usage?.cached_input_tokens)} | ${fmt(r.usage?.output_tokens)} `
-        + `| ${fmt(r.usage?.total_tokens)} | [read](${r.log.replace('pot/','')}) |`).join('\n') || '| – | none yet | | | | | | | |'}
+        + `| ${fmt(r.usage?.total_tokens)} | ${r.limits?.secondary ? r.limits.secondary.used + '%' : '–'} | ${spent.has(r.file) ? '+' + spent.get(r.file).toFixed(1) : '–'} | [read](${r.log.replace('pot/','')}) |`).join(String.fromCharCode(10)) || '| – | none yet | | | | | | | | | |'}
 
 ## Scan lane
 
