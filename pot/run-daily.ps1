@@ -61,8 +61,8 @@ try {
         Note 'scan committed'
         if (-not $NoPush) {
             git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase conflicted - left local' }
+            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase failed - commit stays local' }
             else { git push --quiet origin main 2>&1 | Out-Null; Note 'scan pushed' }
         }
     } else { Note 'scan found nothing new to commit' }
@@ -126,8 +126,8 @@ try {
         Note 'scan committed'
         if (-not $NoPush) {
             git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase conflicted - left local' }
+            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase failed - commit stays local' }
             else { git push --quiet origin main 2>&1 | Out-Null; Note 'scan pushed' }
         }
     }
@@ -159,8 +159,8 @@ try {
         Note 'stamps and bundle committed'
         if (-not $NoPush) {
             git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'stamp rebase conflicted - left local' }
+            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'stamp rebase failed - commit stays local' }
             else { git push --quiet origin main 2>&1 | Out-Null; Note 'stamps and bundle pushed' }
         }
     }

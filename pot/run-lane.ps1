@@ -89,11 +89,16 @@ if ($Push) {
     # Only pot/ and watchlist.json are ever staged here, and the CI only ever touches the data JSONs,
     # so there is nothing to collide over in practice. If that ever stops being true, abandon the
     # rebase: an unattended task must not leave a conflicted tree for the next run to trip over.
+    # --autostash, because the tree is usually dirty here and that is not an error. The daily
+    # cycle runs fetch-prices between the lanes, leaving prices.json, history.json, earnings.json
+    # and intraday.json modified; plain rebase refuses to start on unstaged changes, and the
+    # runner reported that refusal as a CONFLICT - so every cycle on 31 Aug looked like it had hit
+    # a merge it could not resolve when nothing had actually diverged.
     git fetch --quiet origin main 2>&1 | Out-Null
-    git rebase --quiet FETCH_HEAD 2>&1 | Out-Null
+    git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         git rebase --abort 2>&1 | Out-Null
-        Note 'rebase onto origin/main conflicted - aborted, commit stays local'
+        Note 'rebase onto origin/main failed - aborted, commit stays local'
         exit 0
     }
     git push --quiet origin main 2>&1 | Out-Null
