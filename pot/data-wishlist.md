@@ -30,6 +30,21 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-31 — India real and nominal GDP.**
+  Fetched from the Ministry of Statistics and Programme Implementation. Wanted quarterly; it adds
+  world breadth and tests whether company order growth sits inside genuine domestic expansion.
+- **2026-08-31 — L&T order-book quality, geography and cash conversion.**
+  Fetched from Larsen & Toubro's results and transcript. Wanted on results dates while L&T is
+  tracked; execution and cash conversion test whether India's infrastructure growth reaches
+  shareholders through a Middle East-heavy project book.
+- **2026-08-31 — North American water-infrastructure volumes, pricing and margin bridges.**
+  Fetched from Mueller Water Products' quarterly filing. Wanted on results dates while Mueller is
+  tracked; the bridge separates durable repair-and-replacement economics from tariff refunds,
+  compensation changes and weak volumes.
+- **2026-08-31 — electronic fixed-income volume and revenue conversion.**
+  Fetched from Tradeweb's monthly volumes and quarterly results. Wanted monthly for volume and
+  quarterly for revenue while Tradeweb is tracked; the pair distinguishes structural electronic
+  adoption from a temporary rates-volatility windfall.
 - **2026-08-31 — oil inventories and refined-product margins, second reach.**
   Fetched from the International Energy Agency's August Oil Market Report. Wanted monthly while
   Hormuz remains disrupted; stock depletion and product bottlenecks matter more than the crude
