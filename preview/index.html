@@ -366,7 +366,7 @@
            — and at 06:00 UK half the table would change colour for a reason that is not about
            the position. */
         .live { display: inline-block; width: 5px; height: 5px; border-radius: 50%;
-            background: var(--gain); margin-left: 5px; vertical-align: middle; }
+            background: var(--good); margin-left: 5px; vertical-align: middle; }
         .muted { color: var(--text-muted); }
 
         th[data-sort] { cursor: pointer; user-select: none; }
@@ -1904,11 +1904,14 @@
         };
         // Value first, because that is what the chart draws; the return beside it, labelled, so
         // it can never be read as the value line's own slope.
+        // Same shape as the Performance view and the instrument price chart: the return leads, in
+        // its own colour, and the level follows muted. One headline pattern across every chart
+        // means the eye lands in the same place whichever one is on screen.
         const valueHeadline = (last, hold) => {
             const r = rangeTwr(hold);
-            return money(last * RATES[display])
-                + (r == null ? '' : ` <span class="${cls(r)}">${pct(r)}</span>`
-                    + ' <span class="muted">return</span>');
+            const val = money(last * RATES[display]);
+            return r == null ? val
+                : `<span class="${cls(r)}">${pct(r)}</span> <span class="muted">${val}</span>`;
         };
 
         function portfolioValueSpec() {
