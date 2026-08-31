@@ -152,6 +152,14 @@ const listDir = (dir, kind) => {
         .sort((x, y) => y.at - x.at);
 };
 
+// YYYY-MM-DD-HHMM out of a filename, read as UTC because that is what the lanes stamp. Files
+// without one (SUMMARY.md, runs.md, scan.md) fall back to their mtime.
+const runTime = file => {
+    const m = file.match(/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/);
+    if (!m) return null;
+    return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00.000Z`;
+};
+
 function build() {
     // The document list is settled before anything is rendered: a proposal links to the sweep
     // behind it and the summary links to almost everything, so linkTo() has to know the whole
@@ -175,7 +183,11 @@ function build() {
             id: idOf(d),
             kind: d.kind,
             title: d.title || d.file.replace(/\.md$/, ''),
-            updated: fs.statSync(full).mtime.toISOString(),
+            // The time in the NAME, not the file's mtime. A name is stamped when the run starts
+            // and the mtime when report.js later writes provenance into it, so the two differ by
+            // however long the lane took — 2026-08-31-2024-MWA showed as 20:34, ten minutes adrift
+            // from its own title, on top of the hour that local rendering adds in BST.
+            updated: runTime(d.file) || fs.statSync(full).mtime.toISOString(),
             html: toHtml(fs.readFileSync(full, 'utf8'), d.dir, ids),
         };
     });

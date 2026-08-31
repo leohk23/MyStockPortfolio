@@ -3229,7 +3229,12 @@ function renderPot() {
     sel.value = doc.id;
     nav.querySelectorAll('button[data-id]').forEach(b =>
         b.setAttribute('aria-current', String(b.dataset.id === doc.id)));
+    // Shown in your own timezone, because that is how you read a clock — but the document's NAME
+    // is UTC, which is an hour behind this in BST and looks like a mismatch. Say both.
     when.textContent = doc.updated ? stamp(doc.updated) : '';
+    when.title = doc.updated
+        ? `${doc.updated.slice(0, 16).replace('T', ' ')} UTC — the name is stamped in UTC, this line in local time`
+        : '';
     body.innerHTML = doc.html;
     // A link into another pot document switches the picker instead of leaving the page.
     body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
