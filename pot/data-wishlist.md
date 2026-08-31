@@ -30,6 +30,20 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-08-31 — oil inventories and refined-product margins, second reach.**
+  Fetched from the International Energy Agency's August Oil Market Report. Wanted monthly while
+  Hormuz remains disrupted; stock depletion and product bottlenecks matter more than the crude
+  headline alone and this is the second sweep to need the set.
+- **2026-08-31 — China PMI by company size and new orders.**
+  Fetched from the National Bureau of Statistics of China. Wanted monthly; the split between
+  expanding large manufacturers and contracting smaller firms tests whether recovery is broad or
+  concentrated.
+- **2026-08-31 — aircraft leasing asset values, lease economics and airline credit.**
+  Fetched from AerCap's results. Wanted quarterly while AerCap is tracked; aircraft scarcity can
+  lift lessor returns while high fuel and rates simultaneously weaken the customers paying rent.
+- **2026-08-31 — industrial pump orders, service mix and conversion.**
+  Fetched from KSB's half-year results. Wanted on results dates while KSB is tracked; orders and
+  recurring service revenue test whether energy and water investment can outrun weak industry.
 - **2026-08-30 — US corporate profits, private domestic demand and PCE inflation.**
   Fetched from the Bureau of Economic Analysis. Wanted quarterly rather than weekly; the mix of
   slowing real GDP, strong private demand, high inflation and sharply higher profits changed the
