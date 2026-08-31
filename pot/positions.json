@@ -1,10 +1,55 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-08-31T15:00:04.208Z",
+ "generated": "2026-08-31T20:00:03.674Z",
  "cashGBP": 0,
  "contributions": [],
  "holdings": {},
  "proposals": [
+  {
+   "file": "2026-08-31-1526-TW.md",
+   "id": "2026-08-31-1526-TW",
+   "state": "open",
+   "ticker": "TW",
+   "written": "2026-08-31",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 already showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fall in total variable fees per million—so this threshold tests whether mix compression is worsening rather than merely existing ([Q2 10-Q](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
+   "break": "At the FY2026 10-K, checkable by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2's reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 results](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000132/tw-2026xq2xex991.htm)).",
+   "reviewBy": "2026-10-30",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
+  },
+  {
+   "file": "2026-08-31-1526-NVDA.md",
+   "id": "2026-08-31-1526-NVDA",
+   "state": "open",
+   "ticker": "NVDA",
+   "written": "2026-08-31",
+   "side": "BUY",
+   "limit": null,
+   "warning": "In the Q3 FY2027 filing scheduled for **17 November 2026**, trigger a full re-read if quarter-end receivable days exceed **65 days** (`accounts receivable ÷ quarterly revenue × 91`, versus 59.6 days now), or if any disclosed customer-support category—equity investments and commitments, AI-cloud agreements and third-party leases, or guarantees—grows by more than **20%** while Data Center revenue grows more slowly. This is the earliest disclosed evidence that credit and support may be pulling demand forward; it is not an automatic sale ([Q2 filing](https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm), [local result date](../../prices.json)).",
+   "break": "By the FY2027 annual filing, checkable on **1 March 2027**, put the position under §5.1 if NVIDIA reports a material customer or partner default, a called guarantee, or a credit-loss provision tied to these support arrangements. It also breaks if receivable days remain above 65 for two consecutive quarters **and** a support category continues growing faster than Data Center revenue in both. NVIDIA does not disclose how much revenue comes from customers it invests in, finances or guarantees, so the central circular-demand risk is **not fully falsifiable today**; the £75 size is the cost of that missing disclosure.",
+   "reviewBy": "2026-11-20",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
+  },
+  {
+   "file": "2026-08-31-1526-MWA.md",
+   "id": "2026-08-31-1526-MWA",
+   "state": "open",
+   "ticker": "MWA",
+   "written": "2026-08-31",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At the FY2026 result estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below its **$367m** lower bound, or free cash flow is no more than **70% of adjusted net income**. Any miss would be the earliest hard evidence that current price/cost benefits are not carrying into the full year ([Q3 results](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
+   "break": "At the Q2 FY2027 filing, checkable no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that the margin expansion was a temporary product of tariff refunds, compensation timing and pricing rather than a durable improvement in a growing business; it directly answers the case against.",
+   "reviewBy": "2026-11-06",
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false
+  },
   {
    "file": "2026-08-31-1217-RSGN.SW.md",
    "id": "2026-08-31-1217-RSGN.SW",
@@ -38,7 +83,7 @@
   {
    "file": "2026-08-30-2257-NVDA.md",
    "id": "2026-08-30-2257-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-30",
    "side": "BUY",
@@ -46,7 +91,7 @@
    "warning": "In the Q3 FY2027 filing scheduled for **17 November 2026**, trigger a full re-read if quarter-end receivable days exceed **65 days** (`accounts receivable ÷ quarterly revenue × 91`, versus 59.6 days now), or if any disclosed customer-support category—equity investments and commitments, AI-cloud agreements and third-party leases, or guarantees—grows by more than **20%** while Data Center revenue grows more slowly. This is the earliest disclosed evidence that credit and support may be pulling demand forward; it is not an automatic sale ([Q2 filing](https://investor.nvidia.com/files/doc_financials/2027/NVDA-2027-Q2-10Q-Final-including-exhibits.pdf), [local result date](../../prices.json)).",
    "break": "By the FY2027 annual filing, checkable on **1 March 2027**, the position should go under §5.1 if NVIDIA reports a material customer or partner default, a called guarantee, or a credit-loss provision tied to these support arrangements; it also breaks if receivable days remain above 65 for two consecutive quarters **and** a support category continues growing faster than Data Center revenue in both. That combination would show that reported growth is increasingly dependent on NVIDIA's balance sheet rather than customers' cash-backed demand ([Q2 filing](https://investor.nvidia.com/files/doc_financials/2027/NVDA-2027-Q2-10Q-Final-including-exhibits.pdf)). The company does not disclose how much revenue comes from customers it invests in, finances or guarantees, so the central circular-demand risk is **not fully falsifiable today**. The reduced £75 size, rather than the £125 maximum, is the cost of that missing disclosure.",
    "reviewBy": "2026-11-20",
-   "supersededBy": null,
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
@@ -68,7 +113,7 @@
   {
    "file": "2026-08-30-2146-NVDA.md",
    "id": "2026-08-30-2146-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-30",
    "side": "BUY",
@@ -76,7 +121,7 @@
    "warning": "At the Q3 FY2027 result scheduled for 17 November 2026, revenue below **$105.84bn** or GAAP gross margin below **73.5%** would miss the bottom of management's stated ranges and trigger a full re-read at the next review, not an automatic sale ([Q2 outlook](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx), [local result date](../../prices.json)).",
    "break": "At that same dated result, GAAP gross margin below **70.0%** would put Rubin economics at least 3.5 points below the guided floor while revenue is scaling and would break the high-margin platform thesis; the position should then go under §5.1.",
    "reviewBy": "2026-11-20",
-   "supersededBy": "2026-08-30-2257-NVDA",
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
@@ -98,7 +143,7 @@
   {
    "file": "2026-08-30-1330-NVDA.md",
    "id": "2026-08-30-1330-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-30",
    "side": "BUY",
@@ -106,7 +151,7 @@
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
    "reviewBy": "2026-11-20",
-   "supersededBy": "2026-08-30-2257-NVDA",
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
@@ -143,7 +188,7 @@
   {
    "file": "2026-08-29-1442-NVDA.md",
    "id": "2026-08-29-1442-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-29",
    "side": "BUY",
@@ -151,7 +196,7 @@
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
    "reviewBy": "2026-11-20",
-   "supersededBy": "2026-08-30-2257-NVDA",
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
@@ -173,7 +218,7 @@
   {
    "file": "2026-08-29-1042-NVDA.md",
    "id": "2026-08-29-1042-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-29",
    "side": "BUY",
@@ -181,14 +226,14 @@
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 3.5 percentage points below the bottom of management's 74.0% ±0.5-point range and would show that Rubin economics or customer terms are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
    "reviewBy": "2026-11-20",
-   "supersededBy": "2026-08-30-2257-NVDA",
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
   {
    "file": "2026-08-28-NVDA.md",
    "id": "2026-08-28-NVDA",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVDA",
    "written": "2026-08-28",
    "side": "BUY",
@@ -196,7 +241,7 @@
    "warning": null,
    "break": "The thesis is false if NVIDIA reports **Q3 FY2027 GAAP gross margin below 70.0%**. That would be at least 4.0 percentage points below management's 74.0% guide midpoint and would show that the economics of the Rubin ramp are deteriorating materially despite the guided revenue growth ([Q2 results](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx)).",
    "reviewBy": "2026-11-20",
-   "supersededBy": "2026-08-30-2257-NVDA",
+   "supersededBy": "2026-08-31-1526-NVDA",
    "phase": "pre-live",
    "counts": false
   },
