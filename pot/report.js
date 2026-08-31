@@ -61,6 +61,21 @@ function summarise(file) {
         seconds: started && ended ? Math.round((Date.parse(ended) - Date.parse(started)) / 1000) : null,
         usage: totals ? JSON.parse(totals[1]) : null,
         repo: /MyStockPortfolio/.test((blob.match(/"cwd":"([^"]+)"/) || [])[1] || ''),
+        // OpenAI's own quota, which the runtime reports back and nothing else records. The token
+        // counts above say what a run COST; this says how much of the allowance is left, and the
+        // two answer different questions — at five cycles a day the weekly window is the one that
+        // runs out first, and it is invisible until Codex simply refuses.
+        limits: (() => {
+            const i = blob.lastIndexOf('"rate_limits"');
+            if (i < 0) return null;
+            const tail = blob.slice(i);
+            const win = name => {
+                const m = tail.match(new RegExp('"' + name + '":\\{"used_percent":([\\d.]+),"window_minutes":(\\d+),"resets_at":(\\d+)\\}'));
+                return m ? { used: Number(m[1]), minutes: Number(m[2]), resets: Number(m[3]) } : null;
+            };
+            const primary = win('primary'), secondary = win('secondary');
+            return primary || secondary ? { primary, secondary } : null;
+        })(),
         // Which files this run wrote — so its provenance header can be stamped from the log
         // rather than from the agent's own guess at what model it is.
         wrote: [...new Set(lines.filter(l => l.payload?.item?.type === 'FileChange')
@@ -370,6 +385,29 @@ does not look exactly like a healthy one.
     })();
     // Only what the lanes actually publish. A domain covers its subdomains and nothing else:
     // finance.example.com is example.com, notexample.com is not.
+    // Quota, from the newest run that reported one. Runs arrive newest-first.
+    const quota = (runs.find(r => r.limits) || {}).limits || null;
+    // How much of the weekly allowance one full cycle costs. Measured from the DEEP DIVE runs,
+    // one per cycle, rather than guessed: three cycles on 31 Aug took the weekly window from
+    // 1% to 15%, which is the number that decides whether a cadence is affordable.
+    const weeklyBurn = (() => {
+        // Only runs inside the CURRENT weekly window. Averaging across a reset compares a
+        // fresh 4% against last week's 90% and yields a negative burn, which read as "no data".
+        const now = quota?.secondary?.resets;
+        const seen = runs.filter(r => r.limits?.secondary && r.brief === "deepdive"
+                && r.limits.secondary.resets === now)
+            .sort((a, b) => String(a.started).localeCompare(String(b.started)));
+        if (seen.length < 2) return null;
+        const first = seen[0].limits.secondary.used, last = seen[seen.length - 1].limits.secondary.used;
+        const span = seen.length - 1;
+        const per = (last - first) / span;
+        return per > 0 ? { per, cycles: Math.floor((100 - last) / per) } : null;
+    })();
+    const resetsIn = ts => {
+        const h = (ts * 1000 - Date.now()) / 3.6e6;
+        return h < 0 ? "now" : h < 1 ? Math.round(h * 60) + " min" : h.toFixed(1) + " h";
+    };
+
     const propWhen = f => {
         try { return when(fs.statSync("pot/proposals/" + f).mtime.toISOString()); } catch { return "–"; }
     };
@@ -482,6 +520,15 @@ ${sig?.blocked?.length ? `**Blocked:** ${sig.blocked.map(b => `${b.rule} (${b.wh
 ${runs.length} agent runs, ${mmss(totalSecs)} wall, ${fmt(totalFresh)} fresh input tokens,
 **£0 cash** (subscription, not metered). Full breakdown: **[runs.md](runs.md)**.
 
+${quota ? [
+    "| OpenAI allowance | used | window | resets in |",
+    "|---|---:|---:|---:|",
+    quota.primary ? `| short | ${quota.primary.used}% | ${Math.round(quota.primary.minutes / 60)}h | ${resetsIn(quota.primary.resets)} |` : "",
+    quota.secondary ? `| weekly | ${quota.secondary.used}% | ${Math.round(quota.secondary.minutes / 1440)}d | ${resetsIn(quota.secondary.resets)} |` : "",
+].filter(Boolean).join(String.fromCharCode(10)) : "_No quota reported yet._"}
+
+${weeklyBurn ? `A full cycle costs about **${weeklyBurn.per.toFixed(1)}%** of the weekly allowance, so roughly **${weeklyBurn.cycles} more** fit before it resets.` : ""}
+
 ## Everything else
 
 | | |
@@ -517,6 +564,8 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
     console.log(`wrote ${dated}, pot/SUMMARY.md, pot/runs.md and ${runs.length} transcript(s)`);
     if (stamped) console.log(`  stamped provenance onto ${stamped} file(s) from the session logs`);
     console.log(`  ${runs.length} agent runs, ${mmss(totalSecs)} wall, ${fmt(totalTokens)} tokens, £0`);
+    if (quota?.secondary) console.log(`  OpenAI allowance: ${quota.primary?.used ?? "?"}% of the short window, `
+        + `${quota.secondary.used}% of the weekly` + (weeklyBurn ? `, about ${weeklyBurn.cycles} cycles left in it` : ""));
     if (openProposals.length) console.log(`  ${openProposals.length} proposal(s) awaiting a decision`);
     if (violations.length) {
         console.log(`  ${violations.length} file(s) cited a never-cite source:`);

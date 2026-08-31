@@ -59,12 +59,7 @@ try {
     if (git diff --cached --name-only) {
         git commit --quiet -m "scan: $started"
         Note 'scan committed'
-        if (-not $NoPush) {
-            git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase failed - commit stays local' }
-            else { git push --quiet origin main 2>&1 | Out-Null; Note 'scan pushed' }
-        }
+        Publish 'scan'
     } else { Note 'scan found nothing new to commit' }
 
     # Each lane is its own process so a failure stops the cycle rather than poisoning the next.
@@ -74,6 +69,34 @@ try {
     # not being 'codex' or 'claude'. The 30 Aug 06:00 run failed this way and still reported
     # success, because a parameter-binding error leaves $LASTEXITCODE untouched from the previous
     # command. Hence the try/catch as well: exit codes alone cannot see this class of failure.
+    # Publish what is committed, retrying past the CI race.
+    #
+    # A single fetch-rebase-push looked reliable and was not: the 31 Aug 21:00 cycle committed
+    # its bundle, lost one rebase, and stopped - so the two proposals it had just written sat on
+    # this machine while the site served a build from five hours earlier. Nothing reported a
+    # problem, because the cycle had genuinely finished.
+    #
+    # --autostash handles the dirty tree the mid-cycle fetch leaves. The retry handles origin
+    # moving between the fetch and the push, which is the common case at five cycles a day.
+    function Publish($what) {
+        if ($NoPush) { Note "$what committed locally (-Push not set)"; return }
+        foreach ($try in 1..3) {
+            git fetch --quiet origin main 2>&1 | Out-Null
+            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                git rebase --abort 2>&1 | Out-Null
+                Note "$what rebase failed (attempt $try)"
+                Start-Sleep -Seconds 5
+                continue
+            }
+            git push --quiet origin main 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) { Note "$what pushed"; return }
+            Note "$what push rejected (attempt $try) - refetching"
+            Start-Sleep -Seconds 5
+        }
+        Note "$what STILL LOCAL after 3 attempts - it will go with the next cycle"
+    }
+
     function Invoke-Lane($brief) {
         Note "--- $brief"
         $laneArgs = @{ Brief = $brief; Repo = $Repo }
@@ -124,12 +147,7 @@ try {
     if (git diff --cached --name-only) {
         git commit --quiet -m "scan: $started, covering this cycle's new candidates"
         Note 'scan committed'
-        if (-not $NoPush) {
-            git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'scan rebase failed - commit stays local' }
-            else { git push --quiet origin main 2>&1 | Out-Null; Note 'scan pushed' }
-        }
+        Publish 'scan'
     }
 
     # ---- 6. Deep dive, the only lane that may produce an order.
@@ -157,12 +175,7 @@ try {
     if (git diff --cached --name-only) {
         git commit --quiet -m "pot: provenance stamps and the app bundle for $started"
         Note 'stamps and bundle committed'
-        if (-not $NoPush) {
-            git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { git rebase --abort 2>&1 | Out-Null; Note 'stamp rebase failed - commit stays local' }
-            else { git push --quiet origin main 2>&1 | Out-Null; Note 'stamps and bundle pushed' }
-        }
+        Publish 'stamps and bundle'
     }
     Note 'cycle complete'
 }
