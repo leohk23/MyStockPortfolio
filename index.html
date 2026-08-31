@@ -630,7 +630,7 @@
         <table id="portfolio" class="pinned">
             <thead>
                 <tr>
-                    <th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="name">Position</th>
+                    <th data-sort="name">Position</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th>
                     <th data-sort="price">Price</th>
                     <th data-sort="1d" title="Change since the previous session close">1D</th>
                     <th data-sort="7d">7D</th>
@@ -682,7 +682,7 @@
     <div class="table-responsive" id="watch" hidden>
         <table id="watchlist" class="pinned">
             <thead><tr>
-                <th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="price">Price</th>
+                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="price">Price</th>
                 <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
                 <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
                 <th data-sort="pe">P/E</th>
@@ -2790,9 +2790,9 @@
                 tr.dataset.yahoo = r.primaryYahoo;
                 tr.dataset.group = r.name;
                 tr.innerHTML = `
-                    ${liveCell(r.legs.map(l => l.quote))}
                     <td>${r.name}${multi ? ` <span class="muted">(${r.legs.length})</span>` : ''}
                         ${expandable ? `<button class="chev" type="button" aria-label="Expand ${r.name} details" aria-expanded="false">▸</button>` : ''}</td>
+                    ${liveCell(r.legs.map(l => l.quote))}
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
                     <td>${tradeCell(r.lastTrade)}</td>
@@ -2827,8 +2827,8 @@
                     el.dataset.yahoo = leg.yahoo;
                     const gain = leg.value - leg.cost;
                     el.innerHTML = `
-                        ${liveCell([leg.quote])}
                         <td>${leg.yahoo} <span class="muted">${priv ? HIDDEN : leg.qty + ' sh'}</span></td>
+                        ${liveCell([leg.quote])}
                         <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
                         <td>${tradeCell(leg.lastTrade)}</td>
@@ -3006,8 +3006,8 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
-                    ${liveCell([w.quote])}
                     <td>${w.name} <span class="muted">${w.yahoo}</span></td>
+                    ${liveCell([w.quote])}
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
                     <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
