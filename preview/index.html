@@ -712,7 +712,7 @@
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
-                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet isn't flattered by investment gains. A manual meta.json figure (FFO, adjusted EPS) overrides it; falls back to the normal PE where Yahoo has no normalized figure.">Special PE</th>
+                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet is not flattered by investment gains. Same basis as P/E (recurring) in the deep panel. A manual meta.json figure (FFO, adjusted EPS) would override it and is what the column was originally named for, but no holding uses one today; falls back to the plain P/E where Yahoo has no normalized figure.">Recurring PE</th>
                     <th data-sort="peLow" title="The cheapest the market has priced this stock over the LAST FIVE YEARS: each weekly close divided by the trailing-twelve-month earnings that were actually public on that date. Point-in-time — never earnings the market had not seen. Five years rather than all time because a floor from 2013 is precise and unusable; 3y, 10y and all-time are kept in the deep panel as reference. The vs 5y column beside it says where today sits in that same five years — the number that decides anything.">PE Low (5y)</th>
                     <th data-sort="pePctile" title="Where today’s multiple sits inside that same five-year distribution, as a percentile: 0 = cheaper than every week of the last five years, 100 = dearer than all of them. Every week in the window votes, so one panicked week cannot set it the way it can set the low next door. Green at 10 or below — the decile the valuation signal fires on.">vs 5y</th>
                     <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
@@ -1108,6 +1108,18 @@
                 // percentile is every week in the window. §6.1 fires in the cheapest 10%.
                 ['P/E low (5y)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
                 ['vs own 5y', pctileRow(leg.quote)],
+                // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
+                // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
+                ['Cheapest by horizon', horizonRow(leg.quote)],
+                ['Low date', leg.lowDate || '–'],
+                ['Implied price', px(leg.implied)],
+                ['vs implied', leg.vsLow == null ? '–'
+                    : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
+
+                // The recurring basis repeated in full, and kept BELOW the reported block
+                // rather than interleaved with it. "Cheapest by horizon" is a reported-basis
+                // figure and sat directly under the recurring low, which read as though it
+                // belonged to it.
                 ['P/E low (recurring)', (() => {
                     const r = q.peLowRecurring;
                     if (r == null) return '<span class="muted">–</span>';
@@ -1119,20 +1131,30 @@
                         ? ` <span class="${gap > 0 ? 'loss' : 'gain'}" title="The reported floor was struck on earnings that included one-offs, so it is not a level these earnings can revisit. Yahoo's normalisation, applied with hindsight — the reported floor above stays the filed, point-in-time one.">${gap > 0 ? '+' : ''}${(gap * 100).toFixed(0)}% vs reported</span>`
                         : '';
                     return num2(r) + '×' + note;
+                })(), ' class="valuation-group-start"'],
+                ['Low date (recurring)', q.lowDateRecurring || '<span class="muted">–</span>'],
+                ['Implied price (recurring)', q.peLowRecurring != null && q.normEps > 0
+                    ? px(q.peLowRecurring * q.normEps)
+                    : '<span class="muted">–</span>'],
+                ['vs implied (recurring)', (() => {
+                    // Today's recurring multiple against its own recurring floor. Both halves
+                    // on one basis, which the reported pair above cannot answer for a name
+                    // whose floor was struck on one-off earnings.
+                    if (!(q.peLowRecurring > 0) || !(q.normEps > 0) || !(q.price > 0)) {
+                        return '<span class="muted">–</span>';
+                    }
+                    const v = q.price / (q.peLowRecurring * q.normEps) - 1;
+                    return `<span class="${v >= 0 ? 'loss' : 'gain'}">${pct(v)}</span>`;
                 })()],
-                // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
-                // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
-                ['Cheapest by horizon', horizonRow(leg.quote)],
+
+                // What the capital earns, kept below the multiples: a different question from
+                // "is it cheap", and it was previously splitting the reported trough in half.
                 ['ROIC', capRow('roic', v => plain(v), cap?.year ? ' <span class="muted"' + (cap.taxFrom === 'median' ? ' title="This year reported a negative or absurd effective tax rate — a tax benefit rather than a charge — so NOPAT uses the company’s own median rate across every year on file. Its own numbers, just not one freak year’s."' : '') + '>FY' + String(cap.year).slice(0, 4) + (cap.taxFrom === 'median' ? ' · median tax' : '') + '</span>' : ''),
-                    ' class="valuation-group-start"'],
+                    ' class="valuation-group-start"', ' class="valuation-group-start"'],
                 ['Gross profit / assets', capRow('gpa', v => plain(v))],
                 ['Asset turnover', capRow('turnover', v => num2(v) + '×')],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
                 ['PEG (TTM)', '<span id="deep-peg" class="muted">…</span>'],
-                ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
-                ['Implied price', px(leg.implied)],
-                ['vs implied', leg.vsLow == null ? '–'
-                    : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
             ].filter(Boolean);
             document.getElementById('deep-val').innerHTML = rows
                 .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
@@ -3044,7 +3066,7 @@
             // shifts every total the moment a column moves. It already happened once: adding the
             // six valuation columns pushed every total six cells left.
             //
-            // Anything left blank is blank on purpose. Price, Avg cost, PE, Special PE, PE Low,
+            // Anything left blank is blank on purpose. Price, Avg cost, PE, Recurring PE, PE Low,
             // Low date, Implied and vs Low are per-instrument figures with no meaningful portfolio
             // aggregate (a basket has no PE — see AGENTS.md invariant 9); Last trade and Since
             // don't sum either.
