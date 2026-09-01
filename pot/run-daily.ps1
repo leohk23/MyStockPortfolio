@@ -61,15 +61,61 @@ if (Test-Path $lock) {
 # this machine while the site served a build from five hours earlier. Nothing reported a
 # problem, because the cycle had genuinely finished.
 #
-# --autostash handles the dirty tree the mid-cycle fetch leaves. The retry handles origin
-# moving between the fetch and the push, which is the common case at five cycles a day.
+# --autostash stays as a net for SMALL incidental dirt (pot/positions.json, which the selftests
+# rewrite). It must not be trusted with the four files below. The retry handles origin moving
+# between the fetch and the push, which is the common case at several cycles a day.
+
+# CI owns these four: it rewrites every one of them WHOLESALE every fifteen minutes and pushes.
+# The cycle rewrites them again mid-run (see the fetch further down) purely so the Deep dive can
+# fact-check the names the Sweep just found. That local copy is SCRATCH — never committed, and it
+# must never be carried across a rebase.
+#
+# --autostash used to try, and could not. It shelved them, rebased cleanly, then failed to put
+# them back: a wholesale local rewrite against CI's wholesale rewrite overlaps on essentially
+# every line, so the pop conflicted and git left BOTH versions jammed into the working tree —
+# 558 conflict markers in prices.json on 1 Sep, and none of the four still parsed as JSON.
+# The rebase had SUCCEEDED, so the `git rebase --abort` below was a no-op, the wreckage stayed,
+# and each retry shelved another copy. Three stashes, a broken tree, and a cycle reporting that
+# it had merely "failed to rebase".
+#
+# So carry the scratch by hand: copy it out, let git have CI's version, copy it back verbatim.
+# No merge is attempted, so there is nothing to conflict.
+$ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json')
+
+function Save-Scratch {
+    $saved = @{}
+    foreach ($f in $ciOwned) {
+        if (git status --porcelain -- $f) {
+            $tmp = Join-Path $env:TEMP "pot-scratch-$f"
+            Copy-Item $f $tmp -Force
+            $saved[$f] = $tmp
+        }
+    }
+    if ($saved.Count) { git checkout --quiet -- @($saved.Keys) 2>&1 | Out-Null }
+    $saved
+}
+
+function Restore-Scratch($saved) {
+    if (-not $saved) { return }
+    foreach ($kv in $saved.GetEnumerator()) {
+        Copy-Item $kv.Value $kv.Key -Force
+        Remove-Item $kv.Value -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Publish($what) {
     if ($NoPush) { Note "$what committed locally (-Push not set)"; return }
     foreach ($try in 1..3) {
+        $scratch = Save-Scratch
         git fetch --quiet origin main 2>&1 | Out-Null
         git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            git rebase --abort 2>&1 | Out-Null
+        $rebaseOk = $LASTEXITCODE -eq 0
+        Restore-Scratch $scratch
+        if (-not $rebaseOk) {
+            # Abort only a rebase that is actually running. Calling it blindly is what made the
+            # 1 Sep failures unreadable: the rebase had finished, so this reported nothing and
+            # cleaned nothing while the log said "rebase failed".
+            if (Test-Path (Join-Path $Repo '.git/rebase-merge')) { git rebase --abort 2>&1 | Out-Null }
             Note "$what rebase failed (attempt $try)"
             Start-Sleep -Seconds 5
             continue
@@ -80,6 +126,19 @@ function Publish($what) {
         Start-Sleep -Seconds 5
     }
     Note "$what STILL LOCAL after 3 attempts - it will go with the next cycle"
+}
+
+# A cycle must never walk away from a half-merged working tree. Both 1 Sep failures left one, and
+# both sat there unnoticed until something unrelated tripped over it hours later — a corrupt
+# prices.json is invisible until someone parses it. Checked after every Publish, because silence
+# is exactly what a healthy Publish also looks like.
+function Assert-Merged($what) {
+    if (git ls-files --unmerged) {
+        Note "$what LEFT UNMERGED PATHS - the working tree is broken:"
+        foreach ($f in (git diff --name-only --diff-filter=U)) { Note "    $f" }
+        Note '  fix with: git checkout HEAD -- <files>, then rerun. Stopping rather than building on it.'
+        exit 1
+    }
 }
 
 function Invoke-Lane($brief) {
@@ -129,6 +188,8 @@ try {
         git commit --quiet -m "scan: $started"
         Note 'scan committed'
         Publish 'scan'
+
+        Assert-Merged 'scan'
     } else { Note 'scan found nothing new to commit' }
 
     # ---- 2. Review, and it runs BEFORE the Sweep on purpose (pot-design §2). An agent that has
@@ -162,6 +223,8 @@ try {
         git commit --quiet -m "scan: $started, covering this cycle's new candidates"
         Note 'scan committed'
         Publish 'scan'
+
+        Assert-Merged 'scan'
     }
 
     # ---- 6. Deep dive, the only lane that may produce an order.
@@ -190,6 +253,8 @@ try {
         git commit --quiet -m "pot: provenance stamps and the app bundle for $started"
         Note 'stamps and bundle committed'
         Publish 'stamps and bundle'
+
+        Assert-Merged 'stamps and bundle'
     }
     Note 'cycle complete'
     $completed = $true
