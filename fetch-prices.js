@@ -914,7 +914,7 @@ const HISTORY_FROM = {
 // Six years is enough to show a direction without the sparkline becoming a chart.
 const CAPITAL_YEARS = 6;
 
-function capitalMetrics(year, cap) {
+function capitalMetrics(year, cap, fallbackTax = null) {
     if (!cap || !(cap.assets > 0)) return null;
     const out = { year: cap.end || null, assets: cap.assets };
     // Gross profit over TOTAL ASSETS — the measure the research actually supports, and the one
@@ -926,10 +926,20 @@ function capitalMetrics(year, cap) {
     // EDGAR does not tag one, so banks and insurers come back without a ROIC rather than with
     // a fabricated one.
     const invested = cap.liabCurrent != null ? cap.assets - cap.liabCurrent : null;
-    const taxRate = cap.tax != null && cap.pretax > 0 ? cap.tax / cap.pretax : null;
-    if (invested > 0 && year?.opinc != null && taxRate != null && taxRate >= 0 && taxRate < 1) {
+    // A negative effective rate is real, not bad data: AMD booked a net tax BENEFIT in seven of
+    // its last fifteen years from deferred-tax releases, and its 2025 rate is -2.5%. Rejecting
+    // those left AMD with no ROIC at all despite every input being present. Using them instead
+    // would be worse — a one-off credit would push NOPAT above operating profit and flatter the
+    // return. So the year uses its own rate when that rate is sane, and the company's own median
+    // sane rate when it is not. Still the filer's own numbers; just not one freak year's.
+    const own = cap.tax != null && cap.pretax > 0 ? cap.tax / cap.pretax : null;
+    const sane = r => r != null && r >= 0 && r < 1;
+    const taxRate = sane(own) ? own : (sane(fallbackTax) ? fallbackTax : null);
+    if (invested > 0 && year?.opinc != null && taxRate != null) {
         out.roic = (year.opinc * (1 - taxRate)) / invested;
         out.taxRate = taxRate;
+        // Say when the rate is not the year's own, so a reader can discount it.
+        if (!sane(own)) out.taxFrom = 'median';
     }
     return out.roic != null || out.gpa != null || out.turnover != null ? out : null;
 }
@@ -2188,6 +2198,12 @@ async function main() {
     let capitalFacts = {};
     try { capitalFacts = JSON.parse(fs.readFileSync('capital.json', 'utf8')).capital || {}; }
     catch { console.log('note no capital.json — no ROIC, gross profitability or turnover'); }
+    // Yahoo covers the filers EDGAR cannot see — every non-US listing, and unsponsored ADRs
+    // like BYDDY that are absent from the SEC ticker map entirely. EDGAR wins where both have
+    // a name: it is the filing rather than a vendor reading of it.
+    try { const y = JSON.parse(fs.readFileSync('capital-yahoo.json', 'utf8')).capital || {};
+        for (const [t, years] of Object.entries(y)) if (!capitalFacts[t]) capitalFacts[t] = years; }
+    catch { /* optional: EDGAR-only coverage is still correct, just narrower */ }
     let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
@@ -2228,13 +2244,23 @@ async function main() {
             // Every year the two share, not only the newest. A single year is a snapshot, and
             // direction usually says more than level: a ROIC falling 30% -> 20% is a worse sign
             // than one climbing 12% -> 15%, and neither is visible from one number.
+            // Across ALL years on file, not just the six shown: the more years, the more
+            // representative the fallback, and a median is cheap.
+            const rates = Object.values(capYears)
+                .map(v => (v.tax != null && v.pretax > 0) ? v.tax / v.pretax : null)
+                .filter(r => r != null && r >= 0 && r < 1).sort((a, b) => a - b);
+            const medianTax = rates.length ? rates[Math.floor(rates.length / 2)] : null;
             const series = [];
             for (const y of ey) {
                 const want = Date.parse(y.date + 'T00:00:00Z');
                 const end = ends.filter(d => Math.abs(Date.parse(d + 'T00:00:00Z') - want) <= 14 * DAY * 1000)
                     .sort((a, b) => Math.abs(Date.parse(a) - want) - Math.abs(Date.parse(b) - want))[0];
                 if (!end) continue;
-                const m = capitalMetrics(y, { ...capYears[end], end });
+                const cap = capYears[end];
+                // A Yahoo row brings its own rev and opinc. Using them keeps both halves of
+                // every ratio in one currency and one accounting basis — BYD files in CNY.
+                const m = capitalMetrics({ rev: cap.rev ?? y.rev, opinc: cap.opinc ?? y.opinc },
+                    { ...cap, end }, medianTax);
                 if (m) series.push(m);
                 if (series.length >= CAPITAL_YEARS) break;
             }

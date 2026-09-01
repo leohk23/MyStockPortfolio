@@ -1111,7 +1111,7 @@
                 // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
                 // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
                 ['Cheapest by horizon', horizonRow(leg.quote)],
-                ['ROIC', capRow('roic', v => plain(v), cap?.year ? ' <span class="muted">FY' + String(cap.year).slice(0, 4) + '</span>' : ''),
+                ['ROIC', capRow('roic', v => plain(v), cap?.year ? ' <span class="muted"' + (cap.taxFrom === 'median' ? ' title="This year reported a negative or absurd effective tax rate — a tax benefit rather than a charge — so NOPAT uses the company’s own median rate across every year on file. Its own numbers, just not one freak year’s."' : '') + '>FY' + String(cap.year).slice(0, 4) + (cap.taxFrom === 'median' ? ' · median tax' : '') + '</span>' : ''),
                     ' class="valuation-group-start"'],
                 ['Gross profit / assets', capRow('gpa', v => plain(v))],
                 ['Asset turnover', capRow('turnover', v => num2(v) + '×')],
