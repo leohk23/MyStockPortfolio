@@ -353,8 +353,6 @@
         /* The print date is the point of the column, not a footnote — a CPI row is weeks old and
            the row should say so without being hovered. */
         #infl-table .infl-asof { color: var(--text-muted); }
-        #infl-table tr.infl-head td { font-size: 11px; text-transform: uppercase;
-            letter-spacing: .04em; color: var(--text-muted); padding-top: 8px; }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -804,9 +802,10 @@
                  price of the same question, and reading them as one number would be wrong. -->
             <table id="infl-table">
                 <thead><tr>
-                    <th>Inflation</th><th>Rate</th>
-                    <th title="For a monthly print, the change from the previous print. For a daily market series, the change over roughly the past month.">Change</th>
-                    <th title="The period the figure describes — a CPI print is typically 4-7 weeks behind the date you are reading it.">As of</th>
+                    <th>Inflation</th>
+                    <th title="The rise over the SAME MONTH A YEAR EARLIER — the 12-month rate quoted in the release, not a monthly one.">12-month</th>
+                    <th title="This month's 12-month rate against last month's. A change in the ANNUAL rate between two prints, in percentage points — not the rate of price rises over the month.">vs prev print</th>
+                    <th title="The month the figure describes — a print is typically 4-7 weeks behind the date you are reading it.">As of</th>
                 </tr></thead>
                 <tbody></tbody>
             </table>
@@ -3420,18 +3419,14 @@ function renderPot() {
                 + 'can sit a few bp off the standing target when a meeting falls inside it.';
         }
 
-        // Inflation, under the path because it is the input to it. Two groups, never merged into
-        // one number: a CPI print describes a month that ended weeks ago and the market has long
-        // since traded it, while a breakeven is today's price of the same question. The "As of"
-        // column carries the period each row describes, so the staleness is on the face of the
-        // table rather than in a footnote.
+        // Inflation, under the path because it is the input to it. Two different things sit in
+        // one row and the headers say which is which: the rate is year-over-year, the change
+        // beside it is that annual rate against the previous month's print — percentage points
+        // between two releases, not a monthly rate of price rises. The "As of" column carries the
+        // month each row describes, so its staleness is on the face of the table.
         //
         // Colour matches the fed panel above: rising inflation is red. Same seat, same convention
         // — it is the hawkish direction, and a green "inflation went up" would read backwards.
-        const INFL_GROUPS = {
-            Realized: 'Realized — monthly prints, already traded',
-            Expected: 'Expected — priced daily by the TIPS market',
-        };
         function renderInflation() {
             const rows = STATE.inflation || [];
             const tbody = document.querySelector('#infl-table tbody');
@@ -3441,30 +3436,28 @@ function renderPot() {
                 note.textContent = 'No inflation series in prices.json — run npm run fetch.';
                 return;
             }
-            const day = iso => { const d = new Date(`${iso}T00:00:00Z`);
-                return `${d.getUTCDate()} ${QMON[d.getUTCMonth()]}`; };
-            const out = [];
-            for (const [group, label] of Object.entries(INFL_GROUPS)) {
-                const inGroup = rows.filter(r => r.group === group);
-                if (!inGroup.length) continue;
-                out.push(`<tr class="infl-head"><td colspan="4">${label}</td></tr>`);
-                for (const r of inGroup) {
-                    const chg = r.chg == null ? '–'
-                        : `${r.chg > 0 ? '+' : r.chg < 0 ? '−' : ''}${Math.abs(r.chg).toFixed(2)}`;
-                    out.push(`<tr title="${escapeHTML(r.note || '')}">`
-                        + `<td>${escapeHTML(r.name)}</td>`
-                        + `<td class="infl-rate">${r.value.toFixed(2)}%</td>`
-                        + `<td class="${moveCls(r.chg == null ? null : -r.chg, 0.005)}">${chg}</td>`
-                        + `<td class="infl-asof">${escapeHTML(r.monthly ? qShort(r.asOf) : day(r.asOf))}</td>`
-                        + '</tr>');
-                }
-            }
-            tbody.innerHTML = out.join('');
+            tbody.innerHTML = rows.map(r => {
+                // Percentage POINTS, so no % sign: it is the gap between two annual rates, and
+                // writing "-0.17%" beside a "3.36%" invites reading it as a rate of its own.
+                const chg = r.chg == null ? '–'
+                    : `${r.chg > 0 ? '+' : r.chg < 0 ? '−' : ''}${Math.abs(r.chg).toFixed(2)}`;
+                const from = r.prev == null ? ''
+                    : ` Previous print ${r.prev.toFixed(2)}% for ${qShort(r.prevAsOf)}.`;
+                return `<tr title="${escapeHTML(`${r.note || ''}${from}`)}">`
+                    + `<td>${escapeHTML(r.name)}</td>`
+                    + `<td class="infl-rate">${r.value.toFixed(2)}%</td>`
+                    + `<td class="${moveCls(r.chg == null ? null : -r.chg, 0.005)}">${chg}</td>`
+                    + `<td class="infl-asof">${escapeHTML(qShort(r.asOf))}</td>`
+                    + '</tr>';
+            }).join('');
             note.textContent = 'From FRED (fredgraph.csv, no key) — the only series here not from '
-                + 'Yahoo, because Yahoo carries no CPI. Realized rates are 12-month changes and are '
-                + 'weeks behind by the time you read them, which is why the market-implied pair sits '
-                + "under them. The Fed's target is 2% on core PCE — not on CPI, and not on the "
-                + 'headline. Rising is red, the hawkish direction, same as the strip above.';
+                + 'Yahoo, because Yahoo carries no CPI. The rate is the rise over the same month a '
+                + 'year earlier; the column beside it is that annual rate against the previous '
+                + "month's print, in percentage points, so a negative number means inflation is "
+                + "cooling rather than prices falling. The Fed's target is 2% on core PCE — not on "
+                + 'CPI, and not on the headline. Rising is red, the hawkish direction, same as the '
+                + 'strip above. Every row is weeks behind by the time you read it; the fed path '
+                + 'above is priced live and has already traded these numbers.';
         }
 
         const MACRO_GROUPS = ['Equity', 'Rates', 'Currency', 'Commodity'];

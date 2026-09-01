@@ -1649,30 +1649,30 @@ function fedSummary(path) {
 //
 // This is the one place the file leaves Yahoo, and it is a considered exception: Yahoo carries no
 // CPI series at all, and the keyless alternatives do not survive a 15-minute cron (BLS v1 caps at
-// 25 calls/day per IP, v2 needs a key). Five requests per run against a static CSV, next to the
+// 25 calls/day per IP, v2 needs a key). Three requests per run against a static CSV, next to the
 // ~200 Yahoo calls already here.
 //
-// Realized AND expected, deliberately. A CPI print is 4-7 weeks stale by the time it is read and
-// the market has already traded it; the breakevens are today's price of the same question. Shown
-// together, with the print date on every row, the staleness is legible instead of hidden — which
-// is the only honest way to put a lagging series next to a live rate curve.
+// Every row carries the month it describes. A print is 4-7 weeks behind the day you read it and
+// the market has already traded it, so putting a lagging series beside a live rate curve is only
+// honest if the lag is on the face of the table rather than in a footnote.
 const FRED = 'https://fred.stlouisfed.org/graph/fredgraph.csv';
+// Every series here is a monthly print carrying a YEAR-OVER-YEAR rate: `transformation=pc1`
+// returns the change on the same month a year earlier, which is the figure BLS and the BEA put
+// in the release. The change between consecutive prints is therefore a change in that ANNUAL
+// rate, not a monthly inflation rate — the page labels it as such, because conflating the two is
+// the classic way to misread this table.
 const INFLATION = [
-    { id: 'CPIAUCNS', pc1: true, group: 'Realized', name: 'CPI headline',
+    { id: 'CPIAUCNS', name: 'CPI headline',
       note: 'All items, NSA — the 12-month rate BLS prints in the release.' },
-    { id: 'CPILFENS', pc1: true, group: 'Realized', name: 'CPI core',
+    { id: 'CPILFENS', name: 'CPI core',
       note: 'Less food and energy — the trend the Fed watches through the noise.' },
-    { id: 'PCEPILFE', pc1: true, group: 'Realized', name: 'PCE core',
+    { id: 'PCEPILFE', name: 'PCE core',
       note: "The Fed's own target measure. 2% is the target, not 2% CPI." },
-    { id: 'T10YIE', pc1: false, group: 'Expected', name: '10y breakeven',
-      note: 'Nominal minus TIPS: the average CPI the market is priced for over 10 years.' },
-    { id: 'T5YIFR', pc1: false, group: 'Expected', name: '5y5y forward',
-      note: 'Inflation priced for the 5 years starting 5 years out — expectations with the current cycle stripped out.' },
 ];
 
 // FRED leads with a header row and writes a missing observation as ".". Oldest first.
-async function fetchFred(id, pc1, from = '2023-01-01') {
-    const url = `${FRED}?id=${id}${pc1 ? '&transformation=pc1' : ''}&cosd=${from}`;
+async function fetchFred(id, from = '2023-01-01') {
+    const url = `${FRED}?id=${id}&transformation=pc1&cosd=${from}`;
     const res = await fetch(url, { headers: { 'User-Agent': UA } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const out = [];
@@ -1686,31 +1686,18 @@ async function fetchFred(id, pc1, from = '2023-01-01') {
     return out;
 }
 
-// Latest reading plus the move onto it. Pure, so it is selftested without a network call.
+// Latest print plus the move onto it. Pure, so it is selftested without a network call.
 //
-// The baseline differs by series on purpose. A monthly print is read against the PREVIOUS PRINT —
-// that is the news, "3.4 from 3.2". A daily breakeven read against yesterday is noise, so it is
-// read against roughly a month back, which also matches the one-month change on the fed strip
-// beside it.
-//
-// ponytail: "a month back" is calendar arithmetic, so Mar 31 lands on Mar 3 rather than Feb 28.
-// It shifts the baseline by days on 4 dates a year and never by more than a couple of bp on a
-// breakeven. Walk the array by count if that ever matters.
+// `value` is the year-over-year rate for the month named in `asOf`. `chg` is that rate against
+// the PREVIOUS PRINT — "3.36 from 3.53", the way a release is read — so it is a month-over-month
+// change in an annual rate, and never a monthly inflation rate itself.
 function inflationPoint(meta, obs) {
     if (!obs || !obs.length) return null;
-    const last = obs[obs.length - 1];
-    let base;
-    if (meta.pc1) base = obs[obs.length - 2];
-    else {
-        const cut = new Date(`${last.date}T00:00:00Z`);
-        cut.setUTCMonth(cut.getUTCMonth() - 1);
-        const iso = cut.toISOString().slice(0, 10);
-        for (let i = obs.length - 1; i >= 0; i--) if (obs[i].date <= iso) { base = obs[i]; break; }
-    }
+    const last = obs[obs.length - 1], base = obs[obs.length - 2];
     const r2 = v => Math.round(v * 100) / 100;
     return {
-        id: meta.id, name: meta.name, group: meta.group, note: meta.note,
-        monthly: !!meta.pc1, asOf: last.date, value: r2(last.value),
+        id: meta.id, name: meta.name, note: meta.note,
+        asOf: last.date, value: r2(last.value),
         prev: base ? r2(base.value) : null,
         prevAsOf: base ? base.date : null,
         chg: base ? r2(last.value - base.value) : null,
@@ -2089,7 +2076,7 @@ async function main() {
     const inflation = [];
     for (const meta of INFLATION) {
         try {
-            const pt = inflationPoint(meta, await fetchFred(meta.id, meta.pc1));
+            const pt = inflationPoint(meta, await fetchFred(meta.id));
             if (pt) inflation.push(pt);
         } catch (e) {
             console.error(`skip inflation ${meta.id}: ${e.message}`);
@@ -2351,9 +2338,9 @@ async function main() {
         // futures FedWatch is computed on. Its own key, not a macro row: a macro row is one level
         // with % moves on it, this is a curve.
         fed: { path: fedPath, ...fed },
-        // The other half of the rate question: what inflation has actually done (monthly, stale
-        // by weeks, from FRED) and what it is priced to do (daily, from the TIPS market). Its own
-        // key beside `fed` — the page reads the two together.
+        // The other half of the rate question: what inflation has actually done, as monthly
+        // year-over-year prints from FRED. Its own key beside `fed` — the page reads the two
+        // together, the priced path against the readings the Fed is reacting to.
         inflation,
         // A monitor, kept beside the quotes rather than inside them: 47 country funds nobody
         // intends to own individually would swamp every table that walks the holdings.
@@ -2397,30 +2384,24 @@ function selftest() {
     assert.strictEqual(fedSummary([{ rate: 4 }]), null);   // one point is not a path
     assert.strictEqual(fedSummary([]), null);
 
-    // inflationPoint: a monthly series reads against the previous PRINT — the news is "3.36 from
-    // 3.21", so the baseline is the row before, whatever its date.
-    const cpiObs = [{ date: '2026-05-01', value: 3.1 }, { date: '2026-06-01', value: 3.21 },
-                    { date: '2026-07-01', value: 3.365 }];
-    const cpiPt = inflationPoint({ id: 'CPIAUCNS', pc1: true, name: 'CPI headline' }, cpiObs);
+    // inflationPoint: the baseline is the PREVIOUS PRINT, so `chg` is the move in the annual rate
+    // between two releases — July's 3.36% against June's 3.53% is -0.17, not a monthly rate.
+    const cpiObs = [{ date: '2026-05-01', value: 4.24867 }, { date: '2026-06-01', value: 3.53143 },
+                    { date: '2026-07-01', value: 3.36483 }];
+    const cpiPt = inflationPoint({ id: 'CPIAUCNS', name: 'CPI headline' }, cpiObs);
     assert.strictEqual(cpiPt.asOf, '2026-07-01');
-    assert.strictEqual(cpiPt.value, 3.37);                 // 2dp, and it rounds rather than truncates
-    assert.strictEqual(cpiPt.prevAsOf, '2026-06-01');
-    assert.strictEqual(cpiPt.chg, 0.16);
-    assert.strictEqual(cpiPt.monthly, true);
-    // A daily series reads against ~a month back, NOT yesterday: the 08-28 row is one day old and
-    // must not become the baseline, or every reading would be one day's noise.
-    const beObs = [{ date: '2026-07-28', value: 2.2 }, { date: '2026-07-31', value: 2.25 },
-                   { date: '2026-08-28', value: 2.3 }, { date: '2026-08-31', value: 2.31 }];
-    const bePt = inflationPoint({ id: 'T10YIE', pc1: false, name: '10y breakeven' }, beObs);
-    assert.strictEqual(bePt.prevAsOf, '2026-07-31');       // the newest row on/before 2026-07-31
-    assert.strictEqual(bePt.chg, 0.06);
-    assert.strictEqual(bePt.monthly, false);
-    // No baseline at all (a series shorter than its window) still reports the level, blank move.
-    const lone = inflationPoint({ id: 'X', pc1: true }, [{ date: '2026-07-01', value: 3 }]);
+    assert.strictEqual(cpiPt.value, 3.36);                 // 2dp, rounded not truncated
+    assert.strictEqual(cpiPt.prevAsOf, '2026-06-01');      // June, not May: one print back
+    assert.strictEqual(cpiPt.chg, -0.17);                  // cooling reads negative
+    // Rounding is applied to each figure, so the move is the rounded difference of raw values
+    // rather than the difference of two already-rounded ones.
+    assert.strictEqual(cpiPt.prev, 3.53);
+    // No baseline at all (a series with one observation) still reports the level, blank move.
+    const lone = inflationPoint({ id: 'X' }, [{ date: '2026-07-01', value: 3 }]);
     assert.strictEqual(lone.value, 3);
     assert.strictEqual(lone.chg, null);
     assert.strictEqual(lone.prevAsOf, null);
-    assert.strictEqual(inflationPoint({ id: 'X', pc1: true }, []), null);
+    assert.strictEqual(inflationPoint({ id: 'X' }, []), null);
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
