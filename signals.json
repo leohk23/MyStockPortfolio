@@ -1,30 +1,58 @@
 {
- "generated": "2026-09-01T20:15:03.833Z",
- "pricesAt": "2026-09-01T19:26:44.694Z",
+ "generated": "2026-09-01T20:28:05.411Z",
+ "pricesAt": "2026-09-01T20:28:05.270Z",
  "vix": {
-  "close": 16.31,
-  "day": 0.0932
+  "close": 16.36,
+  "day": 0.0965
  },
- "spxDay": -0.007327475169591091,
+ "spxDay": -0.007112803045481897,
  "fired": [
+  {
+   "rule": "6.1 valuation",
+   "ticker": "NVDA",
+   "where": "HELD",
+   "pe": 27.454545454545453,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 27.4893,
+   "floorDate": "2026-09-04",
+   "p5": 32.3338,
+   "median": 56.6245,
+   "vsFloor": -0.0012642935780302622
+  },
   {
    "rule": "6.1 valuation",
    "ticker": "AMZN",
    "where": "HELD",
-   "pe": 20.440916398713828,
+   "pe": 20.491961414790996,
    "pctile": 0,
    "window": "5y",
    "weeks": 249,
-   "floor": 20.4541,
+   "floor": 20.5084,
    "floorDate": "2026-09-04",
    "p5": 28.9637,
    "median": 46.8158,
-   "vsFloor": -0.0006445456552071072,
+   "vsFloor": -0.0008015537637751091,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 39.8880934154881,
-    "recurringVsFloor": 0.14690167674424504
+    "recurringPe": 39.987701883619664,
+    "recurringVsFloor": 0.14976571734723998
    }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "MWA",
+   "where": "watchlist",
+   "pe": 16.598591549295776,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 16.5986,
+   "floorDate": "2026-09-04",
+   "p5": 19.1273,
+   "median": 27.1,
+   "vsFloor": -5.09121505731791e-7
   },
   {
    "rule": "6.1 valuation",
@@ -39,34 +67,6 @@
    "p5": 13.2692,
    "median": 33.6689,
    "vsFloor": 0.0000032840830348490613
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "MWA",
-   "where": "watchlist",
-   "pe": 16.598591549295776,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 16.5951,
-   "floorDate": "2026-09-04",
-   "p5": 19.1273,
-   "median": 27.1,
-   "vsFloor": 0.00021039639988784664
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "NVDA",
-   "where": "HELD",
-   "pe": 27.551898734177215,
-   "pctile": 0.003831,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 27.5032,
-   "floorDate": "2026-08-28",
-   "p5": 32.3338,
-   "median": 56.6245,
-   "vsFloor": 0.0017706570208999572
   },
   {
    "rule": "6.1 valuation",
@@ -86,35 +86,49 @@
    "rule": "6.1 valuation",
    "ticker": "AMSC",
    "where": "watchlist",
-   "pe": 9.382838283828383,
-   "pctile": 0,
+   "pe": 9.425742574257425,
+   "pctile": 0.01205,
    "window": "5y",
    "weeks": 83,
-   "floor": 9.2289,
-   "floorDate": "2026-09-04",
+   "floor": 9.25,
+   "floorDate": "2026-08-28",
    "p5": 9.62951,
    "median": 87.5789,
-   "vsFloor": 0.016680025119828246
+   "vsFloor": 0.018999197217018926
   },
   {
    "rule": "6.1 valuation",
    "ticker": "GME",
    "where": "watchlist",
-   "pe": 13.891791044776117,
-   "pctile": 0.01563,
+   "pe": 14.03731343283582,
+   "pctile": 0.02344,
    "window": "5y",
    "weeks": 128,
    "floor": 13.3358,
    "floorDate": "2026-08-28",
    "p5": 16.0597,
    "median": 44.5094,
-   "vsFloor": 0.04169161540935806
+   "vsFloor": 0.05260377576416997
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "INTU",
+   "where": "watchlist",
+   "pe": 20.955650060753342,
+   "pctile": 0.0597,
+   "window": "5y",
+   "weeks": 201,
+   "floor": 19.5318,
+   "floorDate": "2026-06-19",
+   "p5": 23.793,
+   "median": 61.3044,
+   "vsFloor": 0.07289907027275211
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NVO",
    "where": "watchlist",
-   "pe": 11.039119804400977,
+   "pe": 11.031784841075794,
    "pctile": 0.08333,
    "window": "5y",
    "weeks": 180,
@@ -122,27 +136,27 @@
    "floorDate": "2026-03-27",
    "p5": 12.027,
    "median": 34.8653,
-   "vsFloor": 0.07864999749867874
+   "vsFloor": 0.07793328653688558
   },
   {
    "rule": "6.1 valuation",
    "ticker": "TW",
    "where": "watchlist",
-   "pe": 25.6945107398568,
-   "pctile": 0.04981,
+   "pe": 25.467780429594267,
+   "pctile": 0.04598,
    "window": "5y",
    "weeks": 261,
    "floor": 23.0914,
    "floorDate": "2026-06-26",
-   "p5": 25.6659,
+   "p5": 25.5465,
    "median": 55.5116,
-   "vsFloor": 0.11273074563936358
+   "vsFloor": 0.10291192520134196
   },
   {
    "rule": "6.1 valuation",
    "ticker": "PDD",
    "where": "watchlist",
-   "pe": 8.985945945945947,
+   "pe": 8.991351351351351,
    "pctile": 0.02841,
    "window": "5y",
    "weeks": 176,
@@ -150,7 +164,7 @@
    "floorDate": "2026-06-26",
    "p5": 8.56753,
    "median": 18.4794,
-   "vsFloor": 0.1528306416614853
+   "vsFloor": 0.15352411533909693
   },
   {
    "rule": "6.1 valuation",
@@ -168,9 +182,23 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "PLTR",
+   "where": "watchlist",
+   "pe": 153.77777777777777,
+   "pctile": 0.08054,
+   "window": "5y",
+   "weeks": 149,
+   "floor": 126.888,
+   "floorDate": "2026-06-26",
+   "p5": 147.017,
+   "median": 274.286,
+   "vsFloor": 0.21191742148806636
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "GOOG",
    "where": "HELD",
-   "pe": 16.639558232931723,
+   "pe": 16.66817269076305,
    "pctile": 0.05747,
    "window": "5y",
    "weeks": 261,
@@ -178,18 +206,18 @@
    "floorDate": "2022-11-04",
    "p5": 15.5386,
    "median": 23.6887,
-   "vsFloor": 0.24537337741141996,
+   "vsFloor": 0.2475150018159471,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 32.771422639233556,
-    "recurringVsFloor": 0.5450128771838121
+    "recurringPe": 32.82777849183829,
+    "recurringVsFloor": 0.547669781003262
    }
   },
   {
    "rule": "6.1 valuation",
    "ticker": "XIACY",
    "where": "HELD",
-   "pe": 17.97446004763078,
+   "pe": 17.964194793463086,
    "pctile": 0.09259,
    "window": "5y",
    "weeks": 108,
@@ -197,18 +225,18 @@
    "floorDate": "2026-06-26",
    "p5": 13.6625,
    "median": 37.5766,
-   "vsFloor": 0.5828997699447649,
+   "vsFloor": 0.5819957723605587,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 24.542955779228333,
-    "recurringVsFloor": 0.01815177425922543
+    "recurringPe": 24.528939242518323,
+    "recurringVsFloor": 0.01757030551321792
    }
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NFLX",
    "where": "HELD",
-   "pe": 25.422955974842765,
+   "pe": 25.41194968553459,
    "pctile": 0.06897,
    "window": "5y",
    "weeks": 261,
@@ -216,13 +244,13 @@
    "floorDate": "2026-07-17",
    "p5": 17.3185,
    "median": 43.7597,
-   "vsFloor": 0.6304605403137897
+   "vsFloor": 0.6297546695869547
   },
   {
    "rule": "6.1 valuation",
    "ticker": "NOW",
    "where": "HELD",
-   "pe": 89.88749999999999,
+   "pe": 89.3125,
    "pctile": 0.09195,
    "window": "5y",
    "weeks": 261,
@@ -230,7 +258,7 @@
    "floorDate": "2026-07-24",
    "p5": 53.0069,
    "median": 169.421,
-   "vsFloor": 1.0456267793624674
+   "vsFloor": 1.0325411401119222
   },
   {
    "rule": "6.2 drawdown",
@@ -239,7 +267,7 @@
    "hits": [
     {
      "window": "7d",
-     "move": -0.2302
+     "move": -0.2225
     }
    ]
   }
@@ -285,7 +313,6 @@
   "BABA": "2026-11-24",
   "KWHIY": "2026-11-11",
   "TKOMY": "2026-11-19",
-  "DELL": "2026-09-01",
   "XIACY": "2026-11-17",
   "CCOEY": "2026-10-28",
   "NTO.F": "2026-11-03",
@@ -302,6 +329,7 @@
   "GME": "2026-09-08",
   "IBKR": "2026-10-20",
   "PLTR": "2026-11-02",
+  "MRVL": "2026-12-01",
   "SPCX": "2026-11-03",
   "1810.HK": "2026-11-17",
   "0823.HK": "2026-11-19",
@@ -323,7 +351,8 @@
   "MWA": "2026-11-05",
   "TW": "2026-10-29",
   "WCC": "2026-10-29",
-  "BBCA.JK": "2026-10-20"
+  "BBCA.JK": "2026-10-20",
+  "INTU": "2026-11-19"
  },
  "shadow": [
   {
@@ -336,106 +365,10 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 17.87,
-   "now": 18.615,
-   "move": 0.04168998321208717,
+   "now": 18.81,
+   "move": 0.052602126468942245,
    "basis": "close on the day it was written",
    "limit": null,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-30-2257-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-30",
-   "days": 2,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-30-2146-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-30",
-   "days": 2,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-30-1330-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-30",
-   "days": 2,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-29-1442-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-29",
-   "days": 3,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-29-1042-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-29",
-   "days": 3,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
-   "currency": "USD"
-  },
-  {
-   "id": "2026-08-28-NVDA",
-   "ticker": "NVDA",
-   "state": "open",
-   "written": "2026-08-28",
-   "days": 4,
-   "supersededBy": "2026-08-31-1526-NVDA",
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 217.55,
-   "now": 217.66,
-   "move": 0.0005056308894506589,
-   "basis": "close on the day it was written",
-   "limit": 220,
    "currency": "USD"
   },
   {
@@ -447,8 +380,8 @@
    "supersededBy": null,
    "phase": "pre-live",
    "counts": false,
-   "entry": 107.66,
-   "now": 107.66,
+   "entry": 106.71,
+   "now": 106.71,
    "move": 0,
    "basis": "close on the day it was written",
    "limit": 107.7,
@@ -471,6 +404,102 @@
    "currency": "USD"
   },
   {
+   "id": "2026-08-30-2257-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-30",
+   "days": 2,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-30-2146-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-30",
+   "days": 2,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-30-1330-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-30",
+   "days": 2,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-29-1442-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 3,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-29-1042-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-29",
+   "days": 3,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
+   "id": "2026-08-28-NVDA",
+   "ticker": "NVDA",
+   "state": "open",
+   "written": "2026-08-28",
+   "days": 4,
+   "supersededBy": "2026-08-31-1526-NVDA",
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 217.55,
+   "now": 217.44,
+   "move": -0.00050563088945077,
+   "basis": "close on the day it was written",
+   "limit": 220,
+   "currency": "USD"
+  },
+  {
    "id": "2026-08-31-2024-TW",
    "ticker": "TW",
    "state": "open",
@@ -480,8 +509,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 107.7,
-   "now": 107.66,
-   "move": -0.0003714020427112441,
+   "now": 106.71,
+   "move": -0.009192200557103125,
    "basis": "close on the day it was written",
    "limit": 107.7,
    "currency": "USD"
@@ -496,8 +525,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 107.7,
-   "now": 107.66,
-   "move": -0.0003714020427112441,
+   "now": 106.71,
+   "move": -0.009192200557103125,
    "basis": "close on the day it was written",
    "limit": null,
    "currency": "USD"
@@ -512,8 +541,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 220.78,
-   "now": 217.66,
-   "move": -0.014131714829241804,
+   "now": 217.44,
+   "move": -0.015128181900534443,
    "basis": "close on the day it was written",
    "limit": null,
    "currency": "USD"
@@ -667,36 +696,36 @@
   "counted": 43,
   "nearHigh": 14,
   "deepBelow": 11,
-  "medianFromAth": 0.142798,
+  "medianFromAth": 0.145155,
   "deepest": [
    {
     "country": "Indonesia",
     "yahoo": "EIDO",
-    "fromAth": 1.82462,
+    "fromAth": 1.82135,
     "athDay": "2013-05-20"
    },
    {
     "country": "Brazil",
     "yahoo": "EWZ",
-    "fromAth": 1.78919,
+    "fromAth": 1.79491,
     "athDay": "2008-05-26"
    },
    {
     "country": "Malaysia",
     "yahoo": "EWM",
-    "fromAth": 1.43185,
+    "fromAth": 1.4329,
     "athDay": "2013-05-06"
    },
    {
     "country": "Chile",
     "yahoo": "ECH",
-    "fromAth": 0.988619,
+    "fromAth": 0.990096,
     "athDay": "2010-12-20"
    },
    {
     "country": "Turkey",
     "yahoo": "TUR",
-    "fromAth": 0.985423,
+    "fromAth": 0.984925,
     "athDay": "2010-11-08"
    }
   ],
@@ -704,12 +733,7 @@
    {
     "country": "Singapore",
     "yahoo": "EWS",
-    "fromAth": 0.0149563
-   },
-   {
-    "country": "Greece",
-    "yahoo": "GREK",
-    "fromAth": 0.0222037
+    "fromAth": 0.0163108
    },
    {
     "country": "Ireland",
@@ -717,14 +741,19 @@
     "fromAth": 0.0222733
    },
    {
-    "country": "Austria",
-    "yahoo": "EWO",
-    "fromAth": 0.0228184
-   },
-   {
     "country": "United States",
     "yahoo": "SPY",
-    "fromAth": 0.0235878
+    "fromAth": 0.0231712
+   },
+   {
+    "country": "Austria",
+    "yahoo": "EWO",
+    "fromAth": 0.0236401
+   },
+   {
+    "country": "Greece",
+    "yahoo": "GREK",
+    "fromAth": 0.0248809
    }
   ],
   "notTrading": [
@@ -749,7 +778,7 @@
     "lastSeen": "2024-03-25"
    }
   ],
-  "says": "14 of 43 country markets are within 5% of their own all-time high and 11 still need 50% or more to regain theirs; the median market must rise 14%"
+  "says": "14 of 43 country markets are within 5% of their own all-time high and 11 still need 50% or more to regain theirs; the median market must rise 15%"
  },
  "macro": [
   {
@@ -764,14 +793,14 @@
    "name": "Hang Seng",
    "group": "Equity",
    "mixed": true,
-   "inGBP": -0.0097
+   "inGBP": -0.009399999999999999
   },
   {
    "sym": "^N225",
    "name": "Nikkei 225",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.47819999999999996,
+   "inGBP": 0.4785999999999999,
    "says": "56% locally is 48% to a sterling holder"
   },
   {
@@ -784,7 +813,7 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.22240000000000001,
+   "real": 0.21860000000000002,
    "says": "22% net of the dollar — a real move, not currency",
    "mixed": true
   },
@@ -792,18 +821,18 @@
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.3649,
-   "says": "38% over a year but -6% over three months — cooling",
-   "cooling": -0.0588,
+   "real": 0.3725,
+   "says": "39% over a year but -5% over three months — cooling",
+   "cooling": -0.0534,
    "mixed": true
   },
   {
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.318,
-   "says": "-31% over a year but 21% over three months — cooling",
-   "cooling": 0.2071,
+   "real": -0.3177,
+   "says": "-30% over a year but 21% over three months — cooling",
+   "cooling": 0.2081,
    "mixed": true
   }
  ],
