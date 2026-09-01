@@ -1,9 +1,3 @@
-        /* Six years in 46px. Coloured by direction, not by value: the question a level
-           cannot answer is which way it is going. */
-        .spark { vertical-align: middle; margin-left: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-        .spark.gain { color: var(--good); }
-        .spark.loss { color: var(--bad); }
-        .spark.muted { color: var(--text-muted); }
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -417,6 +411,12 @@
            the price itself. Absent means one thing only: no extended-hours data for that listing
            (Hong Kong, Tokyo, London and Paris have no such feed). */
         .ext { font-size: 10px; vertical-align: middle; opacity: .85; }
+        /* Six years in 46px. Coloured by direction, not by value: the question a level
+           cannot answer is which way it is going. */
+        .spark { vertical-align: middle; margin-left: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+        .spark.gain { color: var(--good); }
+        .spark.loss { color: var(--bad); }
+        .spark.muted { color: var(--text-muted); }
         /* Trading right now. A dot rather than a row tint: row background already means
            selected (tr.sel) and hover, and a third meaning on the same channel would collide
            — and at 06:00 UK half the table would change colour for a reason that is not about
