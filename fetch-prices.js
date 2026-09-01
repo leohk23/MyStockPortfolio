@@ -911,6 +911,9 @@ const HISTORY_FROM = {
 // Every input is a filed figure. The one derived number is the tax rate, taken from the
 // company's own tax expense over its own pretax income rather than assumed at 21% or 25%: an
 // assumed rate would silently flatter or punish whoever the assumption did not fit.
+// Six years is enough to show a direction without the sparkline becoming a chart.
+const CAPITAL_YEARS = 6;
+
 function capitalMetrics(year, cap) {
     if (!cap || !(cap.assets > 0)) return null;
     const out = { year: cap.end || null, assets: cap.assets };
@@ -2222,14 +2225,23 @@ async function main() {
         if (capYears) {
             const ends = Object.keys(capYears).sort();
             const ey = (store.eps[t]?.years || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            // Every year the two share, not only the newest. A single year is a snapshot, and
+            // direction usually says more than level: a ROIC falling 30% -> 20% is a worse sign
+            // than one climbing 12% -> 15%, and neither is visible from one number.
+            const series = [];
             for (const y of ey) {
                 const want = Date.parse(y.date + 'T00:00:00Z');
                 const end = ends.filter(d => Math.abs(Date.parse(d + 'T00:00:00Z') - want) <= 14 * DAY * 1000)
                     .sort((a, b) => Math.abs(Date.parse(a) - want) - Math.abs(Date.parse(b) - want))[0];
                 if (!end) continue;
                 const m = capitalMetrics(y, { ...capYears[end], end });
-                if (m) quotes[t].capital = m;
-                break;
+                if (m) series.push(m);
+                if (series.length >= CAPITAL_YEARS) break;
+            }
+            if (series.length) {
+                // Newest first for the headline, oldest first for the sparkline — a line that
+                // reads right to left would show every trend backwards.
+                quotes[t].capital = { ...series[0], history: series.slice().reverse() };
             }
         }
         troughOk++;

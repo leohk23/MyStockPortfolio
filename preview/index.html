@@ -1,3 +1,9 @@
+        /* Six years in 46px. Coloured by direction, not by value: the question a level
+           cannot answer is which way it is going. */
+        .spark { vertical-align: middle; margin-left: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+        .spark.gain { color: var(--good); }
+        .spark.loss { color: var(--bad); }
+        .spark.muted { color: var(--text-muted); }
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1026,8 +1032,37 @@
             // earns, and how hard the assets are worked. Blank where the filing does not
             // support them: a bank has no meaningful current-liability split, so it gets no
             // ROIC rather than an invented one.
-            const capRow = (v, fmtV) => v == null ? '<span class="muted">–</span>' : fmtV(v);
+            // A level with its direction. One year is a snapshot and the level alone misleads:
+            // a ROIC falling 30% to 20% is a worse sign than one climbing 12% to 15%, and the
+            // panel showed only the first number of each pair.
             const cap = q.capital || null;
+            const spark = (vals, w = 46, h = 12) => {
+                const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null);
+                if (pts.length < 2) return '';
+                const ys = pts.map(p => p[1]);
+                const lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+                const n = vals.length - 1 || 1;
+                const d = pts.map(([i, v], k) =>
+                    `${k ? 'L' : 'M'}${(i / n * (w - 2) + 1).toFixed(1)},${(h - 1 - (v - lo) / span * (h - 2)).toFixed(1)}`).join('');
+                const last = pts[pts.length - 1][1], first = pts[0][1];
+                const cls = last > first ? 'gain' : last < first ? 'loss' : 'muted';
+                return ' <svg class="spark ' + cls + '" viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '"'
+                    + ` aria-hidden="true"><path d="${d}"/></svg>`;
+            };
+            // "was X" rather than an arrow: the earliest figure is the comparison a reader wants,
+            // and it says over how long without a legend.
+            const capRow = (key, fmtV, tag = '') => {
+                const v = cap?.[key];
+                if (v == null) return '<span class="muted">–</span>';
+                const hist = (cap.history || []).map(x => x[key]);
+                const seen = hist.filter(x => x != null);
+                const oldest = (cap.history || []).find(x => x[key] != null);
+                const was = seen.length > 1 && seen[0] !== v
+                    ? ' <span class="muted">from ' + fmtV(seen[0])
+                        + ' in FY' + String(oldest.year || '').slice(0, 4) + '</span>'
+                    : '';
+                return fmtV(v) + tag + spark(hist) + was;
+            };
 
             const pctileRow = q => typeof q?.pePctile !== 'number' ? '<span class="muted">–</span>'
                 : `<span class="${q.pePctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(q.pePctile * 100))} percentile</span>`
@@ -1076,10 +1111,10 @@
                 // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
                 // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
                 ['Cheapest by horizon', horizonRow(leg.quote)],
-                ['ROIC', capRow(cap?.roic, v => plain(v) + ` <span class="muted">FY${(cap.year || "").slice(0, 4)}</span>`)
-                    , ' class="valuation-group-start"'],
-                ['Gross profit / assets', capRow(cap?.gpa, v => plain(v))],
-                ['Asset turnover', capRow(cap?.turnover, v => num2(v) + '×')],
+                ['ROIC', capRow('roic', v => plain(v), cap?.year ? ' <span class="muted">FY' + String(cap.year).slice(0, 4) + '</span>' : ''),
+                    ' class="valuation-group-start"'],
+                ['Gross profit / assets', capRow('gpa', v => plain(v))],
+                ['Asset turnover', capRow('turnover', v => num2(v) + '×')],
                 // Filled by renderFinancials: its growth rate comes from earnings.json.
                 ['PEG (TTM)', '<span id="deep-peg" class="muted">…</span>'],
                 ['Low date', leg.lowDate || '–', ' class="valuation-group-start"'],
