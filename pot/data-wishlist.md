@@ -30,6 +30,19 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-01 — AI-exposed job postings by occupation and firm.**
+  Fetched from the Federal Reserve Bank of Dallas's analysis of Lightcast postings and actual
+  Claude usage. Wanted when the official research is updated, not weekly; it is useful evidence of
+  realised automation but is regional and depends on proprietary postings, so it is not yet a
+  clean free feed.
+- **2026-09-01 — Intuit product adoption, unit trends, operating leverage and capital returns.**
+  Fetched from Intuit's SEC-filed annual-results release. Wanted on results dates while Intuit is
+  tracked; the set distinguishes paid workflow automation from an AI label and tests whether the
+  incumbent is being strengthened or bypassed.
+- **2026-09-01 — RELX AI-enabled product adoption, segment growth, development spending and leverage.**
+  Fetched from RELX's interim filing. Wanted on results dates while RELX is tracked; these measures
+  test whether proprietary data and embedded workflow turn AI into incremental returns on capital.
+
 - **2026-09-01 — US manufacturing prices, supplier delivery times and customer inventories.**
   Fetched from the Institute for Supply Management's manufacturing survey. Wanted monthly; the
   combination distinguishes healthy demand from inflationary supply strain and points towards
