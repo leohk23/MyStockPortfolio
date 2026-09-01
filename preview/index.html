@@ -346,6 +346,15 @@
         #fed-strip .fed-m { color: var(--text-muted); }
         #fed-strip .fed-r { font-size: 14px; margin: 1px 0; }
         #fed-strip .fed-d { font-size: 10px; }
+        #infl-table { margin-top: 12px; width: auto; min-width: 0; font-size: 12px; }
+        #infl-table th, #infl-table td { text-align: right; padding: 3px 10px 3px 0; white-space: nowrap; }
+        #infl-table th:first-child, #infl-table td:first-child { text-align: left; }
+        #infl-table .infl-rate { font-size: 13px; }
+        /* The print date is the point of the column, not a footnote — a CPI row is weeks old and
+           the row should say so without being hovered. */
+        #infl-table .infl-asof { color: var(--text-muted); }
+        #infl-table tr.infl-head td { font-size: 11px; text-transform: uppercase;
+            letter-spacing: .04em; color: var(--text-muted); padding-top: 8px; }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -790,6 +799,18 @@
             <div id="fed-head"></div>
             <div id="fed-strip"></div>
             <p id="fed-note" class="deep-note"></p>
+            <!-- Inflation under the path, because it is the input to it. Split realized from
+                 expected: the first is weeks stale by the time it is read, the second is today's
+                 price of the same question, and reading them as one number would be wrong. -->
+            <table id="infl-table">
+                <thead><tr>
+                    <th>Inflation</th><th>Rate</th>
+                    <th title="For a monthly print, the change from the previous print. For a daily market series, the change over roughly the past month.">Change</th>
+                    <th title="The period the figure describes — a CPI print is typically 4-7 weeks behind the date you are reading it.">As of</th>
+                </tr></thead>
+                <tbody></tbody>
+            </table>
+            <p id="infl-note" class="deep-note"></p>
         </div>
         <table id="macro-table">
             <thead><tr>
@@ -3351,6 +3372,11 @@ function renderPot() {
         // Colour is from the equity holder's seat, not the bond desk's: hawkish drift is red.
         // Higher priced rates are a headwind to everything in the tables below, so a green "rate
         // went up" would read backwards on this page. The note says so, because it is a choice.
+        // Muted when the figure ROUNDS to zero, not only when it is exactly zero: a green "0.00"
+        // or a red "0bp" claims a direction the number on screen does not actually show. `eps` is
+        // half a display unit — 0.005 for a 2dp rate, 0.5 for whole basis points.
+        const moveCls = (v, eps) => v == null || Math.abs(v) < eps ? 'muted' : cls(v);
+
         function renderFed() {
             const fed = STATE.fed || {}, path = fed.path || [];
             const head = document.getElementById('fed-head');
@@ -3376,7 +3402,7 @@ function renderPot() {
             strip.innerHTML = path.map(p => `<div title="${escapeHTML(p.sym)}">`
                 + `<div class="fed-m">${escapeHTML(mon(p.month))}</div>`
                 + `<div class="fed-r">${p.rate.toFixed(2)}</div>`
-                + `<div class="fed-d ${cls(p.chg1m == null ? null : -p.chg1m)}">`
+                + `<div class="fed-d ${moveCls(p.chg1m == null ? null : -p.chg1m, 0.005)}">`
                 + `${p.chg1m == null ? '–' : bp(Math.round(p.chg1m * 100))}</div>`
                 + '</div>').join('');
             note.textContent = `${path.length} monthly fed funds futures contracts (100 − price = the `
@@ -3386,9 +3412,57 @@ function renderPot() {
                 + 'can sit a few bp off the standing target when a meeting falls inside it.';
         }
 
+        // Inflation, under the path because it is the input to it. Two groups, never merged into
+        // one number: a CPI print describes a month that ended weeks ago and the market has long
+        // since traded it, while a breakeven is today's price of the same question. The "As of"
+        // column carries the period each row describes, so the staleness is on the face of the
+        // table rather than in a footnote.
+        //
+        // Colour matches the fed panel above: rising inflation is red. Same seat, same convention
+        // — it is the hawkish direction, and a green "inflation went up" would read backwards.
+        const INFL_GROUPS = {
+            Realized: 'Realized — monthly prints, already traded',
+            Expected: 'Expected — priced daily by the TIPS market',
+        };
+        function renderInflation() {
+            const rows = STATE.inflation || [];
+            const tbody = document.querySelector('#infl-table tbody');
+            const note = document.getElementById('infl-note');
+            if (!rows.length) {
+                tbody.innerHTML = '';
+                note.textContent = 'No inflation series in prices.json — run npm run fetch.';
+                return;
+            }
+            const day = iso => { const d = new Date(`${iso}T00:00:00Z`);
+                return `${d.getUTCDate()} ${QMON[d.getUTCMonth()]}`; };
+            const out = [];
+            for (const [group, label] of Object.entries(INFL_GROUPS)) {
+                const inGroup = rows.filter(r => r.group === group);
+                if (!inGroup.length) continue;
+                out.push(`<tr class="infl-head"><td colspan="4">${label}</td></tr>`);
+                for (const r of inGroup) {
+                    const chg = r.chg == null ? '–'
+                        : `${r.chg > 0 ? '+' : r.chg < 0 ? '−' : ''}${Math.abs(r.chg).toFixed(2)}`;
+                    out.push(`<tr title="${escapeHTML(r.note || '')}">`
+                        + `<td>${escapeHTML(r.name)}</td>`
+                        + `<td class="infl-rate">${r.value.toFixed(2)}%</td>`
+                        + `<td class="${moveCls(r.chg == null ? null : -r.chg, 0.005)}">${chg}</td>`
+                        + `<td class="infl-asof">${escapeHTML(r.monthly ? qShort(r.asOf) : day(r.asOf))}</td>`
+                        + '</tr>');
+                }
+            }
+            tbody.innerHTML = out.join('');
+            note.textContent = 'From FRED (fredgraph.csv, no key) — the only series here not from '
+                + 'Yahoo, because Yahoo carries no CPI. Realized rates are 12-month changes and are '
+                + 'weeks behind by the time you read them, which is why the market-implied pair sits '
+                + "under them. The Fed's target is 2% on core PCE — not on CPI, and not on the "
+                + 'headline. Rising is red, the hawkish direction, same as the strip above.';
+        }
+
         const MACRO_GROUPS = ['Equity', 'Rates', 'Currency', 'Commodity'];
         function renderMacro() {
             renderFed();
+            renderInflation();
             const tbody = document.querySelector('#macro-table tbody');
             const note = document.getElementById('macro-note');
             const macro = STATE.macro || {};
@@ -3583,7 +3657,7 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, fed, countries, nav, performance }, watchlist, signals, pot]) => {
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
             RATES = rates;
             POT = pot;
             // Held names are dropped: once you own it, the holdings table is the truth. This
@@ -3600,7 +3674,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, fed, countries, signals, nav, performance, firstTrade, dim, updated };
+            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.

@@ -1642,6 +1642,81 @@ function fedSummary(path) {
     };
 }
 
+// Inflation, from FRED's public CSV download — the same file the fred.stlouisfed.org charts
+// offer. No key, no registration: `fredgraph.csv?id=<series>` is a plain GET, and
+// `transformation=pc1` returns the year-over-year percent change, so the 12-month rate is read
+// off the source rather than recomputed here from an index level.
+//
+// This is the one place the file leaves Yahoo, and it is a considered exception: Yahoo carries no
+// CPI series at all, and the keyless alternatives do not survive a 15-minute cron (BLS v1 caps at
+// 25 calls/day per IP, v2 needs a key). Five requests per run against a static CSV, next to the
+// ~200 Yahoo calls already here.
+//
+// Realized AND expected, deliberately. A CPI print is 4-7 weeks stale by the time it is read and
+// the market has already traded it; the breakevens are today's price of the same question. Shown
+// together, with the print date on every row, the staleness is legible instead of hidden — which
+// is the only honest way to put a lagging series next to a live rate curve.
+const FRED = 'https://fred.stlouisfed.org/graph/fredgraph.csv';
+const INFLATION = [
+    { id: 'CPIAUCNS', pc1: true, group: 'Realized', name: 'CPI headline',
+      note: 'All items, NSA — the 12-month rate BLS prints in the release.' },
+    { id: 'CPILFENS', pc1: true, group: 'Realized', name: 'CPI core',
+      note: 'Less food and energy — the trend the Fed watches through the noise.' },
+    { id: 'PCEPILFE', pc1: true, group: 'Realized', name: 'PCE core',
+      note: "The Fed's own target measure. 2% is the target, not 2% CPI." },
+    { id: 'T10YIE', pc1: false, group: 'Expected', name: '10y breakeven',
+      note: 'Nominal minus TIPS: the average CPI the market is priced for over 10 years.' },
+    { id: 'T5YIFR', pc1: false, group: 'Expected', name: '5y5y forward',
+      note: 'Inflation priced for the 5 years starting 5 years out — expectations with the current cycle stripped out.' },
+];
+
+// FRED leads with a header row and writes a missing observation as ".". Oldest first.
+async function fetchFred(id, pc1, from = '2023-01-01') {
+    const url = `${FRED}?id=${id}${pc1 ? '&transformation=pc1' : ''}&cosd=${from}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const out = [];
+    for (const line of (await res.text()).trim().split('\n').slice(1)) {
+        const [date, raw] = line.split(',');
+        const v = Number(raw);
+        if (!date || !raw || raw.trim() === '.' || !Number.isFinite(v)) continue;
+        out.push({ date: date.trim(), value: v });
+    }
+    if (!out.length) throw new Error('no observations');
+    return out;
+}
+
+// Latest reading plus the move onto it. Pure, so it is selftested without a network call.
+//
+// The baseline differs by series on purpose. A monthly print is read against the PREVIOUS PRINT —
+// that is the news, "3.4 from 3.2". A daily breakeven read against yesterday is noise, so it is
+// read against roughly a month back, which also matches the one-month change on the fed strip
+// beside it.
+//
+// ponytail: "a month back" is calendar arithmetic, so Mar 31 lands on Mar 3 rather than Feb 28.
+// It shifts the baseline by days on 4 dates a year and never by more than a couple of bp on a
+// breakeven. Walk the array by count if that ever matters.
+function inflationPoint(meta, obs) {
+    if (!obs || !obs.length) return null;
+    const last = obs[obs.length - 1];
+    let base;
+    if (meta.pc1) base = obs[obs.length - 2];
+    else {
+        const cut = new Date(`${last.date}T00:00:00Z`);
+        cut.setUTCMonth(cut.getUTCMonth() - 1);
+        const iso = cut.toISOString().slice(0, 10);
+        for (let i = obs.length - 1; i >= 0; i--) if (obs[i].date <= iso) { base = obs[i]; break; }
+    }
+    const r2 = v => Math.round(v * 100) / 100;
+    return {
+        id: meta.id, name: meta.name, group: meta.group, note: meta.note,
+        monthly: !!meta.pc1, asOf: last.date, value: r2(last.value),
+        prev: base ? r2(base.value) : null,
+        prevAsOf: base ? base.date : null,
+        chg: base ? r2(last.value - base.value) : null,
+    };
+}
+
 const MACRO_PERIODS = ['1d', '7d', '1m', '3m', '6m', '1y', 'ytd'];
 const MACRO = {
     '^GSPC':    { name: 'S&P 500',      group: 'Equity' },
@@ -2010,6 +2085,23 @@ async function main() {
         ? `ok   fed path ${fedPath.length} contracts: ${fed.spot.toFixed(2)}% now -> ${fed.rate.toFixed(2)}% by ${fed.through} (${fed.bp >= 0 ? '+' : ''}${fed.bp}bp)`
         : 'skip fed path: no contracts priced');
 
+    // Inflation. Best-effort per series, same rule as the macro block above: a series that fails
+    // is one missing row under the fed path, never a broken price file.
+    const inflation = [];
+    for (const meta of INFLATION) {
+        try {
+            const pt = inflationPoint(meta, await fetchFred(meta.id, meta.pc1));
+            if (pt) inflation.push(pt);
+        } catch (e) {
+            console.error(`skip inflation ${meta.id}: ${e.message}`);
+        }
+        await sleep();
+    }
+    const cpi = inflation.find(p => p.id === 'CPIAUCNS');
+    console.log(inflation.length
+        ? `ok   inflation ${inflation.length}/${INFLATION.length} series${cpi ? `, CPI ${cpi.value}% as of ${cpi.asOf}` : ''}`
+        : 'skip inflation: no series');
+
     // World breadth. Best-effort per fund, same as the macro block: one that fails is a blank
     // row in a monitor, never a broken price file.
     const countries = {};
@@ -2260,6 +2352,10 @@ async function main() {
         // futures FedWatch is computed on. Its own key, not a macro row: a macro row is one level
         // with % moves on it, this is a curve.
         fed: { path: fedPath, ...fed },
+        // The other half of the rate question: what inflation has actually done (monthly, stale
+        // by weeks, from FRED) and what it is priced to do (daily, from the TIPS market). Its own
+        // key beside `fed` — the page reads the two together.
+        inflation,
         // A monitor, kept beside the quotes rather than inside them: 47 country funds nobody
         // intends to own individually would swamp every table that walks the holdings.
         countries,
@@ -2301,6 +2397,31 @@ function selftest() {
     assert.strictEqual(fedSummary([{ rate: 4 }, { month: 'x', rate: 4, chg1m: null }]).driftBp, null);
     assert.strictEqual(fedSummary([{ rate: 4 }]), null);   // one point is not a path
     assert.strictEqual(fedSummary([]), null);
+
+    // inflationPoint: a monthly series reads against the previous PRINT — the news is "3.36 from
+    // 3.21", so the baseline is the row before, whatever its date.
+    const cpiObs = [{ date: '2026-05-01', value: 3.1 }, { date: '2026-06-01', value: 3.21 },
+                    { date: '2026-07-01', value: 3.365 }];
+    const cpiPt = inflationPoint({ id: 'CPIAUCNS', pc1: true, name: 'CPI headline' }, cpiObs);
+    assert.strictEqual(cpiPt.asOf, '2026-07-01');
+    assert.strictEqual(cpiPt.value, 3.37);                 // 2dp, and it rounds rather than truncates
+    assert.strictEqual(cpiPt.prevAsOf, '2026-06-01');
+    assert.strictEqual(cpiPt.chg, 0.16);
+    assert.strictEqual(cpiPt.monthly, true);
+    // A daily series reads against ~a month back, NOT yesterday: the 08-28 row is one day old and
+    // must not become the baseline, or every reading would be one day's noise.
+    const beObs = [{ date: '2026-07-28', value: 2.2 }, { date: '2026-07-31', value: 2.25 },
+                   { date: '2026-08-28', value: 2.3 }, { date: '2026-08-31', value: 2.31 }];
+    const bePt = inflationPoint({ id: 'T10YIE', pc1: false, name: '10y breakeven' }, beObs);
+    assert.strictEqual(bePt.prevAsOf, '2026-07-31');       // the newest row on/before 2026-07-31
+    assert.strictEqual(bePt.chg, 0.06);
+    assert.strictEqual(bePt.monthly, false);
+    // No baseline at all (a series shorter than its window) still reports the level, blank move.
+    const lone = inflationPoint({ id: 'X', pc1: true }, [{ date: '2026-07-01', value: 3 }]);
+    assert.strictEqual(lone.value, 3);
+    assert.strictEqual(lone.chg, null);
+    assert.strictEqual(lone.prevAsOf, null);
+    assert.strictEqual(inflationPoint({ id: 'X', pc1: true }, []), null);
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
