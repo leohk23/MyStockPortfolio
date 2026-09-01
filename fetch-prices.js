@@ -1582,6 +1582,66 @@ const BENCHMARKS = { '^GSPC': 'S&P 500', '^HSI': 'HSI' };
 // through the normal quote path and the standing order reads it there.
 // The same period keys `movements()` produces, spelled out here rather than imported: this file
 // does not load portfolio.js, and a macro row only needs the moves, not the whole quote shape.
+// Fed policy path — what the CME FedWatch tool shows, from the instrument FedWatch is built on:
+// 30-day Fed Funds futures. Each contract settles to the AVERAGE effective fed funds rate over
+// its delivery month, so `100 - price` is the market-implied policy rate for that month, and the
+// strip of consecutive months IS the priced path. Same free chart endpoint as everything else
+// here — no crumb, no key — one request per contract.
+//
+// Why the futures and not CPI: inflation is an INPUT the Fed weighs and the market has already
+// digested by the time it prints; this is the market's OUTPUT, the rate itself, updated tick by
+// tick. It answers "where is policy going" directly instead of by inference.
+const FED_CODES = 'FGHJKMNQUVXZ';        // CME delivery-month codes, Jan..Dec
+const FED_MONTHS = 9;                    // ~4 FOMC meetings out; past a year the contracts go too thin to read
+
+// ponytail: the front month is the "now" anchor. It is a monthly AVERAGE, so in a month that
+// holds an FOMC meeting it already blends the old and new rate and sits a few bp off the standing
+// target. Good to ~10bp — well inside a 25bp step. Anchor on the published EFFR (a second,
+// keyed source) only if that ever matters.
+async function fetchFedPath(now = new Date(), months = FED_MONTHS) {
+    const path = [];
+    for (let i = 0; i < months; i++) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1));
+        const sym = `ZQ${FED_CODES[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.CBT`;
+        try {
+            const res = await fetch(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1mo&interval=1d`,
+                { headers: { 'User-Agent': UA } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const m = (await res.json()).chart?.result?.[0]?.meta;
+            if (!(m?.regularMarketPrice > 0)) throw new Error('no price');
+            // chartPreviousClose over a 1mo range is the close a month back — the same contract
+            // then, so the difference is purely a change of VIEW, not a roll to a nearer month.
+            const rate = 100 - m.regularMarketPrice;
+            const was = m.chartPreviousClose > 0 ? 100 - m.chartPreviousClose : null;
+            path.push({
+                month: d.toISOString().slice(0, 7), sym,
+                rate: Math.round(rate * 1e3) / 1e3,
+                chg1m: was == null ? null : Math.round((rate - was) * 1e3) / 1e3,
+            });
+        } catch (e) {
+            console.error(`skip fed ${sym}: ${e.message}`);
+        }
+        await sleep();
+    }
+    return path;
+}
+
+// The two readings a rate strip is actually read for: where the market thinks policy ENDS UP
+// (far month vs the anchor), and which way that view MOVED over the past month — the trend, which
+// is the part a single FedWatch snapshot does not show you. Both in basis points, because policy
+// comes in 25bp steps and nobody reads 0.0051. Pure, so it is selftested without a network call.
+function fedSummary(path) {
+    if (!path || path.length < 2) return null;
+    const spot = path[0], far = path[path.length - 1];
+    const bp = Math.round((far.rate - spot.rate) * 100);
+    return {
+        spot: spot.rate, through: far.month, rate: far.rate, bp,
+        moves: Math.round(bp / 25 * 10) / 10,               // 25bp steps, one decimal: "+2.1 hikes priced"
+        driftBp: far.chg1m == null ? null : Math.round(far.chg1m * 100),
+    };
+}
+
 const MACRO_PERIODS = ['1d', '7d', '1m', '3m', '6m', '1y', 'ytd'];
 const MACRO = {
     '^GSPC':    { name: 'S&P 500',      group: 'Equity' },
@@ -1942,6 +2002,14 @@ async function main() {
     }
     console.log(`ok   macro state for ${macroOk}/${Object.keys(MACRO).length} series`);
 
+    // Fed policy path. Best-effort per contract, same rule as the macro block: a contract that
+    // fails is one missing point on the strip, never a broken price file.
+    const fedPath = await fetchFedPath();
+    const fed = fedSummary(fedPath);
+    console.log(fed
+        ? `ok   fed path ${fedPath.length} contracts: ${fed.spot.toFixed(2)}% now -> ${fed.rate.toFixed(2)}% by ${fed.through} (${fed.bp >= 0 ? '+' : ''}${fed.bp}bp)`
+        : 'skip fed path: no contracts priced');
+
     // World breadth. Best-effort per fund, same as the macro block: one that fails is a blank
     // row in a monitor, never a broken price file.
     const countries = {};
@@ -2188,6 +2256,10 @@ async function main() {
         // Kept out of `quotes` on purpose: an index or a currency pair is not a holding, and
         // anything that lands in quotes has to be defended against every table that walks it.
         macro,
+        // The market-implied policy rate month by month — the CME FedWatch reading, from the
+        // futures FedWatch is computed on. Its own key, not a macro row: a macro row is one level
+        // with % moves on it, this is a curve.
+        fed: { path: fedPath, ...fed },
         // A monitor, kept beside the quotes rather than inside them: 47 country funds nobody
         // intends to own individually would swamp every table that walks the holdings.
         countries,
@@ -2216,6 +2288,19 @@ function selftest() {
     // nulls are skipped, not treated as zero
     assert.strictEqual(pctFrom(ts, [null, 80, 90], now - 365 * DAY, 100), 0.25);
     assert.strictEqual(pctFrom([], [], now, 100), null);
+
+    // fedSummary: 100-price is already applied upstream, so these are rates. Anchor is the front
+    // month, the reading is the far month against it, and both come out in basis points.
+    const fp = [{ month: '2026-09', rate: 3.707, chg1m: -0.003 }, { month: '2026-10', rate: 3.805, chg1m: 0 },
+                { month: '2026-11', rate: 4.22, chg1m: 0.045 }];
+    assert.deepStrictEqual(fedSummary(fp),
+        { spot: 3.707, through: '2026-11', rate: 4.22, bp: 51, moves: 2, driftBp: 5 });
+    // Cuts priced read negative, not as a magnitude — the sign IS the signal.
+    assert.strictEqual(fedSummary([{ rate: 4, chg1m: 0 }, { month: 'x', rate: 3.5, chg1m: 0 }]).bp, -50);
+    // A contract with no month-ago close leaves the drift blank rather than reading as "no change".
+    assert.strictEqual(fedSummary([{ rate: 4 }, { month: 'x', rate: 4, chg1m: null }]).driftBp, null);
+    assert.strictEqual(fedSummary([{ rate: 4 }]), null);   // one point is not a path
+    assert.strictEqual(fedSummary([]), null);
 
     assert.strictEqual(rateFor('GBp', { GBP: 2 }), 0.02);
     assert.strictEqual(rateFor('Gbpence', { GBP: 2 }), 0.02);
