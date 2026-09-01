@@ -146,8 +146,21 @@ one because the brief only asked for one.
 State, in a short table, every name you considered and why it did or did not make the cut. Use his
 own tests, not generic ones:
 
-- **Earnings quality** — margin level, the *consistency* of that margin, and growth (§2.4). Not the
-  P/E alone. `earnings.json` carries filed `rev`, `opinc`, `nic` and `norm` per year.
+- **Earnings quality** — margin level, the *consistency* of that margin, and growth, **and what the
+  capital behind it earns** (§2.4, extended 1 Sep). Not the P/E alone, and not the margin alone
+  either: a margin is profit over SALES, and Leo invests capital. `earnings.json` carries filed
+  `rev`, `opinc`, `nic` and `norm` per year; `prices.json` carries `capital` per quote with
+  **roic**, **gpa** (gross profit over total assets) and **turnover** (revenue over total assets),
+  with the fiscal year they came from.
+
+  **Quote all three where they exist, and say the year.** They are blank for about a third of the
+  book — a bank has no meaningful current-liability split so it gets no ROIC, and some filers do
+  not tag gross profit at all. Blank is an answer; do not substitute a margin and call it the same
+  thing.
+
+  **A high margin is a question, not a comfort.** Margins decay: an elevated one invites
+  competition, so say why this one should persist. "Margin is 60% and rising" is an observation,
+  not a thesis.
 - **Valuation as a filter, not an input** (§2.4) — a name he would like at the wrong price is a no.
 - **A `oneOff` flag is the first thing to answer**, not a footnote. The multiple that triggered the
   signal may be inflated by an exceptional gain.
@@ -217,7 +230,8 @@ Local check: <agree / disagree, and which you used>
 ## Leo's filters, applied
 
 Valuation is a **filter**, not an input (§2.4). Earnings quality means **margin level, its
-consistency, and growth** — not the P/E alone. He is a CPA and reads annual reports; do not
+consistency, growth, and the return on the capital behind it** — not the P/E alone, and not the
+margin alone. ROIC, gross profit over assets and asset turnover are on the quote; use them. He is a CPA and reads annual reports; do not
 hand-wave the accounts. His stated regret is 7532.T, *"blinded by the tourist rebound without
 looking at the fundamentals, valuation, forward prospectus and yen depreciation carefully"* —
 so answer, explicitly, **why this is not that mistake again.**

@@ -186,6 +186,32 @@ It's definitely a filter to me.
 
 Earning quality to me is the margin %, the consistency of that and the growth, it's further than just looking at P/E.
 
+**Extended 1 September 2026**, after reading Vlad Djukanovic on profit margins (`pot/reading.md`).
+
+A margin is profit over **sales**, and I do not invest in sales — I invest capital. Two shops on
+the same street settle it: the fruit stall keeps 5 cents on the dollar and the antique shop keeps
+50, and the margin does not tell you which is the better business. Turnover does.
+
+So earnings quality is **margin, plus what the capital behind it earns, plus how hard the assets
+are worked**:
+
+- **ROIC** — operating profit after tax over capital employed. What actually compounds.
+- **Gross profit ÷ total assets** — the measure the academic work supports. The research everyone
+  cites for "look at gross margins" used *total assets* as the denominator, not sales; swapping it
+  is a misreading, and gross and net margins have the same predictive power anyway.
+- **Asset turnover** — revenue over total assets. The fruit stall versus the antique shop.
+
+And treat a **high margin as a question, not a comfort**. Margins decay: an elevated one invites
+competition, so it wants an explanation of why it should persist rather than being scored as a
+pass on its own.
+
+All three are on every holding's Valuation panel where the filings support them, and blank where
+they do not — a bank has no meaningful current-liability split, so it gets no ROIC rather than an
+invented one. Absent is an answer; 38 of 59 holdings carry them.
+
+None of this displaces the filter. Valuation still screens things out. This says what has to be
+true of the business *before* the multiple is worth arguing about.
+
 ---
 
 ## 3. Universe
