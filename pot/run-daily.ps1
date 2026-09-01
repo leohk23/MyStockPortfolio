@@ -7,6 +7,12 @@
 #   ./pot/run-daily.ps1              # the whole cycle, pushing each lane as it finishes
 #   ./pot/run-daily.ps1 -NoPush      # same, commits stay local
 #
+# WHEN this runs is not in this file. The Task Scheduler entry 'MyStockPortfolio pot daily' fires
+# it, and pot-design.md §4.2 is the source of truth for the cadence, the reasoning behind each
+# slot, and the weekly-allowance arithmetic that caps it. Change the schedule there and in the
+# task; do not add timing logic here. Running this by hand costs a real ~5% of the weekly
+# allowance and 20-35 minutes, so prefer run-lane.ps1 -NoPush for testing a single lane.
+#
 # Exit codes: 0 finished, 1 a lane failed, 3 another run already holds the lock.
 
 param(

@@ -97,13 +97,35 @@ settles is struck through under **OPEN**, whatever it overturns is marked **supe
 than deleted, and **§5 What is built** reflects reality. Superseded entries keep their reasoning,
 because the reasoning is the part worth having later.
 
-Three lanes and a scan, in short:
+Three LLM lanes and a scan, in short. They run in **this order** and the order is a dependency, not
+a preference — the Review judges what is already held before the Sweep goes looking for anything
+new, and the Deep dive reads both (pot-design §2):
 
 | Lane | Cost | What it may produce |
 |---|---|---|
 | **Scan** — `npm run signals` | free, no LLM, no network | signals, and standing-order instructions |
+| **Review** — `pot/brief-review.md` | one agent session | a verdict on each open thesis, never a new name |
 | **Sweep** — `pot/brief-sweep.md` | one agent session | watchlist candidates, never orders |
-| **Deep dive** — `pot/brief-deepdive.md` | one agent session | one executable proposal, on a ticker Leo names |
+| **Deep dive** — `pot/brief-deepdive.md` | one agent session | executable proposals, on tickers it picks from the Sweep's candidates and the Scan's signals together (D14) |
+
+### When it runs
+
+**Schedule: [pot-design.md §4.2](pot-design.md#42-the-llm-lanes--one-scheduled-cycle). That section is
+the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
+entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
+Scan, then all three LLM lanes in order, then the report. **Weekdays 06:30, 12:45 and 21:15;
+weekends 09:00**, UK local (D17).
+
+Two things that constrain any change to it:
+
+- **The weekly allowance is the budget, not the clock.** A full cycle costs ~5% of the Codex
+  subscription's weekly allowance, so 17 cycles/week ≈ 85%. Read the `weekly` column of
+  `pot/runs.md` before adding a slot; §4.2 has the arithmetic.
+- **A slot is chosen so the cycle finishes just before Leo can read it** — before work, at lunch,
+  after the US close. He has a full-time job, and a proposal nobody reads is spent allowance.
+
+Do **not** hand-run `pot/run-daily.ps1` to test a change: it spends a real 5% and takes 20–35
+minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` covers the JS.
 
 `npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
 would break D3 (no metered API spend), because CI has no subscription auth.

@@ -59,6 +59,7 @@ checked against it.
 | D14 | **The agent picks the ticker(s), from the Sweep's candidates AND the Scan's signals together.** Ranked against Leo's own rules, and it may produce more than one proposal. Leo can still run a Deep dive ad hoc on anything he likes; that is an extra door, not the main one.                                                | 28 Aug 2026 |
 | D15 | **A pending proposal is not a position.** Unexecuted drafts in `pot/proposals/` must not change what a later run proposes: if a name is still the best on today's evidence, it is proposed again. Only `pot/positions.json` — cash and what was actually bought — constrains sizing. Lane outputs are stamped `YYYY-MM-DD-HHMM` UTC so repeated test runs never overwrite each other. | 29 Aug 2026 |
 | D16 | **Sources are ranked by claim, not by domain — [`pot/sources.md`](pot/sources.md), read by both lanes.** A number the repo holds is quoted from the repo; a company number from that company's filing or IR release; macro from the publishing agency; costs from the broker. Press is for narrative and for finding names, never the sole source of a figure. **No approved-domain list** — that would recreate the Scan/Sweep coupling D15 and A14–A16 exist to prevent. There *is* a short never-cite list of aggregators and promotional sites, on the ground that they are always downstream of something better. Finding a name on one is fine; citing it is not. | 29 Aug 2026 |
+| D17 | **A fixed daily cadence, sized against the weekly allowance.** Weekdays **06:30, 12:45, 21:15**; weekends **09:00** (UK local). Replaces a one-time trigger repeating every 9h, which drifted through the clock on a 72-hour cycle and so never landed at a consistent point against either a market session or Leo's own free time. The times are chosen so a cycle **finishes** just before a window he can read it in — before work, at lunch, after the US close — and 12:45 is the only slot that reads a settled Asia close while it is still the freshest event, which matters because the book is HK-heavy. 17 cycles/week at ~5% of the subscription's weekly allowance each ≈ **85%**, against 93% under the old 9h trigger. **This does not reopen D6:** it sets when the lanes *look*, not when they must produce; funding stays monthly and a lane still proposes only when there is a reason. Schedule table, arithmetic and how to change it: **§4.2**. | 1 Sep 2026 |
 
 ### AGREED — the design
 
@@ -191,17 +192,79 @@ Plain JavaScript over files CI already produces (`prices.json`, `earnings.json`,
 `history.json`, `holdings.json`). It runs as a step in the existing workflow and writes
 `signals.json`. No agent, no auth, no cost, no new failure mode.
 
-### 4.2 Sweep — fully automatic
+### 4.2 The LLM lanes — one scheduled cycle
 
-A Windows Task Scheduler entry on the always-on PC:
+**This section is the source of truth for when the pot runs.** The Task Scheduler entry is the
+only copy that actually fires; everything below describes it, so change one and change the other.
+
+The three LLM lanes do not run separately. A single Windows Task Scheduler entry on the always-on
+PC — **`MyStockPortfolio pot daily`** — runs [`pot/run-daily.ps1`](pot/run-daily.ps1), which does the
+book, the Scan, then Review → Sweep → Deep dive in dependency order, then the report. The order is
+a dependency, not a preference (§2); the script's own header says why.
 
 ```
-codex exec --cd C:\Users\leohk\MyStockPortfolio \
-           --output-last-message pot\sweeps\latest.md \
-           "Follow pot/brief-sweep.md"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
+               -File "C:\Users\leohk\MyStockPortfolio\pot\run-daily.ps1"
 ```
 
-Weekly. Its output is candidates, so an off day costs a cluttered watchlist, nothing more.
+| | 06:30 | 09:00 | 12:45 | 21:15 |
+|---|:---:|:---:|:---:|:---:|
+| **Mon–Fri** | ● | | ● | ● |
+| **Sat–Sun** | | ● | | |
+
+UK local time, four weekly triggers, no repetition interval. A cycle takes 20–35 minutes, so each
+one **finishes** just before a window Leo can read it in — he has a full-time job, and a proposal
+nobody reads is spent allowance:
+
+| slot | what has settled by then | read when |
+|---|---|---|
+| **06:30** | last night's US close (21:00); Asia mid-session | before work |
+| **12:45** | Asia's close (09:00) — the only slot that reads it fresh, and the book is HK-heavy | lunch break |
+| **21:15** | the whole global day: US closed at 21:00, London at 16:30, Asia at 09:00 | evening |
+| **Sat/Sun 09:00** | nothing new — markets shut, and CI prices are weekdays only (`*/15 * * * 1-5`) | unhurried, with time to decide |
+
+**The allowance is the binding constraint, not the clock.** Codex runs on a ChatGPT subscription
+(D3), so a cycle costs weekly allowance rather than cash. Measured from the `weekly` column of
+[`pot/runs.md`](pot/runs.md), which is read from the session transcripts and never from what an
+agent says about itself: **review +1%, sweep +2%, deep dive +2% ≈ 5% per full cycle** (observed
+4–6%). So:
+
+```
+17 cycles/week × ~5%  ≈  85% of the weekly allowance
+```
+
+leaving roughly three spare cycles for ad-hoc runs. **Check `pot/runs.md` before adding a slot** —
+at the 6% end of the observed range, 17 cycles reaches ~102%, and dropping the Sunday run is the
+cheapest 5% to buy back.
+
+Weekends are deliberately one cycle a day rather than three: prices do not move, so a second
+weekend cycle would spend 5% re-reading Friday's closes.
+
+**Changing it.** The triggers, not the script:
+
+```powershell
+$wd = @('Monday','Tuesday','Wednesday','Thursday','Friday')
+Set-ScheduledTask -TaskName 'MyStockPortfolio pot daily' -Trigger @(
+    New-ScheduledTaskTrigger -Weekly -DaysOfWeek $wd        -At (Get-Date '06:30')
+    New-ScheduledTaskTrigger -Weekly -DaysOfWeek $wd        -At (Get-Date '12:45')
+    New-ScheduledTaskTrigger -Weekly -DaysOfWeek $wd        -At (Get-Date '21:15')
+    New-ScheduledTaskTrigger -Weekly -DaysOfWeek Saturday,Sunday -At (Get-Date '09:00')
+)
+```
+
+`Set-ScheduledTask` has no `-Description`; that one needs `$t = Get-ScheduledTask …; $t.Description
+= …; Set-ScheduledTask -InputObject $t`. Read the live schedule back with `Get-ScheduledTask -TaskName
+'MyStockPortfolio pot daily'` — `DaysOfWeek` comes back as a bitmask, where **62 = Mon–Fri** and
+**65 = Sat+Sun**.
+
+Two settings worth knowing before trusting it: **`LogonType` is Interactive**, so nothing fires
+while Leo is logged out, and **`RestartCount` is 0** — a failed cycle waits for the next slot
+rather than retrying, on purpose, because a retry re-runs a 30-minute agent cycle and spends 5%
+on something that may fail the same way twice.
+
+*Superseded:* this section used to describe the Sweep alone, running weekly via a bare `codex exec`
+line. The lanes were joined into one ordered cycle when D14 made the Deep dive read the Sweep's
+candidates, and the cadence became a fixed daily one under D17.
 
 ### 4.3 Getting told about it
 
@@ -261,7 +324,7 @@ Was a plan; now mostly a record. Everything ticked below runs today.
 | ✅ | **Unattended harness** — allowlists what an agent may commit, logs every run | `pot/run-lane.ps1` |
 | ✅ | **Reporting** — entry point, dated report per run, cost ledger, readable transcripts | `npm run pot-report` |
 | ⬜ | **Pot accounting** — cash, the Tradelog `Pot` column, a third cohort, the three-way TWR | — |
-| ⬜ | **Scheduling** — Task Scheduler entries for the weekly Sweep and Review | — |
+| ✅ | **Scheduling** — one Task Scheduler entry runs the whole cycle. Weekdays 06:30/12:45/21:15, weekends 09:00 (D17). **Schedule, arithmetic and how to change it: §4.2** | `pot/run-daily.ps1` |
 | ⬜ | **Pot view on the dashboard** — proposals and open theses beside the other views | — |
 
 ### What reporting produces
