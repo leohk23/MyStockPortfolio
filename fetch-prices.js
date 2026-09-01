@@ -778,6 +778,20 @@ function needsQuarterFallback(entry) {
 // repurchaser reads a few percent cheap at its low (AAPL ~8% over four years). Bounded and
 // one-directional, and vastly better than being 3x wrong on a split. Isolating the split
 // component would need a trustworthy split feed, which Yahoo is not.
+// Recurring EPS per year, on the latest year's share basis — the same anchor trick as
+// normaliseEps, from `norm` (normalised net income) instead of `ni`. Covers 383 of 391 fiscal
+// years in this book.
+//
+// This is a VENDOR judgement, not a filed figure, and it is made with hindsight: Yahoo decides
+// today what was one-off in 2022, and may restate it. So it sits BESIDE the reported trough,
+// never replacing it — the reported one stays point-in-time and filed, which is the property
+// the whole trough apparatus was built to protect.
+function recurringEps(years) {
+    const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
+    if (!anchor) return years.map(() => null);
+    return years.map(y => (y.norm != null ? y.norm * anchor.eps / anchor.ni : null));
+}
+
 function normaliseEps(years) {
     const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
     if (!anchor) return years.map(y => y.eps);          // no usable anchor — use EPS as filed
@@ -843,20 +857,28 @@ function ttmSteps(quarters, toQuote) {
     return steps;
 }
 
-function publishedEps(entry, quoteCurrency, rates, filedOn = null, quarters = null) {
+function publishedEps(entry, quoteCurrency, rates, filedOn = null, quarters = null, basis = 'reported') {
     const years = entry?.years || [];
     const fxReport = rateFor(entry?.currency || quoteCurrency, rates);
     const fxQuote = rateFor(quoteCurrency, rates);
     if (!fxReport || !fxQuote) return null;
     const toQuote = fxReport / fxQuote;
-    const normalised = normaliseEps(years);   // onto the latest year's share basis
+    // Two bases. Reported is what was filed; recurring divides Yahoo's normalised net income by
+    // the same share count, stripping the one-offs that can set a false floor — a trough struck
+    // in a year inflated by an asset sale is not a multiple anyone can pay again.
+    //
+    // ANNUAL ONLY on the recurring side: there is no normalised quarterly figure, so the TTM
+    // steps are skipped rather than mixed in. A recurring series that borrowed reported
+    // quarters between annuals would flip basis mid-line and the join would look like news.
+    const useNorm = basis === 'recurring';
+    const normalised = useNorm ? recurringEps(years) : normaliseEps(years);
     const annual = years
         .map((y, i) => ({ from: reportedBy(y.date, filedOn?.[y.date]), eps: normalised[i] * toQuote }))
         .filter(k => Number.isFinite(k.eps));
     // Both bases in one ordered list, latest publication winning at any date. They agree where
     // they meet: a 10-K's trailing four quarters ARE the audited year, so the two never contradict
     // each other on the day the annual lands — the quarterly steps simply keep moving in between.
-    return [...annual, ...ttmSteps(quarters, toQuote)]
+    return [...annual, ...(useNorm ? [] : ttmSteps(quarters, toQuote))]
         .filter(k => Number.isFinite(k.eps))
         .sort((a, b) => a.from < b.from ? -1 : 1);
 }
@@ -947,8 +969,8 @@ function capitalMetrics(year, cap, fallbackTax = null) {
 const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
 const HEADLINE_HORIZON = '5y';
 
-function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, histFrom = null, today = null) {
-    const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters);
+function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, histFrom = null, today = null, basis = 'reported') {
+    const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters, basis);
     if (!known) return null;
     const now = today || (days.length ? days[days.length - 1] : null);
     if (!now) return null;
@@ -2221,6 +2243,17 @@ async function main() {
         // Every horizon in one pass; the headline is the five-year window (see peHistory).
         const hist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
             quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
+        // The same window on recurring earnings. Both are kept: where they disagree materially,
+        // the gap IS the finding — a floor set by a one-off year is a floor nobody can pay again.
+        const recHist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
+            quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null, null, 'recurring');
+        const recHead = recHist?.horizons?.[HEADLINE_HORIZON] || recHist?.horizons?.all;
+        if (recHead) {
+            quotes[t].peLowRecurring = recHead.low;
+            quotes[t].pePctileRecurring = recHead.pctile;
+            quotes[t].lowDateRecurring = recHead.lowDate;
+        }
+
         const head = hist?.horizons?.[HEADLINE_HORIZON] || hist?.horizons?.all;
         if (!head) { troughMissing++; continue; }
         Object.assign(quotes[t], {

@@ -64,11 +64,19 @@ const read = (f, fallback = null) => {
 // last filed annual, which is what a disposal looks like from the outside.
 const ONE_OFF_EPS_JUMP = 2.0;
 function oneOffRisk(quote, entry, floor, band) {
+    // Both halves on the SAME basis. This compared a RECURRING multiple against a floor built
+    // on REPORTED earnings, which is the mismatch the flag exists to catch, committed by the
+    // flag itself. Intel's reported floor is 5.5x and its recurring floor 27.5x, so a recurring
+    // P/E of 20 read as "four times its floor" when against a like-for-like floor it is below
+    // it. Falls back to the reported floor only when no recurring one exists, and says so.
     const rpe = quote.normEps > 0 ? quote.price / quote.normEps : null;
+    const recFloor = quote.peLowRecurring > 0 ? quote.peLowRecurring : null;
+    const against = recFloor ?? floor;
     if (rpe != null && quote.normEps !== quote.eps) {
-        const rv = rpe / floor - 1;
+        const rv = rpe / against - 1;
         return rv > band
-            ? { why: 'recurring earnings put it above its floor', recurringPe: rpe, recurringVsFloor: rv }
+                ? { why: 'recurring earnings put it above its floor', recurringPe: rpe, recurringVsFloor: rv,
+                    floorBasis: recFloor ? 'recurring' : 'reported (no recurring floor)' }
             : null;
     }
     // No normalized figure to compare against — fall back to the audited annual.

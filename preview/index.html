@@ -1108,6 +1108,18 @@
                 // percentile is every week in the window. §6.1 fires in the cheapest 10%.
                 ['P/E low (5y)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
                 ['vs own 5y', pctileRow(leg.quote)],
+                ['P/E low (recurring)', (() => {
+                    const r = q.peLowRecurring;
+                    if (r == null) return '<span class="muted">–</span>';
+                    const gap = leg.peLow > 0 ? r / leg.peLow - 1 : null;
+                    // Only worth flagging when the two disagree enough to change a decision.
+                    // Intel's reported floor is 5.5x and its recurring floor 27.5x: the first is
+                    // a year of one-off earnings, not a multiple anyone can pay again.
+                    const note = gap != null && Math.abs(gap) >= 0.15
+                        ? ` <span class="${gap > 0 ? 'loss' : 'gain'}" title="The reported floor was struck on earnings that included one-offs, so it is not a level these earnings can revisit. Yahoo's normalisation, applied with hindsight — the reported floor above stays the filed, point-in-time one.">${gap > 0 ? '+' : ''}${(gap * 100).toFixed(0)}% vs reported</span>`
+                        : '';
+                    return num2(r) + '×' + note;
+                })()],
                 // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
                 // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
                 ['Cheapest by horizon', horizonRow(leg.quote)],
