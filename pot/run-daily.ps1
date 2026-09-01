@@ -34,6 +34,69 @@ if (Test-Path $lock) {
 }
 "$PID started $((Get-Date).ToUniversalTime().ToString('s'))Z" | Set-Content $lock -Encoding utf8
 
+
+# Both helpers are defined BEFORE the try that calls them. PowerShell does not hoist functions:
+# defined after their first call site, `Publish` simply did not exist yet, and the 1 Sep 06:00
+# cycle aborted on the first scan push having written book and scan but no lane - reporting
+# success the whole way, because the script ended `exit 0` regardless. Keep definitions above
+# first use, and keep the exit code honest below.
+
+# Each lane is its own process so a failure stops the cycle rather than poisoning the next.
+#
+# Splat a HASHTABLE, not an array. Splatting @('-Brief', $brief, ...) binds positionally, so
+# run-lane.ps1 received '-Brief' as its $Brief and the path as its $Agent, and refused it for
+# not being 'codex' or 'claude'. The 30 Aug 06:00 run failed this way and still reported
+# success, because a parameter-binding error leaves $LASTEXITCODE untouched from the previous
+# command. Hence the try/catch as well: exit codes alone cannot see this class of failure.
+# Publish what is committed, retrying past the CI race.
+#
+# A single fetch-rebase-push looked reliable and was not: the 31 Aug 21:00 cycle committed
+# its bundle, lost one rebase, and stopped - so the two proposals it had just written sat on
+# this machine while the site served a build from five hours earlier. Nothing reported a
+# problem, because the cycle had genuinely finished.
+#
+# --autostash handles the dirty tree the mid-cycle fetch leaves. The retry handles origin
+# moving between the fetch and the push, which is the common case at five cycles a day.
+function Publish($what) {
+    if ($NoPush) { Note "$what committed locally (-Push not set)"; return }
+    foreach ($try in 1..3) {
+        git fetch --quiet origin main 2>&1 | Out-Null
+        git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            git rebase --abort 2>&1 | Out-Null
+            Note "$what rebase failed (attempt $try)"
+            Start-Sleep -Seconds 5
+            continue
+        }
+        git push --quiet origin main 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { Note "$what pushed"; return }
+        Note "$what push rejected (attempt $try) - refetching"
+        Start-Sleep -Seconds 5
+    }
+    Note "$what STILL LOCAL after 3 attempts - it will go with the next cycle"
+}
+
+function Invoke-Lane($brief) {
+    Note "--- $brief"
+    $laneArgs = @{ Brief = $brief; Repo = $Repo }
+    if (-not $NoPush) { $laneArgs.Push = $true }
+    $before = (Get-Item (Join-Path $Repo $log)).Length
+    try {
+        & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
+    } catch {
+        Note "$brief threw: $($_.Exception.Message) - stopping the cycle"
+        exit 1
+    }
+    if ($LASTEXITCODE -ne 0) { Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1 }
+    # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
+    # never started, whatever the exit code says.
+    if ((Get-Item (Join-Path $Repo $log)).Length -le $before) {
+        Note "$brief wrote nothing to the log - it did not run. Stopping the cycle."
+        exit 1
+    }
+}
+
+$completed = $false
 try {
     $started = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     Add-Content -Path $log -Value "`n===== daily cycle $started =====" -Encoding utf8
@@ -61,61 +124,6 @@ try {
         Note 'scan committed'
         Publish 'scan'
     } else { Note 'scan found nothing new to commit' }
-
-    # Each lane is its own process so a failure stops the cycle rather than poisoning the next.
-    #
-    # Splat a HASHTABLE, not an array. Splatting @('-Brief', $brief, ...) binds positionally, so
-    # run-lane.ps1 received '-Brief' as its $Brief and the path as its $Agent, and refused it for
-    # not being 'codex' or 'claude'. The 30 Aug 06:00 run failed this way and still reported
-    # success, because a parameter-binding error leaves $LASTEXITCODE untouched from the previous
-    # command. Hence the try/catch as well: exit codes alone cannot see this class of failure.
-    # Publish what is committed, retrying past the CI race.
-    #
-    # A single fetch-rebase-push looked reliable and was not: the 31 Aug 21:00 cycle committed
-    # its bundle, lost one rebase, and stopped - so the two proposals it had just written sat on
-    # this machine while the site served a build from five hours earlier. Nothing reported a
-    # problem, because the cycle had genuinely finished.
-    #
-    # --autostash handles the dirty tree the mid-cycle fetch leaves. The retry handles origin
-    # moving between the fetch and the push, which is the common case at five cycles a day.
-    function Publish($what) {
-        if ($NoPush) { Note "$what committed locally (-Push not set)"; return }
-        foreach ($try in 1..3) {
-            git fetch --quiet origin main 2>&1 | Out-Null
-            git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                git rebase --abort 2>&1 | Out-Null
-                Note "$what rebase failed (attempt $try)"
-                Start-Sleep -Seconds 5
-                continue
-            }
-            git push --quiet origin main 2>&1 | Out-Null
-            if ($LASTEXITCODE -eq 0) { Note "$what pushed"; return }
-            Note "$what push rejected (attempt $try) - refetching"
-            Start-Sleep -Seconds 5
-        }
-        Note "$what STILL LOCAL after 3 attempts - it will go with the next cycle"
-    }
-
-    function Invoke-Lane($brief) {
-        Note "--- $brief"
-        $laneArgs = @{ Brief = $brief; Repo = $Repo }
-        if (-not $NoPush) { $laneArgs.Push = $true }
-        $before = (Get-Item (Join-Path $Repo $log)).Length
-        try {
-            & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
-        } catch {
-            Note "$brief threw: $($_.Exception.Message) - stopping the cycle"
-            exit 1
-        }
-        if ($LASTEXITCODE -ne 0) { Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1 }
-        # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
-        # never started, whatever the exit code says.
-        if ((Get-Item (Join-Path $Repo $log)).Length -le $before) {
-            Note "$brief wrote nothing to the log - it did not run. Stopping the cycle."
-            exit 1
-        }
-    }
 
     # ---- 2. Review, and it runs BEFORE the Sweep on purpose (pot-design §2). An agent that has
     # just spent an hour finding exciting new names is not the right agent to judge the thesis it
@@ -178,9 +186,23 @@ try {
         Publish 'stamps and bundle'
     }
     Note 'cycle complete'
+    $completed = $true
+}
+catch {
+    # Without this the 1 Sep 06:00 abort wrote NOTHING after 'scan committed': a terminating error
+    # unwound straight past the log to the finally. Anything that kills the cycle now says so in
+    # the log, with the line it died on.
+    Note "cycle ABORTED: $($_.Exception.Message)"
+    Note "  at $($_.InvocationInfo.ScriptName):$($_.InvocationInfo.ScriptLineNumber) - $($_.InvocationInfo.Line.Trim())"
 }
 finally {
     if ($awake -and -not $awake.HasExited) { Stop-Process -Id $awake.Id -Force -ErrorAction SilentlyContinue }
     Remove-Item $lock -Force -ErrorAction SilentlyContinue
 }
-exit 0
+# The exit code has to mean something. It was a flat `exit 0`, so Task Scheduler recorded the
+# 1 Sep abort as a success and nothing surfaced it — the lanes' own `exit 1` paths were the only
+# way this script could ever report failure. A cycle that did not reach 'cycle complete' is a
+# failed cycle, whatever it managed on the way.
+if ($completed) { exit 0 }
+Note 'cycle did NOT complete - exiting 1'
+exit 1
