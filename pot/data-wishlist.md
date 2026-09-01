@@ -30,6 +30,17 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-01 — US manufacturing prices, supplier delivery times and customer inventories.**
+  Fetched from the Institute for Supply Management's manufacturing survey. Wanted monthly; the
+  combination distinguishes healthy demand from inflationary supply strain and points towards
+  businesses that can solve shortages rather than merely absorb them.
+- **2026-09-01 — WESCO organic sales, backlog, working capital and leverage.**
+  Fetched from WESCO's quarterly earnings release filed with the SEC. Wanted on results dates while
+  WESCO is tracked; these figures test whether its data-centre and electrical-distribution demand
+  converts into cash rather than receivables and inventory.
+- **2026-09-01 — Bank Central Asia deposit mix, loan growth and asset quality.**
+  Fetched from BCA's half-year results release. Wanted quarterly while BCA is tracked; CASA, NPL and
+  loan-at-risk trends test whether the bank's funding advantage survives Indonesia's macro stress.
 - **2026-08-31 — German headline, core and energy inflation.**
   Fetched from Destatis. Wanted monthly while the energy shock persists; the split distinguishes
   a commodity squeeze from broad demand inflation and changes which businesses should have
