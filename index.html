@@ -225,8 +225,12 @@
             color: var(--text-muted); }
         #macro-table .macro-sym { margin-left: 7px; font-size: 10px; color: var(--text-muted); }
         /* The reading is prose, so it wraps and is the one column allowed to. */
-        #macro-table td.macro-says { text-align: left; white-space: normal; font-size: 11px;
-            color: var(--text-secondary); min-width: 22ch; line-height: 1.4; }
+        /* One line per reading. Wrapped, it gave the rows uneven heights and broke the vertical
+           scan down the movement columns, which is what the table is actually read for. The
+           longest reading is ~52 characters, so the column costs about 300px and the table still
+           sits under a laptop width. */
+        #macro-table td.macro-says { text-align: left; white-space: nowrap; font-size: 11px;
+            color: var(--text-secondary); line-height: 1.4; }
         /* Macro group headings: a label row inside the table, not a sortable column. Sticky under
            the header so the group a row belongs to is still on screen once you have scrolled past
            its heading — with four groups and seventeen rows, that is most of the time.
@@ -307,6 +311,18 @@
             padding-top: 14px; text-align: left;
             position: sticky; top: var(--macro-head-top, 29px); left: 0;
             background: var(--surface-1); z-index: 2; }
+        /* ...which only sticks if this wrapper is not itself the scrollport. `.table-responsive`
+           sets overflow-x:auto, and per the overflow spec a visible overflow-y beside a non-visible
+           overflow-x computes to auto — so the wrapper became a scroll container in BOTH axes,
+           the sticky rows measured against it, and since it has no height it never scrolled and
+           they never stuck. Dropping to visible hands the sticking back to the page.
+           Only above a width where the table fits: under it the horizontal scroller is worth more
+           than the stick, and the first-column pin needs a scroll container to pin against. */
+        @media (min-width: 1100px) { #macro { overflow: visible; } }
+        /* Group rows and header rows are both sticky and would meet at the top; the header has to
+           win. The shared th rule is z-index 2, the same as the group row, and the group row is
+           later in the DOM — so without this it slid OVER the header instead of under it. */
+        #macro-table thead th { z-index: 4; }
         #deep-fin tr.band-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.band-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
@@ -331,6 +347,28 @@
         .deep-notes > summary:hover { color: var(--text-secondary); }
         .deep-notes > summary:focus-visible { outline: 1px solid var(--text-muted); outline-offset: 2px; }
         .deep-notes > ul.deep-note { margin-top: 4px; }
+
+        /* ---- fed path ---- */
+        #fed { margin: 0 0 16px; }
+        #fed-head { font-size: 13px; line-height: 1.5; margin-bottom: 7px; }
+        /* Scrolls rather than wraps: the strip is a curve, and a curve broken onto a second
+           line stops reading as one. */
+        #fed-strip { display: flex; gap: 4px; overflow-x: auto; }
+        #fed-strip > div { flex: 1 0 58px; background: var(--surface-2); border-radius: 5px;
+            padding: 5px 4px; text-align: center; font-size: 11px; }
+        /* The anchor month is where policy is NOW, not a forecast — outlined so the eye starts
+           there and reads the rest as distance from it. */
+        #fed-strip > div:first-child { background: var(--surface-3); outline: 1px solid var(--line); }
+        #fed-strip .fed-m { color: var(--text-muted); }
+        #fed-strip .fed-r { font-size: 14px; margin: 1px 0; }
+        #fed-strip .fed-d { font-size: 10px; }
+        #infl-table { margin-top: 12px; width: auto; min-width: 0; font-size: 12px; }
+        #infl-table th, #infl-table td { text-align: right; padding: 3px 10px 3px 0; white-space: nowrap; }
+        #infl-table th:first-child, #infl-table td:first-child { text-align: left; }
+        #infl-table .infl-rate { font-size: 13px; }
+        /* The print date is the point of the column, not a footnote — a CPI row is weeks old and
+           the row should say so without being hovered. */
+        #infl-table .infl-asof { color: var(--text-muted); }
 
         /* ---- watchlist ---- */
         /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
@@ -642,7 +680,7 @@
         <table id="portfolio" class="pinned">
             <thead>
                 <tr>
-                    <th data-sort="name">Position</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th>
+                    <th data-sort="name">Position</th><th data-sort="live" aria-sort="descending" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th>
                     <th data-sort="price">Price</th>
                     <th data-sort="1d" title="Change since the previous session close">1D</th>
                     <th data-sort="7d">7D</th>
@@ -660,7 +698,7 @@
                     <th data-sort="cagr" title="The Gain/Loss % column, compounded over the Held period beside it: (value ÷ cost) ^ (365 ÷ days held) − 1. Same open lots and same cost basis as that column, so the two always agree — this is simply that return per year. Realized gains are excluded, exactly as they are there. Blank under one year on purpose: a position bought last week annualises its first move into the millions of percent, and the % column already tells you everything about it.">CAGR</th>
                     <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
                     <th data-sort="cost">Cost</th>
-                    <th data-sort="value" aria-sort="descending">Value</th>
+                    <th data-sort="value">Value</th>
                     <th data-sort="gain">Gain/Loss</th>
                     <th data-sort="realized">Realized</th>
                     <th data-sort="value" title="Share of the whole portfolio by value. The bar under each position name shows the same thing relative to the largest row on screen — a full bar is the biggest holding, not 100%.">Mix</th>
@@ -768,6 +806,27 @@
          looking up. Grouped rather than sorted: "equities up, dollar up, gold down" is read a
          block at a time, and a table ordered by 1D move would break exactly that reading. -->
     <div class="table-responsive" id="macro" hidden>
+        <!-- The Fed path, above the table because every Rates row under it is downstream of this
+             one curve. Each cell is one month's fed funds contract: the market-implied policy
+             rate for that month, and how that view moved over the past month. -->
+        <div id="fed">
+            <div id="fed-head"></div>
+            <div id="fed-strip"></div>
+            <p id="fed-note" class="deep-note"></p>
+            <!-- Inflation under the path, because it is the input to it. Split realized from
+                 expected: the first is weeks stale by the time it is read, the second is today's
+                 price of the same question, and reading them as one number would be wrong. -->
+            <table id="infl-table">
+                <thead><tr>
+                    <th>Inflation</th>
+                    <th title="The rise over the SAME MONTH A YEAR EARLIER — the 12-month rate quoted in the release, not a monthly one.">12-month</th>
+                    <th title="This month's 12-month rate against last month's. A change in the ANNUAL rate between two prints, in percentage points — not the rate of price rises over the month.">vs prev print</th>
+                    <th title="The month the figure describes — a print is typically 4-7 weeks behind the date you are reading it.">As of</th>
+                </tr></thead>
+                <tbody></tbody>
+            </table>
+            <p id="infl-note" class="deep-note"></p>
+        </div>
         <table id="macro-table">
             <thead><tr>
                 <th>Series</th><th>Level</th>
@@ -847,7 +906,10 @@
         let guidancePromise = null;
         let INTERIM = null;      // manual half-year results for semi-annual reporters
         let interimPromise = null;
-        let sort = { key: 'value', dir: -1 };
+        // Opens grouped by what is trading right now, largest position first inside each group.
+        // The dot column is binary, so it only splits the book in two — the value tiebreak in
+        // sortedRows() is what makes that a usable order rather than two arbitrary blobs.
+        let sort = { key: 'live', dir: -1 };
         // The watchlist is a separate flat table with no 'value'/grouping, so it keeps its own
         // sort state. Default A–Z by name, matching how buildWatchlist first orders it.
         let watchSort = { key: 'name', dir: 1 };
@@ -2725,14 +2787,19 @@
             if (key === 'trades') return rowTrades(row) || null;
             return row[key];
         };
+        // Ties fall back to value, largest first — the sort this table used to open on. Without
+        // it, a binary column like `live` drops half the book into one bucket ordered by whatever
+        // visibleRows() happened to emit. Nulls still sink regardless of direction.
         function sortedRows() {
             return [...visibleRows()].sort((a, b) => {
                 const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
-                if (x == null && y == null) return 0;
-                if (x == null) return 1;
-                if (y == null) return -1;
-                if (typeof x === 'string') return sort.dir * x.localeCompare(y);
-                return sort.dir * (x - y);
+                let c;
+                if (x == null && y == null) c = 0;
+                else if (x == null) c = 1;
+                else if (y == null) c = -1;
+                else if (typeof x === 'string') c = sort.dir * x.localeCompare(y);
+                else c = sort.dir * (x - y);
+                return c || (b.value ?? 0) - (a.value ?? 0);
             });
         }
 
@@ -3319,8 +3386,100 @@ function renderPot() {
         // Levels, not holdings — so no currency conversion and no position sizing. A yield is
         // already a percentage, which makes "4.716" the level and "+0.94%" the move on it: two
         // different percentages in one row, so the unit is spelled out rather than assumed.
+        // The Fed path — the CME FedWatch reading, from the 30-day fed funds futures FedWatch is
+        // itself computed on. Read left to right: the outlined cell is where policy is now, the
+        // last cell is where it is priced to be, and the small figure under each is how that
+        // month's implied rate MOVED over the past month — the trend, which a single FedWatch
+        // snapshot cannot show you.
+        //
+        // Colour is from the equity holder's seat, not the bond desk's: hawkish drift is red.
+        // Higher priced rates are a headwind to everything in the tables below, so a green "rate
+        // went up" would read backwards on this page. The note says so, because it is a choice.
+        // Muted when the figure ROUNDS to zero, not only when it is exactly zero: a green "0.00"
+        // or a red "0bp" claims a direction the number on screen does not actually show. `eps` is
+        // half a display unit — 0.005 for a 2dp rate, 0.5 for whole basis points.
+        const moveCls = (v, eps) => v == null || Math.abs(v) < eps ? 'muted' : cls(v);
+
+        function renderFed() {
+            const fed = STATE.fed || {}, path = fed.path || [];
+            const head = document.getElementById('fed-head');
+            const strip = document.getElementById('fed-strip');
+            const note = document.getElementById('fed-note');
+            if (path.length < 2 || fed.spot == null) {
+                head.textContent = 'No fed funds path in prices.json — run npm run fetch.';
+                strip.innerHTML = '';
+                note.textContent = '';
+                return;
+            }
+            const mon = m => qShort(m + '-01');
+            // Half a step is the threshold for naming a direction: under 12bp the strip is noise
+            // around an unchanged policy rate, not a priced move.
+            const verb = fed.bp > 12 ? 'hikes' : fed.bp < -12 ? 'cuts' : null;
+            const bp = n => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}bp`;
+            head.innerHTML = `Fed funds <b>${fed.spot.toFixed(2)}%</b> now → <b>${fed.rate.toFixed(2)}%</b> by `
+                + `${escapeHTML(mon(fed.through))} — <span class="${cls(-fed.bp)}">`
+                + (verb ? `${Math.abs(fed.moves)} ${verb} priced` : 'on hold') + `</span> (${bp(fed.bp)})`
+                + (fed.driftBp == null ? '' : `, and the market turned <span class="${cls(-fed.driftBp)}">`
+                    + (fed.driftBp > 0 ? 'more hawkish' : fed.driftBp < 0 ? 'more dovish' : 'no further')
+                    + `</span> on that over the past month (${bp(fed.driftBp)})`);
+            strip.innerHTML = path.map(p => `<div title="${escapeHTML(p.sym)}">`
+                + `<div class="fed-m">${escapeHTML(mon(p.month))}</div>`
+                + `<div class="fed-r">${p.rate.toFixed(2)}</div>`
+                + `<div class="fed-d ${moveCls(p.chg1m == null ? null : -p.chg1m, 0.005)}">`
+                + `${p.chg1m == null ? '–' : bp(Math.round(p.chg1m * 100))}</div>`
+                + '</div>').join('');
+            note.textContent = `${path.length} monthly fed funds futures contracts (100 − price = the `
+                + 'rate that month), the same instrument the CME FedWatch tool is computed from. '
+                + 'The small figure is the past month\'s change in that contract — red is hawkish, '
+                + 'read from an equity holder\'s seat. The first month is a monthly average, so it '
+                + 'can sit a few bp off the standing target when a meeting falls inside it.';
+        }
+
+        // Inflation, under the path because it is the input to it. Two different things sit in
+        // one row and the headers say which is which: the rate is year-over-year, the change
+        // beside it is that annual rate against the previous month's print — percentage points
+        // between two releases, not a monthly rate of price rises. The "As of" column carries the
+        // month each row describes, so its staleness is on the face of the table.
+        //
+        // Colour matches the fed panel above: rising inflation is red. Same seat, same convention
+        // — it is the hawkish direction, and a green "inflation went up" would read backwards.
+        function renderInflation() {
+            const rows = STATE.inflation || [];
+            const tbody = document.querySelector('#infl-table tbody');
+            const note = document.getElementById('infl-note');
+            if (!rows.length) {
+                tbody.innerHTML = '';
+                note.textContent = 'No inflation series in prices.json — run npm run fetch.';
+                return;
+            }
+            tbody.innerHTML = rows.map(r => {
+                // Percentage POINTS, so no % sign: it is the gap between two annual rates, and
+                // writing "-0.17%" beside a "3.36%" invites reading it as a rate of its own.
+                const chg = r.chg == null ? '–'
+                    : `${r.chg > 0 ? '+' : r.chg < 0 ? '−' : ''}${Math.abs(r.chg).toFixed(2)}`;
+                const from = r.prev == null ? ''
+                    : ` Previous print ${r.prev.toFixed(2)}% for ${qShort(r.prevAsOf)}.`;
+                return `<tr title="${escapeHTML(`${r.note || ''}${from}`)}">`
+                    + `<td>${escapeHTML(r.name)}</td>`
+                    + `<td class="infl-rate">${r.value.toFixed(2)}%</td>`
+                    + `<td class="${moveCls(r.chg == null ? null : -r.chg, 0.005)}">${chg}</td>`
+                    + `<td class="infl-asof">${escapeHTML(qShort(r.asOf))}</td>`
+                    + '</tr>';
+            }).join('');
+            note.textContent = 'From FRED (fredgraph.csv, no key) — the only series here not from '
+                + 'Yahoo, because Yahoo carries no CPI. The rate is the rise over the same month a '
+                + 'year earlier; the column beside it is that annual rate against the previous '
+                + "month's print, in percentage points, so a negative number means inflation is "
+                + "cooling rather than prices falling. The Fed's target is 2% on core PCE — not on "
+                + 'CPI, and not on the headline. Rising is red, the hawkish direction, same as the '
+                + 'strip above. Every row is weeks behind by the time you read it; the fed path '
+                + 'above is priced live and has already traded these numbers.';
+        }
+
         const MACRO_GROUPS = ['Equity', 'Rates', 'Currency', 'Commodity'];
         function renderMacro() {
+            renderFed();
+            renderInflation();
             const tbody = document.querySelector('#macro-table tbody');
             const note = document.getElementById('macro-note');
             const macro = STATE.macro || {};
@@ -3392,7 +3551,7 @@ function renderPot() {
             if (!STATE) return;
             const p = new URLSearchParams();
             if (STATE.dim !== 'company') p.set('g', STATE.dim);
-            if (sort.key !== 'value' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
+            if (sort.key !== 'live' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
             if (watchSort.key !== 'name' || watchSort.dir !== 1) { p.set('ws', watchSort.key); p.set('wd', watchSort.dir); }
             if (chartSel) p.set('sel', chartSel);
             const h = p.toString();
@@ -3515,7 +3674,7 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, countries, nav, performance }, watchlist, signals, pot]) => {
+        ])).then(([{ holdings }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
             RATES = rates;
             POT = pot;
             // Held names are dropped: once you own it, the holdings table is the truth. This
@@ -3532,7 +3691,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, countries, signals, nav, performance, firstTrade, dim, updated };
+            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
