@@ -1734,7 +1734,6 @@ const MACRO = {
     'USDHKD=X': { name: 'USD/HKD',      group: 'Currency' },
     'GC=F':     { name: 'Gold',         group: 'Commodity' },
     'CL=F':     { name: 'Crude (WTI)',  group: 'Commodity' },
-    'HG=F':     { name: 'Copper',       group: 'Commodity' },
     'BTC-USD':  { name: 'Bitcoin',      group: 'Commodity' },
 };
 

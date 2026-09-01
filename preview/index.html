@@ -666,7 +666,7 @@
         <table id="portfolio" class="pinned">
             <thead>
                 <tr>
-                    <th data-sort="name">Position</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th>
+                    <th data-sort="name">Position</th><th data-sort="live" aria-sort="descending" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th>
                     <th data-sort="price">Price</th>
                     <th data-sort="1d" title="Change since the previous session close">1D</th>
                     <th data-sort="7d">7D</th>
@@ -684,7 +684,7 @@
                     <th data-sort="cagr" title="The Gain/Loss % column, compounded over the Held period beside it: (value ÷ cost) ^ (365 ÷ days held) − 1. Same open lots and same cost basis as that column, so the two always agree — this is simply that return per year. Realized gains are excluded, exactly as they are there. Blank under one year on purpose: a position bought last week annualises its first move into the millions of percent, and the % column already tells you everything about it.">CAGR</th>
                     <th data-sort="qty" title="Shares you currently hold. Single instruments only — an ADR line and its local line count different things (one KWHIY ADR is 2.5 local shares), so they cannot be added together.">Shares</th>
                     <th data-sort="cost">Cost</th>
-                    <th data-sort="value" aria-sort="descending">Value</th>
+                    <th data-sort="value">Value</th>
                     <th data-sort="gain">Gain/Loss</th>
                     <th data-sort="realized">Realized</th>
                     <th data-sort="value" title="Share of the whole portfolio by value. The bar under each position name shows the same thing relative to the largest row on screen — a full bar is the biggest holding, not 100%.">Mix</th>
@@ -891,7 +891,10 @@
         let guidancePromise = null;
         let INTERIM = null;      // manual half-year results for semi-annual reporters
         let interimPromise = null;
-        let sort = { key: 'value', dir: -1 };
+        // Opens grouped by what is trading right now, largest position first inside each group.
+        // The dot column is binary, so it only splits the book in two — the value tiebreak in
+        // sortedRows() is what makes that a usable order rather than two arbitrary blobs.
+        let sort = { key: 'live', dir: -1 };
         // The watchlist is a separate flat table with no 'value'/grouping, so it keeps its own
         // sort state. Default A–Z by name, matching how buildWatchlist first orders it.
         let watchSort = { key: 'name', dir: 1 };
@@ -2769,14 +2772,19 @@
             if (key === 'trades') return rowTrades(row) || null;
             return row[key];
         };
+        // Ties fall back to value, largest first — the sort this table used to open on. Without
+        // it, a binary column like `live` drops half the book into one bucket ordered by whatever
+        // visibleRows() happened to emit. Nulls still sink regardless of direction.
         function sortedRows() {
             return [...visibleRows()].sort((a, b) => {
                 const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
-                if (x == null && y == null) return 0;
-                if (x == null) return 1;
-                if (y == null) return -1;
-                if (typeof x === 'string') return sort.dir * x.localeCompare(y);
-                return sort.dir * (x - y);
+                let c;
+                if (x == null && y == null) c = 0;
+                else if (x == null) c = 1;
+                else if (y == null) c = -1;
+                else if (typeof x === 'string') c = sort.dir * x.localeCompare(y);
+                else c = sort.dir * (x - y);
+                return c || (b.value ?? 0) - (a.value ?? 0);
             });
         }
 
@@ -3534,7 +3542,7 @@ function renderPot() {
             if (!STATE) return;
             const p = new URLSearchParams();
             if (STATE.dim !== 'company') p.set('g', STATE.dim);
-            if (sort.key !== 'value' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
+            if (sort.key !== 'live' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
             if (watchSort.key !== 'name' || watchSort.dir !== 1) { p.set('ws', watchSort.key); p.set('wd', watchSort.dir); }
             if (chartSel) p.set('sel', chartSel);
             const h = p.toString();
