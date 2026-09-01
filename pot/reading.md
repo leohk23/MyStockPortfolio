@@ -60,6 +60,21 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
 
 <!-- newest first -->
 
+- 2026-08-24 · Vlad Djukanovic · "Profit Margins: Measure or Mirage?"
+  · <https://vladdjukanovic.substack.com/p/profit-margins-measure-or-mirage>
+  · saved: [`reading/2026-08-24-ProfitMargin-VD.md`](reading/2026-08-24-ProfitMargin-VD.md)
+  **Kind:** method
+  **Why:** it goes at something the pot does on every proposal. We judge earnings quality largely
+  by margin level and direction, and his argument is that a margin on its own is close to
+  meaningless: it is profit over **sales**, and we invest capital, not sales. The fruit stall at 5%
+  and the antique shop at 50% are not ranked by that number — **asset turnover** is the difference,
+  and return on capital employed is what actually compounds. He also says the research everyone
+  cites for "focus on gross margins" (gross profit over **total assets**) has been misread for
+  years by people swapping the denominator for sales, and that gross and net margins have the same
+  predictive power anyway. And **margin decay**: a high margin invites competition, so an elevated
+  one is a reason for suspicion rather than comfort. Worth deciding whether §2.4 and the deep-dive
+  brief should ask for return on capital and turnover alongside margin, rather than margin alone.
+
 - 2026-03-11, Michael Burry, *Cassandra Unchained*, "Hong Kong Stocks: Structure & Strategy —
   Common Stocks & Uncommon Value", subscriber-only, no public URL
  , saved: [`reading/2026-03-11-HKS2-Michael-Burry.md`](reading/2026-03-11-HKS2-Michael-Burry.md)

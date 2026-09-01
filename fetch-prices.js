@@ -901,6 +901,36 @@ const HISTORY_FROM = {
     'RSGN.SW': '2023-12-13',   // de-SPAC from VT5 Acquisition Company
 };
 
+// Return on capital, gross profitability and asset turnover.
+//
+// From Leo's 24 Aug reading: a margin is profit over SALES, and nobody invests in sales. The
+// fruit stall at 5% and the antique shop at 50% are not ranked by that number — turnover is,
+// and what compounds is the return on the capital employed. So these three sit beside the
+// margins rather than replacing them.
+//
+// Every input is a filed figure. The one derived number is the tax rate, taken from the
+// company's own tax expense over its own pretax income rather than assumed at 21% or 25%: an
+// assumed rate would silently flatter or punish whoever the assumption did not fit.
+function capitalMetrics(year, cap) {
+    if (!cap || !(cap.assets > 0)) return null;
+    const out = { year: cap.end || null, assets: cap.assets };
+    // Gross profit over TOTAL ASSETS — the measure the research actually supports, and the one
+    // the reading says is misread as gross MARGIN by swapping the denominator for sales.
+    if (cap.grossProfit != null) out.gpa = cap.grossProfit / cap.assets;
+    if (year?.rev > 0) out.turnover = year.rev / cap.assets;
+    // ROIC. Invested capital is total assets less current liabilities: what the business has
+    // to fund for more than a year. A financial has no meaningful current-liability split and
+    // EDGAR does not tag one, so banks and insurers come back without a ROIC rather than with
+    // a fabricated one.
+    const invested = cap.liabCurrent != null ? cap.assets - cap.liabCurrent : null;
+    const taxRate = cap.tax != null && cap.pretax > 0 ? cap.tax / cap.pretax : null;
+    if (invested > 0 && year?.opinc != null && taxRate != null && taxRate >= 0 && taxRate < 1) {
+        out.roic = (year.opinc * (1 - taxRate)) / invested;
+        out.taxRate = taxRate;
+    }
+    return out.roic != null || out.gpa != null || out.turnover != null ? out : null;
+}
+
 const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
 const HEADLINE_HORIZON = '5y';
 
@@ -2006,6 +2036,9 @@ async function main() {
     let filedQuarters = {};
     try { const f = JSON.parse(fs.readFileSync('filing-dates.json', 'utf8')); filedDates = f.dates || {}; filedQuarters = f.quarters || {}; }
     catch { console.log('note no filing-dates.json — every year falls back to the 90-day lag'); }
+    let capitalFacts = {};
+    try { capitalFacts = JSON.parse(fs.readFileSync('capital.json', 'utf8')).capital || {}; }
+    catch { console.log('note no capital.json — no ROIC, gross profitability or turnover'); }
     let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
@@ -2033,6 +2066,26 @@ async function main() {
             peWeeks: head.weeks ?? null,
             peHistory: hist.horizons,
         });
+        // Match the newest fiscal year the two sources share — WITHIN A FORTNIGHT, not exactly.
+        //
+        // EDGAR carries the real 52/53-week period end and Yahoo a normalised month end, so
+        // NVIDIA is 2026-01-25 in one and 2026-01-31 in the other. An exact match found nothing
+        // at all for NVDA and, worse, matched Apple's 2023 by luck while missing 2024 and 2025 —
+        // which does not look like a bug, it looks like stale data.
+        const capYears = capitalFacts[t];
+        if (capYears) {
+            const ends = Object.keys(capYears).sort();
+            const ey = (store.eps[t]?.years || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            for (const y of ey) {
+                const want = Date.parse(y.date + 'T00:00:00Z');
+                const end = ends.filter(d => Math.abs(Date.parse(d + 'T00:00:00Z') - want) <= 14 * DAY * 1000)
+                    .sort((a, b) => Math.abs(Date.parse(a) - want) - Math.abs(Date.parse(b) - want))[0];
+                if (!end) continue;
+                const m = capitalMetrics(y, { ...capYears[end], end });
+                if (m) quotes[t].capital = m;
+                break;
+            }
+        }
         troughOk++;
     }
     // Names Yahoo gives no trailing EPS (Korean locals) get one summed from the last four

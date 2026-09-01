@@ -52,6 +52,57 @@ async function getJson(url) {
 // three guards edgarAnnual uses, for the same reason: quarterly and segment rows share the tag.
 // `withEps` additionally returns the annual EPS per year end, which deriveQ4 needs to work out the
 // fourth quarter nobody files on its own.
+// Balance-sheet and tax facts per fiscal year, for ROIC, gross profit on assets, and asset
+// turnover — the three the 24 Aug reading argues are the numbers a margin has to be read
+// against. earnings.json is income statement only, so none of them could be computed before.
+//
+// Two shapes of fact, and they must not be mixed:
+//   INSTANT   Assets, LiabilitiesCurrent — a balance on one date, `end` with no `start`.
+//   DURATION  GrossProfit, tax, pretax — a period, and only a ~year-long one counts.
+// Taking a quarterly duration row as the year is how a plausible wrong number gets in, so the
+// same 340-380 day guard filedDates uses applies here too.
+const INSTANT = { assets: ['Assets'], liabCurrent: ['LiabilitiesCurrent'], equity: ['StockholdersEquity'] };
+const DURATION = {
+    grossProfit: ['GrossProfit'],
+    tax: ['IncomeTaxExpenseBenefit'],
+    pretax: [
+        'IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+        'IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments',
+    ],
+};
+
+function capitalFacts(facts) {
+    const byYear = {};
+    const put = (end, key, val) => {
+        if (typeof val !== 'number') return;
+        (byYear[end] = byYear[end] || {});
+        // First annual filing wins; a later restatement of the same year does not overwrite
+        // the figure the market actually saw.
+        if (byYear[end][key] == null) byYear[end][key] = val;
+    };
+    const rowsFor = tags => tags.flatMap(tag =>
+        Object.values(facts?.facts?.['us-gaap']?.[tag]?.units || {}).flat());
+
+    for (const [key, tags] of Object.entries(INSTANT)) {
+        for (const x of rowsFor(tags)) {
+            if (!/^(10-K|20-F)$/.test(x.form || '') || x.fp !== 'FY') continue;
+            if (x.start || !x.end) continue;              // instants carry no start
+            put(x.end, key, x.val);
+        }
+    }
+    for (const [key, tags] of Object.entries(DURATION)) {
+        for (const x of rowsFor(tags)) {
+            if (!/^(10-K|20-F)$/.test(x.form || '') || x.fp !== 'FY') continue;
+            if (!x.start || !x.end) continue;
+            const days = (Date.parse(x.end) - Date.parse(x.start)) / 86400e3;
+            if (!(days > 340 && days < 380)) continue;
+            put(x.end, key, x.val);
+        }
+    }
+    // A year with no assets is useless to all three metrics, so it is not worth carrying.
+    return Object.fromEntries(Object.entries(byYear).filter(([, v]) => v.assets > 0));
+}
+
 function filedDates(facts, withEps = false) {
     const out = new Map();
     const eps = new Map();
@@ -247,7 +298,7 @@ async function main() {
     await sleep();
 
     const prev = (() => { try { return JSON.parse(fs.readFileSync(OUT, 'utf8')).dates || {}; } catch { return {}; } })();
-    const dates = {}, quarters = {};
+    const dates = {}, quarters = {}, capital = {};
     let ok = 0, missing = 0, years = 0;
 
     for (const t of tickers) {
@@ -256,6 +307,8 @@ async function main() {
         try {
             const facts = await getJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${id}.json`);
             const { filed, eps: annualEps } = filedDates(facts, true);
+            const cap = capitalFacts(facts);
+            if (Object.keys(cap).length) capital[t] = cap;
             const splits = await splitHistory(t);
             await sleep();
             const q = onTodaysBasis(quarterlyEps(facts), splits);
@@ -291,9 +344,16 @@ async function main() {
         await sleep();
     }
 
-    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), dates, quarters }, null, 1));
+    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), dates, quarters }, null, 1))
     console.log(`\nwrote ${OUT} — ${ok}/${tickers.length} tickers, ${years} fiscal years dated`
         + `${missing ? `, ${missing} not found in the SEC ticker map` : ''}`);
+
+    // Its own file rather than a section of filing-dates.json, whose name would then be a lie.
+    // Written from the same crawl, so it costs no extra EDGAR requests.
+    fs.writeFileSync('capital.json',
+        JSON.stringify({ updated: new Date().toISOString(), capital }, null, 1) + String.fromCharCode(10));
+    const capYears = Object.values(capital).reduce((a, c) => a + Object.keys(c).length, 0);
+    console.log(`wrote capital.json — ${Object.keys(capital).length} filers, ${capYears} fiscal years`);
 }
 
 function selftest() {
