@@ -225,8 +225,12 @@
             color: var(--text-muted); }
         #macro-table .macro-sym { margin-left: 7px; font-size: 10px; color: var(--text-muted); }
         /* The reading is prose, so it wraps and is the one column allowed to. */
-        #macro-table td.macro-says { text-align: left; white-space: normal; font-size: 11px;
-            color: var(--text-secondary); min-width: 22ch; line-height: 1.4; }
+        /* One line per reading. Wrapped, it gave the rows uneven heights and broke the vertical
+           scan down the movement columns, which is what the table is actually read for. The
+           longest reading is ~52 characters, so the column costs about 300px and the table still
+           sits under a laptop width. */
+        #macro-table td.macro-says { text-align: left; white-space: nowrap; font-size: 11px;
+            color: var(--text-secondary); line-height: 1.4; }
         /* Macro group headings: a label row inside the table, not a sortable column. Sticky under
            the header so the group a row belongs to is still on screen once you have scrolled past
            its heading — with four groups and seventeen rows, that is most of the time.
@@ -307,6 +311,18 @@
             padding-top: 14px; text-align: left;
             position: sticky; top: var(--macro-head-top, 29px); left: 0;
             background: var(--surface-1); z-index: 2; }
+        /* ...which only sticks if this wrapper is not itself the scrollport. `.table-responsive`
+           sets overflow-x:auto, and per the overflow spec a visible overflow-y beside a non-visible
+           overflow-x computes to auto — so the wrapper became a scroll container in BOTH axes,
+           the sticky rows measured against it, and since it has no height it never scrolled and
+           they never stuck. Dropping to visible hands the sticking back to the page.
+           Only above a width where the table fits: under it the horizontal scroller is worth more
+           than the stick, and the first-column pin needs a scroll container to pin against. */
+        @media (min-width: 1100px) { #macro { overflow: visible; } }
+        /* Group rows and header rows are both sticky and would meet at the top; the header has to
+           win. The shared th rule is z-index 2, the same as the group row, and the group row is
+           later in the DOM — so without this it slid OVER the header instead of under it. */
+        #macro-table thead th { z-index: 4; }
         #deep-fin tr.band-row td { border-top: 1px solid var(--line); }
         #deep-fin tr.band-row td:first-child { color: var(--text-secondary); }
         #deep-fin tr.quarter-row td { border-top: 1px solid var(--line); }
