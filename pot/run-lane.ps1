@@ -89,15 +89,49 @@ if ($Push) {
     # Only pot/ and watchlist.json are ever staged here, and the CI only ever touches the data JSONs,
     # so there is nothing to collide over in practice. If that ever stops being true, abandon the
     # rebase: an unattended task must not leave a conflicted tree for the next run to trip over.
-    # --autostash, because the tree is usually dirty here and that is not an error. The daily
-    # cycle runs fetch-prices between the lanes, leaving prices.json, history.json, earnings.json
-    # and intraday.json modified; plain rebase refuses to start on unstaged changes, and the
-    # runner reported that refusal as a CONFLICT - so every cycle on 31 Aug looked like it had hit
-    # a merge it could not resolve when nothing had actually diverged.
+    # The four files the daily cycle's fetch-prices leaves modified are CI-OWNED, and --autostash
+    # must not be trusted with them. It shelves them, rebases fine, then cannot put them back: CI
+    # rewrites each one wholesale every fifteen minutes and the local fetch rewrites it wholesale
+    # too, so the two overlap on essentially every line. Git keeps the stash and leaves BOTH
+    # versions in the working tree. On 2 Sep the deep dive's push landed exactly there and left
+    # prices.json unparseable, which then made the daily cycle's own publish fail three times and
+    # never ship pot.json - the dashboard showed nothing from that morning.
+    #
+    # Same remedy as run-daily.ps1's Publish, and the two must stay in step: copy the scratch out,
+    # let git take CI's version, copy it back verbatim. No merge attempted, nothing to conflict.
+    $ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json')
+    $saved = @{}
+    foreach ($f in $ciOwned) {
+        if (git status --porcelain -- $f) {
+            $tmp = Join-Path $env:TEMP "pot-lane-scratch-$f"
+            Copy-Item $f $tmp -Force
+            $saved[$f] = $tmp
+        }
+    }
+    if ($saved.Count) { git checkout --quiet -- @($saved.Keys) 2>&1 | Out-Null }
+
     git fetch --quiet origin main 2>&1 | Out-Null
     git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        git rebase --abort 2>&1 | Out-Null
+    $rebaseOk = $LASTEXITCODE -eq 0
+
+    foreach ($kv in $saved.GetEnumerator()) {
+        Copy-Item $kv.Value $kv.Key -Force
+        Remove-Item $kv.Value -Force -ErrorAction SilentlyContinue
+    }
+
+    # Whatever happened, do not hand the next lane a half-merged tree. `git rebase --autostash`
+    # exits 0 when only the stash pop conflicts, so an exit code alone cannot see this - the
+    # 2 Sep breakage was pushed and logged as success. Check the index, not the status code.
+    $unmerged = @(git diff --name-only --diff-filter=U)
+    if ($unmerged.Count) {
+        Note "unmerged after rebase, restoring from HEAD: $($unmerged -join ', ')"
+        git checkout HEAD -- $unmerged 2>&1 | Out-Null
+    }
+
+    if (-not $rebaseOk) {
+        # Abort only a rebase that is actually running; blindly aborting cleaned nothing and
+        # reported nothing while the log claimed a failed rebase.
+        if (Test-Path (Join-Path $Repo '.git/rebase-merge')) { git rebase --abort 2>&1 | Out-Null }
         Note 'rebase onto origin/main failed - aborted, commit stays local'
         exit 0
     }
