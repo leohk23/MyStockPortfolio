@@ -30,6 +30,14 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-02 — Korean exports by product.**
+  Fetched from the Korean Ministry of Trade, Industry and Resources. Wanted monthly while the
+  current export surge persists; the split separates the crowded semiconductor cycle from
+  consumer categories and exposes sharp weakness in autos and ships.
+- **2026-09-02 — COSMAX regional growth, customer mix, cash conversion and capital intensity.**
+  Fetched from COSMAX's DART filings. Wanted on results dates while COSMAX is tracked; revenue and
+  operating profit alone cannot show whether export demand compounds shareholder capital.
+
 - **2026-09-02 — Euro-area headline, ex-energy and energy inflation.**
   Fetched from Eurostat's flash HICP release. Wanted monthly while the energy shock persists; the
   split showed that August's renewed inflation was concentrated in energy rather than broadening
