@@ -30,6 +30,9 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-02 — ANDRITZ segment orders, backlog conversion, cash conversion and returns on capital.**
+  Fetched from ANDRITZ's half-year release. Wanted on results dates while ANDRITZ is tracked; a
+  record backlog can still destroy value if project pricing, working capital or execution is poor.
 - **2026-09-02 — Korean exports by product.**
   Fetched from the Korean Ministry of Trade, Industry and Resources. Wanted monthly while the
   current export surge persists; the split separates the crowded semiconductor cycle from
