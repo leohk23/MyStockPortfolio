@@ -30,6 +30,27 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-02 — Euro-area headline, ex-energy and energy inflation.**
+  Fetched from Eurostat's flash HICP release. Wanted monthly while the energy shock persists; the
+  split showed that August's renewed inflation was concentrated in energy rather than broadening
+  across the rest of the basket. This is the second direct reach for a European energy-inflation
+  split after Germany, so one more would make a stronger case for a recurring feed.
+- **2026-09-02 — Australian household vehicle purchases and fuel consumption.**
+  Fetched from the Australian Bureau of Statistics national accounts. Wanted quarterly while fuel
+  prices remain elevated; record electric and hybrid purchases alongside weaker fuel consumption
+  are direct evidence of households changing behaviour, not a forecast based on oil alone.
+- **2026-09-02 — Toyota electrified mix, operating margin and profit bridge.**
+  Fetched from Toyota's first-quarter results. Wanted on results dates while Toyota is tracked;
+  vehicle mix tests the hybrid-scale thesis, while the operating bridge separates product demand
+  from yen translation, financial income and other non-operating support.
+- **2026-09-02 — Spirax organic growth, segment margins, cash conversion and leverage.**
+  Fetched from Spirax's half-year RNS. Wanted on results dates while Spirax is tracked; these
+  measures test whether customer energy savings produce durable returns rather than a temporary
+  response to high energy prices.
+- **2026-09-02 — AI infrastructure capex, debt and circular-financing exposure by supplier.**
+  Fetched from the BIS Annual Economic Report; Michael Burry's public note was used only as the
+  lead. Wanted when the BIS or another regulator updates it, not weekly. The exposure map is useful
+  for rejecting suppliers whose growth depends on opaque, debt-funded hyperscaler spending.
 - **2026-09-01 — AI-exposed job postings by occupation and firm.**
   Fetched from the Federal Reserve Bank of Dallas's analysis of Lightcast postings and actual
   Claude usage. Wanted when the official research is updated, not weekly; it is useful evidence of
