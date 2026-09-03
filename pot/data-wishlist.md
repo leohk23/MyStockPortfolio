@@ -30,6 +30,23 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-03 — Euro-area industrial producer prices split between energy and ex-energy.**
+  Fetched from Eurostat. Wanted monthly while the energy shock persists; this is the third direct
+  reach for a European energy-inflation split, after German CPI and euro-area HICP, so it now makes
+  the case for a recurring feed.
+- **2026-09-03 — US manufacturing productivity and unit labour costs.**
+  Fetched from the Bureau of Labor Statistics. Wanted quarterly; the pair distinguishes real output
+  efficiency from revenue growth created only by higher prices.
+- **2026-09-03 — US capital-goods imports by product.**
+  Fetched from the Bureau of Economic Analysis. Wanted monthly while AI infrastructure spending
+  remains central; computers, accessories and semiconductors reveal physical deployment that broad
+  investment totals hide.
+- **2026-09-03 — IMI orders, cash conversion, organic growth and returns on capital.**
+  Fetched from IMI's half-year results. Wanted on results dates while IMI is tracked; the set tests
+  whether energy and automation demand compounds capital rather than merely lifting the order book.
+- **2026-09-03 — Ciena customer concentration, receivable days, inventory turns and cash conversion.**
+  Fetched from Ciena's release and SEC-filed cash flow. Wanted on results dates while Ciena is
+  tracked; revenue growth is not durable if a small customer set or working capital is financing it.
 - **2026-09-02 — ANDRITZ segment orders, backlog conversion, cash conversion and returns on capital.**
   Fetched from ANDRITZ's half-year release. Wanted on results dates while ANDRITZ is tracked; a
   record backlog can still destroy value if project pricing, working capital or execution is poor.
