@@ -38,9 +38,13 @@
 // check picks the field, so a schema change cannot silently pick a wrong one. The danger hides
 // where it cannot be seen: Apple has no minorities, so every candidate agrees there.
 //
-// Deliberately backfills `rev` and `nic` only — never `eps` or `ni`. troughPe() skips a
-// year whose EPS is not positive, so the P/E Low keeps its documented "cheapest in ~4y"
-// meaning instead of silently shifting when this runs.
+// Backfills `rev`, `nic` and `opinc` — never `eps` or `ni`. troughPe() skips a year whose EPS
+// is not positive, so leaving EPS alone keeps the P/E Low's documented "cheapest in ~4y" meaning
+// instead of silently shifting when this runs. `opinc` touches nothing but the Financials
+// panel's Operating income and Op margin columns, which is why it is safe to add and why it was
+// added on 3 Sep 2026 — without it a backfilled row showed revenue and net income with a blank
+// middle. It is optional at every step: a filer whose OperatingIncomeLoss cannot be verified
+// against Yahoo still gets its revenue and bottom line.
 const fs = require('fs');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
@@ -68,6 +72,11 @@ const sleep = (ms = 400) => new Promise(r => setTimeout(r, ms));
 const EDGAR_REV = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues',
     'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenuesNetOfInterestExpense'];
 const EDGAR_NIC = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss'];
+// Operating income fills the Financials panel's third column. OPTIONAL throughout: a filer that
+// does not tag it still gets its revenue and bottom line backfilled, exactly as before. EDGAR
+// only — stockanalysis is the source AGENTS.md says not to trust, and guessing a field name
+// there buys nothing while the markets it covers currently reconcile for almost nobody.
+const EDGAR_OPINC = ['OperatingIncomeLoss'];
 
 let cikCache = null;
 async function cikFor(ticker) {
@@ -112,8 +121,9 @@ async function edgarCandidate(yahoo, currency) {
         for (const t of tags) { const col = edgarAnnual(facts, t, currency); if (col) m.set(t, col); }
         return m;
     };
-    const rev = byField(EDGAR_REV), nic = byField(EDGAR_NIC);
-    return rev.size && nic.size ? { rev, nic } : null;
+    const rev = byField(EDGAR_REV), nic = byField(EDGAR_NIC), opinc = byField(EDGAR_OPINC);
+    // opinc is not part of the gate: rev and nic still decide whether this source is usable.
+    return rev.size && nic.size ? { rev, nic, opinc } : null;
 }
 
 /* ---------------- source 2: stockanalysis.com ---------------- */
@@ -205,17 +215,40 @@ function reconcile(cand, yahooYears) {
             return want == null || same(col.get(d), want);
         });
     };
+    // Stricter than `agrees`, and only used for operating income. `agrees` passes a column whose
+    // every overlapping year is null on Yahoo's side — fine for rev and nic, which Yahoo always
+    // carries, but Yahoo's opinc coverage is patchy, so that would accept a tag nothing ever
+    // checked. This demands at least one real comparison: the file's own rule that a source is
+    // not trusted where it cannot be verified.
+    const proves = (col, field) => {
+        const dates = [...col.keys()]
+            .filter(d => known.has(fyOf(d)) && known.get(fyOf(d))[field] != null);
+        return dates.length > 0 && dates.every(d => same(col.get(d), known.get(fyOf(d))[field]));
+    };
     for (const [revField, revCol] of cand.rev) {
         if (!agrees(revCol, 'rev')) continue;
         for (const [nicField, nicCol] of cand.nic) {
             if (!agrees(nicCol, 'nic')) continue;
+            // Optional, and deliberately chosen AFTER rev/nic have decided the source: a filer
+            // that never tags OperatingIncomeLoss, or whose tag disagrees with Yahoo, still gets
+            // its revenue and bottom line. It just does not get this column.
+            let opField = null, opCol = null;
+            for (const [f, col] of (cand.opinc || new Map())) {
+                if (proves(col, 'opinc')) { opField = f; opCol = col; break; }
+            }
             const years = new Map();
             for (const [date, rev] of revCol) {
                 const nic = nicCol.get(date);
-                if (typeof rev === 'number' && typeof nic === 'number')
-                    years.set(fyOf(date), { date, rev, nic });
+                if (typeof rev === 'number' && typeof nic === 'number') {
+                    const y = { date, rev, nic };
+                    const op = opCol?.get(date);
+                    if (typeof op === 'number') y.opinc = op;
+                    years.set(fyOf(date), y);
+                }
             }
-            if (years.size) return { field: `${revField}/${nicField}`, years };
+            if (years.size) {
+                return { field: `${revField}/${nicField}${opField ? `/${opField}` : ''}`, years };
+            }
         }
     }
     return null;
@@ -273,10 +306,14 @@ async function main() {
             if (!allowed.has(fy)) continue;
             const existing = byFy.get(fy);
             if (!existing) { fresh.push(v); continue; }
-            if (existing.rev == null || existing.nic == null) {
-                // Keep Yahoo's own date and its eps/ni — only fill the holes.
+            // Keep Yahoo's own date and its eps/ni — only fill the holes. opinc counts as a hole
+            // like the others: a year backfilled by an earlier run carries rev and nic but no
+            // operating income, and this is what fills it in without re-adding the year.
+            if (existing.rev == null || existing.nic == null
+                || (existing.opinc == null && v.opinc != null)) {
                 if (existing.rev == null) existing.rev = v.rev;
                 if (existing.nic == null) existing.nic = v.nic;
+                if (existing.opinc == null && v.opinc != null) existing.opinc = v.opinc;
                 patched.push(fy);
             }
         }
@@ -332,6 +369,38 @@ if (process.argv.includes('--selftest')) {
     const gotHk = reconcile(hk, yahoo);
     assert.strictEqual(gotHk.field, 'revenue/netinccmn');
     assert.deepStrictEqual(gotHk.years.get('2021'), { date: '2021-12-31', rev: 50, nic: 5 });
+    // A source with no opinc at all is unchanged — the column is optional end to end.
+    assert.ok(!('opinc' in gotHk.years.get('2021')));
+
+    // ---- operating income ----
+    const withOp = (rev, nic, opinc) => ({ ...cand(rev, nic),
+        opinc: new Map(Object.entries(opinc).map(([k, v]) => [k, new Map(Object.entries(v))])) });
+    const yahooOp = [
+        { date: '2022-12-31', rev: 100, nic: 10, opinc: 30, eps: 1 },
+        { date: '2023-12-31', rev: 200, nic: 20, opinc: 60, eps: 2 },
+    ];
+    const revCol = { revenue: { '2023-12-31': 200, '2022-12-31': 100, '2021-12-31': 50 } };
+    const nicCol = { netinccmn: { '2023-12-31': 20, '2022-12-31': 10, '2021-12-31': 5 } };
+
+    // Reproduces Yahoo on the overlapping years, so the older year is carried.
+    const good = reconcile(withOp(revCol, nicCol,
+        { OperatingIncomeLoss: { '2023-12-31': 60, '2022-12-31': 30, '2021-12-31': 15 } }), yahooOp);
+    assert.strictEqual(good.field, 'revenue/netinccmn/OperatingIncomeLoss');
+    assert.deepStrictEqual(good.years.get('2021'), { date: '2021-12-31', rev: 50, nic: 5, opinc: 15 });
+
+    // Disagrees on 2022 (31 vs 30): the column is dropped, but rev and nic still come through.
+    // A wrong operating-income tag must never cost the years that ARE verified.
+    const bad = reconcile(withOp(revCol, nicCol,
+        { OperatingIncomeLoss: { '2023-12-31': 60, '2022-12-31': 31, '2021-12-31': 15 } }), yahooOp);
+    assert.strictEqual(bad.field, 'revenue/netinccmn');
+    assert.deepStrictEqual(bad.years.get('2021'), { date: '2021-12-31', rev: 50, nic: 5 });
+
+    // Nothing to check it against — Yahoo carries no opinc on any overlapping year — so the tag
+    // is refused rather than trusted. This is the case `agrees` would have waved through.
+    const unproven = reconcile(withOp(revCol, nicCol,
+        { OperatingIncomeLoss: { '2023-12-31': 60, '2022-12-31': 30, '2021-12-31': 15 } }), yahoo);
+    assert.strictEqual(unproven.field, 'revenue/netinccmn');
+    assert.ok(!('opinc' in unproven.years.get('2021')));
 
     // US shape: no "available to common" tag at all, and plain net income IS what Yahoo reports.
     const us = cand({ revenue: { '2023-12-31': 200, '2022-12-31': 100, '2021-12-31': 50 } },
