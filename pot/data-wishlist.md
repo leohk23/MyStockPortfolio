@@ -30,6 +30,22 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-03 — NVIDIA material acquisition terms and integration milestones.**
+  Fetched from NVIDIA's announcement. Wanted event-driven rather than weekly; the Hugging Face deal
+  makes platform openness, hardware neutrality and integration progress material to an existing
+  holding.
+- **2026-09-03 — US distillate spot prices, stocks and days of supply.**
+  Fetched from the EIA. Wanted weekly while Hormuz disruption persists; this is the third direct
+  reach for refined-product conditions, so it now makes the case for a recurring feed.
+- **2026-09-03 — Japanese policy rate, yield curve and bank asset/deposit repricing.**
+  Fetched from the Bank of Japan and Mizuho. Wanted after each policy meeting and on bank results
+  dates while normalisation persists; it distinguishes durable rate income from trading gains and
+  securities marks.
+- **2026-09-03 — Wiley organic publishing growth, AI-licensing mix, leverage and cash conversion.**
+  Fetched from Wiley's SEC-filed results. Wanted on results dates while Wiley is tracked; the set
+  tests whether proprietary content compounds through subscriptions and repeat licences rather
+  than one-off training deals or acquisition accounting.
+
 - **2026-09-03 — Euro-area industrial producer prices split between energy and ex-energy.**
   Fetched from Eurostat. Wanted monthly while the energy shock persists; this is the third direct
   reach for a European energy-inflation split, after German CPI and euro-area HICP, so it now makes
