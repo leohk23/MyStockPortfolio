@@ -21,12 +21,22 @@ on:
     # this right with minute 17; the change to */15 discarded it.
     #
     # Same 15-minute spacing, shifted 3 minutes off every quarter so none of the four lands on
-    # the hour. Hours capped at 0-21 because that is the window the comment above describes —
-    # 22:00-23:00 UTC has no market open anywhere in this book.
+    # the hour.
     #
-    # This is one change on purpose, so its effect is measurable against the run history above.
-    # Nothing else in this file moved.
-    - cron: '3,18,33,48 0-21 * * 1-5'
+    # Hours: 0-21 is the window some market in this book is open — Tokyo from 00:00 UTC through
+    # the US close at 20:00 (summer) or 21:00 (winter). 22:00-23:59 has nothing trading anywhere.
+    #
+    # Hours 2, 3 and 4 are then dropped because Leo is asleep 02:00-06:00 LONDON and will not read
+    # the page. Only those three, not four: cron is UTC with no DST, and London is UTC+1 in summer
+    # but UTC+0 in winter, so 02:00-06:00 London maps to 01:00-05:00 UTC in summer and 02:00-06:00
+    # UTC in winter. Hours 2-4 are the intersection — asleep in BOTH seasons. Cutting hour 1 or 5
+    # as well would, for half the year, leave no refresh at 06:00 London, which is when he first
+    # looks. The same DST trap as capping the top of the range at 20 instead of 21.
+    #
+    # 76 firings a weekday. GitHub says Actions is free on public repos with standard runners, but
+    # the Additional Product Terms also say GitHub may monitor use, so asking for less than the
+    # maximum during hours nobody reads is cheap insurance rather than a saving.
+    - cron: '3,18,33,48 0,1,5-21 * * 1-5'
   workflow_dispatch:
   push:
     branches: [main]
