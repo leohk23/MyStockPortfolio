@@ -18,6 +18,7 @@ const os = require('os');
 
 const SESSIONS = path.join(os.homedir(), '.codex', 'sessions');
 const LOGS = 'pot/logs';
+const { discoveries } = require('./discoveries');   // shared with bundle.js - one implementation
 
 const fmt = n => n == null ? '–' : n.toLocaleString();
 const mmss = s => s == null ? '–' : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
@@ -231,34 +232,6 @@ function unannotatedLines(files) {
 // question here is whether the name itself was a good call. The FX leg earns its column when real
 // money makes it a real return.
 const NOISE_DAYS = 20;      // under this a return is a wiggle. Say so rather than print it plainly.
-
-// When each watchlist name first appeared, and which lane put it there. Derived from git, never
-// from a field an agent could write — the same principle as A20's provenance stamping. Walks the
-// commits that touched watchlist.json oldest first: the commit a ticker first appears in is the
-// one that found it, and a subject naming brief-sweep.md means the Sweep found it.
-function discoveries() {
-    const sh = c => require('child_process')
-        .execSync(c, { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString();
-    let log;
-    try { log = sh('git log --reverse --format=%H%x09%cI%x09%s -- watchlist.json'); } catch { return new Map(); }
-    const found = new Map();
-    for (const line of log.trim().split('\n')) {
-        const [sha, iso, ...rest] = line.split('\t');
-        if (!sha || !iso) continue;
-        const subject = rest.join('\t');
-        let names;
-        try { names = JSON.parse(sh(`git show ${sha}:watchlist.json`)).map(w => w.yahoo); }
-        catch { continue; }                     // a commit where the file was absent or malformed
-        for (const t of names) {
-            if (found.has(t)) continue;
-            // The Sweep is the only lane that writes watchlist.json unattended, so its commit
-            // subject is the signal. Anything else is Leo adding a name by hand, which is a
-            // different kind of idea and must not be scored as the Sweep's work.
-            found.set(t, { date: iso.slice(0, 10), lane: /brief-sweep/.test(subject) ? 'sweep' : 'hand' });
-        }
-    }
-    return found;
-}
 
 // Mark one name from one date. Returns null when there is no local series to mark it against — a
 // blank row is honest, a zero is not.

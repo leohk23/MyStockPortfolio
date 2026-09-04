@@ -16,6 +16,7 @@ const path = require('path');
 
 const REPO = 'https://github.com/leohk23/MyStockPortfolio/blob/main/';
 const ROOT = path.resolve(__dirname, '..');
+const { discoveries } = require('./discoveries');   // shared with report.js - one implementation
 
 const esc = s => s.replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -194,6 +195,10 @@ function build() {
     });
 
     const out = { generated: new Date().toISOString(), docs };
+    // Where each watchlist name came from, so the Watchlist tab can say which the Sweep found.
+    // Shipped here rather than in watchlist.json because it is DERIVED from git, and a field an
+    // agent writes about its own work is exactly what A20 refuses to trust.
+    out.origins = Object.fromEntries([...discoveries(ROOT)].map(([t, v]) => [t, v]));
     fs.writeFileSync(path.join(ROOT, 'pot.json'), JSON.stringify(out));
     const kb = (fs.statSync(path.join(ROOT, 'pot.json')).size / 1024).toFixed(0);
     console.log(`wrote pot.json: ${docs.length} documents, ${kb}KB`);

@@ -258,7 +258,10 @@
         #pot-when { font-size: 12px; }
         #pot-list { display: none; }
         #pot-body { font-size: 15px; line-height: 1.65; min-width: 0; }
-        #pot-body > * { max-width: 72ch; }
+        /* Full width to the edge, by preference. 72ch is the readable-measure convention and
+           this used to hold every element to it; Leo would rather use the screen he has. The
+           tables were the ones that suffered - a figures table clipped at 72ch scrolls for no
+           reason. */
         #pot-body h1 { font-size: 21px; margin: 0 0 14px; }
         #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
         #pot-body h3, #pot-body h4 { font-size: 15px; margin: 22px 0 8px; }
@@ -417,6 +420,11 @@
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
+        /* Which lane found a name. Quiet on purpose: it is provenance, not a number, and must
+           not compete with the figures beside it. */
+        .origin { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--text-muted); border: 1px solid var(--line); border-radius: 3px;
+            padding: 0 3px; margin-left: 6px; vertical-align: 1px; cursor: help; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
         /* An extended-hours move the displayed price does NOT include. Small and set in the
@@ -3175,6 +3183,17 @@
         // Reuses the holdings table's own cell formatters so a P/E or a 1Y move means exactly the
         // same thing in both views. The period moves come straight off the quote, which is where
         // a holding's come from too — weightedMove() only exists to blend a multi-leg row.
+        // Which lane put a name on the watchlist, from pot.json's `origins` (derived from git by
+        // pot/discoveries.js). Only the Sweep gets a tag: hand-added is the older, ordinary case
+        // and 31 of 61 rows carrying a badge that says "normal" is just noise. No tag therefore
+        // means Leo added it — or that pot.json predates this and carries no origins at all,
+        // which is why a missing entry is silent rather than "unknown".
+        function originTag(yahoo) {
+            const o = POT?.origins?.[yahoo];
+            if (!o || o.lane === 'hand') return '';
+            return ` <span class="origin" title="Found by the ${o.lane} lane on ${o.date}">${o.lane}</span>`;
+        }
+
         function renderWatchlist() {
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
@@ -3182,7 +3201,7 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
-                    <td>${w.name} <span class="muted">${w.yahoo}</span></td>
+                    <td>${w.name} <span class="muted">${w.yahoo}</span>${originTag(w.yahoo)}</td>
                     ${liveCell([w.quote])}
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
