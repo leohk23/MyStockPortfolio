@@ -253,24 +253,24 @@
         #pot:not([hidden]) { display: grid; gap: 22px; align-items: start; }
         #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
-            color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--line);
             border-radius: 6px; }
         #pot-when { font-size: 12px; }
         #pot-list { display: none; }
         #pot-body { font-size: 15px; line-height: 1.65; min-width: 0; }
         #pot-body > * { max-width: 72ch; }
         #pot-body h1 { font-size: 21px; margin: 0 0 14px; }
-        #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+        #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
         #pot-body h3, #pot-body h4 { font-size: 15px; margin: 22px 0 8px; }
         #pot-body p { margin: 0 0 13px; }
         #pot-body li { margin-bottom: 7px; }
         #pot-body ul, #pot-body ol { padding-left: 22px; }
         #pot-body blockquote { margin: 0 0 13px; padding: 2px 0 2px 14px;
-            border-left: 3px solid var(--border); color: var(--text-muted); }
+            border-left: 3px solid var(--line); color: var(--text-muted); }
         #pot-body code { font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
         #pot-body pre { background: var(--surface-2); padding: 11px; border-radius: 6px; overflow-x: auto; }
         #pot-body pre code { background: none; padding: 0; }
-        #pot-body hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+        #pot-body hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
         #pot-body a { color: var(--series-port); }
         #pot-body a[data-pot] { text-decoration-style: dotted; }
         /* A ranking table has a dozen columns of prose. Let it use the full width and scroll. */
@@ -279,7 +279,7 @@
            behind a horizontal scroll nobody thinks to try. */
         #pot-body .pot-kv { margin: 0 0 14px; }
         #pot-body .pot-kv > div { display: grid; grid-template-columns: minmax(0, 1fr) auto;
-            gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+            gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid var(--line); }
         #pot-body .pot-kv dt { min-width: 0; }
         #pot-body .pot-kv dd { margin: 0; white-space: nowrap; }
         @media (max-width: 560px) {
@@ -288,15 +288,28 @@
         }
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
-        #pot-body th, #pot-body td { border: 1px solid var(--border); padding: 5px 8px;
-            text-align: left; vertical-align: top; }
-        #pot-body th { background: var(--surface-2); white-space: nowrap; }
+        /* The holdings table's idiom: a rule under each row rather than a box around every cell,
+           and a small uppercase header. A full grid reads as a spreadsheet and nothing else in
+           this app does. */
+        #pot-body th, #pot-body td { border: 0; border-bottom: 1px solid var(--line);
+            padding: 6px 8px; text-align: left; vertical-align: top; }
+        #pot-body th { background: var(--surface-2); white-space: nowrap; vertical-align: bottom;
+            font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+
+        /* Right-aligned, nowrap columns are right for a table of figures and wrong for a Sweep's
+           candidate table, where a cell is a sentence — so this is scoped to the document KIND,
+           not to every table in the tab. renderPot puts the kind on #pot-body. */
+        #pot-body[data-kind="paper"] .pot-scroll { max-width: none; }
+        #pot-body[data-kind="paper"] th, #pot-body[data-kind="paper"] td {
+            text-align: right; white-space: nowrap; vertical-align: middle; }
+        #pot-body[data-kind="paper"] th:first-child,
+        #pot-body[data-kind="paper"] td:first-child { text-align: left; }
 
         @media (min-width: 900px) {
             #pot { grid-template-columns: 232px minmax(0, 1fr); }
             #pot-pick { display: none; }
             #pot-list { display: block; position: sticky; top: 12px; max-height: calc(100vh - 40px);
-                overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--border); padding-right: 14px; }
+                overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--line); padding-right: 14px; }
             #pot-list .pot-group { text-transform: uppercase; letter-spacing: .04em; font-size: 10px;
                 color: var(--text-muted); margin: 14px 0 5px; }
             #pot-list .pot-group:first-child { margin-top: 0; }
@@ -3388,6 +3401,16 @@ function renderPot() {
         ? `${doc.updated.slice(0, 16).replace('T', ' ')} UTC — the name is stamped in UTC, this line in local time`
         : '';
     body.innerHTML = doc.html;
+    // The kind drives the table styling above: a page of figures gets the holdings table's
+    // right-aligned treatment, a page of prose keeps wrapping cells.
+    body.dataset.kind = doc.kind || '';
+    // Signed figures get the same green/red as every other number in the app. Done here rather
+    // than in the markdown because the generator writes plain text and toHtml escapes markup —
+    // and a return is the one column on this page anyone actually reads.
+    body.querySelectorAll('td').forEach(td => {
+        const m = td.textContent.trim().match(/^([+−-])\d/);
+        if (m) td.classList.add(m[1] === '+' ? 'gain' : 'loss');
+    });
     // A link into another pot document switches the picker instead of leaving the page.
     body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
