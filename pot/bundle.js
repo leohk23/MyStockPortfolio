@@ -20,7 +20,7 @@ const ROOT = path.resolve(__dirname, '..');
 const esc = s => s.replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Everything git actually tracks. runs.md, scan.md, SUMMARY.md, summaries/ and logs/ are all
+// Everything git actually tracks. runs.md, paper.md, scan.md, SUMMARY.md, summaries/ and logs/ are all
 // gitignored, so sending a reader to the repo for those returns a GitHub 404 - which is what
 // happened to the "Full breakdown: runs.md" link the moment the Pot tab went live.
 const tracked = (() => {
@@ -153,7 +153,7 @@ const listDir = (dir, kind) => {
 };
 
 // YYYY-MM-DD-HHMM out of a filename, read as UTC because that is what the lanes stamp. Files
-// without one (SUMMARY.md, runs.md, scan.md) fall back to their mtime.
+// without one (SUMMARY.md, runs.md, scan.md, paper.md) fall back to their mtime.
 const runTime = file => {
     const m = file.match(/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/);
     if (!m) return null;
@@ -169,6 +169,7 @@ function build() {
         ...listDir('pot/proposals', 'proposal'),
         ...listDir('pot/sweeps', 'sweep'),
         ...listDir('pot/reviews', 'review'),
+        { dir: 'pot', file: 'paper.md', kind: 'paper', title: 'Paper performance' },
         { dir: 'pot', file: 'runs.md', kind: 'runs', title: 'Runs and cost' },
         { dir: 'pot', file: 'scan.md', kind: 'scan', title: 'Scan' },
         ...listDir('pot/summaries', 'archive'),

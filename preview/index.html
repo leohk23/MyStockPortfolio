@@ -3324,8 +3324,12 @@
 //
 // A <select> rather than a row of tabs on purpose: there are already 38 documents and the list
 // only grows, and a native picker is the one control a phone renders well without help.
+// An allowlist, not a passthrough: a doc whose kind is missing here is in pot.json and invisible
+// on the page. Paper performance sits second on purpose — after the Summary it is the closest
+// thing to "is any of this working", and burying it under the proposals it judges would be odd.
 const POT_GROUPS = [
-    ['summary', 'Summary'], ['proposal', 'Proposals'], ['review', 'Reviews'], ['sweep', 'Sweeps'],
+    ['summary', 'Summary'], ['paper', 'Paper performance'], ['proposal', 'Proposals'],
+    ['review', 'Reviews'], ['sweep', 'Sweeps'],
     ['scan', 'Scan'], ['runs', 'Runs and cost'], ['archive', 'Past run reports'],
 ];
 let potDoc = localStorage.getItem('potDoc') || null;

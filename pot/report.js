@@ -219,6 +219,153 @@ function unannotatedLines(files) {
 
 // ---------------------------------------------------------------- build
 
+/* ---------------- paper performance ---------------- */
+
+// Every name this pot has named, marked from the day it was named as if bought at that day's
+// close and held. NOT P&L: nothing has been bought, cash is £0, and positions.js scores nothing
+// until a contribution lands (every proposal sits at phase 'pre-live'). This page exists because
+// during the phase where you are deciding WHETHER to fund, the thing that needs measuring is the
+// judgement — and the scoring machinery deliberately measures nothing until money is committed.
+//
+// Local currency, deliberately. A GBP mark folds in FX and answers a different question; the
+// question here is whether the name itself was a good call. The FX leg earns its column when real
+// money makes it a real return.
+const NOISE_DAYS = 20;      // under this a return is a wiggle. Say so rather than print it plainly.
+
+// When each watchlist name first appeared, and which lane put it there. Derived from git, never
+// from a field an agent could write — the same principle as A20's provenance stamping. Walks the
+// commits that touched watchlist.json oldest first: the commit a ticker first appears in is the
+// one that found it, and a subject naming brief-sweep.md means the Sweep found it.
+function discoveries() {
+    const sh = c => require('child_process')
+        .execSync(c, { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString();
+    let log;
+    try { log = sh('git log --reverse --format=%H%x09%cI%x09%s -- watchlist.json'); } catch { return new Map(); }
+    const found = new Map();
+    for (const line of log.trim().split('\n')) {
+        const [sha, iso, ...rest] = line.split('\t');
+        if (!sha || !iso) continue;
+        const subject = rest.join('\t');
+        let names;
+        try { names = JSON.parse(sh(`git show ${sha}:watchlist.json`)).map(w => w.yahoo); }
+        catch { continue; }                     // a commit where the file was absent or malformed
+        for (const t of names) {
+            if (found.has(t)) continue;
+            // The Sweep is the only lane that writes watchlist.json unattended, so its commit
+            // subject is the signal. Anything else is Leo adding a name by hand, which is a
+            // different kind of idea and must not be scored as the Sweep's work.
+            found.set(t, { date: iso.slice(0, 10), lane: /brief-sweep/.test(subject) ? 'sweep' : 'hand' });
+        }
+    }
+    return found;
+}
+
+// Mark one name from one date. Returns null when there is no local series to mark it against — a
+// blank row is honest, a zero is not.
+function mark(hist, ticker, fromDay) {
+    const series = hist && hist.closes ? hist.closes[ticker] : null;
+    if (!series || !hist.days || !hist.days.length || !fromDay) return null;
+    const start = hist.days.findIndex(d => d >= fromDay);
+    if (start < 0) return null;
+    let entry = null, entryAt = -1;
+    for (let j = start; j < series.length; j++) if (series[j] != null) { entry = series[j]; entryAt = j; break; }
+    let now = null, nowAt = -1;
+    for (let j = series.length - 1; j >= 0; j--) if (series[j] != null) { now = series[j]; nowAt = j; break; }
+    if (entry == null || now == null || !(entry > 0) || nowAt < entryAt) return null;
+    return { entry, now, days: nowAt - entryAt, ret: (now - entry) / entry };
+}
+
+const pct1 = r => `${r >= 0 ? '+' : '−'}${(Math.abs(r) * 100).toFixed(1)}%`;
+const px = v => (v >= 1000 ? v.toFixed(0) : v.toFixed(2));
+
+function paperTable(rows, dateHeader) {
+    if (!rows.length) return '_None yet._';
+    const name = r => `\`${r.ticker}\`${r.n > 1 ? ` ×${r.n}` : ''}`;
+    const line = r => r.m
+        ? `| ${r.date} | ${name(r)} | ${r.m.days} | ${px(r.m.entry)} | ${px(r.m.now)} `
+          + `| ${pct1(r.m.ret)}${r.m.days < NOISE_DAYS ? ' †' : ''} |`
+        : `| ${r.date} | ${name(r)} | – | – | – | – |`;
+    return `| ${dateHeader} | ticker | days held | entry | now | return |
+|---|---|---:|---:|---:|---:|
+${rows.map(line).join('\n')}`;
+}
+
+function writePaper(pos, hist) {
+    const found = discoveries();
+    // Each proposal is its own call, but `written` is a DATE and the cycle runs several times a
+    // day, so two proposals of the same name on the same day are marked against the same close
+    // and produce byte-identical rows. Printing INTU three times at +0.0% is noise pretending to
+    // be data. Grouped by day and name, with the count kept: the fact that it cleared the bar
+    // three times that day is the part worth seeing, not three copies of one number.
+    const byDay = new Map();
+    for (const p of ((pos && pos.proposals) || [])) {
+        if (!p.written || !p.ticker) continue;
+        const k = `${p.written}|${p.ticker}`;
+        const e = byDay.get(k) || { date: p.written, ticker: p.ticker, n: 0 };
+        e.n++;
+        byDay.set(k, e);
+    }
+    const proposals = [...byDay.values()]
+        .map(e => ({ ...e, m: mark(hist, e.ticker, e.date) }))
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)) || a.ticker.localeCompare(b.ticker));
+    const candidates = [...found.entries()].filter(([, v]) => v.lane === 'sweep')
+        .map(([t, v]) => ({ date: v.date, ticker: t, m: mark(hist, t, v.date) }))
+        .sort((a, b) => b.date.localeCompare(a.date) || a.ticker.localeCompare(b.ticker));
+
+    const all = [...proposals, ...candidates].filter(r => r.m);
+    const mature = all.filter(r => r.m.days >= NOISE_DAYS);
+    // The headline is the MATURITY, not the return. On 4 Sep the oldest mark was three days old:
+    // a table of green numbers there reads as a result and is nothing of the kind.
+    const verdict = !all.length
+        ? '**Nothing to mark yet.**'
+        : mature.length === 0
+            ? `**Every row below is noise.** Not one of the ${all.length} marks has reached `
+              + `${NOISE_DAYS} trading days — the oldest is ${Math.max(...all.map(r => r.m.days))}. `
+              + 'Read this page for whether the plumbing works, not for whether the picks are any good.'
+            : `**${mature.length} of ${all.length} marks have reached ${NOISE_DAYS} trading days** `
+              + 'and can be read as something; the rest (†) are still noise.';
+
+    fs.writeFileSync('pot/paper.md', `# Paper performance
+
+Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from \`history.json\` closes.
+
+Every name this pot has named, marked from the day it was named, as if bought at that day's close
+and held. **Nothing has been bought** — pot cash is £0 and no contribution has been made, so this
+is not P&L. It exists because \`positions.js\` scores nothing until money is committed, which leaves
+the phase where you are deciding *whether* to commit with no measure at all.
+
+${verdict}
+
+Returns are in each name's **local currency**. FX is excluded on purpose: the question here is
+whether the name was a good call, not what a sterling investor would have banked. That second
+question matters — 7532.T sits in \`strategy.md\` as a yen-depreciation regret — and earns its own
+column when real money makes it a real return.
+
+## Deep dive proposals
+
+Each proposal is marked separately, including re-proposals of a name already proposed: a name that
+keeps clearing the bar at a different price is making a different call each time, and averaging
+them would hide exactly that. \`×N\` means the same name cleared the bar N times on one day — the
+cycle runs several times daily and those share a single closing price, so they are **one mark and
+N calls**, not N marks.
+
+${paperTable(proposals, 'named')}
+
+## Sweep candidates
+
+Marked from the day the Sweep put the name on the watchlist. Note what this is **not**: the Sweep's
+brief forbids it from producing an order, so a candidate was never a recommendation to buy. This
+measures the quality of the idea, not a trade the lane ever proposed.
+
+${paperTable(candidates, 'found')}
+
+${all.some(r => r.m.days < NOISE_DAYS) ? `† fewer than ${NOISE_DAYS} trading days — a wiggle, not a result.\n` : ''}
+A blank row means there is no local price series for that ticker: a fact worth seeing, rather than
+a zero worth trusting.
+`);
+    return { marked: all.length, mature: mature.length };
+}
+
 function build() {
     fs.mkdirSync(LOGS, { recursive: true });
     const runs = sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief);
@@ -238,6 +385,13 @@ function build() {
 
     const sig = read('signals.json');
     const pos = read('pot/positions.json', { cashGBP: 0, holdings: {} });
+
+    // Paper marks for every name the pot has named. Written before the summary so the summary can
+    // quote its counts, and best-effort: history.json is ~4MB and CI-owned, so a missing or
+    // half-written one must cost this page, never the whole report.
+    let paper = { marked: 0, mature: 0 };
+    try { paper = writePaper(pos, read('history.json')); }
+    catch (e) { console.error(`skip paper.md: ${e.message}`); }
     // By modification time. Sorting these by NAME put "smoke.md" after every dated sweep and
     // "2026-08-29-RSGN.SW.md" after "2026-08-29-1442-...", so the summary confidently named the
     // wrong output for both lanes: a smoke test as the latest Sweep, and a proposal four runs
