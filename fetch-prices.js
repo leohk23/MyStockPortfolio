@@ -1753,7 +1753,6 @@ const MACRO = {
     'GBPUSD=X': { name: 'GBP/USD',      group: 'Currency' },
     'EURUSD=X': { name: 'EUR/USD',      group: 'Currency' },
     'USDJPY=X': { name: 'USD/JPY',      group: 'Currency' },
-    'USDHKD=X': { name: 'USD/HKD',      group: 'Currency' },
     'GC=F':     { name: 'Gold',         group: 'Commodity' },
     'CL=F':     { name: 'Crude (WTI)',  group: 'Commodity' },
     'BTC-USD':  { name: 'Bitcoin',      group: 'Commodity' },

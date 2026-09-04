@@ -277,7 +277,8 @@ function worldBreadth(countries) {
 // version would need level history for every pair, which is a different fetch.
 const MACRO_REAL_MIN = 0.15;      // net of the dollar, below this it is noise
 const MACRO_COOLING_MIN = 0.05;   // a 3m move must contradict by this much to count
-const CCY_FOR = { '^N225': 'USDJPY=X', '^HSI': 'USDHKD=X', '^STOXX50E': 'EURUSD=X', '^FTSE': null };
+const CCY_FOR = { '^N225': 'USDJPY=X', '^HSI': null, // ponytail: HKD is pegged, drag is ~0
+                   '^STOXX50E': 'EURUSD=X', '^FTSE': null };
 
 // §6.5 — every open thesis, every week (D10). Deliberately NOT "those whose review date has
 // passed": Leo was asked and chose to sweep them all, so a review date is a prompt to look
