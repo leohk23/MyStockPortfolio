@@ -57,14 +57,29 @@ decide — the same treatment a one-off earnings flag gets.
 ## Size in whole shares
 
 Leo does not buy fractional shares. So a position is `floor(allocation ÷ price in GBP)` and the
-remainder stays in cash, which means **a name whose single share costs more than the allocation
-cannot be bought at all**. At the £125 half-allocation, INTU at ~£246 and NVDA at ~£170 are both
-unbuyable, and TW at ~£79 deploys only 63% of it. Convert with `prices.json` → `rates`, which are
-USD per unit: `gbp = price × rates[ccy] ÷ rates.GBP`.
+remainder stays in cash. Convert with `prices.json` → `rates`, which are **USD per unit**:
+`gbp = price × rates[ccy] ÷ rates.GBP`.
 
-State the whole-share order, the cash actually deployed and the remainder left idle. If the best
-name is unbuyable at the allocation, say that plainly rather than proposing an order that cannot
-be placed — and either propose the next name or argue for a larger allocation against §4.2.
+**When that rounds to zero, buy one share anyway — §4.2a.** A name whose single share costs more
+than the allocation is not expensive, it is *unplaceable*, and a cap meant to limit concentration
+would instead be deleting candidates by share price rather than by any judgement about the
+business. §4.2a settles it: one whole share always clears §4.2. The precedent is §11.1.e, where a
+standing order outranks the position limits for the same reason — otherwise the rule quietly stops
+working in exactly the conditions it exists for.
+
+Bounded, and the bounds are not optional:
+
+- **One share, never more**, when the cap would otherwise round the order to zero. Above that,
+  §4.2 applies normally.
+- **It must fit available cash** in `pot/positions.json`. The pot does not borrow.
+- **P1 states the resulting concentration and how it unwinds.** §4.2 binds on *contributed capital
+  to date*, not on current pot value, so the breach shrinks with every £250: one INTU share is 98%
+  of £250 today, 49% at £500, 33% at £750 — under the cap from the **second** contribution. Write
+  that, so a temporary 98% position is a disclosed choice and not an arithmetic accident.
+
+Always state the whole-share order, the cash deployed and the remainder left idle. TW at ~£79 on a
+£125 allocation deploys 63% of it and leaves £46 idle; that is worth saying even when nothing is
+breached.
 
 ## The falsifier must test what the case against says is the real risk
 
@@ -266,8 +281,11 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 # <TICKER> — <company>
 
 ## 1. Order
-BUY <ticker> on <exchange>, £<amount>, <market|limit @ price>. Currency <ccy>.
+BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
+Currency <ccy>. Cash left idle: £<remainder>.
 Expected first-year costs: <breakdown>, <x>% of the ticket.
+<If n=1 under §4.2a: the % of contributed capital this is, and how many contributions bring it
+ under the 50% cap. If the dominant risk is slow or unfalsifiable: half size, per Rule 4.>
 
 ## 2. Thesis
 <Three sentences. Why this, why now, what the market is missing.

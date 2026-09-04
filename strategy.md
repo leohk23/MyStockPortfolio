@@ -21,6 +21,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 3.4  | Single stocks / funds                    | Both                                                                                                                |
 | 4.1  | Minimum position                         | **No minimum** — but refuse a ticket whose first-year costs exceed **2%** of it                        |
 | 4.2  | Maximum position                         | 50% of the pot                                                                                                      |
+| 4.2a | **One whole share always clears §4.2**   | Fractions are not bought, so if one share exceeds the cap it is still bought — cap resumes once contributions cover it |
 | 4.3  | Number of positions                      | No limit                                                                                                            |
 | 4.4  | May hold cash                            | Yes, no ceiling                                                                                                     |
 | 4.5  | May top up an existing position          | Yes                                                                                                                 |
@@ -281,6 +282,31 @@ Follow-up ANS: 2%, and I want to avoid some situations like when buying a small 
 
 **A** — 50%.
 
+**Q 4.2a** Whole shares against the §4.2 cap. `[auto]`
+
+> Leo does not buy fractional shares, so a position is `floor(allocation ÷ price)` and a name whose
+> single share costs more than the allocation rounds to **zero** — the proposal is not expensive,
+> it is unplaceable. At the current £125 half-allocation that ruled out INTU (~£246/share) and
+> NVDA (~£170), INTU being the name the Deep dive has proposed most often.
+>
+> **Suggested: one whole share always clears §4.2.** The precedent is §11.1.e, which lets a
+> standing order outrank the position limits because otherwise *"the rule quietly stops working in
+> exactly the conditions it exists for"*. The same applies here: a cap meant to limit
+> concentration instead silently deletes candidates, and it deletes them by share price rather
+> than by any judgement about the business.
+>
+> This is bounded, not open-ended. §4.2 binds on **contributed capital to date**, not on current
+> pot value, so the breach shrinks with every contribution: one INTU share is 98% of £250 today,
+> 49% at £500, 33% at £750. Both names clear the cap after the **second** contribution. The pot
+> being small enough for one share to dominate it is the condition §4.2's own rationale
+> anticipated — *"early on the pot is small and any first position is 100% of it."*
+
+**A** — Yes, buy the minimum one share.
+
+**Bounds, as coded.** One share, never more, when the cap would otherwise round the order to zero.
+It must still fit available cash — the pot does not borrow. And P1 must state the resulting
+concentration and how many contributions bring it back under §4.2, so a temporary 98% position is
+a disclosed choice rather than an arithmetic accident.
 **Q 4.3** How many positions should the pot hold at once? `[auto]`
 
 > **Suggested: 4–8.** Below four it is a coin flip; above eight, £3k/year cannot maintain it.
