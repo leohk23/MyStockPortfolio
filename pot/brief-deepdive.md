@@ -90,9 +90,46 @@ list — related-party revenue as a share of segment revenue, receivable days ex
 revenue growth, the equity- and guarantee-commitment balance growing faster than revenue, customer
 concentration in the 10-K. All quarterly, all in the filing, all checkable by the Review lane.
 
-**If the strongest risk genuinely cannot be falsified, say so in P3 and count it against the
-position.** An unfalsifiable main risk is a reason to size smaller or wait, not a reason to test
-something easier and call it a falsifier.
+**That rule was written from NVDA and breached by the very next proposal in the same way.** The
+4 Sep INTU proposal's P6 said an AI agent or a government filing option *"could weaken the
+front-end relationship **before revenue shows it** because price and expert attach can temporarily
+offset lost users"* — and P3 then tested revenue, operating income and growth. The agent wrote the
+sentence that its falsifier would not move, and did not act on it. Prose that asks you to check is
+not enough; the four rules below make the check structural.
+
+**Rule 1 — P6 names ONE dominant risk, first, on its own line, with a category.** The categories
+are `financial`, `competitive` (a rival or a substitute takes the customer), `secular` (the
+product category itself shrinks or is displaced), `accounting` (the numbers may not mean what they
+say — circular financing lives here) and `regulatory`. Everything else in P6 is secondary and goes
+below it. "P3 answers P6" applies to that one line. A paragraph in which "Mailchimp guided flat"
+sits at equal weight with "the product category may cease to exist" has not named a risk.
+
+**Rule 2 — the thesis may not contain the rebuttal to the dominant risk.** INTU's P2 opened with
+*"the embedded records, integrations and expert network give its high margin a better chance of
+persisting than an AI interface"*. That is the answer to the main objection, asserted as a premise
+with nothing cited, and once the thesis has swallowed the objection P6 is written as a residual.
+If P2 argues the moat survives the dominant risk, that argument is not a premise — it is the thing
+P3 tests. INTU's break should have asked whether attach and margin hold **while** units fall, not
+whether revenue misses guidance.
+
+**Rule 3 — for `competitive` and `secular` risks, look outside the company's own filings.** The
+NVDA list works because circular financing leaves fingerprints in the same company's statements.
+Displacement of a product leaves them elsewhere: the substitute's adoption figures, a regulator's
+own programme numbers (the IRS publishes Direct File take-up annually), the company's disclosed
+customer counts against its price-driven revenue growth, the wording of its 10-K risk factors from
+one year to the next. Name the external source, the metric and its cadence, exactly as you would a
+line in a filing. "Guidance is where the crisp numbers live" is a diagnosis of the drift, not
+permission for it. A figure that lives outside the filings is still a figure; it is not a reason
+to fall back to one that lives inside them and will not move.
+
+**Rule 4 — an unfalsifiable or slow dominant risk sizes the position, mechanically.** If the
+earliest observable for the dominant risk is more than two quarters away, or lives entirely
+outside any dated source, the order is **half the allocation §4 would otherwise give**, and P1
+says so and why. A proposal may argue for the full size against this rule, in P1, with the
+argument written out — but the default is the smaller order, not the larger one with a caveat.
+This replaces the earlier "say so and count it against the position", which the INTU proposal did
+not invoke and nothing made it. An unfalsifiable main risk is a reason to size smaller or wait,
+never a reason to test something easier and call it a falsifier.
 
 ## A falsifier has two tiers, and the first one has to bite early
 
@@ -234,7 +271,8 @@ Expected first-year costs: <breakdown>, <x>% of the ticket.
 
 ## 2. Thesis
 <Three sentences. Why this, why now, what the market is missing.
- About the BUSINESS. See "The multiple is not the thesis" below.>
+ About the BUSINESS. See "The multiple is not the thesis" below.
+ Must NOT contain the answer to P6's dominant risk — that answer is what P3 tests (Rule 2).>
 
 ## 3. Falsifier
 **Warning:** <the first observable that says the thesis is under strain. Usually a miss against
@@ -252,7 +290,11 @@ Expected first-year costs: <breakdown>, <x>% of the ticket.
 Local check: <agree / disagree, and which you used>
 
 ## 6. The case against
-<The strongest argument for NOT buying. Written to persuade, not to dismiss.>
+**Dominant risk (`financial|competitive|secular|accounting|regulatory`):** <ONE risk, one line.
+ This is the line P3 answers. If P2 argued it away, that argument moves to P3 — Rule 2.>
+**Earliest observable:** <the figure, its source, and when it next prints. If it is outside the
+ filings, say where; if it is more than two quarters away or undated, P1 sizes at half — Rule 4.>
+<Then the secondary arguments, written to persuade, not to dismiss.>
 ```
 
 ## Leo's filters, applied
