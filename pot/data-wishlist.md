@@ -30,6 +30,22 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-04 — Japan real household spending and worker-household real income.**
+  Fetched from the Statistics Bureau of Japan. Wanted monthly while purchasing power is
+  contracting; the gap between a strong equity index and weak household finances materially
+  changed the Japan read and led to reuse rather than broad consumer exposure.
+- **2026-09-04 — Euro-area retail volumes by category and country.**
+  Fetched from Eurostat. Wanted monthly while energy costs and consumer demand diverge; the
+  non-food and Germany splits showed weakness that the headline equity index does not.
+- **2026-09-04 — GEO reuse sales, store productivity, inventory turns, cash conversion and borrowings.**
+  Fetched from GEO's first-quarter filing, except quarterly cash flow, which was not provided.
+  Wanted on results dates while 2681.T is tracked; the set tests whether thrift-led demand funds
+  expansion rather than being consumed by inventory, new stores and debt.
+- **2026-09-04 — Brady organic sales, segment margins, cash conversion, acquisition accretion and leverage.**
+  Fetched from Brady's SEC-filed annual-results release. Wanted on results dates while BRC is
+  tracked; the set separates productivity demand from acquisition accounting and tests whether
+  Honeywell IPS creates shareholder cash rather than adjusted earnings alone.
+
 - **2026-09-04 — Vopak occupancy, contract mix, project returns, cash conversion and leverage.**
   Fetched from Vopak's first-half release. Wanted on results dates while VPK.AS is tracked; the set
   tests whether energy dislocation and €2.3bn of projects compound per-share cash flow rather than
