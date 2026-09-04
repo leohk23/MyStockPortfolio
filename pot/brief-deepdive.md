@@ -38,6 +38,34 @@ That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecid
 it. If you want to note that a name has been proposed before, put it in the ranking table as a
 remark; never let it downgrade a rank or suppress a proposal.
 
+## Say what the proposal does to Leo's total exposure
+
+`signals.json` → `book` carries where the human book actually sits: `names` and `byCompany` by
+weight of market value, `byGeography`, and the GBP total. The pot is tracked separately (D4) and
+§3.3 explicitly permits buying what the main book already holds — **owning it already is not a
+thesis, and it is not a veto either.** But strategy.md attaches a warning to that permission:
+*"the more the pots overlap, the less the comparison tells you."*
+
+So every proposal states, in one line in P6 (the case against), what it does to the combined
+position: the name's existing weight in the human book if any, and whether the buy adds to an
+exposure that is already large. NVDA has been proposed seven times and sits at ~7.5% of the human
+book; nothing in this brief has ever made that visible, and it is exactly the fact a reader needs.
+
+This is a **disclosure, not a gate**. Do not downgrade a rank for overlap. Say it, and let Leo
+decide — the same treatment a one-off earnings flag gets.
+
+## Size in whole shares
+
+Leo does not buy fractional shares. So a position is `floor(allocation ÷ price in GBP)` and the
+remainder stays in cash, which means **a name whose single share costs more than the allocation
+cannot be bought at all**. At the £125 half-allocation, INTU at ~£246 and NVDA at ~£170 are both
+unbuyable, and TW at ~£79 deploys only 63% of it. Convert with `prices.json` → `rates`, which are
+USD per unit: `gbp = price × rates[ccy] ÷ rates.GBP`.
+
+State the whole-share order, the cash actually deployed and the remainder left idle. If the best
+name is unbuyable at the allocation, say that plainly rather than proposing an order that cannot
+be placed — and either propose the next name or argue for a larger allocation against §4.2.
+
 ## The falsifier must test what the case against says is the real risk
 
 **P3 answers P6.** Whatever P6 names as the strongest argument for not buying, P3 has to be

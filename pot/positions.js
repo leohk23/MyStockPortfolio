@@ -164,9 +164,13 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     const contributions = prev.contributions || [];
     const paidIn = contributions.reduce((a, c) => a + (c.amountGBP || 0), 0);
     // Cost is in each trade's own currency; converting needs rates this file does not fetch, so
-    // cash is only computed once a rate table is passed in. Until the pot is funded it is 0 and
-    // saying so is honest - inventing a converted balance would not be.
-    const cashGBP = prev.cashGBP ?? 0;
+    // once the pot has bought something the balance can only be carried forward, not derived.
+    //
+    // But with NO pot trades there is nothing to convert: cash is exactly what was paid in, and
+    // contributions are already GBP. `paidIn` was being computed and then dropped on the floor
+    // here, so the first £250 landed and cashGBP stayed 0 — which would have had the Deep dive
+    // sizing against "the next contribution" while the money was already sitting in the account.
+    const cashGBP = Object.keys(book).length ? (prev.cashGBP ?? 0) : paidIn;
 
     return {
         note: 'Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and '

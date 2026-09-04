@@ -408,8 +408,74 @@ function spxDailyMove(history) {
 
 // ---------------------------------------------------------------- the scan
 
+// ---------------------------------------------------------------- the book, made deterministic
+//
+// Where Leo's money actually sits, by name and by the two groupings holdings.json already carries.
+// The lanes were reading holdings.json raw — 59 rows of trades — and would have had to derive
+// weights themselves to say anything about concentration. That is arithmetic, so it belongs here
+// for free, the same argument A8 made for the macro relations: machines for the STATE, the LLM for
+// the interpretation.
+//
+// Market value, not cost. What you are exposed to today is what the position is worth today; cost
+// answers a different question (whether you are up) and would understate a winner's risk badly.
+//
+// A holding whose ticker has no quote is dropped rather than valued at cost, and `priced` records
+// how many made it — a concentration figure computed over two thirds of the book is worse than no
+// figure, so the reader is told the denominator.
+function bookExposure(holdings, quotes, rates) {
+    if (!holdings?.length || !rates?.GBP) return null;
+    const gbp = (v, ccy) => {
+        const rate = (ccy === 'GBp' || ccy === 'Gbpence') ? rates.GBP / 100 : rates[ccy];
+        return rate ? v * rate / rates.GBP : null;
+    };
+    const rows = [];
+    for (const h of holdings) {
+        const q = quotes[h.yahoo];
+        if (!q || !(q.price > 0) || !(h.qty > 0)) continue;
+        const v = gbp(q.price * h.qty, q.currency);
+        if (v == null) continue;
+        rows.push({ yahoo: h.yahoo, group: h.group || '?', geography: h.geography || '?', value: v });
+    }
+    if (!rows.length) return null;
+    const total = rows.reduce((a, r) => a + r.value, 0);
+    if (!(total > 0)) return null;
+    const share = v => Math.round((v / total) * 1e4) / 1e4;      // a fraction, like every other ratio here
+    // Anything under half a percent is not a concentration risk, and 55 such rows would bury the
+    // eight that are. Trimmed, with the tail kept as one number so the weights still sum to 1 and
+    // nobody has to wonder what was dropped.
+    const MATERIAL = 0.005;
+    const trim = list => {
+        const keep = list.filter(x => x.weight >= MATERIAL);
+        const rest = list.length - keep.length;
+        const restWeight = share(list.slice(keep.length).reduce((a, x) => a + x.weight, 0) * total);
+        return rest ? [...keep, { name: `${rest} smaller`, weight: restWeight, tail: true }] : keep;
+    };
+    const bucket = key => {
+        const m = new Map();
+        for (const r of rows) m.set(r[key], (m.get(r[key]) || 0) + r.value);
+        return trim([...m].map(([k, v]) => ({ name: k, weight: share(v) }))
+            .sort((a, b) => b.weight - a.weight));
+    };
+    return {
+        totalGBP: Math.round(total),
+        priced: rows.length,
+        of: holdings.length,
+        // Per position. `byCompany` differs from this only where a company is held through more
+        // than one line — an ADR beside its local listing — which is exactly the case a per-name
+        // view understates.
+        names: trim(rows.map(r => ({ name: r.yahoo, weight: share(r.value) }))
+            .sort((a, b) => b.weight - a.weight)),
+        byCompany: bucket('group'),
+        byGeography: bucket('geography'),
+        // No sector or theme field exists in holdings.json, so geography is the only cross-cutting
+        // cut available. It is a poor proxy for the real concentration here — the top four names
+        // are all US megacap tech — and a `sector` on each holding would be the fix.
+        note: 'weights are fractions of market value in GBP; no sector data exists in holdings.json',
+    };
+}
+
 function scan(state, today) {
-    const { prices, history, held, potPositions, previous } = state;
+    const { prices, history, held, holdings, potPositions, previous } = state;
     const quotes = prices.quotes || {};
     const label = t => (held.has(t) ? 'HELD' : 'watchlist');
     const fired = [], instructions = [], quiet = [], blocked = [];
@@ -477,6 +543,9 @@ function scan(state, today) {
         vix: vix ? { close: vix.price, day: vix['1d'] } : null,
         spxDay: spx,
         fired, instructions, quiet, blocked, resultsDue, shadow,
+        // Where the human book actually sits, so the lanes can weigh concentration and argue for
+        // diversification instead of deriving 59 rows of trades themselves.
+        book: bookExposure(holdings, quotes, prices.rates),
         world: worldBreadth(prices.countries),
         macro: macroNotes(prices.macro, prices.macro?.['GBPUSD=X']?.['1y']),
         dryPowderAlerted: fired.find(f => f.rule === '6.4 dry powder')?.level
@@ -494,6 +563,8 @@ function main() {
         history: read('history.json'),
         earnings: read('earnings.json', { eps: {} }),
         held: new Set((read('holdings.json', { holdings: [] }).holdings || []).map(h => h.yahoo)),
+        // The full rows too, not just the ticker set: bookExposure needs qty and the groupings.
+        holdings: read('holdings.json', { holdings: [] }).holdings || [],
         potPositions: read('pot/positions.json'),
         previous: read('signals.json'),
     };

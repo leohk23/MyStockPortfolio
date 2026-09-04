@@ -121,6 +121,19 @@ with what is already priced in, and it is the failure mode of this lane. Prefer:
 - stories that were loud and **have gone quiet** — the news broke, the price has not resolved
 - **second-order effects** of a shift, which are slow and under-covered
 - **what changed in the world of what Leo already owns** — highest value, needs no discovery
+- **what he is not exposed to.** `signals.json` → `book` carries where his money actually sits:
+  `names` and `byCompany` by weight, `byGeography`, and the GBP total. It is computed from market
+  value, so it is what he is exposed to *today*, not what he paid. Read it before section 3.
+
+  At the time of writing that book is **66% US** and the four largest positions are US megacap
+  tech. A candidate that reduces a concentration that large is worth more than another good
+  American software company, and you should say which it is doing. This is a *bias*, not a quota:
+  a genuinely better idea inside a crowded exposure still wins, but it has to beat the diversifying
+  one on the merits rather than by default.
+
+  Do not read `byGeography` as a sector map. There is no sector field in `holdings.json`, so the
+  concentration you can see is geographic and the one that actually matters here — megacap tech —
+  is visible only by reading the top names. Say so if it drives a candidate.
 
 Leo's own words, from `strategy.md` §2: he buys what he is *familiar enough with*, from first-hand
 observation (M&S from shopping there, NVDA from using ChatGPT), reads annual reports, is a CPA,
