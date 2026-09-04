@@ -276,6 +276,12 @@
         #pot-body hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
         #pot-body a { color: var(--series-port); }
         #pot-body a[data-pot] { text-decoration-style: dotted; }
+        /* A ticker link sits inside a dense table, so it is marked by the same dotted
+           underline as a pot cross-link rather than by colour, which the gain/loss classes on
+           neighbouring cells are already using. */
+        #pot-body a.pot-ticker { color: inherit; text-decoration: underline;
+            text-decoration-style: dotted; text-underline-offset: 2px; cursor: pointer; }
+        #pot-body a.pot-ticker:hover { color: var(--series-port); }
         /* A ranking table has a dozen columns of prose. Let it use the full width and scroll. */
         /* Label/link pairs from a headerless markdown table. Two columns where there is room,
            stacked on a phone — which is the whole point: as a table the links sat off-screen
@@ -2640,6 +2646,43 @@
             markSelectedRow();
             updateChart();
         }
+        // Jump from a ticker mentioned in a pot document to that stock's own view.
+        //
+        // A proposal's ranking table names twenty tickers and says a sentence about each; the
+        // obvious next question for any of them is "what does it actually look like", which lives
+        // two tabs away behind a scroll. This closes that.
+        //
+        // Reuses the existing machinery rather than inventing a second way in: the view switch is
+        // the same sequence the #groupby buttons run, and the selection is selectChart(), so a
+        // stock reached from here is in exactly the state it would be in had you clicked its row.
+        // Watchlisted names go to the Watchlist tab and everything else to Instrument, because
+        // that is where each is actually rendered — sending a watchlist name to Instrument would
+        // select a row that is not in the table.
+        function showTicker(yahoo) {
+            if (!STATE.quotes?.[yahoo]) return;          // not tracked: nothing to show
+            const dim = watchOf(yahoo) ? 'watch' : 'instrument';
+            if (STATE.dim !== dim) {
+                STATE.dim = dim;
+                localStorage.setItem('dim', dim);
+                document.querySelectorAll('#groupby button').forEach(o =>
+                    o.setAttribute('aria-pressed', String(o.dataset.dim === dim)));
+                applyView();
+                rebuildRows();
+                renderTable();
+                renderWatchlist();
+                renderCalendar();       // reads STATE.rows, so it follows the rebuild
+            }
+            chartGroup = null;
+            // Set directly rather than via selectChart(), which TOGGLES: clicking the same
+            // ticker twice would deselect it, and arriving from a link must always land on it.
+            chartSel = yahoo;
+            markSelectedRow();
+            updateChart();
+            // Scroll after the tables have been rebuilt above, or the row does not exist yet.
+            const row = document.querySelector(`tr[data-yahoo="${CSS.escape(yahoo)}"]`);
+            if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+
         function selectGroup(group) {
             const same = chartGroup?.name === group.name;
             chartSel = null;
@@ -3427,9 +3470,23 @@ function renderPot() {
     // than in the markdown because the generator writes plain text and toHtml escapes markup —
     // and a return is the one column on this page anyone actually reads.
     body.querySelectorAll('td').forEach(td => {
-        const m = td.textContent.trim().match(/^([+−-])\d/);
+        const text = td.textContent.trim();
+        const m = text.match(/^([+−-])\d/);
         if (m) td.classList.add(m[1] === '+' ? 'gain' : 'loss');
+        // A cell that is nothing but a ticker we track becomes a link into that stock's view.
+        // Matched on the WHOLE cell, never inside prose: a proposal's ranking table has one
+        // bare ticker per row, but its sentences mention tickers too, and turning every mention
+        // into a link would make the page a minefield. Checked against STATE.quotes, so a name
+        // the repo does not carry stays plain text rather than becoming a link to nothing.
+        if (text && STATE.quotes?.[text] && !td.querySelector('a')) {
+            td.innerHTML = `<a href="#" class="pot-ticker" data-ticker="${escapeHTML(text)}"
+                title="Show ${escapeHTML(text)}">${td.innerHTML}</a>`;
+        }
     });
+    body.querySelectorAll('a[data-ticker]').forEach(a => a.addEventListener('click', e => {
+        e.preventDefault();
+        showTicker(a.dataset.ticker);
+    }));
     // A link into another pot document switches the picker instead of leaving the page.
     body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
