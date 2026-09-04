@@ -30,6 +30,15 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-04 — Vopak occupancy, contract mix, project returns, cash conversion and leverage.**
+  Fetched from Vopak's first-half release. Wanted on results dates while VPK.AS is tracked; the set
+  tests whether energy dislocation and €2.3bn of projects compound per-share cash flow rather than
+  merely expand assets and debt.
+- **2026-09-04 — Samsara ARR, large-customer mix, cash conversion and stock-based compensation.**
+  Fetched from Samsara's SEC-filed release. Wanted on results dates while IOT is tracked; the set
+  tests whether measurable savings for physical operations produce durable, shareholder-level
+  returns rather than only subscription growth.
+
 - **2026-09-03 — NVIDIA material acquisition terms and integration milestones.**
   Fetched from NVIDIA's announcement. Wanted event-driven rather than weekly; the Hugging Face deal
   makes platform openness, hardware neutrality and integration progress material to an existing
