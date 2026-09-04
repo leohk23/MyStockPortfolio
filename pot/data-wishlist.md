@@ -30,6 +30,23 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-04 — US payrolls, participation, wages and industry employment.**
+  Fetched from the Bureau of Labor Statistics. Wanted monthly; this is the third direct reach for
+  labour composition, and August's concentrated gains materially changed the interpretation of the
+  stronger headline, so it now makes the case for a recurring feed.
+- **2026-09-04 — Lululemon regional revenue and comparable sales, underlying margin, inventory and capital returns.**
+  Fetched from Lululemon's filed results and 10-Q. Wanted on results dates while LULU is tracked;
+  the set tests whether product and brand relevance recover without store growth, promotions or
+  one-off tariff refunds masking the economics.
+- **2026-09-04 — Addus organic volume, reimbursement, caregiver wages, DSO and leverage.**
+  Fetched from Addus's results release and 10-Q. Wanted on results dates while ADUS is tracked;
+  the set separates demographic demand from acquisitions, rate increases and receivable timing,
+  and tests whether payor rates keep pace with labour costs.
+- **2026-09-04 — Guidewire ARR, attrition, GAAP conversion, stock compensation and buybacks.**
+  Fetched from Guidewire's SEC-filed annual results. Wanted on results dates while GWRE is tracked;
+  the set tests whether cloud migration creates per-share cash earnings after dilution rather than
+  only non-GAAP subscription growth.
+
 - **2026-09-04 — Japan real household spending and worker-household real income.**
   Fetched from the Statistics Bureau of Japan. Wanted monthly while purchasing power is
   contracting; the gap between a strong equity index and weak household finances materially
