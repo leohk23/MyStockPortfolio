@@ -15,9 +15,21 @@
 // already present), so `deepdive` is recognised here and has so far never appeared.
 const { execSync } = require('child_process');
 
-const laneOf = subject => /brief-sweep/.test(subject) ? 'sweep'
-    : /brief-deepdive/.test(subject) ? 'deepdive'
-        : /brief-review/.test(subject) ? 'review'
+// What the commit TOUCHED decides the lane, not what its subject says.
+//
+// Subject-matching was wrong and Leo caught it: AMRC showed as hand-added and he had never added
+// it. The commit was `48c3491 World tab fixes, and the reading test worked` — Leo's own message
+// about UI work, which also carried `pot/sweeps/2026-08-29.md` and the four names that sweep had
+// found. A lane's own commits announce themselves in the subject, but the moment a human bundles a
+// lane's output into an unrelated commit the subject stops describing the change. The artifact
+// does not: a sweep output file in the commit means a sweep produced what it added.
+//
+// Seven names were misattributed this way — CHRT.L, ROK, EPI-A.ST, RSGN.SW, AMRC, BME.L, LRE.L —
+// all of them Sweep finds credited to Leo, which is the wrong direction to be wrong in: it made
+// the Sweep look less productive than it is and told him he had added names he had not.
+const laneOf = (subject, files) => /(^|\n)pot\/sweeps\/.+\.md$/m.test(files) || /brief-sweep/.test(subject) ? 'sweep'
+    : /(^|\n)pot\/proposals\/.+\.md$/m.test(files) || /brief-deepdive/.test(subject) ? 'deepdive'
+        : /(^|\n)pot\/reviews\/.+\.md$/m.test(files) || /brief-review/.test(subject) ? 'review'
             : 'hand';
 
 // -> Map(ticker -> { date: 'YYYY-MM-DD', lane }). Empty on any git failure: a label is a nicety,
@@ -36,10 +48,14 @@ function discoveries(cwd = process.cwd()) {
         // commit that carries a ticker gets the credit, which is the right answer anyway.
         try { names = JSON.parse(sh(`git show ${sha}:watchlist.json`)).map(w => w.yahoo); }
         catch { continue; }
-        for (const t of names) {
-            if (found.has(t)) continue;      // first appearance wins: that is the commit that added it
-            found.set(t, { date: iso.slice(0, 10), lane: laneOf(rest.join('\t')) });
-        }
+        const fresh = names.filter(t => !found.has(t));   // first appearance wins: that commit added it
+        if (!fresh.length) continue;
+        // Only fetched for commits that actually added something, so this stays one extra git call
+        // per addition rather than one per commit in the file's whole history.
+        let files = '';
+        try { files = sh(`git show --name-only --format= ${sha}`); } catch { /* subject only, then */ }
+        const lane = laneOf(rest.join('\t'), files);
+        for (const t of fresh) found.set(t, { date: iso.slice(0, 10), lane });
     }
     return found;
 }
