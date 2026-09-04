@@ -30,6 +30,18 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-04 — US retail on-highway diesel.**
+  Fetched from the US Energy Information Administration. Wanted weekly while the oil disruption
+  persists; it complements the existing distillate gap with the cost road hauliers actually pay
+  and helps test whether freight shifts toward more fuel-efficient networks.
+- **2026-09-04 — North American rail carloads and intermodal units.**
+  Fetched from the Association of American Railroads. Wanted weekly while elevated diesel persists;
+  this is the first reach and would show whether the apparent modal shift survives beyond one week.
+- **2026-09-04 — CN volume mix, surcharge recovery, operating ratio, capital returns and cash conversion.**
+  Fetched from Canadian National Railway's second-quarter release and fuel tariff. Wanted on
+  results dates while CNR.TO is tracked; the set separates durable share and efficiency gains from
+  fuel-inflated revenue and a capital-intensive cycle.
+
 - **2026-09-04 — US payrolls, participation, wages and industry employment.**
   Fetched from the Bureau of Labor Statistics. Wanted monthly; this is the third direct reach for
   labour composition, and August's concentrated gains materially changed the interpretation of the
