@@ -253,24 +253,27 @@
         #pot:not([hidden]) { display: grid; gap: 22px; align-items: start; }
         #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
-            color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--line);
             border-radius: 6px; }
         #pot-when { font-size: 12px; }
         #pot-list { display: none; }
         #pot-body { font-size: 15px; line-height: 1.65; min-width: 0; }
-        #pot-body > * { max-width: 72ch; }
+        /* Full width to the edge, by preference. 72ch is the readable-measure convention and
+           this used to hold every element to it; Leo would rather use the screen he has. The
+           tables were the ones that suffered - a figures table clipped at 72ch scrolls for no
+           reason. */
         #pot-body h1 { font-size: 21px; margin: 0 0 14px; }
-        #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+        #pot-body h2 { font-size: 17px; margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
         #pot-body h3, #pot-body h4 { font-size: 15px; margin: 22px 0 8px; }
         #pot-body p { margin: 0 0 13px; }
         #pot-body li { margin-bottom: 7px; }
         #pot-body ul, #pot-body ol { padding-left: 22px; }
         #pot-body blockquote { margin: 0 0 13px; padding: 2px 0 2px 14px;
-            border-left: 3px solid var(--border); color: var(--text-muted); }
+            border-left: 3px solid var(--line); color: var(--text-muted); }
         #pot-body code { font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
         #pot-body pre { background: var(--surface-2); padding: 11px; border-radius: 6px; overflow-x: auto; }
         #pot-body pre code { background: none; padding: 0; }
-        #pot-body hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+        #pot-body hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
         #pot-body a { color: var(--series-port); }
         #pot-body a[data-pot] { text-decoration-style: dotted; }
         /* A ranking table has a dozen columns of prose. Let it use the full width and scroll. */
@@ -279,7 +282,7 @@
            behind a horizontal scroll nobody thinks to try. */
         #pot-body .pot-kv { margin: 0 0 14px; }
         #pot-body .pot-kv > div { display: grid; grid-template-columns: minmax(0, 1fr) auto;
-            gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+            gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid var(--line); }
         #pot-body .pot-kv dt { min-width: 0; }
         #pot-body .pot-kv dd { margin: 0; white-space: nowrap; }
         @media (max-width: 560px) {
@@ -288,15 +291,28 @@
         }
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
-        #pot-body th, #pot-body td { border: 1px solid var(--border); padding: 5px 8px;
-            text-align: left; vertical-align: top; }
-        #pot-body th { background: var(--surface-2); white-space: nowrap; }
+        /* The holdings table's idiom: a rule under each row rather than a box around every cell,
+           and a small uppercase header. A full grid reads as a spreadsheet and nothing else in
+           this app does. */
+        #pot-body th, #pot-body td { border: 0; border-bottom: 1px solid var(--line);
+            padding: 6px 8px; text-align: left; vertical-align: top; }
+        #pot-body th { background: var(--surface-2); white-space: nowrap; vertical-align: bottom;
+            font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+
+        /* Right-aligned, nowrap columns are right for a table of figures and wrong for a Sweep's
+           candidate table, where a cell is a sentence — so this is scoped to the document KIND,
+           not to every table in the tab. renderPot puts the kind on #pot-body. */
+        #pot-body[data-kind="paper"] .pot-scroll { max-width: none; }
+        #pot-body[data-kind="paper"] th, #pot-body[data-kind="paper"] td {
+            text-align: right; white-space: nowrap; vertical-align: middle; }
+        #pot-body[data-kind="paper"] th:first-child,
+        #pot-body[data-kind="paper"] td:first-child { text-align: left; }
 
         @media (min-width: 900px) {
             #pot { grid-template-columns: 232px minmax(0, 1fr); }
             #pot-pick { display: none; }
             #pot-list { display: block; position: sticky; top: 12px; max-height: calc(100vh - 40px);
-                overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--border); padding-right: 14px; }
+                overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--line); padding-right: 14px; }
             #pot-list .pot-group { text-transform: uppercase; letter-spacing: .04em; font-size: 10px;
                 color: var(--text-muted); margin: 14px 0 5px; }
             #pot-list .pot-group:first-child { margin-top: 0; }
@@ -404,6 +420,11 @@
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
+        /* Which lane found a name. Quiet on purpose: it is provenance, not a number, and must
+           not compete with the figures beside it. */
+        .origin { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--text-muted); border: 1px solid var(--line); border-radius: 3px;
+            padding: 0 3px; margin-left: 6px; vertical-align: 1px; cursor: help; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
         /* An extended-hours move the displayed price does NOT include. Small and set in the
@@ -3162,6 +3183,17 @@
         // Reuses the holdings table's own cell formatters so a P/E or a 1Y move means exactly the
         // same thing in both views. The period moves come straight off the quote, which is where
         // a holding's come from too — weightedMove() only exists to blend a multi-leg row.
+        // Which lane put a name on the watchlist, from pot.json's `origins` (derived from git by
+        // pot/discoveries.js). Only the Sweep gets a tag: hand-added is the older, ordinary case
+        // and 31 of 61 rows carrying a badge that says "normal" is just noise. No tag therefore
+        // means Leo added it — or that pot.json predates this and carries no origins at all,
+        // which is why a missing entry is silent rather than "unknown".
+        function originTag(yahoo) {
+            const o = POT?.origins?.[yahoo];
+            if (!o || o.lane === 'hand') return '';
+            return ` <span class="origin" title="Found by the ${o.lane} lane on ${o.date}">${o.lane}</span>`;
+        }
+
         function renderWatchlist() {
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
@@ -3169,7 +3201,7 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
-                    <td>${w.name} <span class="muted">${w.yahoo}</span></td>
+                    <td>${w.name} <span class="muted">${w.yahoo}</span>${originTag(w.yahoo)}</td>
                     ${liveCell([w.quote])}
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
@@ -3324,8 +3356,12 @@
 //
 // A <select> rather than a row of tabs on purpose: there are already 38 documents and the list
 // only grows, and a native picker is the one control a phone renders well without help.
+// An allowlist, not a passthrough: a doc whose kind is missing here is in pot.json and invisible
+// on the page. Paper performance sits second on purpose — after the Summary it is the closest
+// thing to "is any of this working", and burying it under the proposals it judges would be odd.
 const POT_GROUPS = [
-    ['summary', 'Summary'], ['proposal', 'Proposals'], ['review', 'Reviews'], ['sweep', 'Sweeps'],
+    ['summary', 'Summary'], ['paper', 'Paper performance'], ['proposal', 'Proposals'],
+    ['review', 'Reviews'], ['sweep', 'Sweeps'],
     ['scan', 'Scan'], ['runs', 'Runs and cost'], ['archive', 'Past run reports'],
 ];
 let potDoc = localStorage.getItem('potDoc') || null;
@@ -3384,6 +3420,16 @@ function renderPot() {
         ? `${doc.updated.slice(0, 16).replace('T', ' ')} UTC — the name is stamped in UTC, this line in local time`
         : '';
     body.innerHTML = doc.html;
+    // The kind drives the table styling above: a page of figures gets the holdings table's
+    // right-aligned treatment, a page of prose keeps wrapping cells.
+    body.dataset.kind = doc.kind || '';
+    // Signed figures get the same green/red as every other number in the app. Done here rather
+    // than in the markdown because the generator writes plain text and toHtml escapes markup —
+    // and a return is the one column on this page anyone actually reads.
+    body.querySelectorAll('td').forEach(td => {
+        const m = td.textContent.trim().match(/^([+−-])\d/);
+        if (m) td.classList.add(m[1] === '+' ? 'gain' : 'loss');
+    });
     // A link into another pot document switches the picker instead of leaving the page.
     body.querySelectorAll('a[data-pot]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
