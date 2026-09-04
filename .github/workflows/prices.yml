@@ -47,6 +47,23 @@ jobs:
         with:
           node-version: 22
 
+      # Start from what is on origin RIGHT NOW, not from the SHA that triggered this run.
+      #
+      # actions/checkout pins to `github.sha`, and that goes stale while we fetch 109 tickers.
+      # Worked example, 4 Sep 2026: a pot push at 12:07:18 triggered a run pinned to 47b8414; the
+      # run spent three minutes fetching; a different run pushed be4042d ("prices: 12:10Z") at
+      # 12:10:19; our run then committed its own regeneration on top of the stale 47b8414 and the
+      # rebase had to reconcile two independent WHOLESALE rewrites of the same four derived JSON
+      # files. Every line differs, so it cannot succeed — CONFLICT in all four, and about a
+      # quarter of all runs died this way.
+      #
+      # Resetting first makes that impossible rather than handled: the base is always current, so
+      # there is never a second version to merge with.
+      - name: Start from current origin
+        run: |
+          git fetch --quiet origin main
+          git reset --hard --quiet FETCH_HEAD
+
       # No devDependencies in CI: these two scripts are dependency-free by design.
       # extract-portfolio.js needs the workbook and never runs here.
       - run: node fetch-prices.js --selftest
@@ -62,5 +79,10 @@ jobs:
           git add prices.json history.json earnings.json intraday.json
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
-          git pull --rebase --autostash
-          git push
+          # No rebase. These four files are 100% derived, so on any divergence the right answer is
+          # to discard ours and refetch — never to reconcile two full regenerations line by line.
+          # If origin moved while we were fetching, the push is simply rejected and the next run
+          # regenerates from the newer base. Losing that race is not a failure and must not be
+          # reported as one: `git pull --rebase --autostash` reporting it as a merge conflict is
+          # what made a quarter of runs look broken.
+          git push --quiet || echo "push lost the race with a concurrent run - the next run refetches from the new origin"
