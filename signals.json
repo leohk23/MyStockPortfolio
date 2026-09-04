@@ -1,12 +1,52 @@
 {
- "generated": "2026-09-04T11:45:04.875Z",
- "pricesAt": "2026-09-04T10:32:55.879Z",
+ "generated": "2026-09-04T11:59:07.241Z",
+ "pricesAt": "2026-09-04T11:59:07.099Z",
  "vix": {
-  "close": 14.2,
-  "day": -0.0084
+  "close": 14.11,
+  "day": -0.0147
  },
  "spxDay": 0,
  "fired": [
+  {
+   "rule": "6.1 valuation",
+   "ticker": "AMZN",
+   "where": "HELD",
+   "pe": 20.531324345757334,
+   "pctile": 0.004016,
+   "window": "5y",
+   "weeks": 249,
+   "floor": 20.8069,
+   "floorDate": "2026-08-21",
+   "p5": 28.9637,
+   "median": 46.8158,
+   "vsFloor": -0.01324443594397362,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 40.61201952639703,
+    "recurringVsFloor": 0.3337850064665169,
+    "floorBasis": "recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "RSGN.SW",
+   "where": "watchlist",
+   "pe": 12.301282051282051,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 143,
+   "floor": 12.3013,
+   "floorDate": "2026-09-04",
+   "p5": 13.2692,
+   "median": 33.6689,
+   "vsFloor": -0.0000014590911487921687,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 12.620516395491077,
+    "recurringVsFloor": 0.0000012991158098163424,
+    "floorBasis": "recurring"
+   }
+  },
   {
    "rule": "6.1 valuation",
    "ticker": "MWA",
@@ -23,55 +63,21 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "RSGN.SW",
-   "where": "watchlist",
-   "pe": 12.314102564102564,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 143,
-   "floor": 12.3141,
-   "floorDate": "2026-09-04",
-   "p5": 13.2692,
-   "median": 33.6689,
-   "vsFloor": 2.0822492619032573e-7
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "AMZN",
-   "where": "HELD",
-   "pe": 20.82864038616251,
-   "pctile": 0.004016,
-   "window": "5y",
-   "weeks": 249,
-   "floor": 20.8069,
-   "floorDate": "2026-08-21",
-   "p5": 28.9637,
-   "median": 46.8158,
-   "vsFloor": 0.001044864259573064,
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 40.61201952639703,
-    "recurringVsFloor": 0.3337850064665169,
-    "floorBasis": "recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "RMS.PA",
    "where": "HELD",
-   "pe": 34.392458100558656,
+   "pe": 34.36918063314711,
    "pctile": 0,
    "window": "5y",
    "weeks": 180,
-   "floor": 34.293,
+   "floor": 34.2814,
    "floorDate": "2026-09-04",
    "p5": 37.6132,
    "median": 53.1161,
-   "vsFloor": 0.0029002449642392403,
+   "vsFloor": 0.00256059067445058,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 33.442280095788654,
-    "recurringVsFloor": 0.002899335918041812,
+    "recurringPe": 33.41964572685749,
+    "recurringVsFloor": 0.0025602975570955255,
     "floorBasis": "recurring"
    }
   },
@@ -167,7 +173,7 @@
    "rule": "6.1 valuation",
    "ticker": "TW",
    "where": "watchlist",
-   "pe": 25.140811455847253,
+   "pe": 24.66978922716628,
    "pctile": 0.03448,
    "window": "5y",
    "weeks": 261,
@@ -175,7 +181,7 @@
    "floorDate": "2026-06-26",
    "p5": 25.5465,
    "median": 55.5116,
-   "vsFloor": 0.08875215256966884,
+   "vsFloor": 0.06835398577679475,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 25.200956937799045,
@@ -374,7 +380,8 @@
   "ANDR.VI": "2026-10-29",
   "WLY": "2026-12-03",
   "8411.T": "2026-11-12",
-  "IOT": "2026-12-03"
+  "IOT": "2026-12-03",
+  "BRC": "2026-11-17"
  },
  "shadow": [
   {
@@ -538,22 +545,6 @@
    "currency": "USD"
   },
   {
-   "id": "2026-08-31-1217-RSGN.SW",
-   "ticker": "RSGN.SW",
-   "state": "open",
-   "written": "2026-08-31",
-   "days": 4,
-   "supersededBy": null,
-   "phase": "pre-live",
-   "counts": false,
-   "entry": 19.12,
-   "now": 19.21,
-   "move": 0.004707112970711247,
-   "basis": "close on the day it was written",
-   "limit": 20,
-   "currency": "CHF"
-  },
-  {
    "id": "2026-09-02-2032-INTU",
    "ticker": "INTU",
    "state": "open",
@@ -600,6 +591,22 @@
    "basis": "close on the day it was written",
    "limit": 345,
    "currency": "USD"
+  },
+  {
+   "id": "2026-08-31-1217-RSGN.SW",
+   "ticker": "RSGN.SW",
+   "state": "open",
+   "written": "2026-08-31",
+   "days": 4,
+   "supersededBy": null,
+   "phase": "pre-live",
+   "counts": false,
+   "entry": 19.12,
+   "now": 19.19,
+   "move": 0.0036610878661087476,
+   "basis": "close on the day it was written",
+   "limit": 20,
+   "currency": "CHF"
   },
   {
    "id": "2026-09-02-2032-MWA",
@@ -851,8 +858,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -867,8 +874,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -883,8 +890,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -899,8 +906,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -915,8 +922,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -931,8 +938,8 @@
    "phase": "pre-live",
    "counts": false,
    "entry": 19.81,
-   "now": 19.21,
-   "move": -0.030287733467945332,
+   "now": 19.19,
+   "move": -0.03129732458354351,
    "basis": "close on the day it was written",
    "limit": 20,
    "currency": "CHF"
@@ -1006,22 +1013,22 @@
    {
     "country": "Pakistan",
     "yahoo": "PAK",
-    "lastSeen": "2025-06-11"
+    "lastSeen": "2024-03-04"
    },
    {
     "country": "Portugal",
     "yahoo": "PGAL",
-    "lastSeen": "2025-06-11"
+    "lastSeen": "2024-03-04"
    },
    {
     "country": "Egypt",
     "yahoo": "EGPT",
-    "lastSeen": "2024-03-21"
+    "lastSeen": "2024-04-01"
    },
    {
     "country": "Nigeria",
     "yahoo": "NGE",
-    "lastSeen": null
+    "lastSeen": "2024-03-25"
    }
   ],
   "says": "15 of 43 country markets are within 5% of their own all-time high and 10 still need 50% or more to regain theirs; the median market must rise 12%"
@@ -1031,7 +1038,7 @@
    "sym": "^N225",
    "name": "Nikkei 225",
    "group": "Equity",
-   "inGBP": 0.4518,
+   "inGBP": 0.45189999999999997,
    "says": "51% locally is 45% to a sterling holder"
   },
   {
@@ -1056,7 +1063,7 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.2368,
+   "real": 0.23670000000000002,
    "says": "24% net of the dollar — a real move, not currency",
    "mixed": true
   },
@@ -1064,7 +1071,7 @@
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.4512,
+   "real": 0.4536,
    "says": "45% net of the dollar — a real move, not currency",
    "mixed": true
   },
@@ -1072,9 +1079,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.2823,
-   "says": "-27% over a year but 33% over three months — cooling",
-   "cooling": 0.3294,
+   "real": -0.2787,
+   "says": "-27% over a year but 34% over three months — cooling",
+   "cooling": 0.3352,
    "mixed": true
   }
  ],
