@@ -7,7 +7,26 @@ on:
     # is live almost continuously 00:00–21:00 UTC. Weekends every exchange is shut (IBIT/GBTC
     # are US ETFs, not spot crypto), so Mon–Fri only; weekend runs would just re-fetch unchanged
     # prices. GitHub cron is best-effort and may lag under load, so 15 min is approximate.
-    - cron: '*/15 * * * 1-5'
+    #
+    # NOT `*/15`, which fires on the hour. GitHub's own docs: "The schedule event can be delayed
+    # during periods of high loads of GitHub Actions workflow runs. High load times include the
+    # start of every hour. If the load is sufficiently high enough, some queued jobs may be
+    # dropped." — and then, explicitly, "To decrease the chance of delay, schedule your workflow
+    # to run at a different time of the hour."
+    #
+    # `*/15` did exactly the wrong thing: a quarter of its firings landed on minute 0, the one
+    # minute GitHub names as worst. Measured over 990 prices commits between 28 Jul (when */15
+    # replaced the original hourly '17 * * * *') and 4 Sep 2026, the schedule fired about SEVEN
+    # times a day, and not once within 20 minutes of the previous run. The original author had
+    # this right with minute 17; the change to */15 discarded it.
+    #
+    # Same 15-minute spacing, shifted 3 minutes off every quarter so none of the four lands on
+    # the hour. Hours capped at 0-21 because that is the window the comment above describes —
+    # 22:00-23:00 UTC has no market open anywhere in this book.
+    #
+    # This is one change on purpose, so its effect is measurable against the run history above.
+    # Nothing else in this file moved.
+    - cron: '3,18,33,48 0-21 * * 1-5'
   workflow_dispatch:
   push:
     branches: [main]
