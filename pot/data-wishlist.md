@@ -30,6 +30,13 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 
 <!-- newest first -->
 
+- **2026-09-05 — European rail investment and Knorr-Bremse operating evidence.**
+  Fetched from the European Commission and Knorr-Bremse's first-half release. Wanted when the
+  Commission publishes its High-Speed Rail Financing Strategy, and on results dates while KBX.DE
+  is tracked; rail and truck order intake, backlog conversion, organic growth, cash conversion and
+  ROCE must show whether current margins compound capital rather than merely reflect restructuring
+  and portfolio exits.
+
 - **2026-09-04 — US retail on-highway diesel.**
   Fetched from the US Energy Information Administration. Wanted weekly while the oil disruption
   persists; it complements the existing distillate gap with the cost road hauliers actually pay
