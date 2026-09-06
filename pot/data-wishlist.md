@@ -281,3 +281,17 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 - **2026-09-04 — China GDP, quarterly YoY.**
   Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be
   fetched by hand.
+- **2026-09-06 — global trade-policy activity and supply-chain pressure.**
+  Fetched from the WTO's trade-policy activity update and the New York Fed's GSCPI page. Wanted
+  monthly for GSCPI and when the WTO updates its activity index; together they distinguish a
+  temporary freight shock from a durable increase in the standards, routing and compliance work
+  that follows trade fragmentation.
+- **2026-09-06 — Bureau Veritas organic growth by business, capital returns, cash conversion and
+  portfolio bridge.** H1 growth, margin and cash-flow figures were fetched from the company's
+  half-year release; the capital-return and full portfolio bridge remain gaps. Wanted on results
+  dates while Bureau Veritas is tracked; the set must show whether inspection and certification
+  are genuinely compounding or whether disposals, acquisitions and adjusted margins are doing the
+  work.
+- **2026-09-06 — BVI.PA price and valuation history.** The current price was checked provisionally
+  on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it
+  to `watchlist.json` lets the normal pipeline fetch the price, earnings and trough history.
