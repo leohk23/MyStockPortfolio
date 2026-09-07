@@ -17,6 +17,8 @@
 
 param(
     [switch]$NoPush,
+    # Threaded to every lane so one cycle never mixes models. See run-lane.ps1 for why it is pinned.
+    [string]$Model = 'gpt-6-astra',
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -143,7 +145,7 @@ function Assert-Merged($what) {
 
 function Invoke-Lane($brief) {
     Note "--- $brief"
-    $laneArgs = @{ Brief = $brief; Repo = $Repo }
+    $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $Model }
     if (-not $NoPush) { $laneArgs.Push = $true }
     $before = (Get-Item (Join-Path $Repo $log)).Length
     try {

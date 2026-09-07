@@ -110,9 +110,23 @@ concentration in the 10-K. All quarterly, all in the filing, all checkable by th
 front-end relationship **before revenue shows it** because price and expert attach can temporarily
 offset lost users"* — and P3 then tested revenue, operating income and growth. The agent wrote the
 sentence that its falsifier would not move, and did not act on it. Prose that asks you to check is
-not enough; the four rules below make the check structural.
+not enough; the rules below make the check structural. Rule 0 runs before all of them.
 
-**Rule 1 — P6 names ONE dominant risk, first, on its own line, with a category.** The categories
+**Rule 0 — declare the theses BEFORE naming the risk, and do it for every proposal.** P6 opens with
+a `Theses:` line listing which entries in [`pot/theses.md`](theses.md) bear on this name and in one
+clause why, or the single word `none` — never blank, never omitted. This runs first because the
+earlier version of this rule did not: it bound the thesis check to the dominant risk, so the agent
+chose the risk and the check then asked whether any thesis bore on the choice it had just made.
+Tag `financial` and nothing bears. The 7 Sep cycles are the evidence — RELX sells LexisNexis and
+Elsevier, seat-priced information tools to lawyers and scientists, and T2 names that category
+exactly; both proposals tagged the dominant risk `financial` (buybacks and leverage) and neither
+document mentions AI displacement anywhere. The thesis file was listed among the files read and
+changed nothing. Declaring first makes `financial` a conclusion to defend against the theses on the
+line above it, rather than a way of never meeting them. `none` is a legitimate and common answer —
+MWA sells water infrastructure and no thesis here touches it — but it is now an answer, written
+down, and not a silence.
+
+**Rule 1 — P6 names ONE dominant risk, directly under the `Theses:` line, on its own line, with a category.** The categories
 are `financial`, `competitive` (a rival or a substitute takes the customer), `secular` (the
 product category itself shrinks or is displaced), `accounting` (the numbers may not mean what they
 say — circular financing lives here) and `regulatory`. Everything else in P6 is secondary and goes
@@ -138,10 +152,12 @@ permission for it. A figure that lives outside the filings is still a figure; it
 to fall back to one that lives inside them and will not move.
 
 [`pot/theses.md`](theses.md) is the standing list of where to look — Leo's own views about how the
-world is moving, kept in their own file because they change on a different clock from this brief. A
-thesis there that bears on the dominant risk must be **engaged in P6**, with the external figure and
-cadence this rule asks for, not asserted away; Rule 2 applies to it exactly as to any other rebuttal.
-A thesis is never on its own a reason to reject a name — it is a place the falsifier is likely to be.
+world is moving, kept in their own file because they change on a different clock from this brief.
+Rule 0 has already forced you to declare which of them bear on this name. Any you declared is then
+engaged **here**, with the external figure and cadence this rule asks for, not asserted away; Rule 2
+applies to it exactly as to any other rebuttal. A thesis is never on its own a reason to reject a
+name — it is a place the falsifier is likely to be, and a declared thesis that survives the search
+is a stronger proposal than one that never named it.
 
 **Rule 4 — an unfalsifiable or slow dominant risk sizes the position, mechanically.** If the
 earliest observable for the dominant risk is more than two quarters away, or lives entirely
@@ -271,6 +287,22 @@ is void.
 
 - **No minimum** position, but refuse the ticket if its **first-year costs exceed 2%** of it.
   State the costs you expect: commission, FX spread, stamp duty, ADR custody if OTC.
+- **Do not assume a commission-free broker.** §10 records *"no broker constraint as I'm executing"*,
+  so the £0-commission Trading 212 case is one possibility and not the default. Name the broker you
+  are costing against, and cost a **flat fee of $1 per US ticket** unless Leo has said otherwise —
+  that is what he actually pays. It is not always $1: other venues and OTC lines charge more, and
+  a flat fee is worst on the smallest ticket. On the 7 Sep MWA order this mattered — the proposal
+  quoted £0 commission and *"0.15% of the ticket"*, where $1 on a £124 ticket is **0.6%**, four
+  times the figure it reported and the largest single cost in the order.
+- **A flat fee makes share count a real decision, so show the drag and say whether more shares fix
+  it.** Fee ÷ ticket falls as the order grows: $1 on 7 MWA shares at $24 is 0.6%, on 10 it is 0.42%,
+  on 20 it is 0.21%. P1 states the fee as a **% of the ticket at the proposed size**, and where idle
+  cash could buy another whole share or two, says what that would do to the percentage and whether
+  it is worth it. **This is a consideration, not a gate.** Leo's words: *"for 7 shares it's
+  acceptable to me but I don't want to create a hard rule here especially the pot is so small."*
+  Nothing here overrides §4.2, §4.2a or the 2% ceiling, and a good name is never dropped for costing
+  0.6% instead of 0.4%. What is forbidden is leaving the number unstated, or reporting one that
+  assumes a broker Leo may not be using.
 - Maximum **50%** of the pot.
 - The pot's cash is in `pot/positions.json`. **If it is £0, size against the next £250 contribution
   and say the order is pending funding.** Do not invent a balance.
@@ -289,7 +321,9 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 ## 1. Order
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
 Currency <ccy>. Cash left idle: £<remainder>.
-Expected first-year costs: <breakdown>, <x>% of the ticket.
+Expected first-year costs: <breakdown, naming the broker assumed and the flat commission>, <x>% of
+ the ticket. <If a flat fee applies and idle cash could buy another whole share, what that does to
+ the percentage — a consideration, never a gate.>
 <If n=1 under §4.2a: the % of contributed capital this is, and how many contributions bring it
  under the 50% cap. If the dominant risk is slow or unfalsifiable: half size, per Rule 4.>
 
@@ -314,6 +348,8 @@ Expected first-year costs: <breakdown>, <x>% of the ticket.
 Local check: <agree / disagree, and which you used>
 
 ## 6. The case against
+**Theses:** <which entries in pot/theses.md bear on this name, each with one clause saying why —
+ or the single word `none`. Never blank, never omitted — Rule 0.>
 **Dominant risk (`financial|competitive|secular|accounting|regulatory`):** <ONE risk, one line.
  This is the line P3 answers. If P2 argued it away, that argument moves to P3 — Rule 2.>
 **Earliest observable:** <the figure, its source, and when it next prints. If it is outside the

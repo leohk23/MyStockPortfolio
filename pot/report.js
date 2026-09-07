@@ -53,12 +53,23 @@ function summarise(file) {
     // sweep, and its proposal stamped with another run's model and token count.
     const asked = lines.find(l => l.payload?.item?.type === 'UserMessage')
         ?.payload.item.content?.map(c => c.text).join(' ') || '';
+    // An ad-hoc `codex exec` in this repo is not a lane run, and the blob fallback below cannot
+    // tell the difference: AGENTS.md names every brief, so it matches inside ANY transcript. Four
+    // one-line verification probes on 8 Sep were filed as "review" runs on that basis. run-lane.ps1
+    // sends exactly one prompt shape, so anything with a prompt of its own is somebody at a
+    // terminal. An empty `asked` still falls through — the oldest logs store the prompt elsewhere.
+    if (asked && !/^Follow the instructions in /.test(asked)) return null;
     const brief = (asked.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1]
         || (blob.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1] || null;
     return {
         file, started, ended, brief, lines,
         lane: brief ? brief.replace(/-/g, ' ') : 'unknown',
         model: (blob.match(/"model":"([^"]+)"/) || [])[1] || null,
+        // How hard the model was told to think. Set globally in ~/.codex/config.toml, so it can
+        // change between cycles with nothing in the repo to show it — which is exactly why it
+        // belongs in the ledger beside the model. Every run to 7 Sep 2026 logged "high"; the
+        // config briefly read "low" on 8 Sep before being set back, and no run used it.
+        effort: (blob.match(/"reasoning_effort":"([^"]+)"/) || [])[1] || null,
         seconds: started && ended ? Math.round((Date.parse(ended) - Date.parse(started)) / 1000) : null,
         usage: totals ? JSON.parse(totals[1]) : null,
         repo: /MyStockPortfolio/.test((blob.match(/"cwd":"([^"]+)"/) || [])[1] || ''),
@@ -424,9 +435,9 @@ comparable. **Fresh** is input not served from cache — the part a metered call
 |---|---|---:|---:|
 | ${runs.length} | ${mmss(totalSecs)} | ${fmt(totalFresh)} | ${fmt(totalTokens)} |
 
-| started | lane | model | wall | fresh in | cached in | out | total | weekly | of week | transcript |
-|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
-${runs.map(r => `| ${when(r.started)} | ${r.lane} | \`${r.model || '?'}\` | ${mmss(r.seconds)} `
+| started | lane | model | effort | wall | fresh in | cached in | out | total | weekly | of week | transcript |
+|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+${runs.map(r => `| ${when(r.started)} | ${r.lane} | \`${r.model || '?'}\` | ${r.effort || '–'} | ${mmss(r.seconds)} `
         + `| ${fmt(fresh(r.usage))} | ${fmt(r.usage?.cached_input_tokens)} | ${fmt(r.usage?.output_tokens)} `
         + `| ${fmt(r.usage?.total_tokens)} | ${r.limits?.secondary ? r.limits.secondary.used + '%' : '–'} | ${spent.has(r.file) ? '+' + spent.get(r.file).toFixed(1) : '–'} | [read](${r.log.replace('pot/','')}) |`).join(String.fromCharCode(10)) || '| – | none yet | | | | | | | | | |'}
 

@@ -17,6 +17,11 @@ param(
     # the agent decides for itself — see the top of pot\brief-deepdive.md for why.
     [string]$Ticker,
     [switch]$Push,
+    # Pinned, rather than left to whatever ~/.codex/config.toml happens to say that day. Every run
+    # on record before 8 Sep 2026 was gpt-5.6-sol; a change to the global default would change the
+    # experiment without changing the repo, and the provenance stamp would be the only place it
+    # showed. Pass -Model '' to fall back to the codex default deliberately.
+    [string]$Model = 'gpt-6-astra',
     [string]$Repo = 'C:\Users\leohk\MyStockPortfolio'
 )
 
@@ -51,7 +56,8 @@ $prompt = if ($Ticker) { "Follow the instructions in $Brief for $Ticker" }
 Note "prompt: $prompt"
 
 if ($Agent -eq 'codex') {
-    codex exec --cd $Repo --sandbox workspace-write `
+    $modelArgs = if ($Model) { @('--model', $Model) } else { @() }
+    codex exec --cd $Repo --sandbox workspace-write @modelArgs `
         --output-last-message pot\last-message.txt $prompt 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 } else {
