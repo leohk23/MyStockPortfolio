@@ -295,3 +295,11 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 - **2026-09-06 — BVI.PA price and valuation history.** The current price was checked provisionally
   on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it
   to `watchlist.json` lets the normal pipeline fetch the price, earnings and trough history.
+- **2026-09-07 — Bunzl underlying growth, volume/inflation mix, cash conversion and acquisition
+  returns.** Fetched from Bunzl's half-year report. Wanted on results dates while Bunzl is tracked;
+  the set must show whether the North America recovery and digital ordering translate into durable
+  returns rather than temporary inflation, bolt-on acquisitions or adjusted profit.
+- **2026-09-07 — BNZL.L price and valuation history.** The 4 September close and recent returns
+  were checked provisionally on Yahoo Finance because the repo did not carry the name. No manual
+  series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price,
+  earnings and multiple history.
