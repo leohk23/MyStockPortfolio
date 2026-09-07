@@ -135,6 +135,13 @@ with what is already priced in, and it is the failure mode of this lane. Prefer:
   concentration you can see is geographic and the one that actually matters here — megacap tech —
   is visible only by reading the top names. Say so if it drives a candidate.
 
+- **what [`pot/theses.md`](theses.md) points at.** Leo's standing views about how the world is
+  moving. Read them before section 3, alongside `book`. They are a bias of the same kind as the one
+  above, not a filter: a candidate that touches no thesis is not worse for it, and a thesis is never
+  itself the argument for a name. The value is second-order — not the obvious beneficiary, which is
+  priced by the time you read about it, but who gets cheaper inputs and whose pricing power goes.
+  Say which thesis, if one drove the candidate.
+
 Leo's own words, from `strategy.md` §2: he buys what he is *familiar enough with*, from first-hand
 observation (M&S from shopping there, NVDA from using ChatGPT), reads annual reports, is a CPA,
 distrusts technical analysis, and treats valuation as a **filter**. His stated regret is 7532.T —

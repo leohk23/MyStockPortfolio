@@ -137,6 +137,12 @@ line in a filing. "Guidance is where the crisp numbers live" is a diagnosis of t
 permission for it. A figure that lives outside the filings is still a figure; it is not a reason
 to fall back to one that lives inside them and will not move.
 
+[`pot/theses.md`](theses.md) is the standing list of where to look — Leo's own views about how the
+world is moving, kept in their own file because they change on a different clock from this brief. A
+thesis there that bears on the dominant risk must be **engaged in P6**, with the external figure and
+cadence this rule asks for, not asserted away; Rule 2 applies to it exactly as to any other rebuttal.
+A thesis is never on its own a reason to reject a name — it is a place the falsifier is likely to be.
+
 **Rule 4 — an unfalsifiable or slow dominant risk sizes the position, mechanically.** If the
 earliest observable for the dominant risk is more than two quarters away, or lives entirely
 outside any dated source, the order is **half the allocation §4 would otherwise give**, and P1
