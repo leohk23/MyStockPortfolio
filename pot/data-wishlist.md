@@ -327,3 +327,20 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
 - **2026-09-07 — ENX.PA price and valuation history.** Yahoo identified the Paris symbol but its
   accessible history was stale, so no provisional price was used. No manual series is wanted: the
   watchlist addition lets the normal pipeline fetch the price, earnings and multiple history.
+- **2026-09-07 23:45 UTC — Japanese sewer inspection, remediation and funded procurement.**
+  Consulted [MLIT's survey update](https://www.mlit.go.jp/report/interview/daijin260421.html) and
+  [legislative proposal](https://www.mlit.go.jp/report/press/mizukokudo13_hh_000722.html).
+  Wanted on official updates, not weekly. Need the bridge from identified repairs to funded awards.
+- **2026-09-07 23:45 UTC — NJS order conversion, seasonal working capital and capital returns.**
+  Consulted the [H1 filing](https://www.njs.co.jp/ja/investors/news/auto_20260810516925/pdfFile.pdf)
+  and [Bengaluru study award](https://www.njs.co.jp/ja/investors/news/auto_20260827527049/pdfFile.pdf).
+  Wanted at results dates; full-year ROIC, turnover and repeatable cash conversion remain to be checked.
+- **2026-09-07 23:45 UTC — 2325.T price and valuation history.**
+  [Yahoo Japan](https://finance.yahoo.co.jp/quote/2325.T) supplied a provisional quote. Added to
+  `watchlist.json`; the existing pipeline should supply independent earnings and historical
+  valuation coverage. No separate manual feed wanted.
+- **2026-09-07 23:45 UTC — Reinsurance renewal pricing, outward-cover costs and retained exposure.**
+  Consulted [Hannover Re's September outlook](https://www.hannover-re.com/en/news/2026/hannover-re-sees-profitable-growth-opportunities-in-an-increasingly-challenging-market-environment/)
+  and [Lancashire's H1 filing](https://www.lancashiregroup.com/content/dam/lancashire/corporate2020/Media/Press-Releases/2026/LHL-results-for-the-six-months-ended-30-June-2026.pdf.downloadasset.pdf).
+  Wanted during renewal seasons and on results dates, not weekly. A comparable cost per unit of
+  retained risk is still missing; lower market rates alone do not establish better net economics.
