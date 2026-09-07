@@ -1,6 +1,6 @@
 {
- "generated": "2026-09-07T20:15:04.146Z",
- "pricesAt": "2026-09-07T19:53:41.694Z",
+ "generated": "2026-09-07T20:31:38.151Z",
+ "pricesAt": "2026-09-07T20:31:37.997Z",
  "vix": {
   "close": 15.3,
   "day": 0.053
@@ -137,26 +137,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "6862.HK",
-   "where": "watchlist",
-   "pe": 12.818181818181817,
-   "pctile": 0.08287,
-   "window": "5y",
-   "weeks": 181,
-   "floor": 12.1282,
-   "floorDate": "2024-08-23",
-   "p5": 12.7657,
-   "median": 16.5695,
-   "vsFloor": 0.056890702510002944,
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 14.119502562915025,
-    "recurringVsFloor": 0.13823813255580752,
-    "floorBasis": "recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "NVDA",
    "where": "HELD",
    "pe": 29.159493670886075,
@@ -205,6 +185,26 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "6862.HK",
+   "where": "watchlist",
+   "pe": 13.270588235294117,
+   "pctile": 0.08287,
+   "window": "5y",
+   "weeks": 181,
+   "floor": 12.1282,
+   "floorDate": "2024-08-23",
+   "p5": 12.7657,
+   "median": 16.5695,
+   "vsFloor": 0.09419272730447359,
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 14.617836871160874,
+    "recurringVsFloor": 0.17841115634887372,
+    "floorBasis": "recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "TW",
    "where": "watchlist",
    "pe": 25.346062052505964,
@@ -241,7 +241,7 @@
    "rule": "6.1 valuation",
    "ticker": "9961.HK",
    "where": "HELD",
-   "pe": 6.184434766142776,
+   "pe": 6.165754200490844,
    "pctile": 0.01657,
    "window": "5y",
    "weeks": 181,
@@ -249,11 +249,11 @@
    "floorDate": "2026-06-26",
    "p5": 6.41698,
    "median": 23.2299,
-   "vsFloor": 0.12796604049426685,
+   "vsFloor": 0.12455893144236785,
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 12.665885875171607,
-    "recurringVsFloor": 0.12796205140008987,
+    "recurringPe": 12.627639296471143,
+    "recurringVsFloor": 0.12455599754841429,
     "floorBasis": "recurring"
    }
   },
@@ -461,7 +461,8 @@
   "ADUS": "2026-11-02",
   "GWRE": "2026-12-03",
   "CNR.TO": "2026-10-30",
-  "KBX.DE": "2026-10-29"
+  "KBX.DE": "2026-10-29",
+  "ENX.PA": "2026-11-05"
  },
  "shadow": [
   {
@@ -1250,7 +1251,7 @@
   }
  ],
  "book": {
-  "totalGBP": 129393,
+  "totalGBP": 129385,
   "priced": 59,
   "of": 59,
   "names": [
@@ -1408,7 +1409,7 @@
    },
    {
     "name": "21 smaller",
-    "weight": 0.0546,
+    "weight": 0.0547,
     "tail": true
    }
   ],
@@ -1694,7 +1695,7 @@
    "name": "Hang Seng",
    "group": "Equity",
    "mixed": true,
-   "inGBP": -0.0121
+   "inGBP": -0.012199999999999999
   },
   {
    "sym": "DX-Y.NYB",
@@ -1718,24 +1719,24 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.21530000000000002,
-   "says": "22% net of the dollar — a real move, not currency",
+   "real": 0.21280000000000002,
+   "says": "21% net of the dollar — a real move, not currency",
    "mixed": true
   },
   {
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.4541,
+   "real": 0.4516,
    "says": "45% net of the dollar — a real move, not currency"
   },
   {
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3072,
-   "says": "-29% over a year but 29% over three months — cooling",
-   "cooling": 0.2872,
+   "real": -0.311,
+   "says": "-29% over a year but 28% over three months — cooling",
+   "cooling": 0.2847,
    "mixed": true
   }
  ],
