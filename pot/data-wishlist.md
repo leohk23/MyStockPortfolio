@@ -18,6 +18,32 @@ by then it is a recurring input, not a one-off. Roughly, a candidate feed wants 
   paid or scraped source is a different decision
 - **actually decisive** — it changed what the Sweep concluded, rather than decorating it
 
+## What keeps being reached for
+
+Derived from the entries below by `pot/report.js` — do not hand-edit, it is overwritten on every
+report run. The log is keyed by date and company, which is right for an audit trail and useless
+for the rule above: a series reached for twelve times across twelve different companies looks like
+twelve one-offs. This counts ENTRIES containing each term, so it answers "how many sweeps reached
+for this", which is what "three sweeps is a case to build it" actually asks. Keyword matching, so
+it is approximate and deliberately conservative — a near-miss phrasing is undercounted, never over.
+
+<!-- tally:start -->
+| reached for | sweeps | |
+|---|---:|---|
+| cash conversion | 19 | **earns a feed** |
+| margin | 13 | **earns a feed** |
+| volume / units | 13 | **earns a feed** |
+| leverage / net debt | 9 | **earns a feed** |
+| backlog / order intake | 8 | **earns a feed** |
+| inventory | 7 | **earns a feed** |
+| capital returns | 6 | **earns a feed** |
+| return on capital | 3 | **earns a feed** |
+| pricing / realisation | 2 | – |
+| same-store / comparable sales | 2 | – |
+
+81 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+<!-- tally:end -->
+
 ## Entries
 
 Appended by the Sweep. Date and subject lead the entry; everything else is a sentence.

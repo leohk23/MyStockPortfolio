@@ -350,6 +350,54 @@ a zero worth trusting.
     return { marked: all.length, mature: mature.length };
 }
 
+// The wishlist is keyed by date and company, which is right for an audit trail and useless for its
+// own rule — "three sweeps reaching for the same series is a case to build it". A series wanted
+// twelve times across twelve companies reads as twelve one-offs, and nobody can see the twelve.
+// So count ENTRIES, not mentions: how many separate sweeps reached for each thing.
+//
+// Keyword matching, which is crude and stays crude on purpose. The alternative is asking the Sweep
+// to tag its own entries, and A20 settles that: the count is derived from what was written, not
+// from what an agent says it wrote. A phrasing this list misses is undercounted — never over — so
+// a metric showing three reaches has at least three.
+const WISHLIST_METRICS = [
+    ['cash conversion', /cash conversion|free cash flow conversion/i],
+    ['margin', /\bmargins?\b/i],
+    ['backlog / order intake', /backlog|order intake|order book/i],
+    ['leverage / net debt', /leverage|net debt/i],
+    ['inventory', /inventor(y|ies)/i],
+    ['capital returns', /capital returns?|buyback|dividend cover/i],
+    ['return on capital', /\bROIC\b|\bROCE\b|return on (invested )?capital/i],
+    ['pricing / realisation', /pricing power|price realisation|price realization|surcharge/i],
+    ['volume / units', /\bvolumes?\b|\bunits?\b|carloads/i],
+    ['same-store / comparable sales', /same-store|comparable sales|like-for-like/i],
+];
+
+// Rewrites the block between the tally markers. Silent no-op if the file or the markers are gone:
+// this is a convenience for whoever opens the wishlist next, and nothing may break because of it.
+function wishlistTally(file = 'pot/data-wishlist.md') {
+    let s;
+    try { s = fs.readFileSync(file, 'utf8'); } catch { return; }
+    const OPEN = '<!-- tally:start -->', CLOSE = '<!-- tally:end -->';
+    const start = s.indexOf(OPEN), end = s.indexOf(CLOSE);
+    if (start < 0 || end < 0 || end < start) return;
+    const EOL = s.includes('\r\n') ? '\r\n' : '\n';
+    // An entry is one "- **YYYY-MM-DD — subject.**" block and everything under it.
+    const entries = s.split(/(?=^- \*\*20\d\d-)/m).filter(e => /^- \*\*20\d\d-/.test(e));
+    const rows = WISHLIST_METRICS
+        .map(([name, re]) => [name, entries.filter(e => re.test(e)).length])
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1]);
+    const body = rows.length
+        ? ['| reached for | sweeps | |', '|---|---:|---|',
+            ...rows.map(([name, n]) => '| ' + name + ' | ' + n + ' | ' + (n >= 3 ? '**earns a feed**' : '–') + ' |'),
+            '', entries.length + ' entries. Three or more meets the bar in "How an entry earns a feed" and makes'
+            + ' the series a candidate for the Scan — it still has to be free to fetch and actually decisive.'
+        ].join(EOL)
+        : '_No entries yet._';
+    fs.writeFileSync(file, s.slice(0, start) + OPEN + EOL + body + EOL + s.slice(end));
+}
+
+
 function build() {
     fs.mkdirSync(LOGS, { recursive: true });
     const runs = sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief);
@@ -416,6 +464,7 @@ function build() {
         }
     }
 
+    wishlistTally();
     fs.writeFileSync('pot/runs.md', `# Run ledger
 
 Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from the Codex session
