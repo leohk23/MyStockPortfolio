@@ -316,3 +316,14 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
   and inconsistent across its own cached views, so no price figure was used. No manual series is
   wanted: the watchlist addition lets the normal pipeline fetch its price, earnings and multiple
   history independently.
+- **2026-09-07 — European capital-market integration and cross-border equity activity.** Fetched
+  from the ECB's 2026 financial-integration release and the European Commission's market-integration
+  package. Wanted annually or when the legislation changes, not weekly; it tests whether policy is
+  actually reducing the fragmentation from which a pan-European market operator could benefit.
+- **2026-09-07 — Euronext organic growth, recurring-revenue coverage, cash conversion and integration
+  returns.** Fetched from Euronext's Q2 release, while the August volume release supplied a fresh
+  prompt but no usable table in the accessible page. Wanted on results dates, with monthly volumes
+  while ENX.PA is tracked; the set must separate structural growth from volatility and acquisitions.
+- **2026-09-07 — ENX.PA price and valuation history.** Yahoo identified the Paris symbol but its
+  accessible history was stale, so no provisional price was used. No manual series is wanted: the
+  watchlist addition lets the normal pipeline fetch the price, earnings and multiple history.
