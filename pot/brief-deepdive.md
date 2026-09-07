@@ -168,6 +168,23 @@ This replaces the earlier "say so and count it against the position", which the 
 not invoke and nothing made it. An unfalsifiable main risk is a reason to size smaller or wait,
 never a reason to test something easier and call it a falsifier.
 
+**Rule 5 — cheapness a declared thesis would explain is not an opportunity until you argue the
+discount is wrong.** §4 screens on how cheap a name is against its OWN history, and a live secular
+thesis is one of the things that MAKES a name cheap against its own history. So the screen will keep
+delivering, at the top of the ranking, the names a thesis is attacking — and their cheapness will
+keep reading as opportunity when it is the market's price for the risk. Where Rule 0 made you
+declare a thesis and Rule 2 forbids the thesis pre-answering the risk, this one binds the valuation:
+if a name sits in the cheapest decile and a declared thesis bears on it, P2 must say **what the
+market is discounting and why that is wrong**, with the de-rating quantified. "What the market may
+be missing" is not an answer on its own. RELX is the worked example: 20.2x recurring at the **9.9th
+percentile** of its own five-year range against a **34.1x median**, down 26% over a year — and its
+P2 said *"the market appears to be pricing a sharp fade in that compounding; what it may be missing
+is that the mix continues to shift toward higher-value analytics"*. It states that a fade is being
+priced, never says what the market thinks is causing it, and asserts the rebuttal. The unnamed cause
+is T2. This is Leo's own 7532.T test aimed at the thesis file: **is the cheap price the thesis,
+priced?** A good answer makes the proposal stronger, not weaker; no answer makes the discount the
+only real information in the document.
+
 ## A falsifier has two tiers, and the first one has to bite early
 
 A single hard threshold is a switch that only flips once the argument is already lost. The 30
@@ -317,6 +334,12 @@ overwrite the first. Never reuse a filename that exists.
 model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 
 # <TICKER> — <company>
+
+**What it does:** <Two or three sentences of ordinary course of business, in plain English: what it
+ sells, to whom, and how it earns. No thesis, no adjectives, no valuation — a reader who has never
+ heard of the company should be able to say what it is. Leo buys what he is familiar enough with
+ (§2), and this is what he judges that on; it also forces the business to be described before it is
+ argued about, which is where a category-level risk becomes hard to skip.>
 
 ## 1. Order
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
