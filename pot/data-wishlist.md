@@ -303,3 +303,16 @@ Appended by the Sweep. Date and subject lead the entry; everything else is a sen
   were checked provisionally on Yahoo Finance because the repo did not carry the name. No manual
   series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price,
   earnings and multiple history.
+- **2026-09-07 — EU defence spending and equipment procurement.** Fetched from the European
+  Defence Agency's 2025–2026 defence-data release. Wanted annually when EDA refreshes it; the
+  split between total spending, equipment procurement and collaborative procurement tests whether
+  a supplier's claimed addressable market is turning into funded demand rather than a theme.
+- **2026-09-07 — THEON backlog quality, cash flow, customer concentration and acquisition returns.**
+  Order intake, organic growth, soft backlog, adjusted margin and stated leverage came from
+  THEON's H1 trading update; hard backlog, option conversion, statutory operating cash flow, ROIC
+  and customer concentration were not disclosed there. Wanted on results dates while THEON.AS is
+  tracked, especially after the MERIO and HGH acquisitions close.
+- **2026-09-07 — THEON.AS price and valuation history.** Yahoo's off-universe quote was delayed
+  and inconsistent across its own cached views, so no price figure was used. No manual series is
+  wanted: the watchlist addition lets the normal pipeline fetch its price, earnings and multiple
+  history independently.
