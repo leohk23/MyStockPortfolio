@@ -262,8 +262,22 @@ one because the brief only asked for one.
 
 ## Rank against Leo's rules, and show the ranking
 
-State, in a short table, every name you considered and why it did or did not make the cut. Use his
-own tests, not generic ones:
+**Account for every name in `watchlist.json`, not every name you happened to consider.** The list
+is 70 names; the 8 September run ranked 23 and said nothing about the other 47, so names Leo added
+by hand and names the Sweep found were never judged and nobody could see that they had not been.
+"Every name you considered" was the old wording and it let the set be chosen silently.
+
+Two tiers, so completeness does not mean 70 paragraphs:
+
+- **Ranked** — every name that clears §2.4's valuation filter gets a row with the reasoning below.
+- **Excluded** — everything else in one compact list, `TICKER — reason` on a line, where the reason
+  may be as short as "31st percentile, not cheapest decile" or "no local earnings". A name with
+  nothing to say still has to appear.
+
+**Ranked + excluded must equal the watchlist count, and state that count.** If a name cannot be
+assessed at all, that is an excluded line reading "no data", not an omission.
+
+Use his own tests, not generic ones:
 
 - **Earnings quality** — margin level, the *consistency* of that margin, and growth, **and what the
   capital behind it earns** (§2.4, extended 1 Sep). Not the P/E alone, and not the margin alone

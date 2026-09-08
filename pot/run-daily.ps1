@@ -229,7 +229,11 @@ try {
 
     # ---- 3. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
-    Invoke-Lane 'pot/brief-sweep.md'
+    # Daily. The Sweep is not idle the way the review was - 48 names over 27 runs - but the
+    # constraint is downstream: the watchlist is 70 names, the last deep dive ranked 23, and 7
+    # names have ever been proposed. Adding more names faster does not produce more proposals, it
+    # grows a backlog nothing reads.
+    if (Lane-Due 'pot/sweeps' 1) { Invoke-Lane 'pot/brief-sweep.md' } else { Note 'sweep not due' }
 
     # ---- 4. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
     #
