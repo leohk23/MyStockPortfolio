@@ -321,6 +321,16 @@ If your researched figure and the local one disagree, **say so and say which you
 why.** Do not silently pick the one that suits the argument. A proposal that hides a disagreement
 is void.
 
+**§7.2a — an earnings base you cannot certify sizes the position; it does not veto it.** The
+percentile is computed across ~200 weekly bars, so one hand-derived adjustment can never certify
+it, and non-US names have no EDGAR to certify it from. If "unverified" meant "no order", the pot
+would never buy anything and would look principled doing it. So: state which basis you are quoting
+and how many years carry cited adjustments, give the multiple on each basis where they differ, and
+take **half the allocation** where the uncertainty is material — the same mechanic as Rule 4.
+Declining is still allowed, and often right, but it must be argued on the business rather than on
+the data being incomplete. The 8 September run held all cash with seven of thirteen names blocked
+on unreconciled earnings; that was judgement, not a rule, and this is the rule.
+
 ## Record every one-off you reconcile — `pot/adjustments.json`
 
 You keep deriving these by hand and throwing them away. LULU's $134.5m tariff refund was found by

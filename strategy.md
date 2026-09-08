@@ -37,6 +37,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 6.6  | Breaking news                            | both — weekly Sweep*and* a market-reaction proxy the Scan can see                                                |
 | 7.1  | Maximum buys per quarter                 | No limit                                                                                                            |
 | 7.2  | Local fact-check before execution        | **Mandatory**                                                                                                 |
+| 7.2a | **Uncertified earnings size, never veto**| Say which basis and how many years are adjusted; halve the allocation if material. "The data is incomplete" is not a reason to decline |
 | 7.3  | Unsourced figures                        | Not permitted                                                                                                       |
 | 9.1  | Benchmark                                | pot TWR · main-book TWR ·**S&P 500**                                                                        |
 | 9.3  | Experiment reviewed                      | at 24 months                                                                                                        |
@@ -502,6 +503,29 @@ Both.
 > back, the proposal is void. You own an independent fact-checker — use it.
 
 **A** — Yes.
+
+**Q 7.2a** What happens when the earnings base itself cannot be certified? `[auto]`
+
+> §7.2 makes the local fact-check mandatory and the brief says a disagreement must be **disclosed**
+> — *"say which you are using and why"* — not that it stops the proposal. But the 8 September run
+> held all cash with roughly seven of thirteen ranked names blocked on unreconciled earnings, and
+> that was the agent's own judgement rather than any rule. The risk is that it hardens into custom:
+> the percentile is computed across ~200 weekly bars, so a single hand-derived adjustment can never
+> certify it, and non-US names have no EDGAR at all. A standing "unverified ⇒ no order" would look
+> principled while quietly guaranteeing the pot never buys anything.
+
+**A** — **A base you cannot certify is a disclosure and a smaller position, never a veto.** The
+proposal may proceed. It must say which basis it is quoting (reported, vendor `norm`, or the repo's
+own adjusted one), how many years carry cited adjustments, and what the multiple is on each where
+they differ. Where the uncertainty is material, it takes **half the allocation** — the same
+mechanic as `brief-deepdive.md` Rule 4, which sizes down for an unfalsifiable risk rather than
+refusing it.
+
+Declining to buy stays perfectly legitimate. It has to be argued on the **business** — the thesis,
+the dominant risk, the price — and *"the data is incomplete"* is not that argument, because the data
+will always be incomplete somewhere.
+
+---
 
 **Q 7.3** May the agent act on anything it cannot show you a source for? `[agent]`
 
