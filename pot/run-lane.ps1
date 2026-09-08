@@ -22,6 +22,12 @@ param(
     # experiment without changing the repo, and the provenance stamp would be the only place it
     # showed. Pass -Model '' to fall back to the codex default deliberately.
     [string]$Model = 'gpt-6-astra',
+    # Reasoning effort, empty means "whatever ~/.codex/config.toml says". Pinned the same way and
+    # for the same reason as -Model: it is a global setting that changes what a run costs and how
+    # it thinks, with nothing in the repo to show which one produced a given output. The ledger
+    # reads the actual value back out of the session log, so an override here is visible after the
+    # fact rather than only at the moment somebody typed it.
+    [string]$Effort = '',
     [string]$Repo = 'C:\Users\leohk\MyStockPortfolio'
 )
 
@@ -57,6 +63,7 @@ Note "prompt: $prompt"
 
 if ($Agent -eq 'codex') {
     $modelArgs = if ($Model) { @('--model', $Model) } else { @() }
+    if ($Effort) { $modelArgs += @('-c', "model_reasoning_effort=""$Effort""") }
     codex exec --cd $Repo --sandbox workspace-write @modelArgs `
         --output-last-message pot\last-message.txt $prompt 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Note "  $_" }
