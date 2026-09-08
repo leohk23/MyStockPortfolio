@@ -373,6 +373,10 @@ repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the tick
 
 - `fy` is the fiscal year END exactly as it appears in `earnings.json`, or the row will never match.
 - `amount` is positive for income to REMOVE, in the filing's own currency.
+- **`amountPerShare` is accepted instead**, because that is how releases usually word it — MWA's
+  was *"a one-time tax benefit of $0.06 per share"*. `fetch-prices.js` converts it using implied
+  shares from the filer's own `ni / eps`, so you do not have to. Use whichever form the source
+  states; do not convert by hand and do not skip the entry because the units did not match.
 - `source` is mandatory and must be the company's or the regulator's own document. This store is
   agent-written, which is what A20 normally forbids — the citation is what makes it admissible, so
   an entry without one is worse than no entry.
@@ -509,6 +513,11 @@ Expected first-year costs: <breakdown, naming the broker assumed and the flat co
 | figure | value | source |
 <price, multiple, and whatever the thesis rests on — each with a URL or a local file>
 Local check: <agree / disagree, and which you used>
+**Adjustments:** <the entry you appended to pot/adjustments.json for any one-off you reconciled —
+ ticker, fiscal year, amount or amountPerShare — or one clause saying why none was writable
+ ("not separately quantified in the release"). Never blank, never omitted. If you adjusted the
+ earnings you valued on, the adjustment is recordable; if it is not recordable, say why you trusted
+ it enough to size on.>
 
 ## 6. The case against
 **Theses:** <which entries in pot/theses.md bear on this name, each with one clause saying why —

@@ -1,5 +1,5 @@
 {
-  "_README": "One-off adjustments to filed net income that THIS repo can cite. Written by the Deep dive when it reconciles a filing by hand; read by fetch-prices.js, which subtracts them from filed `ni` to build an 'own' recurring basis beside Yahoo's `norm`. Never replaces filed figures. Every entry needs fy (the fiscal year END date as it appears in earnings.json), amount in the FILING's currency, what it was, and a source URL to the company's own release or filing. Positive amount = income to remove.",
+  "_README": "One-off adjustments to filed net income that THIS repo can cite. Written by the Deep dive when it reconciles a filing by hand; read by fetch-prices.js, which subtracts them from filed `ni` to build an 'own' recurring basis beside Yahoo's `norm`. Never replaces filed figures. Every entry needs fy (the fiscal year END date exactly as it appears in earnings.json), what it was, a source URL to the company's or regulator's own document, and EITHER `amount` (absolute, in the filing's currency) OR `amountPerShare` (converted using implied shares from the filer's own ni/eps). Positive means income to REMOVE. Use whichever form the source states.",
   "updated": "2026-09-08",
   "adjustments": {
     "LULU": [

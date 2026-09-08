@@ -807,10 +807,24 @@ function recurringEps(years, field = 'norm') {
 function adjustedYears(years, adj) {
     if (!adj?.length) return years;
     const byFy = new Map();
-    for (const a of adj) {
-        if (a && a.fy && Number.isFinite(a.amount)) byFy.set(a.fy, (byFy.get(a.fy) || 0) + a.amount);
-    }
-    return years.map(y => (y.ni == null ? y : { ...y, normOwn: y.ni - (byFy.get(y.date) || 0) }));
+    // Implied shares from the filer's own figures, so a per-share adjustment can be recorded the
+    // way a release actually states it. The 8 Sep run found MWA's "one-time tax benefit of $0.06
+    // per share", had nowhere to put it, and dropped the work — an entry form that does not match
+    // how the source words it is an entry form nobody fills in.
+    const shares = y => (y.ni != null && y.eps > 0 ? y.ni / y.eps : null);
+    return years.map(y => {
+        if (y.ni == null) return y;
+        let cut = 0;
+        for (const a of adj) {
+            if (!a || a.fy !== y.date) continue;
+            if (Number.isFinite(a.amount)) cut += a.amount;
+            else if (Number.isFinite(a.amountPerShare)) {
+                const n = shares(y);
+                if (n) cut += a.amountPerShare * n;   // no share count, no guess: skip it
+            }
+        }
+        return { ...y, normOwn: y.ni - cut };
+    });
 }
 
 function normaliseEps(years) {
@@ -3437,6 +3451,18 @@ function selftest() {
     // Junk entries are ignored rather than poisoning the year with NaN.
     assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31' }])[1].normOwn, 150);
     assert.strictEqual(adjustedYears(ayIn, [])[1].normOwn, undefined);   // no adjustments, no basis
+
+    // Per-share adjustments, the form a release actually uses. MWA's was "$0.06 per share".
+    const psIn = [{ date: '2026-12-31', eps: 2, ni: 200 }];      // implied 100 shares
+    assert.strictEqual(adjustedYears(psIn, [{ fy: '2026-12-31', amountPerShare: 0.5 }])[0].normOwn, 150);
+    // Absolute and per-share entries in the same year add together.
+    assert.strictEqual(adjustedYears(psIn, [{ fy: '2026-12-31', amount: 20 },
+        { fy: '2026-12-31', amountPerShare: 0.3 }])[0].normOwn, 150);
+    // No usable share count means the per-share entry is SKIPPED, never guessed at.
+    assert.strictEqual(adjustedYears([{ date: '2026-12-31', eps: 0, ni: 200 }],
+        [{ fy: '2026-12-31', amountPerShare: 0.5 }])[0].normOwn, 200);
+    assert.strictEqual(adjustedYears([{ date: '2026-12-31', eps: -1, ni: -50 }],
+        [{ fy: '2026-12-31', amountPerShare: 0.5 }])[0].normOwn, -50);
     // recurringEps reads the field it is told to, so the vendor and own series cannot be confused.
     assert.deepStrictEqual(recurringEps(ay, 'normOwn').map(v => Math.round(v * 100) / 100), [2, 2.4]);
     assert.deepStrictEqual(recurringEps(ay, 'norm').map(v => Math.round(v * 100) / 100), [2, 3]);
