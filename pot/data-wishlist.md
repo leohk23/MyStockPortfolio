@@ -41,332 +41,95 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | pricing / realisation | 2 | – |
 | same-store / comparable sales | 2 | – |
 
-81 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+80 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
 
-Appended by the Sweep. Date and subject lead the entry; everything else is a sentence.
+Appended by the Sweep in any order and in any shape; sorted and tabulated here by `pot/report.js` on
+every report run. Do not hand-edit between the markers.
 
-```
-- **2026-09-04 — China GDP, quarterly YoY.**
-  Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be
-  fetched by hand.
-```
-
-<!-- newest first -->
-
-- **2026-09-05 — European rail investment and Knorr-Bremse operating evidence.**
-  Fetched from the European Commission and Knorr-Bremse's first-half release. Wanted when the
-  Commission publishes its High-Speed Rail Financing Strategy, and on results dates while KBX.DE
-  is tracked; rail and truck order intake, backlog conversion, organic growth, cash conversion and
-  ROCE must show whether current margins compound capital rather than merely reflect restructuring
-  and portfolio exits.
-
-- **2026-09-04 — US retail on-highway diesel.**
-  Fetched from the US Energy Information Administration. Wanted weekly while the oil disruption
-  persists; it complements the existing distillate gap with the cost road hauliers actually pay
-  and helps test whether freight shifts toward more fuel-efficient networks.
-- **2026-09-04 — North American rail carloads and intermodal units.**
-  Fetched from the Association of American Railroads. Wanted weekly while elevated diesel persists;
-  this is the first reach and would show whether the apparent modal shift survives beyond one week.
-- **2026-09-04 — CN volume mix, surcharge recovery, operating ratio, capital returns and cash conversion.**
-  Fetched from Canadian National Railway's second-quarter release and fuel tariff. Wanted on
-  results dates while CNR.TO is tracked; the set separates durable share and efficiency gains from
-  fuel-inflated revenue and a capital-intensive cycle.
-
-- **2026-09-04 — US payrolls, participation, wages and industry employment.**
-  Fetched from the Bureau of Labor Statistics. Wanted monthly; this is the third direct reach for
-  labour composition, and August's concentrated gains materially changed the interpretation of the
-  stronger headline, so it now makes the case for a recurring feed.
-- **2026-09-04 — Lululemon regional revenue and comparable sales, underlying margin, inventory and capital returns.**
-  Fetched from Lululemon's filed results and 10-Q. Wanted on results dates while LULU is tracked;
-  the set tests whether product and brand relevance recover without store growth, promotions or
-  one-off tariff refunds masking the economics.
-- **2026-09-04 — Addus organic volume, reimbursement, caregiver wages, DSO and leverage.**
-  Fetched from Addus's results release and 10-Q. Wanted on results dates while ADUS is tracked;
-  the set separates demographic demand from acquisitions, rate increases and receivable timing,
-  and tests whether payor rates keep pace with labour costs.
-- **2026-09-04 — Guidewire ARR, attrition, GAAP conversion, stock compensation and buybacks.**
-  Fetched from Guidewire's SEC-filed annual results. Wanted on results dates while GWRE is tracked;
-  the set tests whether cloud migration creates per-share cash earnings after dilution rather than
-  only non-GAAP subscription growth.
-
-- **2026-09-04 — Japan real household spending and worker-household real income.**
-  Fetched from the Statistics Bureau of Japan. Wanted monthly while purchasing power is
-  contracting; the gap between a strong equity index and weak household finances materially
-  changed the Japan read and led to reuse rather than broad consumer exposure.
-- **2026-09-04 — Euro-area retail volumes by category and country.**
-  Fetched from Eurostat. Wanted monthly while energy costs and consumer demand diverge; the
-  non-food and Germany splits showed weakness that the headline equity index does not.
-- **2026-09-04 — GEO reuse sales, store productivity, inventory turns, cash conversion and borrowings.**
-  Fetched from GEO's first-quarter filing, except quarterly cash flow, which was not provided.
-  Wanted on results dates while 2681.T is tracked; the set tests whether thrift-led demand funds
-  expansion rather than being consumed by inventory, new stores and debt.
-- **2026-09-04 — Brady organic sales, segment margins, cash conversion, acquisition accretion and leverage.**
-  Fetched from Brady's SEC-filed annual-results release. Wanted on results dates while BRC is
-  tracked; the set separates productivity demand from acquisition accounting and tests whether
-  Honeywell IPS creates shareholder cash rather than adjusted earnings alone.
-
-- **2026-09-04 — Vopak occupancy, contract mix, project returns, cash conversion and leverage.**
-  Fetched from Vopak's first-half release. Wanted on results dates while VPK.AS is tracked; the set
-  tests whether energy dislocation and €2.3bn of projects compound per-share cash flow rather than
-  merely expand assets and debt.
-- **2026-09-04 — Samsara ARR, large-customer mix, cash conversion and stock-based compensation.**
-  Fetched from Samsara's SEC-filed release. Wanted on results dates while IOT is tracked; the set
-  tests whether measurable savings for physical operations produce durable, shareholder-level
-  returns rather than only subscription growth.
-
-- **2026-09-03 — NVIDIA material acquisition terms and integration milestones.**
-  Fetched from NVIDIA's announcement. Wanted event-driven rather than weekly; the Hugging Face deal
-  makes platform openness, hardware neutrality and integration progress material to an existing
-  holding.
-- **2026-09-03 — US distillate spot prices, stocks and days of supply.**
-  Fetched from the EIA. Wanted weekly while Hormuz disruption persists; this is the third direct
-  reach for refined-product conditions, so it now makes the case for a recurring feed.
-- **2026-09-03 — Japanese policy rate, yield curve and bank asset/deposit repricing.**
-  Fetched from the Bank of Japan and Mizuho. Wanted after each policy meeting and on bank results
-  dates while normalisation persists; it distinguishes durable rate income from trading gains and
-  securities marks.
-- **2026-09-03 — Wiley organic publishing growth, AI-licensing mix, leverage and cash conversion.**
-  Fetched from Wiley's SEC-filed results. Wanted on results dates while Wiley is tracked; the set
-  tests whether proprietary content compounds through subscriptions and repeat licences rather
-  than one-off training deals or acquisition accounting.
-
-- **2026-09-03 — Euro-area industrial producer prices split between energy and ex-energy.**
-  Fetched from Eurostat. Wanted monthly while the energy shock persists; this is the third direct
-  reach for a European energy-inflation split, after German CPI and euro-area HICP, so it now makes
-  the case for a recurring feed.
-- **2026-09-03 — US manufacturing productivity and unit labour costs.**
-  Fetched from the Bureau of Labor Statistics. Wanted quarterly; the pair distinguishes real output
-  efficiency from revenue growth created only by higher prices.
-- **2026-09-03 — US capital-goods imports by product.**
-  Fetched from the Bureau of Economic Analysis. Wanted monthly while AI infrastructure spending
-  remains central; computers, accessories and semiconductors reveal physical deployment that broad
-  investment totals hide.
-- **2026-09-03 — IMI orders, cash conversion, organic growth and returns on capital.**
-  Fetched from IMI's half-year results. Wanted on results dates while IMI is tracked; the set tests
-  whether energy and automation demand compounds capital rather than merely lifting the order book.
-- **2026-09-03 — Ciena customer concentration, receivable days, inventory turns and cash conversion.**
-  Fetched from Ciena's release and SEC-filed cash flow. Wanted on results dates while Ciena is
-  tracked; revenue growth is not durable if a small customer set or working capital is financing it.
-- **2026-09-02 — ANDRITZ segment orders, backlog conversion, cash conversion and returns on capital.**
-  Fetched from ANDRITZ's half-year release. Wanted on results dates while ANDRITZ is tracked; a
-  record backlog can still destroy value if project pricing, working capital or execution is poor.
-- **2026-09-02 — Korean exports by product.**
-  Fetched from the Korean Ministry of Trade, Industry and Resources. Wanted monthly while the
-  current export surge persists; the split separates the crowded semiconductor cycle from
-  consumer categories and exposes sharp weakness in autos and ships.
-- **2026-09-02 — COSMAX regional growth, customer mix, cash conversion and capital intensity.**
-  Fetched from COSMAX's DART filings. Wanted on results dates while COSMAX is tracked; revenue and
-  operating profit alone cannot show whether export demand compounds shareholder capital.
-
-- **2026-09-02 — Euro-area headline, ex-energy and energy inflation.**
-  Fetched from Eurostat's flash HICP release. Wanted monthly while the energy shock persists; the
-  split showed that August's renewed inflation was concentrated in energy rather than broadening
-  across the rest of the basket. This is the second direct reach for a European energy-inflation
-  split after Germany, so one more would make a stronger case for a recurring feed.
-- **2026-09-02 — Australian household vehicle purchases and fuel consumption.**
-  Fetched from the Australian Bureau of Statistics national accounts. Wanted quarterly while fuel
-  prices remain elevated; record electric and hybrid purchases alongside weaker fuel consumption
-  are direct evidence of households changing behaviour, not a forecast based on oil alone.
-- **2026-09-02 — Toyota electrified mix, operating margin and profit bridge.**
-  Fetched from Toyota's first-quarter results. Wanted on results dates while Toyota is tracked;
-  vehicle mix tests the hybrid-scale thesis, while the operating bridge separates product demand
-  from yen translation, financial income and other non-operating support.
-- **2026-09-02 — Spirax organic growth, segment margins, cash conversion and leverage.**
-  Fetched from Spirax's half-year RNS. Wanted on results dates while Spirax is tracked; these
-  measures test whether customer energy savings produce durable returns rather than a temporary
-  response to high energy prices.
-- **2026-09-02 — AI infrastructure capex, debt and circular-financing exposure by supplier.**
-  Fetched from the BIS Annual Economic Report; Michael Burry's public note was used only as the
-  lead. Wanted when the BIS or another regulator updates it, not weekly. The exposure map is useful
-  for rejecting suppliers whose growth depends on opaque, debt-funded hyperscaler spending.
-- **2026-09-01 — AI-exposed job postings by occupation and firm.**
-  Fetched from the Federal Reserve Bank of Dallas's analysis of Lightcast postings and actual
-  Claude usage. Wanted when the official research is updated, not weekly; it is useful evidence of
-  realised automation but is regional and depends on proprietary postings, so it is not yet a
-  clean free feed.
-- **2026-09-01 — Intuit product adoption, unit trends, operating leverage and capital returns.**
-  Fetched from Intuit's SEC-filed annual-results release. Wanted on results dates while Intuit is
-  tracked; the set distinguishes paid workflow automation from an AI label and tests whether the
-  incumbent is being strengthened or bypassed.
-- **2026-09-01 — RELX AI-enabled product adoption, segment growth, development spending and leverage.**
-  Fetched from RELX's interim filing. Wanted on results dates while RELX is tracked; these measures
-  test whether proprietary data and embedded workflow turn AI into incremental returns on capital.
-
-- **2026-09-01 — US manufacturing prices, supplier delivery times and customer inventories.**
-  Fetched from the Institute for Supply Management's manufacturing survey. Wanted monthly; the
-  combination distinguishes healthy demand from inflationary supply strain and points towards
-  businesses that can solve shortages rather than merely absorb them.
-- **2026-09-01 — WESCO organic sales, backlog, working capital and leverage.**
-  Fetched from WESCO's quarterly earnings release filed with the SEC. Wanted on results dates while
-  WESCO is tracked; these figures test whether its data-centre and electrical-distribution demand
-  converts into cash rather than receivables and inventory.
-- **2026-09-01 — Bank Central Asia deposit mix, loan growth and asset quality.**
-  Fetched from BCA's half-year results release. Wanted quarterly while BCA is tracked; CASA, NPL and
-  loan-at-risk trends test whether the bank's funding advantage survives Indonesia's macro stress.
-- **2026-08-31 — German headline, core and energy inflation.**
-  Fetched from Destatis. Wanted monthly while the energy shock persists; the split distinguishes
-  a commodity squeeze from broad demand inflation and changes which businesses should have
-  pricing power.
-- **2026-08-31 — European technical-services organic growth, renewals, margins and cash conversion.**
-  Fetched from SPIE's quarterly and half-year releases. Wanted on results dates while SPIE is
-  tracked; the set tests whether energy-efficiency demand is recurring and whether acquisition-led
-  growth reaches shareholders.
-- **2026-08-31 — India real and nominal GDP.**
-  Fetched from the Ministry of Statistics and Programme Implementation. Wanted quarterly; it adds
-  world breadth and tests whether company order growth sits inside genuine domestic expansion.
-- **2026-08-31 — L&T order-book quality, geography and cash conversion.**
-  Fetched from Larsen & Toubro's results and transcript. Wanted on results dates while L&T is
-  tracked; execution and cash conversion test whether India's infrastructure growth reaches
-  shareholders through a Middle East-heavy project book.
-- **2026-08-31 — North American water-infrastructure volumes, pricing and margin bridges.**
-  Fetched from Mueller Water Products' quarterly filing. Wanted on results dates while Mueller is
-  tracked; the bridge separates durable repair-and-replacement economics from tariff refunds,
-  compensation changes and weak volumes.
-- **2026-08-31 — electronic fixed-income volume and revenue conversion.**
-  Fetched from Tradeweb's monthly volumes and quarterly results. Wanted monthly for volume and
-  quarterly for revenue while Tradeweb is tracked; the pair distinguishes structural electronic
-  adoption from a temporary rates-volatility windfall.
-- **2026-08-31 — oil inventories and refined-product margins, second reach.**
-  Fetched from the International Energy Agency's August Oil Market Report. Wanted monthly while
-  Hormuz remains disrupted; stock depletion and product bottlenecks matter more than the crude
-  headline alone and this is the second sweep to need the set.
-- **2026-08-31 — China PMI by company size and new orders.**
-  Fetched from the National Bureau of Statistics of China. Wanted monthly; the split between
-  expanding large manufacturers and contracting smaller firms tests whether recovery is broad or
-  concentrated.
-- **2026-08-31 — aircraft leasing asset values, lease economics and airline credit.**
-  Fetched from AerCap's results. Wanted quarterly while AerCap is tracked; aircraft scarcity can
-  lift lessor returns while high fuel and rates simultaneously weaken the customers paying rent.
-- **2026-08-31 — industrial pump orders, service mix and conversion.**
-  Fetched from KSB's half-year results. Wanted on results dates while KSB is tracked; orders and
-  recurring service revenue test whether energy and water investment can outrun weak industry.
-- **2026-08-30 — US corporate profits, private domestic demand and PCE inflation.**
-  Fetched from the Bureau of Economic Analysis. Wanted quarterly rather than weekly; the mix of
-  slowing real GDP, strong private demand, high inflation and sharply higher profits changed the
-  interpretation of elevated US yields from a simple growth scare to a pricing-power test.
-- **2026-08-30 — derivatives volume by asset class and market-data revenue.**
-  Fetched from CME Group's monthly volume release and quarterly results. Wanted monthly while CME
-  is on the watchlist; it tests whether the exchange is gaining durable participation across
-  products or merely enjoying a short volatility spike.
-- **2026-08-30 — power-cable growth, capacity and segment margins.**
-  Fetched from Prysmian and Nexans results, with Quanta Services' backlog used as a demand-side
-  cross-check. Wanted on results dates rather than weekly; these measures distinguish a physical
-  grid and data bottleneck from an AI-themed revenue label.
-- **2026-08-30 — European industrial activity and business investment.**
-  Fetched from Eurostat and the UK Office for National Statistics. Wanted monthly and quarterly,
-  not weekly; it tested whether cable and grid demand sits on broad capital formation or only on
-  a narrow group of projects.
-- **2026-08-30 — China industrial profit mix, inventories and receivables.**
-  Fetched from the National Bureau of Statistics of China. Wanted monthly; the sharp gap between
-  electronics and non-ferrous profit growth and falling auto profit materially changed the BYD
-  re-look and was not visible in the local macro file.
-- **2026-08-30 — US consumer traffic and comparable sales by retail format.**
-  Fetched from Ross Stores and Walmart results. Wanted on results dates rather than weekly; the
-  contrast between traffic-led off-price growth and slower mass-market comps was more useful than
-  a broad consumer-spending aggregate for candidate selection.
-- **2026-08-30 — BYD cash conversion and supplier funding.**
-  Fetched from BYD's interim filing: operating cash flow, trade payables and bills payable. Wanted
-  on each filing date; these figures test the saved article's supplier-financing concern more
-  directly than revenue or EPS alone.
-- **2026-08-29 — US inflation, payroll revisions and the goods/services spending split.**
-  Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis.
-  Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation
-  context determined whether weak employment could safely be read as imminent rate relief.
-- **2026-08-29 — China retail and catering demand.**
-  Fetched from the National Bureau of Statistics of China. Wanted monthly; it distinguished
-  Haidilao's company-specific self-help from a consumer recovery that has not yet arrived.
-- **2026-08-29 — refined-product flows, refinery margins and product-tanker rates.**
-  Fetched from the IEA Oil Market Report and Scorpio Tankers' results. Wanted monthly from the IEA
-  while Hormuz remains disrupted and on company results dates for TCE rates and fleet changes.
-- **2026-08-29 — off-universe price and valuation history, second reach.**
-  Fetched provisionally from Yahoo Finance for Haidilao and PDD. Wanted only until candidates enter
-  `watchlist.json`; CI should then replace the manual lookup with the repo's own data.
-- **2026-08-29 — global electricity demand, grid investment and connection queues.**
-  Fetched from the IEA Electricity 2026 report and its mid-year update. Wanted on each
-  publication rather than weekly; it distinguished physical power demand from company promotion.
-- **2026-08-29 — company order/backlog conversion, and GLP-1 realised pricing and volume.**
-  Fetched from AMSC, OSI Systems and Novo Nordisk releases and filings. Wanted on results dates
-  rather than weekly; price and trailing earnings alone could not test whether a backlog or a low
-  multiple represented durable economics.
-- **2026-08-29 — US payrolls, real earnings and real consumer spending.**
-  Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly,
-  with the latest release carried into each weekly Sweep. Drove the value-retail read.
-- **2026-08-29 — AI and power-infrastructure order intake and backlog.**
-  Fetched from NVIDIA, R&S Group and Ameresco company releases. Wanted on results dates rather
-  than weekly; company-specific backlog quality mattered more than a broad capex estimate.
-- **2026-08-29 — specialty-insurance pricing cycle and underwriting margin.**
-  Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market
-  series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a
-  bargain or peak-cycle earnings.
-- **2026-08-29 — off-universe price and valuation history.**
-  Fetched from FT Markets and Yahoo Finance. Wanted only until a candidate enters
-  `watchlist.json`; the existing pipeline should then replace this manual lookup.
-- **2026-09-04 — China GDP, quarterly YoY.**
-  Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be
-  fetched by hand.
-- **2026-09-06 — global trade-policy activity and supply-chain pressure.**
-  Fetched from the WTO's trade-policy activity update and the New York Fed's GSCPI page. Wanted
-  monthly for GSCPI and when the WTO updates its activity index; together they distinguish a
-  temporary freight shock from a durable increase in the standards, routing and compliance work
-  that follows trade fragmentation.
-- **2026-09-06 — Bureau Veritas organic growth by business, capital returns, cash conversion and
-  portfolio bridge.** H1 growth, margin and cash-flow figures were fetched from the company's
-  half-year release; the capital-return and full portfolio bridge remain gaps. Wanted on results
-  dates while Bureau Veritas is tracked; the set must show whether inspection and certification
-  are genuinely compounding or whether disposals, acquisitions and adjusted margins are doing the
-  work.
-- **2026-09-06 — BVI.PA price and valuation history.** The current price was checked provisionally
-  on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it
-  to `watchlist.json` lets the normal pipeline fetch the price, earnings and trough history.
-- **2026-09-07 — Bunzl underlying growth, volume/inflation mix, cash conversion and acquisition
-  returns.** Fetched from Bunzl's half-year report. Wanted on results dates while Bunzl is tracked;
-  the set must show whether the North America recovery and digital ordering translate into durable
-  returns rather than temporary inflation, bolt-on acquisitions or adjusted profit.
-- **2026-09-07 — BNZL.L price and valuation history.** The 4 September close and recent returns
-  were checked provisionally on Yahoo Finance because the repo did not carry the name. No manual
-  series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price,
-  earnings and multiple history.
-- **2026-09-07 — EU defence spending and equipment procurement.** Fetched from the European
-  Defence Agency's 2025–2026 defence-data release. Wanted annually when EDA refreshes it; the
-  split between total spending, equipment procurement and collaborative procurement tests whether
-  a supplier's claimed addressable market is turning into funded demand rather than a theme.
-- **2026-09-07 — THEON backlog quality, cash flow, customer concentration and acquisition returns.**
-  Order intake, organic growth, soft backlog, adjusted margin and stated leverage came from
-  THEON's H1 trading update; hard backlog, option conversion, statutory operating cash flow, ROIC
-  and customer concentration were not disclosed there. Wanted on results dates while THEON.AS is
-  tracked, especially after the MERIO and HGH acquisitions close.
-- **2026-09-07 — THEON.AS price and valuation history.** Yahoo's off-universe quote was delayed
-  and inconsistent across its own cached views, so no price figure was used. No manual series is
-  wanted: the watchlist addition lets the normal pipeline fetch its price, earnings and multiple
-  history independently.
-- **2026-09-07 — European capital-market integration and cross-border equity activity.** Fetched
-  from the ECB's 2026 financial-integration release and the European Commission's market-integration
-  package. Wanted annually or when the legislation changes, not weekly; it tests whether policy is
-  actually reducing the fragmentation from which a pan-European market operator could benefit.
-- **2026-09-07 — Euronext organic growth, recurring-revenue coverage, cash conversion and integration
-  returns.** Fetched from Euronext's Q2 release, while the August volume release supplied a fresh
-  prompt but no usable table in the accessible page. Wanted on results dates, with monthly volumes
-  while ENX.PA is tracked; the set must separate structural growth from volatility and acquisitions.
-- **2026-09-07 — ENX.PA price and valuation history.** Yahoo identified the Paris symbol but its
-  accessible history was stale, so no provisional price was used. No manual series is wanted: the
-  watchlist addition lets the normal pipeline fetch the price, earnings and multiple history.
-- **2026-09-07 23:45 UTC — Japanese sewer inspection, remediation and funded procurement.**
-  Consulted [MLIT's survey update](https://www.mlit.go.jp/report/interview/daijin260421.html) and
-  [legislative proposal](https://www.mlit.go.jp/report/press/mizukokudo13_hh_000722.html).
-  Wanted on official updates, not weekly. Need the bridge from identified repairs to funded awards.
-- **2026-09-07 23:45 UTC — NJS order conversion, seasonal working capital and capital returns.**
-  Consulted the [H1 filing](https://www.njs.co.jp/ja/investors/news/auto_20260810516925/pdfFile.pdf)
-  and [Bengaluru study award](https://www.njs.co.jp/ja/investors/news/auto_20260827527049/pdfFile.pdf).
-  Wanted at results dates; full-year ROIC, turnover and repeatable cash conversion remain to be checked.
-- **2026-09-07 23:45 UTC — 2325.T price and valuation history.**
-  [Yahoo Japan](https://finance.yahoo.co.jp/quote/2325.T) supplied a provisional quote. Added to
-  `watchlist.json`; the existing pipeline should supply independent earnings and historical
-  valuation coverage. No separate manual feed wanted.
-- **2026-09-07 23:45 UTC — Reinsurance renewal pricing, outward-cover costs and retained exposure.**
-  Consulted [Hannover Re's September outlook](https://www.hannover-re.com/en/news/2026/hannover-re-sees-profitable-growth-opportunities-in-an-increasingly-challenging-market-environment/)
-  and [Lancashire's H1 filing](https://www.lancashiregroup.com/content/dam/lancashire/corporate2020/Media/Press-Releases/2026/LHL-results-for-the-six-months-ended-30-June-2026.pdf.downloadasset.pdf).
-  Wanted during renewal seasons and on results dates, not weekly. A comparable cost per unit of
-  retained risk is still missing; lower market rates alone do not establish better net economics.
+<!-- entries:start -->
+| date | wanted | detail |
+|---|---|---|
+| 2026-09-07 | 2325.T price and valuation history. | [Yahoo Japan](https://finance.yahoo.co.jp/quote/2325.T) supplied a provisional quote. Added to `watchlist.json`; the existing pipeline should supply independent earnings and historical valuation coverage. No separate manual feed wanted. |
+| 2026-09-07 | BNZL.L price and valuation history. | The 4 September close and recent returns were checked provisionally on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price, earnings and multiple history. |
+| 2026-09-07 | Bunzl underlying growth, volume/inflation mix, cash conversion and acquisition returns. | Fetched from Bunzl's half-year report. Wanted on results dates while Bunzl is tracked; the set must show whether the North America recovery and digital ordering translate into durable returns rather than temporary inflation, bolt-on acquisitions or adjusted profit. |
+| 2026-09-07 | ENX.PA price and valuation history. | Yahoo identified the Paris symbol but its accessible history was stale, so no provisional price was used. No manual series is wanted: the watchlist addition lets the normal pipeline fetch the price, earnings and multiple history. |
+| 2026-09-07 | EU defence spending and equipment procurement. | Fetched from the European Defence Agency's 2025–2026 defence-data release. Wanted annually when EDA refreshes it; the split between total spending, equipment procurement and collaborative procurement tests whether a supplier's claimed addressable market is turning into funded demand rather than a theme. |
+| 2026-09-07 | Euronext organic growth, recurring-revenue coverage, cash conversion and integration returns. | Fetched from Euronext's Q2 release, while the August volume release supplied a fresh prompt but no usable table in the accessible page. Wanted on results dates, with monthly volumes while ENX.PA is tracked; the set must separate structural growth from volatility and acquisitions. |
+| 2026-09-07 | European capital-market integration and cross-border equity activity. | Fetched from the ECB's 2026 financial-integration release and the European Commission's market-integration package. Wanted annually or when the legislation changes, not weekly; it tests whether policy is actually reducing the fragmentation from which a pan-European market operator could benefit. |
+| 2026-09-07 | Japanese sewer inspection, remediation and funded procurement. | Consulted [MLIT's survey update](https://www.mlit.go.jp/report/interview/daijin260421.html) and [legislative proposal](https://www.mlit.go.jp/report/press/mizukokudo13_hh_000722.html). Wanted on official updates, not weekly. Need the bridge from identified repairs to funded awards. |
+| 2026-09-07 | NJS order conversion, seasonal working capital and capital returns. | Consulted the [H1 filing](https://www.njs.co.jp/ja/investors/news/auto_20260810516925/pdfFile.pdf) and [Bengaluru study award](https://www.njs.co.jp/ja/investors/news/auto_20260827527049/pdfFile.pdf). Wanted at results dates; full-year ROIC, turnover and repeatable cash conversion remain to be checked. |
+| 2026-09-07 | Reinsurance renewal pricing, outward-cover costs and retained exposure. | Consulted [Hannover Re's September outlook](https://www.hannover-re.com/en/news/2026/hannover-re-sees-profitable-growth-opportunities-in-an-increasingly-challenging-market-environment/) and [Lancashire's H1 filing](https://www.lancashiregroup.com/content/dam/lancashire/corporate2020/Media/Press-Releases/2026/LHL-results-for-the-six-months-ended-30-June-2026.pdf.downloadasset.pdf). Wanted during renewal seasons and on results dates, not weekly. A comparable cost per unit of retained risk is still missing; lower market rates alone do not establish better net economics. |
+| 2026-09-07 | THEON backlog quality, cash flow, customer concentration and acquisition returns. | Order intake, organic growth, soft backlog, adjusted margin and stated leverage came from THEON's H1 trading update; hard backlog, option conversion, statutory operating cash flow, ROIC and customer concentration were not disclosed there. Wanted on results dates while THEON.AS is tracked, especially after the MERIO and HGH acquisitions close. |
+| 2026-09-07 | THEON.AS price and valuation history. | Yahoo's off-universe quote was delayed and inconsistent across its own cached views, so no price figure was used. No manual series is wanted: the watchlist addition lets the normal pipeline fetch its price, earnings and multiple history independently. |
+| 2026-09-06 | Bureau Veritas organic growth by business, capital returns, cash conversion and portfolio bridge. | H1 growth, margin and cash-flow figures were fetched from the company's half-year release; the capital-return and full portfolio bridge remain gaps. Wanted on results dates while Bureau Veritas is tracked; the set must show whether inspection and certification are genuinely compounding or whether disposals, acquisitions and adjusted margins are doing the work. |
+| 2026-09-06 | BVI.PA price and valuation history. | The current price was checked provisionally on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price, earnings and trough history. |
+| 2026-09-06 | global trade-policy activity and supply-chain pressure. | Fetched from the WTO's trade-policy activity update and the New York Fed's GSCPI page. Wanted monthly for GSCPI and when the WTO updates its activity index; together they distinguish a temporary freight shock from a durable increase in the standards, routing and compliance work that follows trade fragmentation. |
+| 2026-09-05 | European rail investment and Knorr-Bremse operating evidence. | Fetched from the European Commission and Knorr-Bremse's first-half release. Wanted when the Commission publishes its High-Speed Rail Financing Strategy, and on results dates while KBX.DE is tracked; rail and truck order intake, backlog conversion, organic growth, cash conversion and ROCE must show whether current margins compound capital rather than merely reflect restructuring and portfolio exits. |
+| 2026-09-04 | Addus organic volume, reimbursement, caregiver wages, DSO and leverage. | Fetched from Addus's results release and 10-Q. Wanted on results dates while ADUS is tracked; the set separates demographic demand from acquisitions, rate increases and receivable timing, and tests whether payor rates keep pace with labour costs. |
+| 2026-09-04 | Brady organic sales, segment margins, cash conversion, acquisition accretion and leverage. | Fetched from Brady's SEC-filed annual-results release. Wanted on results dates while BRC is tracked; the set separates productivity demand from acquisition accounting and tests whether Honeywell IPS creates shareholder cash rather than adjusted earnings alone. |
+| 2026-09-04 | China GDP, quarterly YoY. | Fetched from tradingeconomics.com. Wanted weekly. Drove the Hang Seng read, and had to be fetched by hand. |
+| 2026-09-04 | CN volume mix, surcharge recovery, operating ratio, capital returns and cash conversion. | Fetched from Canadian National Railway's second-quarter release and fuel tariff. Wanted on results dates while CNR.TO is tracked; the set separates durable share and efficiency gains from fuel-inflated revenue and a capital-intensive cycle. |
+| 2026-09-04 | Euro-area retail volumes by category and country. | Fetched from Eurostat. Wanted monthly while energy costs and consumer demand diverge; the non-food and Germany splits showed weakness that the headline equity index does not. |
+| 2026-09-04 | GEO reuse sales, store productivity, inventory turns, cash conversion and borrowings. | Fetched from GEO's first-quarter filing, except quarterly cash flow, which was not provided. Wanted on results dates while 2681.T is tracked; the set tests whether thrift-led demand funds expansion rather than being consumed by inventory, new stores and debt. |
+| 2026-09-04 | Guidewire ARR, attrition, GAAP conversion, stock compensation and buybacks. | Fetched from Guidewire's SEC-filed annual results. Wanted on results dates while GWRE is tracked; the set tests whether cloud migration creates per-share cash earnings after dilution rather than only non-GAAP subscription growth. |
+| 2026-09-04 | Japan real household spending and worker-household real income. | Fetched from the Statistics Bureau of Japan. Wanted monthly while purchasing power is contracting; the gap between a strong equity index and weak household finances materially changed the Japan read and led to reuse rather than broad consumer exposure. |
+| 2026-09-04 | Lululemon regional revenue and comparable sales, underlying margin, inventory and capital returns. | Fetched from Lululemon's filed results and 10-Q. Wanted on results dates while LULU is tracked; the set tests whether product and brand relevance recover without store growth, promotions or one-off tariff refunds masking the economics. |
+| 2026-09-04 | North American rail carloads and intermodal units. | Fetched from the Association of American Railroads. Wanted weekly while elevated diesel persists; this is the first reach and would show whether the apparent modal shift survives beyond one week. |
+| 2026-09-04 | Samsara ARR, large-customer mix, cash conversion and stock-based compensation. | Fetched from Samsara's SEC-filed release. Wanted on results dates while IOT is tracked; the set tests whether measurable savings for physical operations produce durable, shareholder-level returns rather than only subscription growth. |
+| 2026-09-04 | US payrolls, participation, wages and industry employment. | Fetched from the Bureau of Labor Statistics. Wanted monthly; this is the third direct reach for labour composition, and August's concentrated gains materially changed the interpretation of the stronger headline, so it now makes the case for a recurring feed. |
+| 2026-09-04 | US retail on-highway diesel. | Fetched from the US Energy Information Administration. Wanted weekly while the oil disruption persists; it complements the existing distillate gap with the cost road hauliers actually pay and helps test whether freight shifts toward more fuel-efficient networks. |
+| 2026-09-04 | Vopak occupancy, contract mix, project returns, cash conversion and leverage. | Fetched from Vopak's first-half release. Wanted on results dates while VPK.AS is tracked; the set tests whether energy dislocation and €2.3bn of projects compound per-share cash flow rather than merely expand assets and debt. |
+| 2026-09-03 | Ciena customer concentration, receivable days, inventory turns and cash conversion. | Fetched from Ciena's release and SEC-filed cash flow. Wanted on results dates while Ciena is tracked; revenue growth is not durable if a small customer set or working capital is financing it. |
+| 2026-09-03 | Euro-area industrial producer prices split between energy and ex-energy. | Fetched from Eurostat. Wanted monthly while the energy shock persists; this is the third direct reach for a European energy-inflation split, after German CPI and euro-area HICP, so it now makes the case for a recurring feed. |
+| 2026-09-03 | IMI orders, cash conversion, organic growth and returns on capital. | Fetched from IMI's half-year results. Wanted on results dates while IMI is tracked; the set tests whether energy and automation demand compounds capital rather than merely lifting the order book. |
+| 2026-09-03 | Japanese policy rate, yield curve and bank asset/deposit repricing. | Fetched from the Bank of Japan and Mizuho. Wanted after each policy meeting and on bank results dates while normalisation persists; it distinguishes durable rate income from trading gains and securities marks. |
+| 2026-09-03 | NVIDIA material acquisition terms and integration milestones. | Fetched from NVIDIA's announcement. Wanted event-driven rather than weekly; the Hugging Face deal makes platform openness, hardware neutrality and integration progress material to an existing holding. |
+| 2026-09-03 | US capital-goods imports by product. | Fetched from the Bureau of Economic Analysis. Wanted monthly while AI infrastructure spending remains central; computers, accessories and semiconductors reveal physical deployment that broad investment totals hide. |
+| 2026-09-03 | US distillate spot prices, stocks and days of supply. | Fetched from the EIA. Wanted weekly while Hormuz disruption persists; this is the third direct reach for refined-product conditions, so it now makes the case for a recurring feed. |
+| 2026-09-03 | US manufacturing productivity and unit labour costs. | Fetched from the Bureau of Labor Statistics. Wanted quarterly; the pair distinguishes real output efficiency from revenue growth created only by higher prices. |
+| 2026-09-03 | Wiley organic publishing growth, AI-licensing mix, leverage and cash conversion. | Fetched from Wiley's SEC-filed results. Wanted on results dates while Wiley is tracked; the set tests whether proprietary content compounds through subscriptions and repeat licences rather than one-off training deals or acquisition accounting. |
+| 2026-09-02 | AI infrastructure capex, debt and circular-financing exposure by supplier. | Fetched from the BIS Annual Economic Report; Michael Burry's public note was used only as the lead. Wanted when the BIS or another regulator updates it, not weekly. The exposure map is useful for rejecting suppliers whose growth depends on opaque, debt-funded hyperscaler spending. |
+| 2026-09-02 | ANDRITZ segment orders, backlog conversion, cash conversion and returns on capital. | Fetched from ANDRITZ's half-year release. Wanted on results dates while ANDRITZ is tracked; a record backlog can still destroy value if project pricing, working capital or execution is poor. |
+| 2026-09-02 | Australian household vehicle purchases and fuel consumption. | Fetched from the Australian Bureau of Statistics national accounts. Wanted quarterly while fuel prices remain elevated; record electric and hybrid purchases alongside weaker fuel consumption are direct evidence of households changing behaviour, not a forecast based on oil alone. |
+| 2026-09-02 | COSMAX regional growth, customer mix, cash conversion and capital intensity. | Fetched from COSMAX's DART filings. Wanted on results dates while COSMAX is tracked; revenue and operating profit alone cannot show whether export demand compounds shareholder capital. |
+| 2026-09-02 | Euro-area headline, ex-energy and energy inflation. | Fetched from Eurostat's flash HICP release. Wanted monthly while the energy shock persists; the split showed that August's renewed inflation was concentrated in energy rather than broadening across the rest of the basket. This is the second direct reach for a European energy-inflation split after Germany, so one more would make a stronger case for a recurring feed. |
+| 2026-09-02 | Korean exports by product. | Fetched from the Korean Ministry of Trade, Industry and Resources. Wanted monthly while the current export surge persists; the split separates the crowded semiconductor cycle from consumer categories and exposes sharp weakness in autos and ships. |
+| 2026-09-02 | Spirax organic growth, segment margins, cash conversion and leverage. | Fetched from Spirax's half-year RNS. Wanted on results dates while Spirax is tracked; these measures test whether customer energy savings produce durable returns rather than a temporary response to high energy prices. |
+| 2026-09-02 | Toyota electrified mix, operating margin and profit bridge. | Fetched from Toyota's first-quarter results. Wanted on results dates while Toyota is tracked; vehicle mix tests the hybrid-scale thesis, while the operating bridge separates product demand from yen translation, financial income and other non-operating support. |
+| 2026-09-01 | AI-exposed job postings by occupation and firm. | Fetched from the Federal Reserve Bank of Dallas's analysis of Lightcast postings and actual Claude usage. Wanted when the official research is updated, not weekly; it is useful evidence of realised automation but is regional and depends on proprietary postings, so it is not yet a clean free feed. |
+| 2026-09-01 | Bank Central Asia deposit mix, loan growth and asset quality. | Fetched from BCA's half-year results release. Wanted quarterly while BCA is tracked; CASA, NPL and loan-at-risk trends test whether the bank's funding advantage survives Indonesia's macro stress. |
+| 2026-09-01 | Intuit product adoption, unit trends, operating leverage and capital returns. | Fetched from Intuit's SEC-filed annual-results release. Wanted on results dates while Intuit is tracked; the set distinguishes paid workflow automation from an AI label and tests whether the incumbent is being strengthened or bypassed. |
+| 2026-09-01 | RELX AI-enabled product adoption, segment growth, development spending and leverage. | Fetched from RELX's interim filing. Wanted on results dates while RELX is tracked; these measures test whether proprietary data and embedded workflow turn AI into incremental returns on capital. |
+| 2026-09-01 | US manufacturing prices, supplier delivery times and customer inventories. | Fetched from the Institute for Supply Management's manufacturing survey. Wanted monthly; the combination distinguishes healthy demand from inflationary supply strain and points towards businesses that can solve shortages rather than merely absorb them. |
+| 2026-09-01 | WESCO organic sales, backlog, working capital and leverage. | Fetched from WESCO's quarterly earnings release filed with the SEC. Wanted on results dates while WESCO is tracked; these figures test whether its data-centre and electrical-distribution demand converts into cash rather than receivables and inventory. |
+| 2026-08-31 | aircraft leasing asset values, lease economics and airline credit. | Fetched from AerCap's results. Wanted quarterly while AerCap is tracked; aircraft scarcity can lift lessor returns while high fuel and rates simultaneously weaken the customers paying rent. |
+| 2026-08-31 | China PMI by company size and new orders. | Fetched from the National Bureau of Statistics of China. Wanted monthly; the split between expanding large manufacturers and contracting smaller firms tests whether recovery is broad or concentrated. |
+| 2026-08-31 | electronic fixed-income volume and revenue conversion. | Fetched from Tradeweb's monthly volumes and quarterly results. Wanted monthly for volume and quarterly for revenue while Tradeweb is tracked; the pair distinguishes structural electronic adoption from a temporary rates-volatility windfall. |
+| 2026-08-31 | European technical-services organic growth, renewals, margins and cash conversion. | Fetched from SPIE's quarterly and half-year releases. Wanted on results dates while SPIE is tracked; the set tests whether energy-efficiency demand is recurring and whether acquisition-led growth reaches shareholders. |
+| 2026-08-31 | German headline, core and energy inflation. | Fetched from Destatis. Wanted monthly while the energy shock persists; the split distinguishes a commodity squeeze from broad demand inflation and changes which businesses should have pricing power. |
+| 2026-08-31 | India real and nominal GDP. | Fetched from the Ministry of Statistics and Programme Implementation. Wanted quarterly; it adds world breadth and tests whether company order growth sits inside genuine domestic expansion. |
+| 2026-08-31 | industrial pump orders, service mix and conversion. | Fetched from KSB's half-year results. Wanted on results dates while KSB is tracked; orders and recurring service revenue test whether energy and water investment can outrun weak industry. |
+| 2026-08-31 | L&T order-book quality, geography and cash conversion. | Fetched from Larsen & Toubro's results and transcript. Wanted on results dates while L&T is tracked; execution and cash conversion test whether India's infrastructure growth reaches shareholders through a Middle East-heavy project book. |
+| 2026-08-31 | North American water-infrastructure volumes, pricing and margin bridges. | Fetched from Mueller Water Products' quarterly filing. Wanted on results dates while Mueller is tracked; the bridge separates durable repair-and-replacement economics from tariff refunds, compensation changes and weak volumes. |
+| 2026-08-31 | oil inventories and refined-product margins, second reach. | Fetched from the International Energy Agency's August Oil Market Report. Wanted monthly while Hormuz remains disrupted; stock depletion and product bottlenecks matter more than the crude headline alone and this is the second sweep to need the set. |
+| 2026-08-30 | BYD cash conversion and supplier funding. | Fetched from BYD's interim filing: operating cash flow, trade payables and bills payable. Wanted on each filing date; these figures test the saved article's supplier-financing concern more directly than revenue or EPS alone. |
+| 2026-08-30 | China industrial profit mix, inventories and receivables. | Fetched from the National Bureau of Statistics of China. Wanted monthly; the sharp gap between electronics and non-ferrous profit growth and falling auto profit materially changed the BYD re-look and was not visible in the local macro file. |
+| 2026-08-30 | derivatives volume by asset class and market-data revenue. | Fetched from CME Group's monthly volume release and quarterly results. Wanted monthly while CME is on the watchlist; it tests whether the exchange is gaining durable participation across products or merely enjoying a short volatility spike. |
+| 2026-08-30 | European industrial activity and business investment. | Fetched from Eurostat and the UK Office for National Statistics. Wanted monthly and quarterly, not weekly; it tested whether cable and grid demand sits on broad capital formation or only on a narrow group of projects. |
+| 2026-08-30 | power-cable growth, capacity and segment margins. | Fetched from Prysmian and Nexans results, with Quanta Services' backlog used as a demand-side cross-check. Wanted on results dates rather than weekly; these measures distinguish a physical grid and data bottleneck from an AI-themed revenue label. |
+| 2026-08-30 | US consumer traffic and comparable sales by retail format. | Fetched from Ross Stores and Walmart results. Wanted on results dates rather than weekly; the contrast between traffic-led off-price growth and slower mass-market comps was more useful than a broad consumer-spending aggregate for candidate selection. |
+| 2026-08-30 | US corporate profits, private domestic demand and PCE inflation. | Fetched from the Bureau of Economic Analysis. Wanted quarterly rather than weekly; the mix of slowing real GDP, strong private demand, high inflation and sharply higher profits changed the interpretation of elevated US yields from a simple growth scare to a pricing-power test. |
+| 2026-08-29 | AI and power-infrastructure order intake and backlog. | Fetched from NVIDIA, R&S Group and Ameresco company releases. Wanted on results dates rather than weekly; company-specific backlog quality mattered more than a broad capex estimate. |
+| 2026-08-29 | China retail and catering demand. | Fetched from the National Bureau of Statistics of China. Wanted monthly; it distinguished Haidilao's company-specific self-help from a consumer recovery that has not yet arrived. |
+| 2026-08-29 | company order/backlog conversion, and GLP-1 realised pricing and volume. | Fetched from AMSC, OSI Systems and Novo Nordisk releases and filings. Wanted on results dates rather than weekly; price and trailing earnings alone could not test whether a backlog or a low multiple represented durable economics. |
+| 2026-08-29 | global electricity demand, grid investment and connection queues. | Fetched from the IEA Electricity 2026 report and its mid-year update. Wanted on each publication rather than weekly; it distinguished physical power demand from company promotion. |
+| 2026-08-29 | off-universe price and valuation history, second reach. | Fetched provisionally from Yahoo Finance for Haidilao and PDD. Wanted only until candidates enter `watchlist.json`; CI should then replace the manual lookup with the repo's own data. |
+| 2026-08-29 | off-universe price and valuation history. | Fetched from FT Markets and Yahoo Finance. Wanted only until a candidate enters `watchlist.json`; the existing pipeline should then replace this manual lookup. |
+| 2026-08-29 | refined-product flows, refinery margins and product-tanker rates. | Fetched from the IEA Oil Market Report and Scorpio Tankers' results. Wanted monthly from the IEA while Hormuz remains disrupted and on company results dates for TCE rates and fleet changes. |
+| 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
+| 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
+| 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
+<!-- entries:end -->

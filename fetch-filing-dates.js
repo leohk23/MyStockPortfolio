@@ -65,6 +65,16 @@ const INSTANT = { assets: ['Assets'], liabCurrent: ['LiabilitiesCurrent'], equit
 const DURATION = {
     grossProfit: ['GrossProfit'],
     tax: ['IncomeTaxExpenseBenefit'],
+    // Cash conversion, the single most-reached-for series in pot/data-wishlist.md — 19 separate
+    // sweeps went and got it by hand. Both halves are DURATION facts on the companyfacts endpoint
+    // we already call, so the marginal cost of having it forever is two tag lists.
+    //
+    // Capex is PaymentsToAcquirePropertyPlantAndEquipment, filed as a POSITIVE outflow, so free
+    // cash flow subtracts it. The alternates matter: filers split the tag when they separate
+    // productive assets, and taking only the first name loses the whole year for those.
+    cfo: ['NetCashProvidedByUsedInOperatingActivities',
+        'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'],
+    capex: ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquireProductiveAssets'],
     pretax: [
         'IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
         'IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments',

@@ -963,7 +963,20 @@ function capitalMetrics(year, cap, fallbackTax = null) {
         // Say when the rate is not the year's own, so a reader can discount it.
         if (!sane(own)) out.taxFrom = 'median';
     }
-    return out.roic != null || out.gpa != null || out.turnover != null ? out : null;
+    // Free cash flow and cash conversion. The definition is stated here because analysts differ
+    // and an agent left to choose will pick a different one each run: FCF is operating cash flow
+    // less capex as filed, and conversion is FCF over net income to common. Both are the filer's
+    // own numbers, no adjustments.
+    //
+    // Only computed on a profitable year. Conversion against a loss is arithmetic without meaning
+    // — a negative denominator turns cash generation into a negative ratio and cash burn into a
+    // positive one — so a loss year gets fcf and no ratio rather than a number that reads backwards.
+    if (cap.cfo != null) {
+        out.cfo = cap.cfo;
+        if (cap.capex != null) out.fcf = cap.cfo - cap.capex;
+        if (out.fcf != null && year?.nic > 0) out.cashConv = out.fcf / year.nic;
+    }
+    return out.roic != null || out.gpa != null || out.turnover != null || out.cfo != null ? out : null;
 }
 
 const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
@@ -2291,7 +2304,8 @@ async function main() {
                 const cap = capYears[end];
                 // A Yahoo row brings its own rev and opinc. Using them keeps both halves of
                 // every ratio in one currency and one accounting basis — BYD files in CNY.
-                const m = capitalMetrics({ rev: cap.rev ?? y.rev, opinc: cap.opinc ?? y.opinc },
+                const m = capitalMetrics({ rev: cap.rev ?? y.rev, opinc: cap.opinc ?? y.opinc,
+                    nic: cap.nic ?? y.nic },
                     { ...cap, end }, medianTax);
                 if (m) series.push(m);
                 if (series.length >= CAPITAL_YEARS) break;
@@ -3333,6 +3347,31 @@ function selftest() {
         W: { currency: 'USD', series: { timestamps: D, closes: [10, 11, null] } },
     }).closes.W, [10, 11, 11]);
 
+
+
+    // capitalMetrics cash conversion. Every input is a filed figure; the only question these
+    // guard is that the arithmetic and the guards behave on the shapes EDGAR actually returns.
+    const capBase = { end: '2025-12-31', assets: 1000, liabCurrent: 200, tax: 20, pretax: 100 };
+    const cc = capitalMetrics({ rev: 500, opinc: 100, nic: 50 },
+        { ...capBase, cfo: 100, capex: 30 });
+    assert.strictEqual(cc.fcf, 70);              // operating cash flow less capex as filed
+    assert.strictEqual(cc.cashConv, 1.4);        // 70 / 50
+    // A loss year gets the cash figures and NO ratio: dividing by a negative net income turns
+    // cash generation into a negative number and reads exactly backwards.
+    const lossYr = capitalMetrics({ rev: 500, opinc: -10, nic: -50 },
+        { ...capBase, cfo: 100, capex: 30 });
+    assert.strictEqual(lossYr.fcf, 70);
+    assert.strictEqual(lossYr.cashConv, undefined);
+    // Capex untagged: cash flow is still worth having, free cash flow is not inferable.
+    const noCapex = capitalMetrics({ rev: 500, opinc: 100, nic: 50 }, { ...capBase, cfo: 100 });
+    assert.strictEqual(noCapex.cfo, 100);
+    assert.strictEqual(noCapex.fcf, undefined);
+    assert.strictEqual(noCapex.cashConv, undefined);
+    // A filer with cash flow but nothing else still comes back, rather than being dropped for
+    // failing the old roic/gpa/turnover test.
+    const cashOnly = capitalMetrics({}, { end: '2025-12-31', assets: 1000, cfo: 100, capex: 30 });
+    assert.strictEqual(cashOnly.fcf, 70);
+    assert.strictEqual(cashOnly.roic, undefined);
 
     console.log('selftest ok');
 }

@@ -382,7 +382,13 @@ function wishlistTally(file = 'pot/data-wishlist.md') {
     if (start < 0 || end < 0 || end < start) return;
     const EOL = s.includes('\r\n') ? '\r\n' : '\n';
     // An entry is one "- **YYYY-MM-DD — subject.**" block and everything under it.
-    const entries = s.split(/(?=^- \*\*20\d\d-)/m).filter(e => /^- \*\*20\d\d-/.test(e));
+    // Entries arrive as prose from the Sweep and leave as table rows from wishlistEntries(). This
+    // must count both: prose on the first pass, rows on every pass after. Counting only prose would
+    // silently report zero the moment the file tidied itself.
+    const entries = [
+        ...s.split(/(?=^- \*\*20\d\d-)/m).filter(e => /^- \*\*20\d\d-/.test(e)),
+        ...s.split(/\r?\n/).filter(l => /^\|\s*20\d\d-\d\d-\d\d\s*\|/.test(l)),
+    ];
     const rows = WISHLIST_METRICS
         .map(([name, re]) => [name, entries.filter(e => re.test(e)).length])
         .filter(([, n]) => n > 0)
@@ -397,6 +403,63 @@ function wishlistTally(file = 'pot/data-wishlist.md') {
     fs.writeFileSync(file, s.slice(0, start) + OPEN + EOL + body + EOL + s.slice(end));
 }
 
+
+// Normalise the wishlist's entry log into one date-sorted table.
+//
+// Two problems, one fix. The file said "newest first" and was not: the Sweep appends at the end, so
+// twelve entries from 7 Sep sat below 29 August. And free prose let every entry choose its own
+// shape, which is easy to write and hard to scan. Rather than police either — a rule telling an
+// agent where to insert is a rule that breaks quietly — this reads whatever is there, prose OR
+// table, and rewrites it sorted. The Sweep keeps appending however it likes; the file heals here.
+//
+// Lossless by design: the subject becomes a column and everything else collapses into one cell.
+// Splitting "wanted weekly while the oil disruption persists" into source/cadence/rationale
+// columns would need prose written to a schema it never was, and would drop whatever did not fit.
+//
+// A date may carry a time — four 7 Sep entries are stamped "2026-09-07 23:45 UTC — ...". The first
+// version of this regex required the dash immediately after the date and dropped all four silently,
+// which is the failure mode this whole function exists to prevent.
+const wishRe = /^- \*\*(\d{4}-\d{2}-\d{2})(?:[ T][\d:]+)?(?:\s*[A-Z]{2,4})?\s*[—-]\s*([\s\S]*?)\*\*\s*([\s\S]*)$/;
+const wishSplit = /(?=^- \*\*\d{4}-\d{2}-\d{2})/m;
+
+function wishlistEntries(file = 'pot/data-wishlist.md') {
+    let s;
+    try { s = fs.readFileSync(file, 'utf8'); } catch { return; }
+    const OPEN = '<!-- entries:start -->', CLOSE = '<!-- entries:end -->';
+    const head = s.indexOf('## Entries');
+    if (head < 0) return;
+    const EOL = s.includes('\r\n') ? '\r\n' : '\n';
+    const cell = t => String(t).replace(/\s+/g, ' ').replace(/\|/g, '\|').trim();
+    // Strip fenced blocks first: the header carries a worked EXAMPLE of an entry, and parsing it
+    // would file tradingeconomics.com's China GDP as a real reach that nobody ever made.
+    const body = s.slice(head).replace(/```[\s\S]*?```/g, '');
+    const seen = new Map();                    // date+subject -> row; re-running must not duplicate
+
+    for (const raw of body.split(wishSplit)) {
+        const m = raw.match(wishRe);
+        if (!m) continue;
+        seen.set(m[1] + '|' + cell(m[2]), { date: m[1], subject: cell(m[2]), detail: cell(m[3]) });
+    }
+    for (const line of body.split(/\r?\n/)) {          // rows written by a previous run
+        const m = line.match(/^\|\s*(\d{4}-\d{2}-\d{2})\s*\|(.+?)\|(.*)\|\s*$/);
+        if (m) seen.set(m[1] + '|' + cell(m[2]), { date: m[1], subject: cell(m[2]), detail: cell(m[3]) });
+    }
+    // Refuse to shrink the log. If a future entry shape stops parsing, the safe outcome is an
+    // untidy file, never a shorter one — the whole point of the log is that nothing falls out.
+    const already = (body.match(/^\|\s*\d{4}-\d{2}-\d{2}\s*\|/gm) || []).length;
+    if (!seen.size || seen.size < already) {
+        console.log(`  wishlist NOT normalised: parsed ${seen.size} of ${already} existing rows`);
+        return;
+    }
+    const rows = [...seen.values()].sort((a, b) =>
+        b.date.localeCompare(a.date) || a.subject.localeCompare(b.subject));
+    const table = ['| date | wanted | detail |', '|---|---|---|',
+        ...rows.map(r => `| ${r.date} | ${r.subject} | ${r.detail} |`)].join(EOL);
+    const intro = 'Appended by the Sweep in any order and in any shape; sorted and tabulated here by'
+        + ' `pot/report.js` on' + EOL + 'every report run. Do not hand-edit between the markers.';
+    fs.writeFileSync(file, s.slice(0, head) + '## Entries' + EOL + EOL + intro + EOL + EOL
+        + OPEN + EOL + table + EOL + CLOSE + EOL);
+}
 
 function build() {
     fs.mkdirSync(LOGS, { recursive: true });
@@ -464,6 +527,7 @@ function build() {
         }
     }
 
+    wishlistEntries();
     wishlistTally();
     fs.writeFileSync('pot/runs.md', `# Run ledger
 
