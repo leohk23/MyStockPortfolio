@@ -68,7 +68,7 @@ Cash and decisions run on **separate clocks**. This is the whole design:
 | **Funding** — £250 arrives, sits as pot cash             | monthly, calendar                        | nothing         |
 | **Signals** — scan for anything worth a look              | continuous, every CI run                 | nothing         |
 | **Decision** — research, then a buy/sell instruction      | *only when a signal fires, or you ask* | one LLM session |
-| **Review** — re-read open theses against their falsifiers | monthly, calendar                        | one LLM session |
+| **Review** — re-read open theses against their falsifiers | **every 2 days** (§6.5, D30)      | one LLM session |
 
 The expensive step is gated behind the free one. A signal scan over `prices.json`, `earnings.json`
 and `peBands` is ordinary JavaScript — it can run every fifteen minutes forever and cost nothing.
@@ -466,6 +466,14 @@ It also moves the Review lane from monthly to weekly, which is four times the se
 you mean — fire on the date each thesis names, or sweep them all every week?
 
 Sweep them all every week.
+
+⚠ **Cadence as built (8 Sep 2026).** The Review lane runs **every 2 days**, not weekly — see
+`pot/run-daily.ps1`, `Lane-Due 'pot/reviews' 2`. More often than the answer above, so the weekly
+floor holds; the number moved because lane frequency became a budget decision when a cycle on
+gpt-6-astra started costing four times what it did on gpt-5.6-sol (D30). Three stale statements
+were reconciled at the same time: this table said monthly in §0, this answer said weekly, and the
+runner's own comment said fortnightly while its gate said two days. **The gate is authoritative** —
+it is the thing that actually runs.
 
 **Q 6.6** Anything else that should wake it?
 

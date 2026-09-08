@@ -223,7 +223,7 @@ try {
     # ---- 2. Review, and it runs BEFORE the Sweep on purpose (pot-design §2). An agent that has
     # just spent an hour finding exciting new names is not the right agent to judge the thesis it
     # wrote last month. Judge first, discover afterwards.
-    # Fortnightly, not every cycle. The ordering above is right and the frequency was not: the lane
+    # Every 2 days, not every cycle. The ordering above is right and the frequency was not: the lane
     # costs ~4% of the weekly allowance per run because 99.5% of its tokens are INPUT — it reloads
     # prices, signals, earnings, holdings and the whole brief on 14 turns to write 6,000 tokens of
     # judgement. That cost does not fall with an empty book, and at 17 cycles a week it was 68% of

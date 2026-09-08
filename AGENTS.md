@@ -113,14 +113,17 @@ new, and the Deep dive reads both (pot-design §2):
 **Schedule: [pot-design.md §4.2](pot-design.md#42-the-llm-lanes--one-scheduled-cycle). That section is
 the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
 entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
-Scan, then all three LLM lanes in order, then the report. **Weekdays 06:30, 12:45 and 21:15;
+Scan, then whichever LLM lanes are DUE, in order, then the report. Review runs every 2 days, Sweep daily, and the Deep dive only if the Sweep ran in the same cycle (D30, D33, D36). **Weekdays 06:30, 12:45 and 21:15;
 weekends 09:00**, UK local (D17).
 
 Two things that constrain any change to it:
 
-- **The weekly allowance is the budget, not the clock.** A full cycle costs ~5% of the Codex
-  subscription's weekly allowance, so 17 cycles/week ≈ 85%. Read the `weekly` column of
-  `pot/runs.md` before adding a slot; §4.2 has the arithmetic.
+- **The weekly allowance is the budget, not the clock**, and the model sets the price. A full cycle
+  costs ~5% of the weekly allowance on `gpt-5.6-sol` but **~14% on `gpt-6-astra`** — about 4x,
+  measured like for like. Ungated on astra the schedule needs 238% of what exists, which is why the
+  lanes are gated at all. One astra cycle is also ~99% of a **5-hour** window, so there is no slack
+  for an ad-hoc run. Read BOTH limit columns of `pot/runs.md` before adding a slot; §4.2 has the
+  arithmetic.
 - **A slot is chosen so the cycle finishes just before Leo can read it** — before work, at lunch,
   after the US close. He has a full-time job, and a proposal nobody reads is spent allowance.
 
