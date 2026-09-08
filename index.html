@@ -3413,6 +3413,7 @@ let potDoc = localStorage.getItem('potDoc') || null;
 function showPotDoc(id) {
     potDoc = id;
     localStorage.setItem('potDoc', id);
+    syncURL();
     renderPot();
     document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
 }
@@ -3485,6 +3486,9 @@ function renderPot() {
     });
     body.querySelectorAll('a[data-ticker]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
+        // Leaving a proposal for a stock is the one transition worth a history entry: Back
+        // returns to the document you were reading, on the page you were reading it.
+        pushHistory();
         showTicker(a.dataset.ticker);
     }));
     // A link into another pot document switches the picker instead of leaving the page.
@@ -3726,9 +3730,64 @@ function renderPot() {
             if (sort.key !== 'live' || sort.dir !== -1) { p.set('s', sort.key); p.set('d', sort.dir); }
             if (watchSort.key !== 'name' || watchSort.dir !== 1) { p.set('ws', watchSort.key); p.set('wd', watchSort.dir); }
             if (chartSel) p.set('sel', chartSel);
+            // The open pot document. localStorage already remembers it for THIS browser; the hash
+            // is what makes a refresh, a bookmark or a shared link land on the same proposal rather
+            // than the summary. Written whatever tab is showing, so leaving the Pot tab to look at
+            // a stock and coming back keeps the page named in the URL the whole way.
+            if (potDoc) p.set('p', potDoc);
             const h = p.toString();
             history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
         }
+
+        // Back and forward between a pot document and a stock.
+        //
+        // syncURL uses replaceState on purpose — sorting a column or changing a picker is not a
+        // journey, and stacking an entry per click would make Back useless. But following a ticker
+        // out of a proposal IS a navigation: it leaves the page you were reading. So that one
+        // transition pushes, and everything else keeps replacing.
+        //
+        // pushState writes the CURRENT url into a new entry; syncURL then replaces that entry with
+        // the destination. Net effect: [pot document, stock] rather than [stock] alone.
+        function pushHistory() {
+            if (!STATE) return;
+            history.pushState(null, '', location.hash || location.pathname + location.search);
+        }
+
+        // Restore whatever the hash says, without a reload. Deliberately mirrors the boot restore
+        // and showTicker rather than inventing a third way to set the same state — three copies of
+        // "switch tab, rebuild, chart" is how they drift apart.
+        function applyHash() {
+            if (!STATE) return;
+            const url = new URLSearchParams(location.hash.slice(1));
+            const dim = url.get('g') || localStorage.getItem('dim') || 'company';
+            if (STATE.dim !== dim && document.querySelector(`#groupby button[data-dim="${dim}"]`)) {
+                STATE.dim = dim;
+                localStorage.setItem('dim', dim);
+                document.querySelectorAll('#groupby button').forEach(o =>
+                    o.setAttribute('aria-pressed', String(o.dataset.dim === dim)));
+                applyView();
+                rebuildRows();
+                renderTable();
+                renderWatchlist();
+                renderCalendar();       // reads STATE.rows, so it follows the rebuild
+            }
+            const doc = url.get('p');
+            if (doc && doc !== potDoc) {
+                potDoc = doc;
+                localStorage.setItem('potDoc', doc);
+                renderPot();
+            }
+            // A stock that has since left the page must not leave the chart pointing at nothing.
+            const sel = url.get('sel');
+            const want = sel && legOf(sel) ? sel : null;
+            if (want !== chartSel) {
+                chartGroup = null;
+                chartSel = want;
+                markSelectedRow();
+                updateChart();
+            }
+        }
+        window.addEventListener('popstate', applyHash);
         // Move the aria-sort marker to the restored column (the header click handler does this too).
         function markSort(sel, s) {
             const ths = document.querySelectorAll(sel);
@@ -3867,6 +3926,9 @@ function renderPot() {
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
+            // Same precedence as the tab above: a link naming a pot document opens it, and
+            // otherwise this browser's last one stands.
+            if (url.get('p')) potDoc = url.get('p');
             if (url.get('s')) sort = { key: url.get('s'), dir: Number(url.get('d')) === 1 ? 1 : -1 };
             if (url.get('ws')) watchSort = { key: url.get('ws'), dir: Number(url.get('wd')) === 1 ? 1 : -1 };
             markSort('#portfolio th[data-sort]', sort);
