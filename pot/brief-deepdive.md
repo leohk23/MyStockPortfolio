@@ -393,6 +393,36 @@ expensive rather than cheap. Say which basis you are quoting and how many years 
 
 - **No minimum** position, but refuse the ticket if its **first-year costs exceed 2%** of it.
   State the costs you expect: commission, FX spread, stamp duty, ADR custody if OTC.
+- **§4.1a — broker fees under 0.5% of the ticket, taxes excluded and stated separately.** Commission
+  plus FX spread only. **Transaction taxes are not fees**: UK stamp duty is 0.5% on every purchase,
+  identical at every broker, so counting it would make every UK share permanently unbuyable — and
+  REL.L, BNZL.L, IMI.L, LRE.L, SPX.L, BME.L and CHRT.L are all on the watchlist. State the tax as
+  its own line in P1 and add it to the §4.1 first-year total, never to this gate.
+  This sits **beside** §4.1's 2%, which is a different question: §4.1 is total FIRST-YEAR cost
+  including recurring custody and dividend fees — Leo's own worry was *"custody fee is a fixed
+  amount and eating its dividends"* on a small OTC holding. A ticket must clear both.
+
+- **§4.2b — a fee-charging venue may push an order past the 50% cap; a free one may not.** On T212
+  the cost is 0.15% at any size, so nothing about fees argues for a bigger ticket and **§4.2's 50%
+  binds strictly**. On a venue with a per-order minimum the arithmetic reverses: $1 is 1.21% of £62
+  and 0.4% of £250, so a small ticket is not prudence, it is waste. Where a name can only be traded
+  on a fee-charging venue and no ticket inside the 50% cap clears §4.1a, the order **may exceed
+  50%**, and P1 must say by how much, what the concentration becomes, and how many contributions
+  bring it back under. Order of preference, always: a cheaper venue first, then a bigger ticket,
+  then defer — never a bigger ticket because it is easier than looking for the cheaper venue.
+
+- **When a listing is unbuyable, check the company's other listings before rejecting it.** Board
+  lots and per-order minimums are properties of the VENUE, not of the business. `1211.HK` trades in
+  **500-share board lots**: at £7.90 a share that is a **£3,948** minimum order, eight times the
+  whole pot — while `BYDDY`, the same company's ADR, trades in single shares at £7.87. Rejecting BYD
+  for being unaffordable would have been a fact about Hong Kong's lot rules, not about BYD.
+  `prices.json` already carries the mapping: a quote's `primary` field names the listing it follows,
+  so **BYDDY → 1211.HK**, and ten such pairs exist today. Scan the quotes for any whose `primary`
+  is the name you are stuck on. If an alternative exists, cost both and say which you chose and why;
+  a receipt is not identical to the share — different currency, an ADR fee, and less liquidity — so
+  the choice is an argument, not an automatic swap.
+  **Lot sizes are not in `prices.json`.** Where one might bind, source it and cite it; if you cannot,
+  say so and log it to [`pot/data-wishlist.md`](data-wishlist.md) rather than assuming single shares.
 - **The broker follows the venue, and you must say which one you costed (§10, 8 Sep 2026).**
   **Trading 212 wherever it lists the name** — £0 commission, FX charged at **0.15%**, so a ticket
   costs 0.15% at any size. **IBKR for anything T212 cannot trade**, which is Hong Kong, Japan and

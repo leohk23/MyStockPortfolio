@@ -20,8 +20,11 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 3.3  | May buy what the main book already holds | Yes                                                                                                                 |
 | 3.4  | Single stocks / funds                    | Both                                                                                                                |
 | 4.1  | Minimum position                         | **No minimum** — but refuse a ticket whose first-year costs exceed **2%** of it                        |
+| 4.1a | **Broker fees under 0.5%**               | Commission + FX only; taxes excluded and stated separately. Sits beside §4.1's 2% first-year total |
 | 4.2  | Maximum position                         | 50% of the pot                                                                                                      |
 | 4.2a | **One whole share always clears §4.2**   | Fractions are not bought, so if one share exceeds the cap it is still bought — cap resumes once contributions cover it |
+| 4.2b | **A fee-charging venue may exceed 50%**   | Only where no ticket inside the cap clears §4.1a. On T212 (0.15% any size) the 50% cap binds strictly |
+| 4.2c | **Check other listings before rejecting** | A board lot or order minimum is a venue fact, not a business one — 1211.HK needs £3,948, BYDDY needs £8 |
 | 4.3  | Number of positions                      | No limit                                                                                                            |
 | 4.4  | May hold cash                            | Yes, no ceiling                                                                                                     |
 | 4.5  | May top up an existing position          | Yes                                                                                                                 |
@@ -276,6 +279,34 @@ codeable version of your answer is probably *"no fixed minimum, but refuse a tic
 costs exceed X% of it."* What is X?
 
 Follow-up ANS: 2%, and I want to avoid some situations like when buying a small amount of an income generating OTC share while custody fee is a fixed amount and eating its dividends, and at the end it defeats the purpose and gains.
+
+**Q 4.1a** A separate ceiling on broker fees, apart from the first-year total. `[auto]`
+
+> §4.1's 2% answered a recurring-cost question — an OTC ADR's custody fee eating a small holding's
+> dividends. It was then being read as an entry gate, which it never was, and nothing capped what a
+> single ticket may lose to commission and FX on the way in.
+
+**A** — **0.5% of the ticket, broker fees only.** Commission plus FX spread. **Taxes are excluded
+and stated separately**: UK stamp duty is 0.5% on every purchase and identical at every broker, so
+counting it would delete every UK share from the universe. A ticket clears both this and §4.1's 2%.
+
+**Q 4.2b** May an order exceed the 50% cap to be cost-efficient? `[auto]`
+
+**A** — **Yes, but only where the venue charges.** On T212 the cost is 0.15% at any size, so nothing
+about fees argues for a bigger ticket and §4.2 binds strictly. Where a name can only be traded on a
+fee-charging venue and no ticket inside 50% clears §4.1a, the order may exceed 50% — stating by how
+much, the resulting concentration, and how many contributions unwind it. Preference order: a cheaper
+venue, then a bigger ticket, then defer.
+
+**Q 4.2c** What if the listing itself cannot be bought? `[auto]`
+
+**A** — **Check the company's other listings before rejecting the company.** Board lots and per-order
+minimums belong to the venue, not the business. `1211.HK` trades in 500-share lots — a £3,948
+minimum against a £500 pot — while `BYDDY`, the same company, trades in single shares at the same
+price per share. `prices.json` already maps ten such pairs through each quote's `primary` field. A
+receipt is not identical to the share, so the swap is an argument to be made, not an automatic one.
+
+---
 
 **Q 4.2** Maximum position, as a share of the pot. `[auto]`
 
