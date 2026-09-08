@@ -321,6 +321,39 @@ If your researched figure and the local one disagree, **say so and say which you
 why.** Do not silently pick the one that suits the argument. A proposal that hides a disagreement
 is void.
 
+## Record every one-off you reconcile — `pot/adjustments.json`
+
+You keep deriving these by hand and throwing them away. LULU's $134.5m tariff refund was found by
+reading the filing, used once, and re-derived from scratch the next run. Write it down instead.
+
+**When you reconcile filed earnings against a company's own release and find income that will not
+repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the ticker:
+
+```json
+{ "fy": "2026-01-31", "amount": 134500000, "ccy": "USD",
+  "what": "tariff refund and associated interest",
+  "source": "https://www.sec.gov/Archives/edgar/data/1397187/.../lulu-20260802xex991.htm",
+  "found": "2026-09-08" }
+```
+
+- `fy` is the fiscal year END exactly as it appears in `earnings.json`, or the row will never match.
+- `amount` is positive for income to REMOVE, in the filing's own currency.
+- `source` is mandatory and must be the company's or the regulator's own document. This store is
+  agent-written, which is what A20 normally forbids — the citation is what makes it admissible, so
+  an entry without one is worse than no entry.
+- Never edit or delete an existing entry to make a name look better. Append a correcting entry and
+  say so in `what`.
+
+`fetch-prices.js` subtracts these from filed net income to build an **own basis** beside the
+reported and vendor ones: `peLowOwn`, `pePctileOwn`, and the entries themselves on the quote as
+`adjustments`. It is the only basis whose adjustments can be checked against a document.
+
+**What this does and does not fix.** Today's multiple can be corrected by one adjustment; the
+PERCENTILE cannot, because it is computed across ~200 weekly bars and needs a clean figure for each
+of the years in the window. So an own-basis percentile is only as good as the years somebody has
+actually read, and a year nobody has examined falls back to filed net income — which reads
+expensive rather than cheap. Say which basis you are quoting and how many years carry adjustments.
+
 ## Size — §4
 
 - **No minimum** position, but refuse the ticket if its **first-year costs exceed 2%** of it.

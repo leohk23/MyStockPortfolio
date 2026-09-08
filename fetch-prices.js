@@ -786,10 +786,31 @@ function needsQuarterFallback(entry) {
 // today what was one-off in 2022, and may restate it. So it sits BESIDE the reported trough,
 // never replacing it — the reported one stays point-in-time and filed, which is the property
 // the whole trough apparatus was built to protect.
-function recurringEps(years) {
+function recurringEps(years, field = 'norm') {
     const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
     if (!anchor) return years.map(() => null);
-    return years.map(y => (y.norm != null ? y.norm * anchor.eps / anchor.ni : null));
+    return years.map(y => (y[field] != null ? y[field] * anchor.eps / anchor.ni : null));
+}
+
+// Filed net income less the one-offs THIS repo can cite, from pot/adjustments.json. A third basis
+// beside reported and recurring, and the only one whose adjustments carry a source URL.
+//
+// Why it exists: `norm` is Yahoo's opinion, made with hindsight and restatable, and across this
+// book it sits within 1% of filed net income in 187 of 479 fiscal years — for two years in five
+// the vendor adjusts NOTHING, so "recurring" and "headline" are the same number with different
+// labels. LULU's FY2026 norm equals its ni to the dollar while its own release discloses a $134.5m
+// tariff refund. The Deep dive kept re-deriving these by hand and throwing the work away.
+//
+// A year with no recorded adjustment falls back to filed `ni`, NOT to `norm`: the basis is
+// "reported, less what we can prove", which is explainable and errs toward looking expensive. It
+// never claims completeness — a name is only as clean as the years somebody has actually read.
+function adjustedYears(years, adj) {
+    if (!adj?.length) return years;
+    const byFy = new Map();
+    for (const a of adj) {
+        if (a && a.fy && Number.isFinite(a.amount)) byFy.set(a.fy, (byFy.get(a.fy) || 0) + a.amount);
+    }
+    return years.map(y => (y.ni == null ? y : { ...y, normOwn: y.ni - (byFy.get(y.date) || 0) }));
 }
 
 function normaliseEps(years) {
@@ -870,8 +891,9 @@ function publishedEps(entry, quoteCurrency, rates, filedOn = null, quarters = nu
     // ANNUAL ONLY on the recurring side: there is no normalised quarterly figure, so the TTM
     // steps are skipped rather than mixed in. A recurring series that borrowed reported
     // quarters between annuals would flip basis mid-line and the join would look like news.
-    const useNorm = basis === 'recurring';
-    const normalised = useNorm ? recurringEps(years) : normaliseEps(years);
+    const useNorm = basis === 'recurring' || basis === 'own';
+    const normalised = useNorm ? recurringEps(years, basis === 'own' ? 'normOwn' : 'norm')
+        : normaliseEps(years);
     const annual = years
         .map((y, i) => ({ from: reportedBy(y.date, filedOn?.[y.date]), eps: normalised[i] * toQuote }))
         .filter(k => Number.isFinite(k.eps));
@@ -934,6 +956,12 @@ const HISTORY_FROM = {
 // company's own tax expense over its own pretax income rather than assumed at 21% or 25%: an
 // assumed rate would silently flatter or punish whoever the assumption did not fit.
 // Six years is enough to show a direction without the sparkline becoming a chart.
+// One-off adjustments this repo can cite, written by the Deep dive when it reconciles a filing by
+// hand. Absent file is normal and not an error: the store starts empty and fills a name at a time.
+let ADJUSTMENTS = {};
+try { ADJUSTMENTS = JSON.parse(fs.readFileSync('pot/adjustments.json', 'utf8')).adjustments || {}; }
+catch { console.log('note no pot/adjustments.json — no own-basis valuation'); }
+
 const CAPITAL_YEARS = 6;
 
 function capitalMetrics(year, cap, fallbackTax = null) {
@@ -2238,7 +2266,7 @@ async function main() {
     try { const y = JSON.parse(fs.readFileSync('capital-yahoo.json', 'utf8')).capital || {};
         for (const [t, years] of Object.entries(y)) if (!capitalFacts[t]) capitalFacts[t] = years; }
     catch { /* optional: EDGAR-only coverage is still correct, just narrower */ }
-    let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0;
+    let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0, ownBands = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         const filedOn = filedDates[t] || null;
@@ -2264,6 +2292,26 @@ async function main() {
             quotes[t].peLowRecurring = recHead.low;
             quotes[t].pePctileRecurring = recHead.pctile;
             quotes[t].lowDateRecurring = recHead.lowDate;
+        }
+
+        // The same window again on OUR OWN basis: filed net income less the one-offs pot/adjustments.json
+        // can cite. Only computed where an adjustment exists — otherwise it would be an identical
+        // copy of the reported series under a name that implies more work was done than was.
+        const myAdj = ADJUSTMENTS[t];
+        if (myAdj?.length) {
+            const ownEntry = { ...store.eps[t], years: adjustedYears(store.eps[t].years || [], myAdj) };
+            const ownHist = peHistory(ownEntry, longHist.days, longHist.closes[t] || [],
+                quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null, null, 'own');
+            const ownHead = ownHist?.horizons?.[HEADLINE_HORIZON] || ownHist?.horizons?.all;
+            if (ownHead) {
+                quotes[t].peLowOwn = ownHead.low;
+                quotes[t].pePctileOwn = ownHead.pctile;
+                quotes[t].lowDateOwn = ownHead.lowDate;
+                // Carried onto the quote so a proposal can cite the adjustment without opening a
+                // second file, and so the app can show WHY this basis differs from the vendor's.
+                quotes[t].adjustments = myAdj;
+                ownBands++;
+            }
         }
 
         const head = hist?.horizons?.[HEADLINE_HORIZON] || hist?.horizons?.all;
@@ -2390,6 +2438,8 @@ async function main() {
         + `denomination for ${fwdConverted} ticker(s)`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
     console.log(`ok   per-year PE bands for ${bandOk}/${tickers.length} tickers (${realDated} on real filing dates, the rest on the 90-day lag)`);
+    if (ownBands) console.log(`ok   own-basis valuation for ${ownBands} ticker(s) from `
+        + `pot/adjustments.json — filed earnings less one-offs this repo can cite`);
 
     // Year-to-date time-weighted return for the headline KPIs — computed here because the
     // daily closes live in this process and the page loads only prices.json (not history).
@@ -3373,6 +3423,23 @@ function selftest() {
     assert.strictEqual(cashOnly.fcf, 70);
     assert.strictEqual(cashOnly.roic, undefined);
 
+
+    // adjustedYears / the own basis. Every input is a filed figure minus a cited one-off.
+    const ayIn = [{ date: '2025-12-31', eps: 2, ni: 100, norm: 100 },
+                  { date: '2026-12-31', eps: 3, ni: 150, norm: 150 }];
+    const ay = adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30 }]);
+    assert.strictEqual(ay[0].normOwn, 100);          // untouched year falls back to filed ni
+    assert.strictEqual(ay[1].normOwn, 120);          // 150 filed less a 30 one-off
+    assert.strictEqual(ayIn[1].normOwn, undefined);  // the input array is not mutated
+    // Two adjustments in one year add up.
+    assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30 },
+        { fy: '2026-12-31', amount: 20 }])[1].normOwn, 100);
+    // Junk entries are ignored rather than poisoning the year with NaN.
+    assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31' }])[1].normOwn, 150);
+    assert.strictEqual(adjustedYears(ayIn, [])[1].normOwn, undefined);   // no adjustments, no basis
+    // recurringEps reads the field it is told to, so the vendor and own series cannot be confused.
+    assert.deepStrictEqual(recurringEps(ay, 'normOwn').map(v => Math.round(v * 100) / 100), [2, 2.4]);
+    assert.deepStrictEqual(recurringEps(ay, 'norm').map(v => Math.round(v * 100) / 100), [2, 3]);
     console.log('selftest ok');
 }
 

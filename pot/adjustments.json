@@ -1,0 +1,17 @@
+{
+  "_README": "One-off adjustments to filed net income that THIS repo can cite. Written by the Deep dive when it reconciles a filing by hand; read by fetch-prices.js, which subtracts them from filed `ni` to build an 'own' recurring basis beside Yahoo's `norm`. Never replaces filed figures. Every entry needs fy (the fiscal year END date as it appears in earnings.json), amount in the FILING's currency, what it was, and a source URL to the company's own release or filing. Positive amount = income to remove.",
+  "updated": "2026-09-08",
+  "adjustments": {
+    "LULU": [
+      {
+        "fy": "2026-01-31",
+        "amount": 134500000,
+        "ccy": "USD",
+        "what": "tariff refund and associated interest",
+        "source": "https://www.sec.gov/Archives/edgar/data/1397187/000139718726000126/lulu-20260802xex991.htm",
+        "found": "2026-09-08",
+        "note": "Yahoo's norm for this year equals filed ni exactly, so the vendor removed nothing."
+      }
+    ]
+  }
+}
