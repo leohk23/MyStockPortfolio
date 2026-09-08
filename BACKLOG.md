@@ -89,7 +89,7 @@ The ranking rule now requires every watchlist name to be accounted for — ranke
 
 ### The transaction-cost rule has never been exercised
 §4.5's fee handling (D25) makes P1 name the broker it costs against, default to **$1 per US ticket**, state the fee as a percentage of the ticket, and say whether another whole share would improve it. No order has been proposed since it landed — the 8 Sep deep dive held cash — so none of it has run once.
-The `$1` figure is also an inference from one remark of Leo's about a draft MWA order. Non-US venues are not covered: REL.L, CNR.TO and RSGN.SW are live candidates and their real costs are unknown.
+**Superseded in part (8 Sep 2026, D42):** the broker is now decided by venue — T212 where it lists the name at 0.15% all-in, IBKR only where it cannot trade. The `$1` inference is gone for US tickets. **Still open:** IBKR's non-US schedules are unknown to this repo and must be sourced per venue, and a per-order minimum can push a §7.2a half-size through §4.1's 2% ceiling where a full size would pass.
 
 ### The recurring P/E is a vendor judgement, and 39% of the time it adjusts nothing — this is now the pot's binding constraint
 `pePctileRecurring` and `peLowRecurring` divide price by `recurringEps`, which rebases **`norm`** — Yahoo's *normalised* net income — onto the latest share count. `norm` is not a filed figure. It is Yahoo deciding, with hindsight, what was one-off, and it can be restated.

@@ -393,13 +393,34 @@ expensive rather than cheap. Say which basis you are quoting and how many years 
 
 - **No minimum** position, but refuse the ticket if its **first-year costs exceed 2%** of it.
   State the costs you expect: commission, FX spread, stamp duty, ADR custody if OTC.
-- **Do not assume a commission-free broker.** §10 records *"no broker constraint as I'm executing"*,
-  so the £0-commission Trading 212 case is one possibility and not the default. Name the broker you
-  are costing against, and cost a **flat fee of $1 per US ticket** unless Leo has said otherwise —
-  that is what he actually pays. It is not always $1: other venues and OTC lines charge more, and
-  a flat fee is worst on the smallest ticket. On the 7 Sep MWA order this mattered — the proposal
-  quoted £0 commission and *"0.15% of the ticket"*, where $1 on a £124 ticket is **0.6%**, four
-  times the figure it reported and the largest single cost in the order.
+- **The broker follows the venue, and you must say which one you costed (§10, 8 Sep 2026).**
+  **Trading 212 wherever it lists the name** — £0 commission, FX charged at **0.15%**, so a ticket
+  costs 0.15% at any size. **IBKR for anything T212 cannot trade**, which is Hong Kong, Japan and
+  most non-US lines: `1211.HK` is the worked example Leo gave. The choice is availability, not
+  preference — on pot-sized tickets T212 is far cheaper and the crossover is about **£617**, which
+  the pot will not reach for years:
+
+  | ticket | T212 (0% + 0.15% FX) | IBKR ($1 + 0.03% FX) |
+  |---:|---:|---:|
+  | £62.50 | 0.15% | 1.21% |
+  | £125 | 0.15% | 0.62% |
+  | £617 | 0.15% | 0.15% |
+
+  So **never quote $1 on a name T212 lists** — that was an inference from one remark of Leo's about
+  a draft order, and it overstated a US ticket's cost by 8x. Equally, never quote 0.15% on a Hong
+  Kong or Japanese line: T212 cannot trade it, so the T212 rate does not apply to it at all.
+
+- **IBKR's non-US charges are NOT known to this repo — source them, do not assume.** The US figures
+  above came from Leo; the HK/Japan/Europe schedules did not. IBKR charges a percentage with a
+  **minimum per order**, and a minimum is what kills a small ticket. Find the current schedule for
+  the actual venue, cite it, and if you cannot, say so in P1 and treat the cost as unknown rather
+  than inventing one. Adding it to [`pot/data-wishlist.md`](data-wishlist.md) is the right move.
+
+- **Expect non-US names to fail §4.1 at the pot's current size, and check rather than assume.** A
+  per-order minimum of even £1.75 is **2.8%** of a £62.50 half-allocation and 1.4% of a full £125 —
+  either side of the 2% ceiling. So a half-sized order under §7.2a can fail the cost gate on a venue
+  where a full-sized one passes, which is the one case where **sizing down makes a name unbuyable**.
+  Say so in P1 when it happens: the honest answer may be a full-sized order or none, not a half.
 - **A flat fee makes share count a real decision, so show the drag and say whether more shares fix
   it.** Fee ÷ ticket falls as the order grows: $1 on 7 MWA shares at $24 is 0.6%, on 10 it is 0.42%,
   on 20 it is 0.21%. P1 states the fee as a **% of the ticket at the proposed size**, and where idle

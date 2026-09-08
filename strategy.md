@@ -41,7 +41,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 7.3  | Unsourced figures                        | Not permitted                                                                                                       |
 | 9.1  | Benchmark                                | pot TWR · main-book TWR ·**S&P 500**                                                                        |
 | 9.3  | Experiment reviewed                      | at 24 months                                                                                                        |
-| 10   | Broker                                   | unconstrained — so the Tradelog gains a**`Pot` column**                                                    |
+| 10   | Broker                                   | **T212 where it lists the name, IBKR where it cannot** — Tradelog still needs the `Pot` column                                                    |
 | 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
 
 **Nothing open.** All 34 questions answered; §6.1 revised 29 Aug 2026 (see below).
@@ -622,6 +622,23 @@ Three things the plan depends on that are not rules:
   good — but note it when it happens, or "parallel" quietly stops being true.
 
 **A** — No broker constraint as I'm executing.
+
+**Update, 8 Sep 2026 — the broker is now decided, by venue.** §10's "no constraint" stood while
+nothing costed anything; it stopped being free the moment a proposal had to quote a fee. **Trading
+212 wherever it lists the name; IBKR for anything it cannot trade** — Hong Kong, Japan and most
+non-US lines, `1211.HK` being the case that forced it.
+
+It is an availability split, not a preference. On pot-sized tickets T212 is far cheaper — **0.15%
+at any size** against IBKR's **1.21% on £62.50** and **0.62% on £125**, because $1 commission and a
+$2 minimum conversion do not scale down. The crossover is about **£617 per ticket**, which at
+£250/month the pot will not reach for years. Leo's reservations are recorded and accepted: T212
+matches orders slowly, which costs missed fills rather than bad prices — tolerable for theses
+reviewed months out, and it would not be in the main book.
+
+⚠ **Two consequences.** IBKR's **non-US** schedules are not known to this repo and must be sourced
+per venue, not assumed — only the US figures came from Leo. And a per-order minimum of even £1.75
+is 2.8% of a £62.50 half-allocation against §4.1's 2% ceiling, so **a §7.2a half-size can fail the
+cost gate where a full size passes** — the one case where sizing down makes a name unbuyable.
 
 ⚠ **Follow-up.** Fine, but it settles an open question elsewhere by ruling one option out. The pot's
 trades were going to be identified *either* by a dedicated broker account *or* by an explicit tag.
