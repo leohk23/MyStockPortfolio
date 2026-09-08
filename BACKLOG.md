@@ -51,6 +51,50 @@ The 1D chart deliberately shows the quote's 1D rather than deriving its own from
 ### CLP's interim row is anomalous
 webb-database reports 0002.HK's latest interim as period end **2026-01-31**, announced 2026-08-06, a 187-day lag — against a December year end, where the half-year should be 30 June. `check-interim` rejects it via `LAG_SANE` and falls back to the flat window, so nothing downstream is wrong. But it is unexplained: either a quirk in the source or something real about CLP's reporting that is worth understanding before relying on that row.
 
+## CI and scheduling
+
+### The 15-minute price refresh is not happening, and no explanation has survived
+Leo's stated hard requirement is a 15-minute refresh. The workflow asks for it — `'3,18,33,48 0,1,5-21 * * 1-5'`, 76 firings a weekday — and GitHub delivers a small fraction. Monday 7 Sep produced **2 scheduled firings in 13 hours** against ~44 expected, with a 346-minute gap.
+Two explanations were tested and **both are dead**. It is not minute-0 contention: the cron was moved off the hour on 4 Sep and the rate did not change. It is not the push cascade saturating the `prices` concurrency group: 7 Sep had exactly **one** push-triggered run all day and the schedule still fired twice.
+What remains is that GitHub simply drops most scheduled firings on this repo, which its own docs permit — `schedule` is best-effort. If that is the answer, no cron shape fixes it and the requirement needs a different mechanism (a `repository_dispatch` pinged from somewhere that does keep time, or accepting a lower rate). Monday 14 Sep is the first full weekday of clean data since the change; decide after it, not before.
+
+## The pot
+
+### Cash conversion and capital measures stop at the US border
+`capital.json` comes from SEC `companyfacts`, so `roic`, `gpa`, `turnover` and now `cfo`/`fcf`/`cashConv` exist for US filers only. Coverage is **65% US against 56% non-US**, and the gap is structural rather than incidental: there is no EDGAR for Japan, Hong Kong or most of Europe.
+This is why 2325.T's ranking row read "all three capital measures are absent". It was *not* the reason the name was rejected — that was the 30th valuation percentile — but a reader cannot tell those apart at a glance, and every non-US candidate carries the same thin row.
+Filling it means a per-market fundamentals source, which is the same shape of job as the HK report-dates entry above and should be sized before starting.
+
+### One model for every lane, and the deep dive is the only one that needs the expensive one
+`-Model` is threaded through `run-daily.ps1` to every lane, so a cycle cannot mix models. On `gpt-6-astra` a cycle costs roughly **4x** what it did on `gpt-5.6-sol` — measured like for like on the same lane, 13.8 allowance points per million tokens against 4.1.
+The quality that justified astra came **entirely from the deep dive** (the 7 Sep RELX proposal, where it declined to buy). Review is mechanical and the sweep produced nothing distinctive. Splitting — sol for review and sweep, astra for the deep dive — would cut a cycle to about a third with the reasoning intact.
+Not done because Leo asked to hold it while cadence changes settle. It needs a per-lane override on the existing parameter, which is small.
+
+### The ledger reports the rate limit that was not binding
+`pot/runs.md` carries the **weekly** allowance (`limits.secondary`) and not the 5-hour one (`limits.primary`). On 8 Sep the weekly sat at a comfortable 28% while the 5-hour window hit 100% and killed a cycle mid-run.
+Both numbers are in the same `rate_limits` object already parsed in `pot/report.js`. Two lines, and it is the column that would have shown the failure coming.
+
+### The Sweep's thesis hook is still opt-in
+Rule 0 in `brief-deepdive.md` forces every proposal to declare which entries in `pot/theses.md` bear on the name, or the word `none`. The Sweep's equivalent is *"say which thesis, if one drove the candidate"* — a suggestion, and the failure it was written to prevent was exactly this kind of silence.
+Left deliberate for now: the Sweep ranges over a market rather than one name, so "which theses bear on this" has no single subject. The right fix is probably parked guard #2 below rather than copying Rule 0 across.
+
+### Two guards on the thesis file are parked, and one of them is load-bearing
+`pot/theses.md` was designed with two guards that Leo parked while the shape is tested: **(1)** every thesis carries a dated falsifier and the Review lane checks it; **(2)** the Sweep must name what each thesis argues *against*, including inside Leo's own book.
+Without them the file can become a confirmation-bias engine — the Sweep goes and finds evidence for a conclusion Leo already holds, which is the failure mode `brief-sweep.md`'s bias section exists to prevent. Guard 2 also turns out to be the natural fix for the entry above.
+`brief-deepdive.md` Rule 4 still bites independently: an undated dominant risk halves the order whatever a thesis says.
+
+### 70 names on the watchlist, 7 ever proposed
+The Sweep has added **48 names over 27 runs** and the deep dive has ever proposed **7** (GME, INTU, MWA, NVDA, REL.L, RSGN.SW, TW). Until 8 Sep the ranking covered 23 of 70 and said nothing about the other 47.
+The ranking rule now requires every watchlist name to be accounted for — ranked, or one line saying why not — so the backlog is at least visible. What has not been decided is what to do about it: whether names that fail the valuation filter repeatedly should age off the list, or whether 70 is simply the size of the funnel. Wait for a run or two under the new rule before choosing.
+
+### The transaction-cost rule has never been exercised
+§4.5's fee handling (D25) makes P1 name the broker it costs against, default to **$1 per US ticket**, state the fee as a percentage of the ticket, and say whether another whole share would improve it. No order has been proposed since it landed — the 8 Sep deep dive held cash — so none of it has run once.
+The `$1` figure is also an inference from one remark of Leo's about a draft MWA order. Non-US venues are not covered: REL.L, CNR.TO and RSGN.SW are live candidates and their real costs are unknown.
+
+### More series worth distilling into the repo
+The wishlist tally counts how many separate sweeps reached for each series. Cash conversion (19) is now fetched in CI. Still hand-fetched every time: **margin 13, volume/units 13, leverage 9, backlog 8, inventory 7, capital returns 6**.
+Most are the same shape of job as cash conversion — two EDGAR tag lists each — and the payoff is larger than it looks: a fetched page enters the agent's context and is resent on every subsequent turn, so a 20k-token filing pulled at turn 5 of 21 costs ~340k tokens where four numbers cost ~1k.
+
 ## Deliberate shortcuts already marked in the code
 
 These are `ponytail:` comments, not bugs — each names its own ceiling and upgrade path.
