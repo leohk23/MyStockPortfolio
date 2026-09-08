@@ -233,7 +233,9 @@ try {
     # constraint is downstream: the watchlist is 70 names, the last deep dive ranked 23, and 7
     # names have ever been proposed. Adding more names faster does not produce more proposals, it
     # grows a backlog nothing reads.
-    if (Lane-Due 'pot/sweeps' 1) { Invoke-Lane 'pot/brief-sweep.md' } else { Note 'sweep not due' }
+    $sweptThisCycle = $false
+    if (Lane-Due 'pot/sweeps' 1) { Invoke-Lane 'pot/brief-sweep.md'; $sweptThisCycle = $true }
+    else { Note 'sweep not due' }
 
     # ---- 4. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
     #
@@ -265,7 +267,13 @@ try {
     # Once a DAY, not once a cycle: the lane always writes a dated file - a proposal, or the
     # "-none" report when it declines to buy - so pot/proposals is a complete record of when it
     # last ran, and 'no order' costs the same allowance as an order.
-    if (Lane-Due 'pot/proposals' 1) { Invoke-Lane 'pot/brief-deepdive.md' } else { Note 'deep dive not due' }
+    # Paired to the Sweep, not gated on its own calendar. The two belong together: step 5 above
+    # exists solely to give the Sweep's new names local data BEFORE this lane judges them, and
+    # dating them separately let the Sweep run at 06:30 while the Deep dive waited for tomorrow,
+    # so a candidate found today would be ranked against yesterday's data by a run that never saw
+    # the sweep that found it. Sweep cadence therefore sets Deep dive cadence - both daily.
+    if ($sweptThisCycle) { Invoke-Lane 'pot/brief-deepdive.md' }
+    else { Note 'deep dive skipped - no sweep ran this cycle' }
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
