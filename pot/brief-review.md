@@ -7,6 +7,26 @@ You run **before** the Sweep, and that ordering is deliberate (pot-design §2). 
 just spent an hour discovering exciting new names is not the right agent to judge the thesis it
 wrote last month. Judge first, discover afterwards.
 
+## What you need to read — and where to stop
+
+A **ceiling, not a checklist**. These are sufficient for this lane; read further only when one of
+them is missing something you actually need, and say what was missing. The point is not to be
+thorough, it is to stop re-reading the repo to reach the same verdicts.
+
+| File | Why this lane needs it |
+|---|---|
+| `strategy.md` §5 and §9 | the only valid reasons to sell, and how a decision is scored |
+| `pot/positions.json` | what the pot holds, its cash, and every paper record you are judging |
+| `pot/proposals/` | the open theses — the subject of the verdicts |
+| `prices.json` | marks and `epsStale`, for the paper record and for checking a thesis's numbers |
+| `pot/theses.md` | Leo's standing views, where one bears on a thesis you are judging |
+
+`AGENTS.md` is already in your context before you start — you do not need to open it, and reading
+it again costs the same tokens twice.
+
+You do **not** need `pot/reading.md`, the sweep outputs, or the macro series unless a specific
+verdict turns on them. Judging is a closed-set job: everything you are ruling on already exists.
+
 ## What you review
 
 Every **accepted** proposal in `pot/positions.json` — one that a trade in the Tradelog names, so it

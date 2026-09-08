@@ -20,6 +20,31 @@ a valid answer.** §4.4 says holding cash is a position. If nothing clears Leo's
 write `pot/proposals/<stamp>-none.md` saying what you looked at and why each failed. That is a
 more useful record than a forced buy.
 
+## What you need to read — and where to stop
+
+A **ceiling, not a checklist**. Sufficient for this lane; go further only where a specific name
+needs it, and say which name and why. Reading widely is not the same as ranking well, and every
+file you open is resent on every turn that follows.
+
+| File | Why this lane needs it |
+|---|---|
+| `strategy.md` | the rules. Authoritative on what may be bought, sizing and the gates |
+| `pot/theses.md` | Rule 0 requires you to declare which bear on each name |
+| the newest `pot/sweeps/*.md` | this cycle's candidates — the lane runs because it did |
+| the newest `pot/reviews/*.md` | what was already judged, so you do not re-litigate it |
+| `watchlist.json` | the full set you must account for — every name, ranked or excluded |
+| `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
+| `pot/positions.json` | cash, holdings, and §4.5a's preference for a name not already held |
+| `pot/adjustments.json` | one-offs this repo can cite, and the own-basis multiples built from them |
+
+**Filings are for the shortlist, not the list.** Accounting for all ~72 watchlist names (§D34) is a
+screening job done from local data — an excluded line may be one clause. Opening a company's own
+release is for names you are seriously ranking, because a filing pulled in at turn 5 is resent on
+every turn after it.
+
+`AGENTS.md` is already in your context before you start. Do not open it; reading it again pays for
+the same bytes twice, and five tool calls did exactly that on 8 September.
+
 ## A pending proposal is not a position — rank as if it did not exist
 
 Older files in `pot/proposals/` are **drafts awaiting Leo's decision, not commitments**, and they
