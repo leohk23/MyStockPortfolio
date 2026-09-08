@@ -197,7 +197,25 @@ try {
     # ---- 2. Review, and it runs BEFORE the Sweep on purpose (pot-design §2). An agent that has
     # just spent an hour finding exciting new names is not the right agent to judge the thesis it
     # wrote last month. Judge first, discover afterwards.
-    Invoke-Lane 'pot/brief-review.md'
+    # Fortnightly, not every cycle. The ordering above is right and the frequency was not: the lane
+    # costs ~4% of the weekly allowance per run because 99.5% of its tokens are INPUT — it reloads
+    # prices, signals, earnings, holdings and the whole brief on 14 turns to write 6,000 tokens of
+    # judgement. That cost does not fall with an empty book, and at 17 cycles a week it was 68% of
+    # the allowance to re-read the same 35 open drafts three times a day and report, correctly,
+    # that nothing had changed since breakfast. The review dates it checks against are months out.
+    #
+    # Due-ness is DERIVED from the newest file in pot/reviews/, not from a state file somebody has
+    # to keep in step: the artifact IS the record that the lane ran (A20).
+    $lastReview = Get-ChildItem (Join-Path $Repo 'pot/reviews') -Filter '*.md' -ErrorAction SilentlyContinue |
+        ForEach-Object { if ($_.BaseName -match '^(\d{4}-\d{2}-\d{2})') {
+            [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null) } } |
+        Sort-Object -Descending | Select-Object -First 1
+    if (-not $lastReview -or ((Get-Date).Date - $lastReview).Days -ge 14) {
+        Invoke-Lane 'pot/brief-review.md'
+    } else {
+        Note ("review not due - last ran {0}, next due {1}" -f `
+            $lastReview.ToString('yyyy-MM-dd'), $lastReview.AddDays(14).ToString('yyyy-MM-dd'))
+    }
 
     # ---- 3. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
