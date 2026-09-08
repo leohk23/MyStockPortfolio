@@ -157,8 +157,15 @@ function Lane-Due($dir, $everyDays) {
         Sort-Object -Descending | Select-Object -First 1
     if (-not $last) { return $true }
     if (((Get-Date).Date - $last).Days -ge $everyDays) { return $true }
-    Note ("  last ran {0}, next due {1}" -f `
-        $last.ToString('yyyy-MM-dd'), $last.AddDays($everyDays).ToString('yyyy-MM-dd'))
+    # Note() calls Write-Output, and in PowerShell ANY uncaptured output becomes part of a
+    # function's return value. Calling it plainly here made Lane-Due return @("...", $false) —
+    # a two-element array, which `if (...)` treats as TRUE. Every gate passed, every lane ran
+    # regardless of cadence, and the 8 Sep 06:30 cycle blew the 5-hour window and died at the
+    # deep dive. The dry-run that "verified" this printed `... False` and I read the note and
+    # the value as two lines instead of one array. Out-Null keeps the log line and drops the
+    # pipeline output; Add-Content inside Note still writes the file.
+    Note ("  $dir not due - last ran {0}, next due {1}" -f `
+        $last.ToString('yyyy-MM-dd'), $last.AddDays($everyDays).ToString('yyyy-MM-dd')) | Out-Null
     return $false
 }
 
