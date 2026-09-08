@@ -143,6 +143,25 @@ function Assert-Merged($what) {
     }
 }
 
+# Is a lane due? Derived from the newest dated artifact it writes, never from a state file somebody
+# has to keep in step — the artifact IS the record that the lane ran (A20). No artifact means it has
+# never run, or its last run failed before writing, and either way it is due.
+#
+# Cadence exists because lane cost is dominated by INPUT, not by how much there is to do: a run
+# reloads prices, signals, earnings, holdings and its whole brief across a dozen turns whatever it
+# finds. On gpt-6-astra each lane run is ~4-5% of the weekly allowance, so frequency IS the budget.
+function Lane-Due($dir, $everyDays) {
+    $last = Get-ChildItem (Join-Path $Repo $dir) -Filter '*.md' -ErrorAction SilentlyContinue |
+        ForEach-Object { if ($_.BaseName -match '^(\d{4}-\d{2}-\d{2})') {
+            [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null) } } |
+        Sort-Object -Descending | Select-Object -First 1
+    if (-not $last) { return $true }
+    if (((Get-Date).Date - $last).Days -ge $everyDays) { return $true }
+    Note ("  last ran {0}, next due {1}" -f `
+        $last.ToString('yyyy-MM-dd'), $last.AddDays($everyDays).ToString('yyyy-MM-dd'))
+    return $false
+}
+
 function Invoke-Lane($brief) {
     Note "--- $brief"
     $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $Model }
@@ -206,16 +225,7 @@ try {
     #
     # Due-ness is DERIVED from the newest file in pot/reviews/, not from a state file somebody has
     # to keep in step: the artifact IS the record that the lane ran (A20).
-    $lastReview = Get-ChildItem (Join-Path $Repo 'pot/reviews') -Filter '*.md' -ErrorAction SilentlyContinue |
-        ForEach-Object { if ($_.BaseName -match '^(\d{4}-\d{2}-\d{2})') {
-            [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null) } } |
-        Sort-Object -Descending | Select-Object -First 1
-    if (-not $lastReview -or ((Get-Date).Date - $lastReview).Days -ge 14) {
-        Invoke-Lane 'pot/brief-review.md'
-    } else {
-        Note ("review not due - last ran {0}, next due {1}" -f `
-            $lastReview.ToString('yyyy-MM-dd'), $lastReview.AddDays(14).ToString('yyyy-MM-dd'))
-    }
+    if (Lane-Due 'pot/reviews' 2) { Invoke-Lane 'pot/brief-review.md' } else { Note 'review not due' }
 
     # ---- 3. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
@@ -248,7 +258,10 @@ try {
     }
 
     # ---- 6. Deep dive, the only lane that may produce an order.
-    Invoke-Lane 'pot/brief-deepdive.md'
+    # Once a DAY, not once a cycle: the lane always writes a dated file - a proposal, or the
+    # "-none" report when it declines to buy - so pot/proposals is a complete record of when it
+    # last ran, and 'no order' costs the same allowance as an order.
+    if (Lane-Due 'pot/proposals' 1) { Invoke-Lane 'pot/brief-deepdive.md' } else { Note 'deep dive not due' }
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
