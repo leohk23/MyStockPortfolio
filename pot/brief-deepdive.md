@@ -254,6 +254,13 @@ Sizing is a **§4 allocation across candidates**, not one ticket:
 - The pot's cash is in `pot/positions.json`; if £0, work against the next £250 contribution.
 - §4.2 caps any one position at **50%**, so £250 supports **two** £125 positions, not one.
 - §4.1 has no minimum, but refuse a ticket whose first-year costs exceed **2%** of it.
+- **§4.5a — a top-up ranks behind a fresh name.** Ranking stays blind to what the pot holds; this
+  binds only the ALLOCATION that follows it. Where the top-ranked name is already in
+  `positions.json` and a fresh name of comparable merit also clears the rules, the cash goes to the
+  fresh one. Adding to a holding until it reaches the §4.2 cap is not forbidden — it has to be
+  argued in P1, naming the fresh candidates that cleared and why the held name beats all of them.
+  A preference, not a veto, exactly as §3.3 treats overlap with Leo's own book. What it prevents is
+  the pot arriving at a 50% single position because rank order chose for it.
 
 After the first proposal, **keep going while cash remains and a candidate still clears the rules.**
 If the second-best name does not clear, say so and leave the cash — §4.4 makes holding it a

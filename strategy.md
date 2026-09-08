@@ -25,6 +25,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 4.3  | Number of positions                      | No limit                                                                                                            |
 | 4.4  | May hold cash                            | Yes, no ceiling                                                                                                     |
 | 4.5  | May top up an existing position          | Yes                                                                                                                 |
+| 4.5a | **A top-up ranks behind a fresh name**    | At comparable merit cash goes to a name the pot does not hold; taking one holding to the 50% cap must be argued |
 | 5.1  | Valid sell reasons                       | falsifier tripped · thesis played out · breached a §4 limit                                                      |
 | 5.2  | Minimum holding period                   | None                                                                                                                |
 | 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
@@ -327,6 +328,23 @@ a disclosed choice rather than an arithmetic accident.
 > down into a broken thesis is the single most common way a small pot dies.
 
 **A** — Yes.
+
+---
+
+**Q 4.5a** When the top-ranked name is one the pot already holds, and cash is available. `[auto]`
+
+> The gap D34's sibling exposed. §4.5 permits a top-up and §4.2 caps it at 50%, so the default
+> behaviour was to keep buying the same name up to the cap and leave the rest in cash. Ranking is
+> deliberately blind to what is held — *"two runs reaching the same conclusion from the same rules
+> is the system working"* — so without a rule here, rank order concentrates the pot by accident.
+
+**A** — **Prefer a fresh name.** At comparable merit the cash goes to a name the pot does not hold.
+A top-up that would take one holding to the §4.2 cap is not forbidden, but it has to be argued: the
+proposal must say which fresh candidates cleared the rules and why the held name beats all of them.
+
+This is a preference, not a veto — the same shape as §3.3, where owning something already *"is not
+a thesis, and it is not a veto either"*. A genuinely better name still wins on the merits. What it
+stops is the pot arriving at a 50% single position because nobody chose to.
 
 ---
 
