@@ -163,14 +163,43 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     const book = potHoldings(trades);
     const contributions = prev.contributions || [];
     const paidIn = contributions.reduce((a, c) => a + (c.amountGBP || 0), 0);
-    // Cost is in each trade's own currency; converting needs rates this file does not fetch, so
-    // once the pot has bought something the balance can only be carried forward, not derived.
+    // Cash = paid in, less what the pot spent, plus what it sold — converted at TODAY's rates.
     //
-    // But with NO pot trades there is nothing to convert: cash is exactly what was paid in, and
-    // contributions are already GBP. `paidIn` was being computed and then dropped on the floor
-    // here, so the first £250 landed and cashGBP stayed 0 — which would have had the Deep dive
-    // sizing against "the next contribution" while the money was already sitting in the account.
-    const cashGBP = Object.keys(book).length ? (prev.cashGBP ?? 0) : paidIn;
+    // This used to carry the previous balance forward once anything was bought, on the grounds
+    // that converting needed rates "this file does not fetch". It does not need to fetch them:
+    // prices.json already holds them and CI refreshes it every few minutes. The consequence of
+    // not doing this was live from the pot's first trade — 3 MWA at $23.76 left cashGBP reading
+    // £500.00 when £52.73 had gone, so the next Deep dive would have sized against money that
+    // was no longer there.
+    //
+    // Today's rates, not the trade date's: this is "what is the balance now", not a cost basis.
+    // The error is a few pence on a £50 ticket and it is the same convention prices.json uses
+    // everywhere else. Rates are USD per unit, so GBP = amount x rates[ccy] / rates.GBP.
+    //
+    // ponytail: commission is NOT deducted — extract-portfolio.js does not carry it onto a trade.
+    // Zero on T212, which is where the pot trades by default (§10), and wrong by roughly $1 an
+    // order on IBKR. Fix it by adding commission to the extracted trade if that ever matters.
+    let rates = null;
+    try { rates = JSON.parse(fs.readFileSync('prices.json', 'utf8')).rates || null; } catch { /* no rates */ }
+    const toGBP = (amt, ccy) => {
+        if (!rates || !rates[ccy] || !rates.GBP) return null;
+        return amt * rates[ccy] / rates.GBP;
+    };
+    let spent = 0, unconverted = [];
+    for (const b of Object.values(book)) {
+        for (const t of b.trades) {
+            const signed = (t.side === 'SELL' ? -1 : 1) * t.qty * t.price;
+            const gbp = toGBP(signed, b.currency);
+            if (gbp == null) unconverted.push(b.currency); else spent += gbp;
+        }
+    }
+    // A currency prices.json cannot price must not silently vanish from the balance. Fall back to
+    // carrying the previous number and say so, rather than reporting a total that is quietly wrong.
+    const cashGBP = unconverted.length ? (prev.cashGBP ?? paidIn)
+        : Math.round((paidIn - spent) * 100) / 100;
+    if (unconverted.length) {
+        console.log(`  cash carried forward: no rate for ${[...new Set(unconverted)].join(', ')}`);
+    }
 
     return {
         note: 'Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and '
