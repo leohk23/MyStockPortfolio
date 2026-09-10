@@ -19,11 +19,14 @@ param(
     [switch]$NoPush,
     # Threaded to every lane so one cycle never mixes models. See run-lane.ps1 for why it is pinned.
     [string]$Model = 'gpt-6-astra',
-    # Run every lane regardless of cadence. For an ad-hoc cycle when you want the whole sequence
-    # in order - sweep, the scan that gives its new names local data, then the deep dive that
-    # judges them - rather than re-running the lanes by hand and getting that ordering wrong.
-    # Costs a full cycle's allowance, so it is a switch and not the default.
-    [switch]$Force,
+    # Which lanes to run regardless of cadence, e.g. -Force sweep,deepdive. 'all' means every lane.
+    #
+    # This was a bare switch and that was wrong in a way that cost a cycle. On 10 Sep it was used to
+    # get one deep dive, and forced the Review first - a lane not due for two days - which took a
+    # quarter of the 5-hour window and left the deep dive to die on the limit at 20:47. Forcing is
+    # for "run this lane now"; a switch that means "run everything now" cannot express that.
+    [ValidateSet('review', 'sweep', 'deepdive', 'all')]
+    [string[]]$Force = @(),
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -156,7 +159,12 @@ function Assert-Merged($what) {
 # reloads prices, signals, earnings, holdings and its whole brief across a dozen turns whatever it
 # finds. On gpt-6-astra each lane run is ~4-5% of the weekly allowance, so frequency IS the budget.
 function Lane-Due($dir, $everyDays) {
-    if ($Force) { Note "  $dir forced" | Out-Null; return $true }
+    # The directory names the lane: pot/reviews -> review, pot/sweeps -> sweep, pot/proposals -> deepdive.
+    $lane = @{ 'pot/reviews' = 'review'; 'pot/sweeps' = 'sweep'; 'pot/proposals' = 'deepdive' }[$dir]
+    if ($Force -contains 'all' -or ($lane -and $Force -contains $lane)) {
+        Note "  $dir forced" | Out-Null
+        return $true
+    }
     $last = Get-ChildItem (Join-Path $Repo $dir) -Filter '*.md' -ErrorAction SilentlyContinue |
         ForEach-Object { if ($_.BaseName -match '^(\d{4}-\d{2}-\d{2})') {
             [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null) } } |
@@ -285,8 +293,11 @@ try {
     # dating them separately let the Sweep run at 06:30 while the Deep dive waited for tomorrow,
     # so a candidate found today would be ranked against yesterday's data by a run that never saw
     # the sweep that found it. Sweep cadence therefore sets Deep dive cadence - both daily.
-    if ($sweptThisCycle) { Invoke-Lane 'pot/brief-deepdive.md' }
-    else { Note 'deep dive skipped - no sweep ran this cycle' }
+    # Forcing the deep dive alone is legitimate: it judges the newest sweep's output, which is what
+    # a rerun after a failed cycle needs. The pairing still governs the UNFORCED path.
+    if ($sweptThisCycle -or $Force -contains 'deepdive' -or $Force -contains 'all') {
+        Invoke-Lane 'pot/brief-deepdive.md'
+    } else { Note 'deep dive skipped - no sweep ran this cycle' }
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
