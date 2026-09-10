@@ -300,6 +300,12 @@ both were better for it: on 7 September each proposal repeated the same 22-row t
 every watchlist name now to be accounted for that duplication grows with the number of names times
 the number of proposals. One ranking, linked from each proposal.
 
+**It is the run's report, so write it as one and link FORWARD to the proposals it produced.** The
+app lists these as `Run reports`, one per cycle, and they are the entry point a reader opens — the
+individual proposals sit behind them. Open with what the run had to work with (cash, contributed
+capital, the sweep and review it read), then the ranking, then what it decided and why. A reader
+should be able to follow the whole cycle from this file alone and click through only for detail.
+
 **Every ranked row opens with a verdict, and the verdict is one of three words.** Also arrived at
 unprompted, also kept:
 

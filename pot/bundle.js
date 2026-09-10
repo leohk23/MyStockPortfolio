@@ -162,12 +162,47 @@ const runTime = file => {
 };
 
 function build() {
+// One flat list of every proposal ever written was 62 documents and grows by about three a run,
+// so the thing you actually want to read — this cycle's account of itself — sat among sixty dead
+// drafts. Split by role, not by merging the files: the FILENAME is the proposal id, it is what a
+// Tradelog `Pot` cell points at, what the Review lane judges a position against and what
+// `paper.md` scores. Merging them would strand a live trade's reference.
+//
+//   runreport      <stamp>-ranking.md — the cycle's own report: inputs, ranked names with
+//                  verdicts, shortlist findings, exclusions, audit notes. One per run.
+//   proposal       this run's, plus anything the pot actually holds or is still deciding
+//   proposalpast   superseded drafts, kept and readable, out of the way
+const splitProposals = () => {
+    const all = listDir('pot/proposals', 'proposal');
+    const stampOf = f => (f.match(/^(\d{4}-\d{2}-\d{2}-\d{4})/) || [])[1] || '';
+    // "Live" from positions.json rather than from the filename, because a proposal from an older
+    // run can still be the thesis behind a holding — 2026-09-08-2133-MWA is exactly that case.
+    let live = new Set();
+    try {
+        const pos = JSON.parse(fs.readFileSync(path.join(ROOT, 'pot/positions.json'), 'utf8'));
+        for (const p of pos.proposals || []) {
+            // `phase: 'live'` means "written after the pot went live", which is nearly all of
+            // them — not "still current". Only an ACCEPTED proposal earns a place here.
+            if (p.state === 'accepted') live.add(p.file);
+        }
+        for (const h of Object.values(pos.holdings || {})) {
+            for (const t of h.trades || []) if (t.pot && t.pot !== 'Y') live.add(t.pot + '.md');
+        }
+    } catch { /* no positions yet: newest run alone is a sane fallback */ }
+    const newest = all.map(d => stampOf(d.file)).filter(Boolean).sort().pop() || '';
+    return all.map(d => {
+        if (/-ranking\.md$/.test(d.file)) return { ...d, kind: 'runreport' };
+        if (stampOf(d.file) === newest || live.has(d.file)) return d;
+        return { ...d, kind: 'proposalpast' };
+    });
+};
+
     // The document list is settled before anything is rendered: a proposal links to the sweep
     // behind it and the summary links to almost everything, so linkTo() has to know the whole
     // set to route a link inward rather than out to a repo path that may not even be tracked.
     const wanted = [
         { dir: 'pot', file: 'SUMMARY.md', kind: 'summary', title: 'Summary' },
-        ...listDir('pot/proposals', 'proposal'),
+        ...splitProposals(),
         ...listDir('pot/sweeps', 'sweep'),
         ...listDir('pot/reviews', 'review'),
         { dir: 'pot', file: 'paper.md', kind: 'paper', title: 'Paper performance' },

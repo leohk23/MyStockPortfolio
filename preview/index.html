@@ -3403,7 +3403,11 @@
 // on the page. Paper performance sits second on purpose — after the Summary it is the closest
 // thing to "is any of this working", and burying it under the proposals it judges would be odd.
 const POT_GROUPS = [
-    ['summary', 'Summary'], ['paper', 'Paper performance'], ['proposal', 'Proposals'],
+    ['summary', 'Summary'], ['paper', 'Paper performance'],
+    // The cycle's own account of itself comes first: one document per run rather than every
+    // proposal ever written in one flat list. Files are unchanged — the filename is still the
+    // proposal id a Tradelog `Pot` cell points at.
+    ['runreport', 'Run reports'], ['proposal', 'Proposals'], ['proposalpast', 'Past proposals'],
     ['review', 'Reviews'], ['sweep', 'Sweeps'],
     ['scan', 'Scan'], ['runs', 'Runs and cost'], ['archive', 'Past run reports'],
 ];
