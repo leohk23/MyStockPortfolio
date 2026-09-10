@@ -308,6 +308,24 @@
         /* Right-aligned, nowrap columns are right for a table of figures and wrong for a Sweep's
            candidate table, where a cell is a sentence — so this is scoped to the document KIND,
            not to every table in the tab. renderPot puts the kind on #pot-body. */
+        /* The global sticky first column exists for the holdings table, where 24 columns scroll
+           past a position name that IS the row's identity. A pot document's tables are markdown of
+           whatever shape the agent wrote: on the 10 Sep run report the first column is `Verdict`,
+           so "**PROPOSE 1 share**" sat pinned at left:0 and ate most of the width on a narrow
+           screen, leaving almost nothing to scroll into. Unpin them.
+           The paper table keeps its pin — there the first column is a ticker, short and genuinely
+           the row's identity, which is the case the rule was written for — as does `runs`,
+           whose first column is a timestamp against twelve columns of figures.
+           Measured across every kind, widest FIRST cell: sweep 111 chars, proposal 52, scan 36,
+           runreport 24, runs 16, paper 10. The sweep was the worst case, not the run report. */
+        #pot-body th:first-child, #pot-body td:first-child { position: static; }
+        #pot-body[data-kind="paper"] th:first-child, #pot-body[data-kind="paper"] td:first-child,
+        #pot-body[data-kind="runs"] th:first-child, #pot-body[data-kind="runs"] td:first-child {
+            position: sticky; left: 0; }
+        /* A markdown cell can be a whole sentence. Without a ceiling one long cell stretches the
+           table far past the viewport and every other column goes with it; with one, the cell
+           wraps and the row stays readable. Not applied to `paper`, whose cells are figures. */
+        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) td { max-width: 44ch; }
         #pot-body[data-kind="paper"] .pot-scroll { max-width: none; }
         #pot-body[data-kind="paper"] th, #pot-body[data-kind="paper"] td {
             text-align: right; white-space: nowrap; vertical-align: middle; }
