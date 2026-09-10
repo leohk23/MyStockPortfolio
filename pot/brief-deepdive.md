@@ -294,8 +294,25 @@ one because the brief only asked for one.
 
 ## Rank against Leo's rules, and show the ranking
 
+**The ranking is its OWN file: `pot/proposals/<stamp>-ranking.md`, same stamp as the proposals it
+belongs to.** Not a section inside each proposal. Two runs arrived at this without being told and
+both were better for it: on 7 September each proposal repeated the same 22-row table, and with
+every watchlist name now to be accounted for that duplication grows with the number of names times
+the number of proposals. One ranking, linked from each proposal.
+
+**Every ranked row opens with a verdict, and the verdict is one of three words.** Also arrived at
+unprompted, also kept:
+
+- **PROPOSE** — and the share count, where a proposal follows
+- **WAIT** — it clears the rules but something dated is missing; say what and by when
+- **EXCLUDE** — it does not clear a rule; say which one, in a clause
+
+A ranking that is only an ordering makes the reader infer the decision from position, and position
+is not a decision — the 8 September run ranked INTU second and bought nothing, which a reader
+skimming ranks would have misread. The verdict says what the rank means.
+
 **Account for every name in `watchlist.json`, not every name you happened to consider.** The list
-is 70 names; the 8 September run ranked 23 and said nothing about the other 47, so names Leo added
+is 70+ names; the 8 September run ranked 23 and said nothing about the other 47, so names Leo added
 by hand and names the Sweep found were never judged and nobody could see that they had not been.
 "Every name you considered" was the old wording and it let the set be chosen silently.
 
@@ -473,6 +490,11 @@ expensive rather than cheap. Say which basis you are quoting and how many years 
 To `pot/proposals/<stamp>-<ticker>.md`, where `<stamp>` is **`YYYY-MM-DD-HHMM` in UTC** — Leo runs
 this lane several times a day while testing, and a date alone makes the second run of a day
 overwrite the first. Never reuse a filename that exists.
+
+The ranking goes beside them as `<stamp>-ranking.md` with the SAME stamp, and each proposal links
+to it rather than repeating the table. A run that proposes nothing still writes both: the ranking,
+and a `<stamp>-none.md` saying why cash won. `Lane-Due` reads this directory to decide whether the
+lane has run today, so a run that writes nothing here looks like a run that never happened.
 
 ```
 model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
