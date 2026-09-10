@@ -19,6 +19,11 @@ param(
     [switch]$NoPush,
     # Threaded to every lane so one cycle never mixes models. See run-lane.ps1 for why it is pinned.
     [string]$Model = 'gpt-6-astra',
+    # Run every lane regardless of cadence. For an ad-hoc cycle when you want the whole sequence
+    # in order - sweep, the scan that gives its new names local data, then the deep dive that
+    # judges them - rather than re-running the lanes by hand and getting that ordering wrong.
+    # Costs a full cycle's allowance, so it is a switch and not the default.
+    [switch]$Force,
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -151,6 +156,7 @@ function Assert-Merged($what) {
 # reloads prices, signals, earnings, holdings and its whole brief across a dozen turns whatever it
 # finds. On gpt-6-astra each lane run is ~4-5% of the weekly allowance, so frequency IS the budget.
 function Lane-Due($dir, $everyDays) {
+    if ($Force) { Note "  $dir forced" | Out-Null; return $true }
     $last = Get-ChildItem (Join-Path $Repo $dir) -Filter '*.md' -ErrorAction SilentlyContinue |
         ForEach-Object { if ($_.BaseName -match '^(\d{4}-\d{2}-\d{2})') {
             [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd', $null) } } |
