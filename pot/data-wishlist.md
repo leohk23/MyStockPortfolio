@@ -35,13 +35,13 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | volume / units | 13 | **earns a feed** |
 | leverage / net debt | 10 | **earns a feed** |
 | backlog / order intake | 8 | **earns a feed** |
+| capital returns | 8 | **earns a feed** |
 | inventory | 7 | **earns a feed** |
-| capital returns | 7 | **earns a feed** |
 | return on capital | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 | same-store / comparable sales | 2 | – |
 
-87 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+92 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-10 | AerCap collections, airline credit and earnings excluding disposal gains. | Read [Q2 results](https://www.aercap.com/news-media/press-releases/detail/643/aercap-holdings-n-v-reports-strong-financial-results-for). Wanted at results and material credit events; today's fuel and financing shock renews the customer-credit question already recorded on 31 August. No post-shock collections established. |
+| 2026-09-10 | Air cargo demand and capacity, plus regional passenger traffic. | Read IATA's July [cargo](https://www.iata.org/en/pressroom/2026-releases/08-31-air-cargo-demand-grows-july/) and [passenger](https://www.iata.org/en/pressroom/2026-releases/08-31-air-passenger-demand-grows-july/) releases. Wanted monthly, carried into weekly sweeps; physical traffic separates demand from freight-price inflation. July data cannot measure September disruption. |
+| 2026-09-10 | DSV integration cash flow, customer retention and capital returns. | Read the [H1 filing](https://dsv.gcs-web.com/static-files/e57e7309-03eb-494c-ab98-fd90b06d2a1e) and [May strategy](https://dsv.gcs-web.com/news-releases/news-release-details/dsv-1169-dsv-announces-updated-strategic-priorities-and-new). Wanted at results and integration updates; reconcile adjusted cash measures with operating cash and track Road customer outcomes. |
+| 2026-09-10 | DSV.CO quote and comparable earnings history. | [Yahoo](https://finance.yahoo.com/quote/DSV.CO/) indexed the symbol and exchange, but the quote page returned 429. Added to watchlist.json for the existing pipeline; no external price adopted. Successful fetching and dashboard visibility remain to verify. |
+| 2026-09-10 | ECB policy rates, effective dates and projection vintage. | Read the [10 September decision](https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html). Wanted at policy meetings and carried into sweeps; initial indexed landing-page snippets still showed June rates, so preserve the dated decision and effective date. |
 | 2026-09-09 | Alfa Laval order conversion, service mix, leverage and return on capital. | Fetched the [Q2 report](https://mb.cision.com/Main/905/4376242/4199107.pdf). Wanted on results dates; capacity and acquisition spending can dilute capital returns despite strong order growth. Reinforces existing recurring needs for cash conversion and capital returns. |
 | 2026-09-09 | ALFA.ST, METSO.HE and YUMC prices and comparable earnings histories. | Direct Yahoo chart requests failed, and quote-page access did not establish usable dated prices for the set. Added all three to watchlist.json for the normal independent pipeline; no external quote or valuation adopted. Normal fetch cadence is wanted, with successful quote coverage and rendering still to verify. |
 | 2026-09-09 | China CPI food and energy split, and PPI. | Fetched [NBS's August inflation analysis](https://www.stats.gov.cn/sj/sjjd/202609/t20260909_1965261.html); standalone release pages failed. Wanted monthly, carried into weekly sweeps. Separates an energy shock from household demand and avoids assuming restaurant procurement costs track retail food CPI. |
@@ -139,9 +144,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-10 | ECB policy rates, effective dates and projection vintage. | Read the [10 September decision](https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html). Wanted at policy meetings and carried into sweeps; initial indexed landing-page snippets still showed June rates, so preserve the dated decision and effective date. |
-| 2026-09-10 | Air cargo demand and capacity, plus regional passenger traffic. | Read IATA's July [cargo](https://www.iata.org/en/pressroom/2026-releases/08-31-air-cargo-demand-grows-july/) and [passenger](https://www.iata.org/en/pressroom/2026-releases/08-31-air-passenger-demand-grows-july/) releases. Wanted monthly, carried into weekly sweeps; physical traffic separates demand from freight-price inflation. July data cannot measure September disruption. |
-| 2026-09-10 | DSV integration cash flow, customer retention and capital returns. | Read the [H1 filing](https://dsv.gcs-web.com/static-files/e57e7309-03eb-494c-ab98-fd90b06d2a1e) and [May strategy](https://dsv.gcs-web.com/news-releases/news-release-details/dsv-1169-dsv-announces-updated-strategic-priorities-and-new). Wanted at results and integration updates; reconcile adjusted cash measures with operating cash and track Road customer outcomes. |
-| 2026-09-10 | AerCap collections, airline credit and earnings excluding disposal gains. | Read [Q2 results](https://www.aercap.com/news-media/press-releases/detail/643/aercap-holdings-n-v-reports-strong-financial-results-for). Wanted at results and material credit events; today's fuel and financing shock renews the customer-credit question already recorded on 31 August. No post-shock collections established. |
-| 2026-09-10 | DSV.CO quote and comparable earnings history. | [Yahoo](https://finance.yahoo.com/quote/DSV.CO/) indexed the symbol and exchange, but the quote page returned 429. Added to watchlist.json for the existing pipeline; no external price adopted. Successful fetching and dashboard visibility remain to verify. |
 <!-- entries:end -->
