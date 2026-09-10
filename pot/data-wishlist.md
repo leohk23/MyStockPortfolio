@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| cash conversion | 19 | **earns a feed** |
+| cash conversion | 22 | **earns a feed** |
 | margin | 13 | **earns a feed** |
 | volume / units | 13 | **earns a feed** |
-| leverage / net debt | 9 | **earns a feed** |
+| leverage / net debt | 10 | **earns a feed** |
 | backlog / order intake | 8 | **earns a feed** |
 | inventory | 7 | **earns a feed** |
-| capital returns | 6 | **earns a feed** |
-| return on capital | 3 | **earns a feed** |
+| capital returns | 7 | **earns a feed** |
+| return on capital | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 | same-store / comparable sales | 2 | – |
 
-80 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+87 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,13 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-09 | Alfa Laval order conversion, service mix, leverage and return on capital. | Fetched the [Q2 report](https://mb.cision.com/Main/905/4376242/4199107.pdf). Wanted on results dates; capacity and acquisition spending can dilute capital returns despite strong order growth. Reinforces existing recurring needs for cash conversion and capital returns. |
+| 2026-09-09 | ALFA.ST, METSO.HE and YUMC prices and comparable earnings histories. | Direct Yahoo chart requests failed, and quote-page access did not establish usable dated prices for the set. Added all three to watchlist.json for the normal independent pipeline; no external quote or valuation adopted. Normal fetch cadence is wanted, with successful quote coverage and rendering still to verify. |
+| 2026-09-09 | China CPI food and energy split, and PPI. | Fetched [NBS's August inflation analysis](https://www.stats.gov.cn/sj/sjjd/202609/t20260909_1965261.html); standalone release pages failed. Wanted monthly, carried into weekly sweeps. Separates an energy shock from household demand and avoids assuming restaurant procurement costs track retail food CPI. |
+| 2026-09-09 | Hormuz supply assumptions and forecast vintage. | Consulted the [EIA September STEO](https://www.eia.gov/outlooks/steo/report/index.php) and its release calendar in the [20:20 sweep](sweeps/2026-09-09-2020.md). Wanted monthly, carried into weekly sweeps while disruption persists; publication date must not imply the forecast incorporates subsequent events. |
+| 2026-09-09 | Metso aftermarket demand, working capital and cash conversion. | Fetched [H1 results](https://www.metso.com/corporate/media/news/2026/7/metsos-half-year-report-january-1--june-30-2026/). Wanted on results dates; distinguish reported operating cash flow before financial items and taxes from free cash flow, and test adjusted earnings against cash. |
+| 2026-09-09 | Michael Burry's new Trading Post full text. | [9 September post](https://michaeljburry.substack.com/p/trading-post-september-9-2026) exposed only its introduction; no saved copy exists. Wanted when Leo saves new reading, not as a weekly feed; no view inferred from the title. |
+| 2026-09-09 | Yum China transactions, delivery costs, cash conversion and post-acquisition return on capital. | Fetched [Q2 results](https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-second-quarter-2026-results) and the [August completion 8-K](https://ir.yumchina.com/static-files/b860fd22-dbf0-42d4-adb1-50183734b945). Wanted at results and refinancing updates: traffic growth and purchased royalty savings must earn a return on the additional capital, not merely lift EPS. |
 | 2026-09-07 | 2325.T price and valuation history. | [Yahoo Japan](https://finance.yahoo.co.jp/quote/2325.T) supplied a provisional quote. Added to `watchlist.json`; the existing pipeline should supply independent earnings and historical valuation coverage. No separate manual feed wanted. |
 | 2026-09-07 | BNZL.L price and valuation history. | The 4 September close and recent returns were checked provisionally on Yahoo Finance because the repo did not carry the name. No manual series is wanted: adding it to `watchlist.json` lets the normal pipeline fetch the price, earnings and multiple history. |
 | 2026-09-07 | Bunzl underlying growth, volume/inflation mix, cash conversion and acquisition returns. | Fetched from Bunzl's half-year report. Wanted on results dates while Bunzl is tracked; the set must show whether the North America recovery and digital ordering translate into durable returns rather than temporary inflation, bolt-on acquisitions or adjusted profit. |
@@ -132,11 +139,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-09 | Hormuz supply assumptions and forecast vintage. | Consulted the [EIA September STEO](https://www.eia.gov/outlooks/steo/report/index.php) and its release calendar in the [20:20 sweep](sweeps/2026-09-09-2020.md). Wanted monthly, carried into weekly sweeps while disruption persists; publication date must not imply the forecast incorporates subsequent events. |
-| 2026-09-09 | China CPI food and energy split, and PPI. | Fetched [NBS's August inflation analysis](https://www.stats.gov.cn/sj/sjjd/202609/t20260909_1965261.html); standalone release pages failed. Wanted monthly, carried into weekly sweeps. Separates an energy shock from household demand and avoids assuming restaurant procurement costs track retail food CPI. |
-| 2026-09-09 | Yum China transactions, delivery costs, cash conversion and post-acquisition return on capital. | Fetched [Q2 results](https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-second-quarter-2026-results) and the [August completion 8-K](https://ir.yumchina.com/static-files/b860fd22-dbf0-42d4-adb1-50183734b945). Wanted at results and refinancing updates: traffic growth and purchased royalty savings must earn a return on the additional capital, not merely lift EPS. |
-| 2026-09-09 | Metso aftermarket demand, working capital and cash conversion. | Fetched [H1 results](https://www.metso.com/corporate/media/news/2026/7/metsos-half-year-report-january-1--june-30-2026/). Wanted on results dates; distinguish reported operating cash flow before financial items and taxes from free cash flow, and test adjusted earnings against cash. |
-| 2026-09-09 | Alfa Laval order conversion, service mix, leverage and return on capital. | Fetched the [Q2 report](https://mb.cision.com/Main/905/4376242/4199107.pdf). Wanted on results dates; capacity and acquisition spending can dilute capital returns despite strong order growth. Reinforces existing recurring needs for cash conversion and capital returns. |
-| 2026-09-09 | ALFA.ST, METSO.HE and YUMC prices and comparable earnings histories. | Direct Yahoo chart requests failed, and quote-page access did not establish usable dated prices for the set. Added all three to watchlist.json for the normal independent pipeline; no external quote or valuation adopted. Normal fetch cadence is wanted, with successful quote coverage and rendering still to verify. |
-| 2026-09-09 | Michael Burry's new Trading Post full text. | [9 September post](https://michaeljburry.substack.com/p/trading-post-september-9-2026) exposed only its introduction; no saved copy exists. Wanted when Leo saves new reading, not as a weekly feed; no view inferred from the title. |
 <!-- entries:end -->

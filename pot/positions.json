@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-09T20:15:03.339Z",
- "cashGBP": 447.43,
+ "generated": "2026-09-10T05:30:03.610Z",
+ "cashGBP": 447.38,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -32,6 +32,51 @@
  },
  "proposals": [
   {
+   "file": "2026-09-09-2039-TW.md",
+   "id": "2026-09-09-2039-TW",
+   "state": "open",
+   "ticker": "TW",
+   "written": "2026-09-09",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At the **29 October 2026** Q3 release, re-read if total variable fees per million fall **more than 10% year on year**, or cash-credit fees per million fall **more than 15%**, independently of total revenue growth. Q2 baselines are $2.14 and $114.03, down 7.2% and 11.4%. These are my deterioration thresholds, not management guidance. Also review any two consecutive monthly declines in Tradeweb's fully electronic US high-grade or high-yield share versus the corresponding prior-year months.",
+   "break": "By **28 February 2027**, exit the proposed share under §5.1 if either fee measure breaches its warning threshold in **both Q3 and Q4**, even if ADV, market share and total revenue rise. Persistent fee erosion itself invalidates the expected economics; it is not conditional on also losing market share. Missing comparable data triggers review, never an automatic pass. Changes in product mix are investigated at warning and do not silently erase the precommitted break. Fee definitions and baselines: [Q2 10-Q, pp. 54–57](https://investors.tradeweb.com/static-files/2f970380-b2c2-4f2e-8a86-cfe3eba32d70). Results date: [issuer announcement](https://investors.tradeweb.com/news-releases/news-release-details/tradeweb-announces-date-third-quarter-2026-financial-results). February is my assessment deadline, not an announced Q4 date.",
+   "reviewBy": "2026-10-09",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-09-09-2039-NFLX.md",
+   "id": "2026-09-09-2039-NFLX",
+   "state": "open",
+   "ticker": "NFLX",
+   "written": "2026-09-09",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At each monthly review, trigger a re-read if Netflix's share of US TV viewing in **Nielsen's The Gauge** is at least **5% lower relative to the same month a year earlier in two consecutive published months**, irrespective of revenue or margin. Also warn if Netflix discloses falling total global view hours at its next annual engagement release. These are my thresholds, not company guidance. Revenue growing while audience share falls does not clear the warning.",
+   "break": "By **28 February 2027**, exit these proposed shares under §5.1 if the comparable Nielsen share is **at least 10% lower year on year for three consecutive published months**. This is a direct sustained-loss-of-attention test and requires neither a revenue miss nor lower margins. It can fire sooner if the three observations arrive earlier. Monthly seasonality is handled with same-month comparisons, not a June-to-July comparison. Use [Nielsen's monthly source](https://www.nielsen.com/data-center/the-gauge/) and its underlying releases. The latest retrieved release covers **June**, published **18 August**; it is not September audience data. Nielsen flags methodology changes this autumn: use comparable or restated observations, and escalate an unavailable comparison for review rather than count it as a pass. This US-TV proxy misses phones and international audiences, so it cannot fully falsify global competitive risk. The separate operating check is the next Q3 result: compare reported operating margin with the **33.2%** company forecast. A miss prompts review, but cannot replace the audience test. [Company forecast and engagement cadence](https://s22.q4cdn.com/959853165/files/doc_financials/2026/q2/FINAL-Q2-26-Shareholder-Letter.pdf).",
+   "reviewBy": "2026-10-09",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-09-09-2039-MWA.md",
+   "id": "2026-09-09-2039-MWA",
+   "state": "open",
+   "ticker": "MWA",
+   "written": "2026-09-09",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At FY2026 results, locally estimated for **5 November 2026**, re-read if consolidated physical volumes decline again year on year, **or** GAAP operating margin is below **19%**, **or** full-year free cash flow does not exceed **70% of adjusted net income**. Any one is sufficient. The volume statement may be directional, as in the current filing; an omitted bridge is unavailable evidence, not stable volumes. The cash reference is management's commitment; 19% is my early-warning threshold.",
+   "break": "For these **additional shares**, exit under §5.1 if GAAP operating margin is below **18% in each of two successive post-entry quarters**, assessed by **28 February 2027**, regardless of sales growth. This standalone margin test addresses the Review's concern that price-led growth could keep a combined margin-and-growth test green. Also break if management discloses a material permanent shutdown or impairment of the capacity on which the efficiency case depends; ordinary restructuring expense alone is not that event. Use filed operating profit **after** reorganisation charges. The new margin-only test can fire while price rises keep revenue growing. It does not retrospectively change the conditions Leo accepted on the original three shares in [the 8 September proposal](2026-09-08-2133-MWA.md); the Review must distinguish the original holding and this proposed top-up until Leo adopts a common rule. [Current quarter filing](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm), [cash-conversion commitment](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748).",
+   "reviewBy": "2026-11-10",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-09-08-2133-ranking.md",
    "id": "2026-09-08-2133-ranking",
    "state": "open",
@@ -57,9 +102,9 @@
    "warning": "At each new monthly Nielsen US Gauge release through **31 March 2027**, Netflix's share of total television usage **below 7.5% in two consecutive comparable months** triggers a re-read. The independently verified May 2026 baseline is **8.0%**; this threshold represents a sustained half-point loss, not a company target. It tests attention directly even if price increases keep revenue growing. The [May report](https://content.nielsen.com/gauge-and-glossary) supplies the baseline; the [June report](https://www.nielsen.com/news-center/2026/fox-and-nbcuniversal-score-with-fifa-world-cup-2026-success-in-nielsens-june-gauge-reports/) shows why one sports-heavy month is insufficient.",
    "break": "By **31 March 2027**, three consecutive comparable monthly releases below **7.0%** break this proposal's assumption of a sufficiently durable audience franchise and call for exit under §5.1, even if headline revenue meets guidance. This is my risk threshold, not a statistical claim that US TV measures all Netflix use. Do not join observations across a Nielsen methodology change without a comparable back series: obtain the restatement or record the metric as unavailable and re-review the position. An unavailable series is not a green result. Quarterly revenue and operating margin are secondary checks, not substitutes for this attention test. No automatic exit is inferred from one weak title or a share-price fall.",
    "reviewBy": "2026-10-22",
-   "supersededBy": null,
+   "supersededBy": "2026-09-09-2039-NFLX",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-08-2133-MWA.md",
@@ -137,9 +182,9 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": null,
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-07-1640-REL.L.md",
@@ -167,7 +212,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -197,7 +242,7 @@
    "warning": "At the FY2026 result currently estimated for 5 November 2026, trigger a full re-read if net sales are below management's $1.470bn lower bound, adjusted EBITDA is below $367m, or free cash flow is no more than 70% of adjusted net income. Any miss is the first hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([company outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than 7 May 2027, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below 17.0% while trailing-twelve-month revenue growth is below 3.0%. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -212,9 +257,9 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fee decline—so this is the first dated test of worsening monetisation rather than an automatic sale ([Q2 filing](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, to be checked by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2 reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 company release](https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": null,
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-06-0920-MWA.md",
@@ -227,7 +272,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -242,7 +287,7 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fee decline—so this is the first dated test of worsening monetisation rather than an automatic sale ([Q2 filing](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, to be checked by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2 reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 company release](https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": "2026-09-06-0920-TW",
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "live",
    "counts": false
   },
@@ -257,7 +302,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -272,7 +317,7 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fee decline—so this is the first dated test of worsening monetisation rather than an automatic sale ([Q2 filing](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, to be checked by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2 reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 company release](https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": "2026-09-06-0920-TW",
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "live",
    "counts": false
   },
@@ -287,7 +332,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below **$367m**, or free cash flow is no more than **70% of adjusted net income**. Any miss is the first hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([company outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -302,7 +347,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -324,7 +369,7 @@
   {
    "file": "2026-09-04-1203-MWA.md",
    "id": "2026-09-04-1203-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-09-04",
    "side": "BUY",
@@ -332,7 +377,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -354,7 +399,7 @@
   {
    "file": "2026-09-04-0925-MWA.md",
    "id": "2026-09-04-0925-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-09-04",
    "side": "BUY",
@@ -362,7 +407,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "live",
    "counts": false
   },
@@ -384,7 +429,7 @@
   {
    "file": "2026-09-03-2035-MWA.md",
    "id": "2026-09-03-2035-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-09-03",
    "side": "BUY",
@@ -392,7 +437,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -414,7 +459,7 @@
   {
    "file": "2026-09-03-1331-MWA.md",
    "id": "2026-09-03-1331-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-09-03",
    "side": "BUY",
@@ -422,7 +467,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -444,7 +489,7 @@
   {
    "file": "2026-09-02-2032-MWA.md",
    "id": "2026-09-02-2032-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-09-02",
    "side": "BUY",
@@ -452,7 +497,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -482,7 +527,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -512,7 +557,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -542,7 +587,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -572,7 +617,7 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 already showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fall in total variable fees per million—so this tests whether mix compression is worsening rather than merely existing ([Q2 10-Q](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, to be checked by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2 reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 company release](https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": "2026-09-06-0920-TW",
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "pre-live",
    "counts": false
   },
@@ -587,7 +632,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -602,7 +647,7 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 already showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fall in total variable fees per million—so this threshold tests whether mix compression is worsening rather than merely existing ([Q2 10-Q](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, to be checked by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2 reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 release](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000132/tw-2026xq2xex991.htm)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": "2026-09-06-0920-TW",
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "pre-live",
    "counts": false
   },
@@ -617,7 +662,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below **$367m**, or free cash flow is no more than **70% of adjusted net income**. Any miss is the earliest hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([Q3 outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that recent margin expansion came from tariff refunds, compensation timing and pricing rather than a durable improvement in a growing business; the date allows one warning and two subsequent quarters to test the real risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm), [prior-year Q2 filing cadence](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000024/mwa-20260331.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -632,7 +677,7 @@
    "warning": "At the Q3 2026 filing scheduled for **29 October 2026**, trigger a full re-read if transaction-fee revenue growth trails total ADV growth by **15 percentage points or more** while total variable fees per million also decline by **more than 10% year on year**. Q2 already showed the milder version—18.2% ADV growth, 8.3% transaction-fee growth and a 7.2% fall in total variable fees per million—so this threshold tests whether mix compression is worsening rather than merely existing ([Q2 10-Q](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000133/tw-20260630.htm), [local result date](../../prices.json)).",
    "break": "At the FY2026 10-K, checkable by **1 March 2027**, put the position under §5.1 if two consecutive quarters have both (a) flat or declining transaction-fee revenue despite positive ADV growth and (b) year-on-year declines in Tradeweb's fully electronic U.S. high-grade and high-yield TRACE shares. That combination would show that neither monetisation nor electronic market share is compounding, directly breaking the business case; Q2's reference shares were 19.0% in high grade and 8.5% in high yield, both up year on year ([Q2 results](https://www.sec.gov/Archives/edgar/data/1758730/000175873026000132/tw-2026xq2xex991.htm)).",
    "reviewBy": "2026-10-30",
-   "supersededBy": "2026-09-06-0920-TW",
+   "supersededBy": "2026-09-09-2039-TW",
    "phase": "pre-live",
    "counts": false
   },
@@ -662,7 +707,7 @@
    "warning": "At the FY2026 result estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below its **$367m** lower bound, or free cash flow is no more than **70% of adjusted net income**. Any miss would be the earliest hard evidence that current price/cost benefits are not carrying into the full year ([Q3 results](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, checkable no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that the margin expansion was a temporary product of tariff refunds, compensation timing and pricing rather than a durable improvement in a growing business; it directly answers the case against.",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-07-2038-MWA",
+   "supersededBy": "2026-09-09-2039-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -880,5 +925,5 @@
  "open": [
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-09-09"
+ "today": "2026-09-10"
 }
