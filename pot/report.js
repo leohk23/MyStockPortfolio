@@ -159,22 +159,38 @@ function renderTranscript(run) {
 // When the logged path is gone, look in the same directory for a file this run plausibly left:
 // still carrying an unstamped header, and modified after the run began. Narrow enough not to
 // claim somebody else's file, and it is the rename case in practice.
+// Which run wrote a file is read from the file's NAME, not its mtime. The brief mandates a UTC
+// `YYYY-MM-DD-HHMM` stamp in every lane filename, and that stamp never changes; mtime moves on every
+// provenance stamp, header reset and git checkout. Attributing by `mtime >= run.started` with no upper
+// bound let the 29 Aug 13:18 deep dive — whose two recorded outputs had since been renamed — claim
+// ranking files written on 10 and 11 Sep, and a header reset during the repair re-armed it by bumping
+// their mtime to the minute of the reset. A run can only have written a file whose name was stamped
+// during its own lifetime, so that window is the test. GRACE covers a name picked a minute or two
+// either side of the first and last log lines.
+const STAMP_GRACE_MS = 3 * 60 * 1000;
+const stampMs = name => {
+    const m = name.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})/);
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null;
+};
+const inWindow = (name, run) => {
+    const t = stampMs(name);
+    const s = Date.parse(run.started || ''), e = Date.parse(run.ended || run.started || '');
+    return t != null && Number.isFinite(s) && Number.isFinite(e)
+        && t >= s - STAMP_GRACE_MS && t <= e + STAMP_GRACE_MS;
+};
+
 function renamedOutput(dir, run, claimed) {
-    const startedMs = Date.parse(run.started || 0) || 0;
     const NL = String.fromCharCode(10);
     let best = null, entries = [];
     try { entries = fs.readdirSync(dir); } catch { return null; }
     for (const name of entries) {
         const rel = dir + '/' + name;
-        if (!name.endsWith('.md') || claimed.has(rel)) continue;
-        let st, head;
-        try {
-            st = fs.statSync(rel);
-            head = fs.readFileSync(rel, 'utf8').split(NL)[0].trim();
-        } catch { continue; }
-        if (st.mtimeMs < startedMs) continue;
+        if (!name.endsWith('.md') || claimed.has(rel) || !inWindow(name, run)) continue;
+        let head;
+        try { head = fs.readFileSync(rel, 'utf8').split(NL)[0].trim(); } catch { continue; }
         if (!/^model:[ ]*(pending|.?<)/i.test(head)) continue;
-        if (!best || st.mtimeMs > best.mtimeMs) best = { rel, mtimeMs: st.mtimeMs };
+        const t = stampMs(name);
+        if (!best || t > best.t) best = { rel, t };
     }
     return best && best.rel;
 }
@@ -202,6 +218,27 @@ function stampProvenance(run, claimed = new Set()) {
             const next = body.slice(0, nl) === line ? null : line + body.slice(nl);
             if (next) { fs.writeFileSync(onDisk, next); stamped++; }
         } catch { /* the file may have been renamed or removed since; not worth failing over */ }
+    }
+    // Also claim what this run wrote WITHOUT recording the write. The 10 Sep 05:45 and 11 Sep 05:40
+    // deep dives each produced a ranking file their logs never listed as a FileChange, and the 10 Sep
+    // 05:30 review recorded no write at all, so no run ever claimed those outputs and an older run
+    // stole them. Only PENDING files, and only inside this run's name-stamp window: a run may claim
+    // what was named during its own lifetime and never overwrite a stamp another run already set.
+    const LANE_DIR = { deepdive: 'pot/proposals', sweep: 'pot/sweeps', review: 'pot/reviews' };
+    const laneDir = LANE_DIR[run.brief];
+    let laneFiles = [];
+    if (laneDir) { try { laneFiles = fs.readdirSync(laneDir); } catch { /* no directory yet */ } }
+    for (const name of laneFiles) {
+        const rel = laneDir + '/' + name;
+        if (!name.endsWith('.md') || claimed.has(rel) || !inWindow(name, run)) continue;
+        try {
+            const body = fs.readFileSync(rel, 'utf8');
+            const nl = body.indexOf(String.fromCharCode(10));
+            if (nl < 0 || !/^model:[ ]*pending/i.test(body.slice(0, nl))) continue;
+            claimed.add(rel);
+            fs.writeFileSync(rel, line + body.slice(nl));
+            stamped++;
+        } catch { /* renamed or removed since; not worth failing over */ }
     }
     return stamped;
 }
@@ -521,6 +558,13 @@ function summariseClaude(file) {
         usage: u,
         repo: true,
         limits: null,                       // no rate_limit records in a Claude transcript
+        // Which files this run wrote, so stampProvenance can stamp them — the codex side reads
+        // FileChange records; Claude's equivalent is a Write/Edit tool_use with input.file_path.
+        // Without this a Claude run could never claim its own outputs, and they sat `pending` for an
+        // older codex run to grab through renamedOutput (see the newest-first note in build()).
+        wrote: [...new Set(said.flatMap(s => Array.isArray(s.message.content) ? s.message.content : [])
+            .filter(x => x.type === 'tool_use' && ['Write', 'Edit', 'MultiEdit'].includes(x.name))
+            .map(x => x.input?.file_path).filter(Boolean))],
     };
 }
 
@@ -537,7 +581,13 @@ function build() {
     // on a proposal are the runtime's numbers rather than the agent's recollection.
     let stamped = 0;
     const claimed = new Set();
-    for (const r of runs) stamped += stampProvenance(r, claimed);
+    // NEWEST-FIRST, whatever order `runs` is in for the ledger. stampProvenance's whole claim model
+    // rests on it: the first run to claim a file is taken to be the one that last wrote it, and
+    // renamedOutput hands an unclaimed pending file to whichever run asks first. D53 re-sorted
+    // `runs` oldest-first for display, so a 28 Aug webtest run claimed the 11 Sep Claude sweep and
+    // stamped its own model onto it — confidently wrong provenance, worse than `pending`.
+    const newestFirst = [...runs].sort((a, b) => Date.parse(b.started || 0) - Date.parse(a.started || 0));
+    for (const r of newestFirst) stamped += stampProvenance(r, claimed);
 
     // Readable transcript per run, named so it sorts with the run.
     for (const r of runs) {
