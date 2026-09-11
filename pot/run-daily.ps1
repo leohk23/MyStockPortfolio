@@ -18,7 +18,9 @@
 param(
     [switch]$NoPush,
     # Threaded to every lane so one cycle never mixes models. See run-lane.ps1 for why it is pinned.
-    [string]$Model = 'gpt-6-astra',
+    # Override the per-lane models below for EVERY lane, e.g. -Model gpt-5.6-sol to run a whole
+    # cycle cheaply. Empty means each lane uses its own default from .
+    [string]$Model = '',
     # Which lanes to run regardless of cadence, e.g. -Force sweep,deepdive. 'all' means every lane.
     #
     # This was a bare switch and that was wrong in a way that cost a cycle. On 10 Sep it was used to
@@ -158,6 +160,27 @@ function Assert-Merged($what) {
 # Cadence exists because lane cost is dominated by INPUT, not by how much there is to do: a run
 # reloads prices, signals, earnings, holdings and its whole brief across a dozen turns whatever it
 # finds. On gpt-6-astra each lane run is ~4-5% of the weekly allowance, so frequency IS the budget.
+# Which model each lane runs on. The expensive one only where the reasoning is the product.
+#
+# Measured 11 Sep, and it is the 5-HOUR window that binds rather than the weekly: an astra sweep
+# takes ~41 points of a 100-point window and an astra deep dive 37-55 depending on how many names
+# it has to research, so a full astra cycle needs 78-96 and whether it fits is close to a coin
+# flip. That morning's cycle had a FRESH window (1%) and still died at the deep dive. The deep dive
+# runs last, so it is always the lane that pays for what the others spent.
+#
+# A sol sweep is about 9 points, so this buys back ~32 points of every window. It costs nothing
+# where it matters: the quality that justified astra came entirely from the deep dive - RELX moving
+# from `financial` to `secular`, Rule 5 engaging, T2 caught on INTU. The Sweep finds names and the
+# Review reads records; neither turned in anything astra-shaped.
+#
+# Review is on sol for the same reason as the Sweep, though Leo named only the other two: leaving it
+# on astra would put review+sweep+deepdive back over one window on the days all three are due.
+$LANE_MODEL = @{
+    'pot/brief-review.md'   = 'gpt-5.6-sol'
+    'pot/brief-sweep.md'    = 'gpt-5.6-sol'
+    'pot/brief-deepdive.md' = 'gpt-6-astra'
+}
+
 function Lane-Due($dir, $everyDays) {
     # The directory names the lane: pot/reviews -> review, pot/sweeps -> sweep, pot/proposals -> deepdive.
     $lane = @{ 'pot/reviews' = 'review'; 'pot/sweeps' = 'sweep'; 'pot/proposals' = 'deepdive' }[$dir]
@@ -185,7 +208,9 @@ function Lane-Due($dir, $everyDays) {
 
 function Invoke-Lane($brief) {
     Note "--- $brief"
-    $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $Model }
+    $laneModel = if ($Model) { $Model } else { $LANE_MODEL[$brief] }
+    Note "    model: $laneModel" | Out-Null
+    $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $laneModel }
     if (-not $NoPush) { $laneArgs.Push = $true }
     $before = (Get-Item (Join-Path $Repo $log)).Length
     try {
