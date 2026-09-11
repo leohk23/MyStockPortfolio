@@ -71,7 +71,17 @@ if ($Agent -eq 'codex') {
     # -Model defaults to a codex model name, so only pass it on when it is plainly a Claude one.
     # `claude --model gpt-6-astra` is the quiet way to get a confusing failure.
     $claudeArgs = if ($Model -and $Model -notmatch '^(gpt|o[0-9])') { @('--model', $Model) } else { @() }
-    claude -p $prompt --permission-mode acceptEdits @claudeArgs `
+    # Headless, nobody can approve a prompt, so without an explicit allowlist every shell command is
+    # refused — probed 11 Sep: "The command needs your approval to run". The deep dive would have run
+    # blind, unable to read prices.json or run node, and spent the allowance producing nothing.
+    #
+    # NOT --dangerously-skip-permissions: the CLI itself recommends that only for sandboxes with no
+    # internet access, and this lane does web research on a connected machine. The allowlist is the
+    # tools a lane actually uses. Git publishing is denied because run-lane owns it: the lane's
+    # allowlist-revert below only contains FILE writes, and a push would escape it entirely.
+    $toolArgs = @('--allowedTools', 'Bash PowerShell Read Write Edit Glob Grep WebFetch WebSearch',
+        '--disallowedTools', 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm -rf*)')
+    claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }
 if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
