@@ -568,7 +568,13 @@ so answer, explicitly, **why this is not that mistake again.**
 
 ## Rules
 
-- Write only `pot/proposals/…`. Touch nothing else.
+- Write `pot/proposals/…`, and append to `pot/adjustments.json` and `pot/data-wishlist.md` where
+  the rules above require it. Touch nothing else.
+  This line used to read "Write only `pot/proposals/…`", which flatly contradicted the adjustments
+  rule and the forced P5 `Adjustments` line. On 11 Sep a Claude deep dive obeyed it literally and
+  said so — *"brief restricts writes to `pot/proposals/`"* — which is likely why the store sat
+  empty all week under Codex too. When two rules conflict the stricter one wins silently; a
+  rule that another rule depends on must not be contradicted further down the page.
 - No figure without a source (§7.3), and **which source is settled by [`pot/sources.md`](sources.md)
   — read it.** Numbers this repo holds are quoted from the repo, company numbers from that
   company's filing or IR release, macro from the publishing agency, broker costs from the broker's
