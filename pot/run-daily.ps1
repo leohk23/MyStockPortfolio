@@ -13,7 +13,8 @@
 # task; do not add timing logic here. Running this by hand costs a real ~5% of the weekly
 # allowance and 20-35 minutes, so prefer run-lane.ps1 -NoPush for testing a single lane.
 #
-# Exit codes: 0 finished, 1 a lane failed, 3 another run already holds the lock.
+# Exit codes: 0 finished, 1 a lane failed, 3 another run already holds the lock,
+#             4 not enough allowance to finish - nothing was run and nothing was spent.
 
 param(
     [switch]$NoPush,
