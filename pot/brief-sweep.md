@@ -131,9 +131,13 @@ with what is already priced in, and it is the failure mode of this lane. Prefer:
   a genuinely better idea inside a crowded exposure still wins, but it has to beat the diversifying
   one on the merits rather than by default.
 
-  Do not read `byGeography` as a sector map. There is no sector field in `holdings.json`, so the
-  concentration you can see is geographic and the one that actually matters here — megacap tech —
-  is visible only by reading the top names. Say so if it drives a candidate.
+  `book.bySector` carries the same weights by SECTOR, with funds looked through by their own sector
+  weights — read it rather than inferring concentration from the top names. Two things to know. It
+  is Yahoo's classification, which files GOOG and META under Communication Services, not Technology,
+  so megacap tech is Technology AND Communication Services together — about half the book — never
+  the Technology line alone. And `Unclassified` means a holding with neither a sector nor a fund
+  look-through (gold and crypto trusts), not missing data. Say which sector a candidate adds to or
+  offsets. `byGeography` is still not a sector map.
 
 - **what [`pot/theses.md`](theses.md) points at.** Leo's standing views about how the world is
   moving. Read them before section 3, alongside `book`. They are a bias of the same kind as the one

@@ -397,6 +397,20 @@ async function fetchExDiv(ticker, { crumb, cookie }) {
     return typeof raw === 'number' ? new Date(raw * 1000).toISOString().slice(0, 10) : null;
 }
 
+// Sector and industry, from quoteSummary's assetProfile. Same crumb-gated per-ticker endpoint as mrq
+// and ex-div, cached and gated the same way. Feeds signals.js's `book.bySector`: without it the book's
+// real concentration — megacap tech — was visible only by reading the top names by eye.
+async function fetchSector(ticker, { crumb, cookie }) {
+    const sym = ticker.replace('^', '%5E');
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}`
+        + `?modules=assetProfile&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
+    if (res.status === 404) return null;                 // no such module — a real, cacheable "none"
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const p = (await res.json()).quoteSummary?.result?.[0]?.assetProfile || {};
+    return p.sector ? { sector: p.sector, ...(p.industry ? { industry: p.industry } : {}) } : null;
+}
+
 // Which payers need an ex-div lookup this run. The date changes at most a few times a year, so
 // it is cached in prices.json and only refetched when there is a reason to: no cached date, or
 // the cached one has already passed (a new one may now be announced). A payer whose next ex-div
@@ -427,7 +441,16 @@ function exDivToFetch(prevQuotes, payers, today) {
 // fallback's operating income. There is no free fund, so nothing is lost by refusing to believe in
 // one, and "–" is the correct rendering of "we do not know".
 const FUND_STALE_DAYS = 90;
-const FUND_V = 2;                    // v2 adds topHoldings; refetch every old cache exactly once
+const FUND_V = 3;                    // v3 keeps topHoldings.sectorWeightings; v2 added topHoldings
+// Yahoo names a FUND's sector weights in snake_case ("consumer_cyclical") but an EQUITY's sector in
+// Title Case ("Consumer Cyclical"). Mapped here, the one place funds are shaped, so signals.js can add
+// a fund's look-through into the same bucket as a stock's own sector.
+const FUND_SECTOR = {
+    realestate: 'Real Estate', consumer_cyclical: 'Consumer Cyclical', basic_materials: 'Basic Materials',
+    consumer_defensive: 'Consumer Defensive', technology: 'Technology',
+    communication_services: 'Communication Services', financial_services: 'Financial Services',
+    utilities: 'Utilities', industrials: 'Industrials', energy: 'Energy', healthcare: 'Healthcare',
+};
 
 // Keep Yahoo's fractions as fractions (0.0755 = 7.55%), like every other percentage in the JSON.
 // Invalid rows are dropped rather than guessed; commodity/crypto trusts legitimately return none.
@@ -440,6 +463,15 @@ function shapeFundProfile(r) {
         if (!name || typeof pct !== 'number' || !Number.isFinite(pct) || pct < 0 || pct > 1) return [];
         return [{ ...(h.symbol ? { symbol: h.symbol } : {}), name, pct: Number(pct.toPrecision(7)) }];
     });
+    // Each element is a single-key object, {"technology":{"raw":0.3743}}. An unrecognised key is kept
+    // under its own name rather than dropped, so a sector Yahoo adds later cannot vanish from the sum.
+    const sectors = {};
+    for (const o of r.topHoldings?.sectorWeightings || []) {
+        const k = o && Object.keys(o)[0];
+        const w = k && o[k]?.raw;
+        if (!k || typeof w !== 'number' || !Number.isFinite(w) || w <= 0 || w > 1) continue;
+        sectors[FUND_SECTOR[k] || k] = Number(w.toPrecision(6));
+    }
     return {
         // > 0 only — see the placeholder-zero note above.
         ...(typeof raw === 'number' && raw > 0 ? { expense: Number(raw.toPrecision(4)) } : {}),
@@ -450,6 +482,7 @@ function shapeFundProfile(r) {
         // inferring accumulation from an absence of payments.
         ...(r.quoteType?.longName ? { name: r.quoteType.longName } : {}),
         ...(holdings.length ? { holdings } : {}),
+        ...(Object.keys(sectors).length ? { sectors } : {}),
     };
 }
 
@@ -513,6 +546,20 @@ function mrqToFetch(prevQuotes, equities, today) {
         const stale = !q.mrq || (Date.parse(today) - Date.parse(q.mrq)) / 864e5 > MRQ_STALE_DAYS;
         return stale && q.mrqChecked !== today;          // ...but not twice in one day
     }).slice(0, MRQ_MAX_PER_RUN);
+}
+
+// A company's sector almost never changes, so this is a one-off backfill and then a slow refresh. NOT
+// trickled like mrq: a half-populated sector view would misstate the book's concentration — the one
+// thing it exists to state — so every missing name is looked up on the first run.
+const SECTOR_STALE_DAYS = 180;
+// Sized to the whole tracked universe, not the held book: `equities` is every priced non-fund ticker, watchlist included, and was 121 on 11 Sep 2026. A cap of 80 left 41 names unlooked on the first run - the half-populated view this backfill exists to prevent.
+const SECTOR_MAX_PER_RUN = 200;
+function sectorToFetch(prevQuotes, equities, today) {
+    return equities.filter(t => {
+        const q = prevQuotes[t] || {};
+        const stale = !q.sectorChecked || (Date.parse(today) - Date.parse(q.sectorChecked)) / 864e5 > SECTOR_STALE_DAYS;
+        return stale && q.sectorChecked !== today;       // ...but not twice in one day
+    }).slice(0, SECTOR_MAX_PER_RUN);
 }
 
 // Yahoo's fundamentals are in the major currency unit even for tickers whose price
@@ -1951,6 +1998,9 @@ async function main() {
         if (prevQuotes[t]?.exDivChecked) quotes[t].exDivChecked = prevQuotes[t].exDivChecked;
         if (prevQuotes[t]?.mrq) quotes[t].mrq = prevQuotes[t].mrq;
         if (prevQuotes[t]?.mrqChecked) quotes[t].mrqChecked = prevQuotes[t].mrqChecked;
+        if (prevQuotes[t]?.sector) quotes[t].sector = prevQuotes[t].sector;
+        if (prevQuotes[t]?.industry) quotes[t].industry = prevQuotes[t].industry;
+        if (prevQuotes[t]?.sectorChecked) quotes[t].sectorChecked = prevQuotes[t].sectorChecked;
         // Fund facts are static and gated to a 90-day refresh, so they MUST carry forward —
         // without this every run between sweeps would blank the fee it just decided not to refetch.
         if (prevQuotes[t]?.fund) quotes[t].fund = prevQuotes[t].fund;
@@ -2011,8 +2061,22 @@ async function main() {
             }
             await sleep();
         }
+        const sectorDue = sectorToFetch(prevQuotes, equities, today);
+        if (sectorDue.length) console.log(`     sector lookup for ${sectorDue.length}/${equities.length} equit(ies)`);
+        for (const t of sectorDue) {
+            try {
+                const s = await fetchSector(t, auth);
+                if (s) { quotes[t].sector = s.sector; if (s.industry) quotes[t].industry = s.industry; else delete quotes[t].industry; }
+                else { delete quotes[t].sector; delete quotes[t].industry; }
+                quotes[t].sectorChecked = today;
+            } catch (e) {
+                console.error(`     sector ${t}: ${e.message} — keeping cached`);
+            }
+            await sleep();
+        }
     }
     console.log(`ok   most-recent-quarter for ${tickers.filter(t => quotes[t]?.mrq).length} equit(ies)`);
+    console.log(`ok   sector for ${tickers.filter(t => quotes[t]?.sector).length} equit(ies), look-through for ${tickers.filter(t => quotes[t]?.fund?.sectors).length} fund(s)`);
 
     // Annual EPS history: read from the repo, refreshed only when it ages out or a holding is
     // new. Loaded HERE, before the FX block, because each company's REPORTING currency has to
@@ -3466,6 +3530,25 @@ function selftest() {
     // recurringEps reads the field it is told to, so the vendor and own series cannot be confused.
     assert.deepStrictEqual(recurringEps(ay, 'normOwn').map(v => Math.round(v * 100) / 100), [2, 2.4]);
     assert.deepStrictEqual(recurringEps(ay, 'norm').map(v => Math.round(v * 100) / 100), [2, 3]);
+
+    // Fund sector weights: Yahoo's snake_case keys land on the equity sector names, invalid rows are
+    // dropped, and an unknown key is kept under its own name rather than silently lost.
+    {
+        const f = shapeFundProfile({ topHoldings: { sectorWeightings: [
+            { technology: { raw: 0.37 } }, { communication_services: { raw: 0.1 } },
+            { realestate: { raw: 0.02 } }, { energy: { raw: 1.5 } }, { newsector: { raw: 0.05 } }, {},
+        ] } });
+        assert.deepStrictEqual(f.sectors, { Technology: 0.37, 'Communication Services': 0.1, 'Real Estate': 0.02, newsector: 0.05 });
+        assert.strictEqual(shapeFundProfile({}).sectors, undefined);         // no weights, no key
+    }
+    // sectorToFetch: every name missing a sector on the first run, then nothing until it ages out.
+    {
+        const T = '2026-09-11';
+        assert.deepStrictEqual(sectorToFetch({}, ['A', 'B'], T), ['A', 'B']);
+        assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: '2026-08-01' } }, ['A'], T), []);    // 41 days: fresh
+        assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: '2026-01-01' } }, ['A'], T), ['A']);  // 253 days: stale
+        assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: T } }, ['A'], T), []);              // never twice a day
+    }
     console.log('selftest ok');
 }
 
