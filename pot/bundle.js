@@ -146,11 +146,27 @@ function toHtml(md, fromDir, ids = new Set()) {
 const listDir = (dir, kind) => {
     let names = [];
     try { names = fs.readdirSync(path.join(ROOT, dir)); } catch { return []; }
-    // By modification time, not by name: '2026-08-29-RSGN.SW.md' sorts after
-    // '2026-08-29-1442-...' alphabetically while being the older file.
+    // Newest first by the date IN THE FILENAME; mtime only for a name with no date at all.
+    //
+    // This used to sort by mtime, because plain name order puts '2026-08-29-RSGN.SW.md' after
+    // '2026-08-29-1442-...' although it is the older file. True — but mtime is not when a run
+    // happened: every provenance stamp, header reset and checkout moves it. On 11 Sep the repair of
+    // misattributed stamps rewrote the 10 Sep 05:50 and 11 Sep 05:45 run reports, and they jumped
+    // above that evening's 17:15 report in the app. Same lesson as pot/report.js's attribution fix:
+    // the lane filename carries a UTC stamp that never changes, so that is the clock. A date-only
+    // name sorts at midnight UTC of its date, which also puts the RSGN.SW case where it belongs.
+    const key = f => {
+        const hm = f.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})/);
+        if (hm) return Date.UTC(+hm[1], +hm[2] - 1, +hm[3], +hm[4], +hm[5]);
+        const d = f.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})/);
+        if (d) return Date.UTC(+d[1], +d[2] - 1, +d[3]);
+        return fs.statSync(path.join(ROOT, dir, f)).mtimeMs;
+    };
     return names.filter(f => f.endsWith('.md') && f !== 'README.md')
-        .map(f => ({ kind, dir, file: f, at: fs.statSync(path.join(ROOT, dir, f)).mtimeMs }))
-        .sort((x, y) => y.at - x.at);
+        .map(f => ({ kind, dir, file: f, at: key(f) }))
+        // Same-minute files (a run's MWA, TW and ranking) tie on the stamp; break it by name so the
+        // order is stable run to run instead of whatever readdir returned.
+        .sort((x, y) => y.at - x.at || y.file.localeCompare(x.file));
 };
 
 // YYYY-MM-DD-HHMM out of a filename, read as UTC because that is what the lanes stamp. Files

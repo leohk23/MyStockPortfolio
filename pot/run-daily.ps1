@@ -265,7 +265,10 @@ function Test-Allowance($lanes) {
 # Lanes move most-expensive-first, because moving the dearest lane buys the most Codex room per
 # move and leaves the cheap ones where the accounting is exact. If everything moves, the cycle
 # simply runs on Claude.
-$CLAUDE_MODEL = 'opus'
+# The exact model ID, never the `opus` alias. On 11 Sep `claude --model opus` resolved to
+# claude-opus-4-8, not Opus 5, so the first Claude cycle ran on a different model than the one
+# asked for and nothing in the run said so until the ledger row was read.
+$CLAUDE_MODEL = 'claude-opus-5'
 
 # Decide which agent each lane runs on, or $null to skip the cycle.
 #
