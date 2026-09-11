@@ -461,9 +461,76 @@ function wishlistEntries(file = 'pot/data-wishlist.md') {
         + OPEN + EOL + table + EOL + CLOSE + EOL);
 }
 
+// Claude Code lane runs, read from ITS transcripts the same way codex runs are read from theirs.
+//
+// A lane may run on either agent (run-lane.ps1 -Agent), and the day one runs on Claude its work
+// must still appear in the ledger and stamp its own output — otherwise the proposal keeps
+// "model: pending" forever and the run is invisible, which is A20 broken rather than merely untidy.
+//
+// Claude writes ~/.claude/projects/<cwd with separators replaced>/<session>.jsonl. Assistant
+// records carry `message.model` and a per-message `message.usage`; user records carry `cwd` and
+// the prompt as plain text. No rate_limit records exist there, so `limits` stays null — Claude's
+// allowance is simply not visible from the transcript, and an invented number would be worse.
+const CLAUDE_SESSIONS = path.join(os.homedir(), '.claude', 'projects');
+
+function claudeFiles(root = CLAUDE_SESSIONS, out = []) {
+    let entries;
+    try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return out; }
+    for (const e of entries) {
+        const full = path.join(root, e.name);
+        if (e.isDirectory()) claudeFiles(full, out);
+        else if (e.name.endsWith('.jsonl')) out.push(full);
+    }
+    return out;
+}
+
+function summariseClaude(file) {
+    let lines;
+    try { lines = parseJsonl(file); } catch { return null; }
+    if (!lines.length) return null;
+    const user = lines.find(l => l.type === 'user' && typeof l.message?.content === 'string');
+    const asked = user?.message?.content || '';
+    // The same guard the codex side needs, and it matters more here: Leo's own interactive sessions
+    // live in this directory too — the one that designed this function is 11MB of it. Only a lane
+    // run starts with run-lane.ps1's exact prompt.
+    if (!/^Follow the instructions in /.test(asked)) return null;
+    const brief = (asked.match(/pot[\/]brief-([a-z-]+)\.md/) || [])[1];
+    if (!brief) return null;
+    if (!/MyStockPortfolio/i.test(user?.cwd || '')) return null;
+    const said = lines.filter(l => l.type === 'assistant' && l.message);
+    if (!said.length) return null;
+    const stamps = lines.map(l => l.timestamp).filter(Boolean).sort();
+    const started = stamps[0] || null, ended = stamps[stamps.length - 1] || null;
+    // Mapped onto the codex shape so one ledger row renders either agent. `input_tokens` is the
+    // whole input including cache, matching codex's meaning rather than Anthropic's narrower one.
+    const u = { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0 };
+    for (const s of said) {
+        const m = s.message.usage || {};
+        u.input_tokens += (m.input_tokens || 0) + (m.cache_creation_input_tokens || 0) + (m.cache_read_input_tokens || 0);
+        u.cached_input_tokens += m.cache_read_input_tokens || 0;
+        u.output_tokens += m.output_tokens || 0;
+        u.reasoning_output_tokens += m.output_tokens_details?.thinking_tokens || 0;
+    }
+    u.total_tokens = u.input_tokens + u.output_tokens;
+    return {
+        file, started, ended, brief, lines,
+        lane: brief.replace(/-/g, ' '),
+        model: said.find(s => s.message.model)?.message.model || null,
+        effort: null,                       // Claude has no reasoning_effort; the column reads '-'
+        seconds: started && ended ? Math.round((Date.parse(ended) - Date.parse(started)) / 1000) : null,
+        usage: u,
+        repo: true,
+        limits: null,                       // no rate_limit records in a Claude transcript
+    };
+}
+
 function build() {
     fs.mkdirSync(LOGS, { recursive: true });
-    const runs = sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief);
+    // Both agents, one ledger, sorted together. A lane is a lane whoever ran it.
+    const runs = [
+        ...sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief),
+        ...claudeFiles().map(summariseClaude).filter(Boolean),
+    ].sort((a, b) => Date.parse(a.started || 0) - Date.parse(b.started || 0));
     runs.sort((a, b) => (b.started || '').localeCompare(a.started || ''));
 
     // Stamp each run's own outputs before anything reads them, so the model and token counts

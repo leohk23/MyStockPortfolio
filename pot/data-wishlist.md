@@ -31,17 +31,17 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | reached for | sweeps | |
 |---|---:|---|
 | cash conversion | 22 | **earns a feed** |
-| margin | 13 | **earns a feed** |
+| margin | 14 | **earns a feed** |
 | volume / units | 13 | **earns a feed** |
 | leverage / net debt | 10 | **earns a feed** |
 | backlog / order intake | 8 | **earns a feed** |
+| inventory | 8 | **earns a feed** |
 | capital returns | 8 | **earns a feed** |
-| inventory | 7 | **earns a feed** |
 | return on capital | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 | same-store / comparable sales | 2 | – |
 
-92 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+95 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,9 +52,9 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-09-11 | US CPI composition and current real earnings. | August CPI came from the [BLS release](https://www.bls.gov/news.release/cpi.nr0.htm): headline inflation accelerated in the month as gasoline rose, while annual core inflation eased. The current real-earnings page still showed July despite today's scheduled release, so no August wage conclusion was inferred. Wanted monthly and carried into weekly sweeps; this reinforces the existing recurring need for US inflation and real-income composition. |
-| 2026-09-11 | UK monthly GDP by industry. | Fetched the ONS [July GDP release](https://www.ons.gov.uk/economy/grossdomesticproductgdp/bulletins/gdpmonthlyestimateuk/july2026/pdf). Wanted monthly and carried into weekly sweeps; the services, consumer-facing and production splits prevent a stronger headline from being mistaken for broad household or industrial strength. The ONS could identify AI/cloud-linked respondents but could not quantify their contribution. |
 | 2026-09-11 | September oil balances, inventories and refinery margins. | The IEA [September Oil Market Report launch](https://www.iea.org/events/oil-market-report-september-2026) established that the report was released, but the accessible page exposed no September highlights or balances. Wanted monthly while Hormuz disruption persists; no August figure was relabelled as September. This reinforces the existing case for an oil-inventory and refined-product feed. |
+| 2026-09-11 | UK monthly GDP by industry. | Fetched the ONS [July GDP release](https://www.ons.gov.uk/economy/grossdomesticproductgdp/bulletins/gdpmonthlyestimateuk/july2026/pdf). Wanted monthly and carried into weekly sweeps; the services, consumer-facing and production splits prevent a stronger headline from being mistaken for broad household or industrial strength. The ONS could identify AI/cloud-linked respondents but could not quantify their contribution. |
+| 2026-09-11 | US CPI composition and current real earnings. | August CPI came from the [BLS release](https://www.bls.gov/news.release/cpi.nr0.htm): headline inflation accelerated in the month as gasoline rose, while annual core inflation eased. The current real-earnings page still showed July despite today's scheduled release, so no August wage conclusion was inferred. Wanted monthly and carried into weekly sweeps; this reinforces the existing recurring need for US inflation and real-income composition. |
 | 2026-09-10 | AerCap collections, airline credit and earnings excluding disposal gains. | Read [Q2 results](https://www.aercap.com/news-media/press-releases/detail/643/aercap-holdings-n-v-reports-strong-financial-results-for). Wanted at results and material credit events; today's fuel and financing shock renews the customer-credit question already recorded on 31 August. No post-shock collections established. |
 | 2026-09-10 | Air cargo demand and capacity, plus regional passenger traffic. | Read IATA's July [cargo](https://www.iata.org/en/pressroom/2026-releases/08-31-air-cargo-demand-grows-july/) and [passenger](https://www.iata.org/en/pressroom/2026-releases/08-31-air-passenger-demand-grows-july/) releases. Wanted monthly, carried into weekly sweeps; physical traffic separates demand from freight-price inflation. July data cannot measure September disruption. |
 | 2026-09-10 | DSV integration cash flow, customer retention and capital returns. | Read the [H1 filing](https://dsv.gcs-web.com/static-files/e57e7309-03eb-494c-ab98-fd90b06d2a1e) and [May strategy](https://dsv.gcs-web.com/news-releases/news-release-details/dsv-1169-dsv-announces-updated-strategic-priorities-and-new). Wanted at results and integration updates; reconcile adjusted cash measures with operating cash and track Road customer outcomes. |
