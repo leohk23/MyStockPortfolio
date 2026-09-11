@@ -30,6 +30,9 @@ param(
     # for "run this lane now"; a switch that means "run everything now" cannot express that.
     [ValidateSet('review', 'sweep', 'deepdive', 'all')]
     [string[]]$Force = @(),
+    # Which lanes may move to Claude when the ChatGPT allowance runs out. 'all' (default) moves
+    # whatever is needed, most-expensive-first; 'none' skips the cycle instead of using Claude.
+    [ValidateSet('all', 'deepdive', 'none')][string]$Failover = 'all',
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -250,37 +253,48 @@ function Test-Allowance($lanes) {
     return $false
 }
 
-# The agent each lane runs on, and what it falls back to when the ChatGPT allowance runs out.
+# Where a lane goes when the ChatGPT allowance runs out. Codex first because its allowance is what
+# the schedule is sized against; Claude second because it is a separate subscription that is idle
+# while Codex is exhausted.
 #
-# Codex by default. The Deep dive is the ONLY lane that fails over, for two reasons: it is the only
-# lane that produces an order, so it is the one worth rescuing; and it is the expensive one, so
-# moving it is what actually buys the room. If a sol sweep at ~2 points cannot be afforded the week
-# is over regardless, and failing that over would spend a second subscription to little end.
+# An earlier version failed over the Deep dive ONLY, reasoning that if a sol sweep at ~2 points
+# cannot be afforded then the week is over. That was wrong: the week is over on CODEX. It stopped
+# the pot for four days while a second subscription sat unused, which is the opposite of what a
+# failover is for.
+#
+# Lanes move most-expensive-first, because moving the dearest lane buys the most Codex room per
+# move and leaves the cheap ones where the accounting is exact. If everything moves, the cycle
+# simply runs on Claude.
 $CLAUDE_MODEL = 'opus'
-$FAILOVER_LANE = 'deepdive'
 
-# Decide which agent each lane runs on, or $null to skip the cycle entirely.
+# Decide which agent each lane runs on, or $null to skip the cycle.
 #
-# Priced on the Codex side only. **The failover is blind**: the Claude CLI exposes no usage or
-# limit surface, so there is no way to ask whether Opus can afford this before starting. If it
-# cannot the lane fails as it would have anyway, which is no worse than not trying.
+# **Blind in one direction and it says so:** the Claude CLI exposes no usage figure, so the Codex
+# side is priced exactly and the Claude side not at all. A lane moved to Claude may still fail, and
+# it fails no worse than not running. -Failover none refuses to use Claude at all.
 function Resolve-Plan($lanes) {
     $plan = @{}
     foreach ($l in $lanes) { $plan[$l] = 'codex' }
     if (Test-Allowance $lanes) { return $plan }
-    if ($lanes -notcontains $FAILOVER_LANE) {
-        Note '  no lane can fail over - skipping this cycle' | Out-Null
+    if ($Failover -eq 'none') {
+        Note '  -Failover none, so this cycle is skipped rather than moved to Claude' | Out-Null
         return $null
     }
-    # Re-price without the deep dive: the cheap lanes still have to fit on Codex.
-    $rest = @($lanes | Where-Object { $_ -ne $FAILOVER_LANE })
-    if ($rest.Count -and -not (Test-Allowance $rest)) {
-        Note '  even without the deep dive this cycle does not fit - skipping' | Out-Null
+    $movable = if ($Failover -eq 'deepdive') { @('deepdive') } else { @('deepdive', 'sweep', 'review') }
+    $onCodex = @($lanes)
+    foreach ($l in $movable) {
+        if ($onCodex -notcontains $l) { continue }
+        $plan[$l] = 'claude'
+        $onCodex = @($onCodex | Where-Object { $_ -ne $l })
+        Note ("  moving {0} to Claude {1}" -f $l, $CLAUDE_MODEL) | Out-Null
+        if (-not $onCodex.Count) { break }                 # nothing left on Codex: trivially fits
+        if (Test-Allowance $onCodex) { break }
+    }
+    if ($onCodex.Count -and -not (Test-Allowance $onCodex)) {
+        Note '  nothing left to move and it still does not fit - skipping' | Out-Null
         return $null
     }
-    $plan[$FAILOVER_LANE] = 'claude'
-    Note ("  ChatGPT allowance is short, so the deep dive runs on Claude $CLAUDE_MODEL instead") | Out-Null
-    Note '  (Claude exposes no usage figure, so this is not checked - it may fail for the same reason)' | Out-Null
+    Note '  (Claude exposes no usage figure, so its side is not checked - a moved lane may still fail)' | Out-Null
     return $plan
 }
 
