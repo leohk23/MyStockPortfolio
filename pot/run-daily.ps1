@@ -249,6 +249,40 @@ function Test-Allowance($lanes) {
     return $false
 }
 
+# The agent each lane runs on, and what it falls back to when the ChatGPT allowance runs out.
+#
+# Codex by default. The Deep dive is the ONLY lane that fails over, for two reasons: it is the only
+# lane that produces an order, so it is the one worth rescuing; and it is the expensive one, so
+# moving it is what actually buys the room. If a sol sweep at ~2 points cannot be afforded the week
+# is over regardless, and failing that over would spend a second subscription to little end.
+$CLAUDE_MODEL = 'opus'
+$FAILOVER_LANE = 'deepdive'
+
+# Decide which agent each lane runs on, or $null to skip the cycle entirely.
+#
+# Priced on the Codex side only. **The failover is blind**: the Claude CLI exposes no usage or
+# limit surface, so there is no way to ask whether Opus can afford this before starting. If it
+# cannot the lane fails as it would have anyway, which is no worse than not trying.
+function Resolve-Plan($lanes) {
+    $plan = @{}
+    foreach ($l in $lanes) { $plan[$l] = 'codex' }
+    if (Test-Allowance $lanes) { return $plan }
+    if ($lanes -notcontains $FAILOVER_LANE) {
+        Note '  no lane can fail over - skipping this cycle' | Out-Null
+        return $null
+    }
+    # Re-price without the deep dive: the cheap lanes still have to fit on Codex.
+    $rest = @($lanes | Where-Object { $_ -ne $FAILOVER_LANE })
+    if ($rest.Count -and -not (Test-Allowance $rest)) {
+        Note '  even without the deep dive this cycle does not fit - skipping' | Out-Null
+        return $null
+    }
+    $plan[$FAILOVER_LANE] = 'claude'
+    Note ("  ChatGPT allowance is short, so the deep dive runs on Claude $CLAUDE_MODEL instead") | Out-Null
+    Note '  (Claude exposes no usage figure, so this is not checked - it may fail for the same reason)' | Out-Null
+    return $plan
+}
+
 function Lane-Due($dir, $everyDays) {
     # The directory names the lane: pot/reviews -> review, pot/sweeps -> sweep, pot/proposals -> deepdive.
     $lane = @{ 'pot/reviews' = 'review'; 'pot/sweeps' = 'sweep'; 'pot/proposals' = 'deepdive' }[$dir]
@@ -276,9 +310,14 @@ function Lane-Due($dir, $everyDays) {
 
 function Invoke-Lane($brief) {
     Note "--- $brief"
-    $laneModel = if ($Model) { $Model } else { $LANE_MODEL[$brief] }
-    Note "    model: $laneModel" | Out-Null
-    $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $laneModel }
+    # The plan decides the agent; the agent decides which model name is meaningful. Passing a
+    # gpt-* name to Claude, or the reverse, is the obvious way to get this subtly wrong.
+    $lane = ($brief -replace '.*brief-', '') -replace '.md$', ''
+    $laneAgent = if ($PLAN[$lane]) { $PLAN[$lane] } else { 'codex' }
+    $laneModel = if ($laneAgent -eq 'claude') { $CLAUDE_MODEL }
+        elseif ($Model) { $Model } else { $LANE_MODEL[$brief] }
+    Note "    agent: $laneAgent, model: $laneModel" | Out-Null
+    $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $laneModel; Agent = $laneAgent }
     if (-not $NoPush) { $laneArgs.Push = $true }
     $before = (Get-Item (Join-Path $Repo $log)).Length
     try {
@@ -348,9 +387,13 @@ try {
     if ($doReview) { $planned += 'review' }
     if ($doSweep) { $planned += 'sweep' }
     if ($doDeep) { $planned += 'deepdive' }
-    if ($planned.Count -and -not (Test-Allowance $planned)) {
-        Remove-Item $lock -Force -ErrorAction SilentlyContinue
-        exit 4
+    $PLAN = @{}
+    if ($planned.Count) {
+        $PLAN = Resolve-Plan $planned
+        if ($null -eq $PLAN) {
+            Remove-Item $lock -Force -ErrorAction SilentlyContinue
+            exit 4
+        }
     }
 
     if ($doReview) { Invoke-Lane 'pot/brief-review.md' } else { Note 'review not due' }

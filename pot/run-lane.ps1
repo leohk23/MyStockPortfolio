@@ -68,7 +68,10 @@ if ($Agent -eq 'codex') {
         --output-last-message pot\last-message.txt $prompt 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 } else {
-    claude -p $prompt --permission-mode acceptEdits `
+    # -Model defaults to a codex model name, so only pass it on when it is plainly a Claude one.
+    # `claude --model gpt-6-astra` is the quiet way to get a confusing failure.
+    $claudeArgs = if ($Model -and $Model -notmatch '^(gpt|o[0-9])') { @('--model', $Model) } else { @() }
+    claude -p $prompt --permission-mode acceptEdits @claudeArgs `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }
 if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
