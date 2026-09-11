@@ -181,6 +181,74 @@ $LANE_MODEL = @{
     'pot/brief-deepdive.md' = 'gpt-6-astra'
 }
 
+# What a lane costs, in points of each window. Measured, per model, from pot/runs.md and the
+# rate_limit records in the session logs — see pot-design.md §4.2.
+#
+#   5-hour   astra sweep 41, astra deepdive 37-55, astra review 27; sol runs about a quarter of that
+#   weekly   astra 4/5/5 per lane; sol 1/2/2
+#
+# The deep dive's range is real variance, not drift: its token count runs 2.75M-5.19M depending on
+# how many names need researching. The HIGH end is used here on purpose — a cycle that starts is
+# worth finishing, and the failure this exists to prevent is spending the cheap lanes and then
+# dying on the expensive one.
+$LANE_COST = @{
+    'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 5; h = 55 } }
+    'gpt-5.6-sol'  = @{ review = @{ w = 1; h = 9 };  sweep = @{ w = 2; h = 9 };  deepdive = @{ w = 2; h = 14 } }
+}
+
+# Current allowance, read from the newest session log rather than by probing — a probe costs tokens
+# to ask whether we can afford tokens.
+#
+# `resets_at` is what makes this reliable: a reading is only true until its window resets, and
+# ignoring that is how a 98% reading got mistaken for "exhausted" when the window had turned over
+# ten hours earlier. Past its reset, a window is 0 whatever the file says.
+function Get-Allowance {
+    $dir = Join-Path $env:USERPROFILE '.codex\sessions'
+    $newest = Get-ChildItem $dir -Recurse -Filter 'rollout-*.jsonl' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $newest) { return $null }                       # never run: nothing to go on, proceed
+    $text = Get-Content $newest.FullName -Raw -ErrorAction SilentlyContinue
+    $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $read = {
+        param($which)
+        $m = [regex]::Matches($text, '"' + $which + '":\{"used_percent":([0-9.]+),"window_minutes":([0-9]+),"resets_at":([0-9]+)')
+        if (-not $m.Count) { return $null }
+        $last = $m[$m.Count - 1]
+        if ([int64]$last.Groups[3].Value -le $now) { return 0.0 }   # window has since reset
+        return [double]$last.Groups[1].Value
+    }
+    return @{ hour5 = (& $read 'primary'); weekly = (& $read 'secondary') }
+}
+
+# Refuse to start a cycle that cannot finish. The failure this prevents is specific and had
+# happened three times by 11 Sep: the cheap lanes run and commit, the deep dive hits the wall, and
+# the cycle stops before stamp-and-bundle — so the allowance is spent and no proposal exists.
+# Note() writes to the output stream, so every note inside a function becomes part of its RETURN
+# value — `$ok = Test-Allowance ...` then captures @('...', $false), and a two-element array is
+# TRUE. That is exactly the bug that made every Lane-Due gate pass on 8 Sep, reintroduced here
+# three days later while writing the function whose whole job is to refuse. Every Note in a
+# value-returning function goes to Out-Null; the log line still lands via Add-Content inside Note.
+function Test-Allowance($lanes) {
+    $a = Get-Allowance
+    if ($null -eq $a -or $null -eq $a.weekly) { Note '  allowance unknown - proceeding'; return $true }
+    $w = 0; $h = 0
+    foreach ($l in $lanes) {
+        $model = $LANE_MODEL["pot/brief-$l.md"]
+        $c = $LANE_COST[$model][$l]
+        if (-not $c) { continue }
+        $w += $c.w; $h += $c.h
+    }
+    Note ("  allowance: 5-hour {0}% used, weekly {1}% used; this cycle needs ~{2} and ~{3}" -f `
+        $a.hour5, $a.weekly, $h, $w) | Out-Null
+    $short = @()
+    if ($a.hour5 + $h -gt 100) { $short += ("5-hour ({0}% + {1} > 100)" -f $a.hour5, $h) }
+    if ($a.weekly + $w -gt 100) { $short += ("weekly ({0}% + {1} > 100)" -f $a.weekly, $w) }
+    if (-not $short.Count) { return $true }
+    Note ("  NOT ENOUGH ALLOWANCE - skipping this cycle: " + ($short -join '; ')) | Out-Null
+    Note '  nothing was run and nothing was spent. The next cycle after the window resets will proceed.' | Out-Null
+    return $false
+}
+
 function Lane-Due($dir, $everyDays) {
     # The directory names the lane: pot/reviews -> review, pot/sweeps -> sweep, pot/proposals -> deepdive.
     $lane = @{ 'pot/reviews' = 'review'; 'pot/sweeps' = 'sweep'; 'pot/proposals' = 'deepdive' }[$dir]
@@ -271,7 +339,21 @@ try {
     #
     # Due-ness is DERIVED from the newest file in pot/reviews/, not from a state file somebody has
     # to keep in step: the artifact IS the record that the lane ran (A20).
-    if (Lane-Due 'pot/reviews' 2) { Invoke-Lane 'pot/brief-review.md' } else { Note 'review not due' }
+    # Decide the WHOLE plan before running any of it, so the cost can be priced up front. Lane-Due
+    # only reads filenames, so asking all three here is free and the answers cannot drift.
+    $doReview = Lane-Due 'pot/reviews' 2
+    $doSweep = Lane-Due 'pot/sweeps' 1
+    $doDeep = $doSweep -or $Force -contains 'deepdive' -or $Force -contains 'all'
+    $planned = @()
+    if ($doReview) { $planned += 'review' }
+    if ($doSweep) { $planned += 'sweep' }
+    if ($doDeep) { $planned += 'deepdive' }
+    if ($planned.Count -and -not (Test-Allowance $planned)) {
+        Remove-Item $lock -Force -ErrorAction SilentlyContinue
+        exit 4
+    }
+
+    if ($doReview) { Invoke-Lane 'pot/brief-review.md' } else { Note 'review not due' }
 
     # ---- 3. Sweep. Deliberately before the Scan is refreshed: it is meant to look OUTSIDE
     # what we already track (A14-A16), and it writes any new name into watchlist.json.
@@ -280,7 +362,7 @@ try {
     # names have ever been proposed. Adding more names faster does not produce more proposals, it
     # grows a backlog nothing reads.
     $sweptThisCycle = $false
-    if (Lane-Due 'pot/sweeps' 1) { Invoke-Lane 'pot/brief-sweep.md'; $sweptThisCycle = $true }
+    if ($doSweep) { Invoke-Lane 'pot/brief-sweep.md'; $sweptThisCycle = $true }
     else { Note 'sweep not due' }
 
     # ---- 4. Give the Sweep’s discoveries local data BEFORE the Deep dive judges them.
@@ -320,7 +402,7 @@ try {
     # the sweep that found it. Sweep cadence therefore sets Deep dive cadence - both daily.
     # Forcing the deep dive alone is legitimate: it judges the newest sweep's output, which is what
     # a rerun after a failed cycle needs. The pairing still governs the UNFORCED path.
-    if ($sweptThisCycle -or $Force -contains 'deepdive' -or $Force -contains 'all') {
+    if ($doDeep) {
         Invoke-Lane 'pot/brief-deepdive.md'
     } else { Note 'deep dive skipped - no sweep ran this cycle' }
 
