@@ -1136,10 +1136,6 @@
                 : `<span class="${recurringHist.pctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(recurringHist.pctile * 100))} percentile</span>`
                     + ` <span class="muted">— cheaper than ${(100 - recurringHist.pctile * 100).toFixed(0)}% of the last ${recurringHist.window || '5y'}</span>`
                     + (recurringHist.from ? ` <span class="muted">(from ${ymd(recurringHist.from)}, ${recurringHist.weeks} weeks)</span>` : '');
-            const adjustmentSources = (q.researchEpsPeriods || []).map(p => {
-                const linked = `<a href="${escapeHTML(String(p.source))}" target="_blank" rel="noopener">${qShort(p.end)}</a>`;
-                return `${linked}: ${num2(p.eps)} EPS`;
-            }).join('<br>');
             const rows = [
                 ['Price', px(q.price)],
                 // The chosen decision basis leads the panel. renderFinancials fills both values;
@@ -1147,7 +1143,6 @@
                 // source-backed company-adjusted TTM figure.
                 ['Normalized EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
                 ['P/E (normalized)', '<span id="deep-rec-pe" class="muted">…</span>'],
-                adjustmentSources ? ['Research periods', adjustmentSources] : null,
                 ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
                     : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],

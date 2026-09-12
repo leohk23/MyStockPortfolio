@@ -69,14 +69,22 @@ function oneOffRisk(quote, entry, floor, band) {
     // flag itself. Intel's reported floor is 5.5x and its recurring floor 27.5x, so a recurring
     // P/E of 20 read as "four times its floor" when against a like-for-like floor it is below
     // it. Falls back to the reported floor only when no recurring one exists, and says so.
-    const rpe = quote.normEps > 0 ? quote.price / quote.normEps : null;
+    // Best evidence first: the Deep dive's sourced company-adjusted EPS, then Yahoo's figure less a
+    // cited one-off, then Yahoo's alone. A stored adjustment used to change nothing here — TW's
+    // Canton gains sat in pot/adjustments.json while this still read the vendor's $4.18.
+    const [recEps, epsBasis] = quote.researchEps > 0 ? [quote.researchEps, 'research']
+        : quote.normEpsOwn > 0 ? [quote.normEpsOwn, 'own']
+        : [quote.normEps, 'vendor'];
+    const rpe = recEps > 0 ? quote.price / recEps : null;
+    // ponytail: no research or own FLOOR exists yet (four adjusted quarters cannot build five years),
+    // so every basis is measured against the vendor floor and floorBasis says so.
     const recFloor = quote.peLowRecurring > 0 ? quote.peLowRecurring : null;
     const against = recFloor ?? floor;
-    if (rpe != null && quote.normEps !== quote.eps) {
+    if (rpe != null && recEps !== quote.eps) {
         const rv = rpe / against - 1;
         return rv > band
                 ? { why: 'recurring earnings put it above its floor', recurringPe: rpe, recurringVsFloor: rv,
-                    floorBasis: recFloor ? 'recurring' : 'reported (no recurring floor)' }
+                    epsBasis, floorBasis: recFloor ? 'vendor recurring' : 'reported (no recurring floor)' }
             : null;
     }
     // No normalized figure to compare against — fall back to the audited annual.
@@ -755,6 +763,18 @@ function selftest() {
         // A fund whose weights do not sum to 1 is scaled, never lost or doubled.
         const b2 = bookExposure([hold[1]], { FD: { price: 40, currency: 'USD', fund: { sectors: { Technology: 0.3, Energy: 0.3 } } } }, { USD: 1, GBP: 1 });
         assert.deepStrictEqual(b2.bySector.map(x => x.weight), [0.5, 0.5]);
+    }
+    // oneOffRisk reads the best earnings basis: research, then own, then vendor. TW's shape: the
+    // vendor's 4.18 sits below its 24.74 floor, the sourced 3.79 sits above it.
+    {
+        const tw = { price: 101.44, eps: 4.19, normEps: 4.18, peLowRecurring: 24.74 };
+        assert.strictEqual(oneOffRisk(tw, null, 30, 0), null);
+        const r = oneOffRisk({ ...tw, researchEps: 3.79 }, null, 30, 0);
+        assert.strictEqual(r.epsBasis, 'research');
+        assert.ok(Math.abs(r.recurringPe - 26.765) < 0.01);
+        assert.strictEqual(oneOffRisk({ ...tw, normEpsOwn: 3.79 }, null, 30, 0).epsBasis, 'own');
+        // Research wins over own when both exist.
+        assert.strictEqual(oneOffRisk({ ...tw, researchEps: 3.79, normEpsOwn: 4.1 }, null, 30, 0).epsBasis, 'research');
     }
     console.log('selftest ok');
 }
