@@ -81,7 +81,10 @@ if ($Agent -eq 'codex') {
     # allowlist-revert below only contains FILE writes, and a push would escape it entirely.
     $toolArgs = @('--allowedTools', 'Bash PowerShell Read Write Edit Glob Grep WebFetch WebSearch',
         '--disallowedTools', 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm -rf*)')
-    claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs `
+    # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
+    # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
+    $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
+    claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }
 if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
