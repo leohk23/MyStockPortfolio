@@ -82,3 +82,49 @@ victims and they can be right independently.
 **Confidence** — medium, and specifically *not* a verdict on any name. This thesis is a place to
 look, not a conclusion to reach: a company can be inside it and still win, and a proposal that
 engages it with dated external figures and concludes the moat holds has done what was asked.
+
+---
+
+## T3 — AI agents create a control layer, and regulation makes it compulsory
+
+Every agent is a new non-human identity with credentials, data access and the power to act. Someone
+must inventory them, grant and revoke permissions, log what they did and name an accountable human.
+That need exists from security risk alone; regulation (EU AI Act obligations phasing in from August
+2026, sector regulators in finance and health) turns it from good practice into a line item that
+cannot be cut.
+
+**Implies**
+
+- *Tailwind* — identity and permissions for non-human actors, cross-vendor AI governance and audit
+  trails, runtime security for models and agents, and independent assurance where a third party is
+  actually mandated. Model-neutral positions benefit from T1: the more models a firm runs, the more
+  it needs one place to govern them.
+- *Headwind* — compliance *advice* priced by the hour (an agent can read a regulation), and point
+  tools a platform can bundle for free.
+
+**Mandated is narrower than it sounds.** Under the AI Act most Annex III high-risk systems are
+self-assessed under internal control; a notified body is required mainly for biometrics and for
+products already covered by sector regulation. Treat "compliance demand" for testing and
+certification firms as optionality until a filing shows it, not as the thesis arriving.
+
+**Where it already touches Leo** — NOW is held, and sits inside both
+[T2](#t2--ai-agents-compress-the-value-of-seat-priced-workflow-software) (seat-priced ticket triage)
+and T3 (AI Control Tower). A proposal on NOW must weigh both, not pick the one it prefers.
+
+**Where to look**
+
+- AI-specific ARR or product revenue disclosed separately in the filing, not in a press release
+- non-human identity counts, where a vendor discloses them
+- EU notified-body designations under the AI Act (NANDO database), the first enforcement actions,
+  and whether the high-risk deadlines have been postponed
+- whether assurance revenue at testing and certification firms is reported at all; while it is not
+  separately disclosed it is immaterial, whatever the launch release says
+- which earnings basis a quoted multiple is on — the source that suggested this thesis put NOW at
+  ~29x forward against 82.8x trailing reported in `prices.json`, a gap no single year of growth
+  closes
+
+**Relationship to T1 and T2** — T1 and T2 say who loses margin as agents spread; T3 says who is paid
+to keep them under control. A name can be hurt by T2 and helped by T3 at the same time.
+
+**Confidence** — medium on the need, low on regulation as the driver. The regulatory calendar is
+contested and may slip; the security case does not depend on it.
