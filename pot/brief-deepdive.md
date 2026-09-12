@@ -406,6 +406,14 @@ repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the tick
 - Never edit or delete an existing entry to make a name look better. Append a correcting entry and
   say so in `what`.
 
+**Quote `normEpsOwn` rather than deriving an adjusted multiple by hand.** Where a stored adjustment
+falls in the CURRENT, unfiled fiscal year, `prices.json` carries `normEpsOwn` beside `normEps`: the
+trailing recurring EPS with that one-off removed. On 11 September the TW proposal worked out its own
+$3.47 + $2.05 − $1.73 ≈ $3.79 and 26.8× in prose, because the pipeline offered nothing — the panel
+showed 24.3× on the vendor basis and the two never met. Use the field, and **say which basis each
+multiple is on**: reported, vendor recurring (`normEps`), or own (`normEpsOwn`, `peLowOwn`). Three
+numbers that disagree are fine; three numbers with no labels are not.
+
 `fetch-prices.js` subtracts these from filed net income to build an **own basis** beside the
 reported and vendor ones: `peLowOwn`, `pePctileOwn`, and the entries themselves on the quote as
 `adjustments`. It is the only basis whose adjustments can be checked against a document.

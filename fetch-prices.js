@@ -1609,6 +1609,41 @@ function recurringTtmFrom(entry, currency, rates) {
     return sum > 0 ? Number(sum.toPrecision(6)) : null;   // a loss has no meaningful multiple
 }
 
+// The trailing recurring EPS with the CURRENT fiscal year's one-offs taken out.
+//
+// `adjustedYears()` can only subtract from a filed ANNUAL row, so an adjustment in a year that has
+// not been filed yet matches nothing and does nothing — which is the window where a one-off is
+// freshest and most likely to fool the screen. On 12 Sep two of the four stored adjustments were
+// inert for exactly this reason (MWA fiscal 2026, Novo 2026), while both sat inside the trailing
+// four quarters that produce the headline recurring multiple.
+//
+// Why the current year specifically is safe to apply to the TTM: an unfiled fiscal year has at
+// most four filed quarters, so every one of them is inside the last four. A one-off recorded
+// against it is therefore inside the TTM window by construction. An adjustment on a FILED year is
+// left alone here — adjustedYears already has it, and applying both would count it twice.
+//
+// Never replaces normEps, exactly as peLowOwn never replaces peLowRecurring: filed and vendor
+// figures stay as they are and this sits beside them, so a proposal has to say which it quotes.
+function ownTtmEps(entry, adjustments, normEps, currency, rates) {
+    if (!(normEps > 0) || !entry || !Array.isArray(adjustments) || !adjustments.length) return null;
+    const years = (entry.years || []).filter(y => y.date).sort((a, b) => a.date.localeCompare(b.date));
+    if (!years.length) return null;
+    const lastFiled = years[years.length - 1];
+    const fx = epsToQuote(entry, currency, rates);
+    if (fx == null) return null;
+    // Implied shares from the filer's own figures, the same trick adjustedYears uses in reverse.
+    const shares = lastFiled.ni != null && lastFiled.eps > 0 ? lastFiled.ni / lastFiled.eps : null;
+    let perShare = 0, applied = 0;
+    for (const a of adjustments) {
+        if (!a || !a.fy || a.fy <= lastFiled.date) continue;          // filed years belong to adjustedYears
+        if (Number.isFinite(a.amountPerShare)) { perShare += a.amountPerShare; applied++; continue; }
+        if (Number.isFinite(a.amount) && shares) { perShare += a.amount / shares; applied++; }
+    }
+    if (!applied || !(perShare > 0)) return null;
+    const own = normEps - perShare * fx;
+    return own > 0 ? Number(own.toPrecision(6)) : null;   // nothing left to value on
+}
+
 // The quarter the filed recurring sum runs through — surfaced so the page can name the window.
 const lastQuarterDate = entry => {
     const q = (entry?.quarters || []).filter(x => x.date && x.rev != null).map(x => x.date).sort();
@@ -2504,12 +2539,32 @@ async function main() {
             else { delete quotes[t].epsFwd; fwdDropped++; }
         }
         const rec = recurringTtmFrom(store.eps[t], quotes[t].currency, rates);
-        if (rec != null) { quotes[t].normEps = rec; quotes[t].normEpsThru = lastQuarterDate(store.eps[t]); recFiled++; continue; }
+        if (rec != null) {
+            quotes[t].normEps = rec;
+            quotes[t].normEpsThru = lastQuarterDate(store.eps[t]);
+            // Only on the filed-quarter basis: the annual proxy below is not a TTM, so a current-year
+            // one-off has no window to sit in there.
+            const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], rec, quotes[t].currency, rates);
+            if (own != null) quotes[t].normEpsOwn = own; else delete quotes[t].normEpsOwn;
+            recFiled++;
+            continue;
+        }
         const ne = normEpsFrom(store.eps[t], quotes[t].eps);
-        if (ne != null) quotes[t].normEps = ne;
+        if (ne != null) {
+            quotes[t].normEps = ne;
+            // The proxy is trailing reported EPS scaled by the last filed year vendor ratio, so a
+            // current-year one-off sits inside it just as it sits inside a TTM sum. Approximate,
+            // because the ratio comes from an earlier year, but the one-off is a cited figure and
+            // removing it moves the multiple the honest way. Most names use this branch, not the
+            // filed-quarter one: MWA falls here because its Sep 2025 quarter carries no EPS.
+            const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], ne, quotes[t].currency, rates);
+            if (own != null) quotes[t].normEpsOwn = own; else delete quotes[t].normEpsOwn;
+        }
     }
     console.log(`ok   recurring EPS: ${recFiled} from filed quarters, `
         + `${tickers.filter(t => quotes[t]?.normEps != null).length - recFiled} from the annual proxy`);
+    const ownEps = tickers.filter(t => quotes[t]?.normEpsOwn != null).length;
+    if (ownEps) console.log(`ok   current-year one-offs removed for ${ownEps} ticker(s) — normEpsOwn`);
     if (fwdDropped) console.log(`     consensus forward EPS dropped for ${fwdDropped} ticker(s): `
         + `stated per ordinary share against a receipt price`);
     if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
@@ -3548,6 +3603,19 @@ function selftest() {
         assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: '2026-08-01' } }, ['A'], T), []);    // 41 days: fresh
         assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: '2026-01-01' } }, ['A'], T), ['A']);  // 253 days: stale
         assert.deepStrictEqual(sectorToFetch({ A: { sectorChecked: T } }, ['A'], T), []);              // never twice a day
+    }
+
+    // ownTtmEps: only the CURRENT unfiled year is applied, and only to a positive TTM.
+    {
+        const entry = { currency: 'USD', years: [{ date: '2025-09-30', ni: 200, eps: 2 }] };   // 100 shares implied
+        const R = { USD: 1 };
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amountPerShare: 0.06 }], 1, 'USD', R), 0.94);
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amount: 10 }], 1, 'USD', R), 0.9);   // 10 / 100 shares
+        // A filed year is adjustedYears' job; applying it here too would count it twice.
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2025-09-30', amount: 10 }], 1, 'USD', R), null);
+        assert.strictEqual(ownTtmEps(entry, [], 1, 'USD', R), null);
+        // A one-off larger than the earnings leaves no meaningful multiple.
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amountPerShare: 2 }], 1, 'USD', R), null);
     }
     console.log('selftest ok');
 }
