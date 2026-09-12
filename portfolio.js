@@ -24,7 +24,7 @@ const PERIODS = ['1d', '7d', '1m', '3m', '6m', '1y', 'ytd'];
 
 // How to bucket holdings into rows. 'company' is Grouping1 from the workbook
 // (VOO + VUSA.L -> "S&P 500"); 'geography' its region; 'instrument' one row each.
-const DIMENSIONS = { company: 'group', geography: 'geography', instrument: 'yahoo' };
+const DIMENSIONS = { company: 'group', geography: 'geography', instrument: 'yahoo', sector: 'sector' };
 
 // Replays the workbook's split-adjusted balance quantity and average cost on each
 // price day. Values and costs are in USD using today's FX, matching the rest of the app.
@@ -367,7 +367,13 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
             realized: (h.realizedLC || 0) * rate,
             income: value * (quote.divYield || 0),
         };
-        const key = String(h[field]);
+        // Sector is the one grouping key that does not live on the holding: holdings.json has no
+        // sector field, it comes from the quote (fetch-prices reads Yahoo's assetProfile). A fund has
+        // no single sector — VOO is 37% technology, not a technology company — so rather than pick a
+        // misleading winner every fund buckets under `Funds`. That is deliberately NOT what
+        // signals.js `book.bySector` does: the lanes' view splits a fund across its look-through
+        // weights, because it is aggregating exposure rather than listing one row per holding.
+        const key = String(field === 'sector' ? (quote.sector || 'Funds') : h[field]);
         if (!groups.has(key)) groups.set(key, { name: key, legs: [] });
         groups.get(key).legs.push(leg);
     }
@@ -607,6 +613,17 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(geo.map(g => g.name).sort(), ['China', 'US']);
     assert.strictEqual(geo.find(g => g.name === 'China').value, 400);
     assert.strictEqual(geo.find(g => g.name === 'China').legs.length, 2);
+
+    // Grouping by sector reads the sector off the QUOTE, and anything without one is a fund.
+    const secQuotes = {
+        ...quotes,
+        A: { ...quotes.A, sector: 'Technology' },
+        B: { ...quotes.B, sector: 'Technology' },
+    };
+    const sec = build(holdings, rates, secQuotes, 'sector');
+    assert.deepStrictEqual(sec.map(g => g.name).sort(), ['Funds', 'Technology']);
+    assert.strictEqual(sec.find(g => g.name === 'Technology').legs.length, 2);   // A and B
+    assert.strictEqual(sec.find(g => g.name === 'Funds').legs.length, 1);        // C, no sector
 
     // Grouping by instrument gives one row per holding, never merged.
     const inst = build(holdings, rates, quotes, 'instrument');

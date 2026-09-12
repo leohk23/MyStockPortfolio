@@ -719,6 +719,7 @@
             <button data-dim="instrument" aria-pressed="false">Stock</button>
             <button data-dim="company" aria-pressed="true">Company</button>
             <button data-dim="geography" aria-pressed="false">Geography</button>
+            <button data-dim="sector" aria-pressed="false" title="Holdings grouped by sector, from Yahoo. A fund has no single sector, so every fund sits under Funds rather than being filed under a misleading one.">Sector</button>
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
             <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
@@ -3936,7 +3937,7 @@ function renderPot() {
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world', 'pot'];
+            const views = ['instrument', 'company', 'geography', 'sector', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world', 'pot'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));
