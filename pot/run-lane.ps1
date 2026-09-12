@@ -79,8 +79,21 @@ if ($Agent -eq 'codex') {
     # internet access, and this lane does web research on a connected machine. The allowlist is the
     # tools a lane actually uses. Git publishing is denied because run-lane owns it: the lane's
     # allowlist-revert below only contains FILE writes, and a push would escape it entirely.
-    $toolArgs = @('--allowedTools', 'Bash PowerShell Read Write Edit Glob Grep WebFetch WebSearch',
-        '--disallowedTools', 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm -rf*)')
+    #
+    # Narrowed 12 Sep (D67). A lane reads web pages, and a page can carry instructions. The old list
+    # allowed ALL of Bash and PowerShell with four prefix denies, which `git -C . push` or any
+    # PowerShell command walked past. Now: only the commands 40 lane transcripts actually used, no
+    # PowerShell, no curl (WebFetch covers research), and credential stores denied by path — probed:
+    # a path deny also blocks `cat` of that path. Refused commands fail the call; the lane adapts.
+    # ponytail: `node -e` stays allowed (57 of ~100 lane commands) and node can read any file and
+    # open a socket, so this narrows the door, it does not shut it. Shutting it means running lanes
+    # as a separate Windows user with no access to this profile.
+    $allow = 'Read Write Edit Glob Grep WebFetch WebSearch ' +
+        'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
+        'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
+    $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
+        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**)'
+    $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
     # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
     $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
