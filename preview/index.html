@@ -329,7 +329,7 @@
         /* max-width on a table cell is ignored by the table layout, so the 44ch ceiling never wrapped
            anything and a run report's why ran off the page. Fitting the table to the page does: short
            columns take their min-content and the sentence wraps in what is left. */
-        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) table { width: 100%; }
+        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) table { width: 100%; min-width: 0; }   /* and off the global 1280px floor */
         #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) td:last-child { min-width: 32ch; }
         #pot-body[data-kind="paper"] .pot-scroll { max-width: none; }
         #pot-body[data-kind="paper"] th, #pot-body[data-kind="paper"] td {
