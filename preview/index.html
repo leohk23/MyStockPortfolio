@@ -411,7 +411,7 @@
         #infl-table .infl-asof { color: var(--text-muted); }
 
         /* ---- watchlist ---- */
-        /* Thirteen columns, not the portfolio table's 24 — so it must opt out of the global
+        /* Fewer columns than the portfolio table — so it must opt out of the global
            `table { min-width: 1280px }` or it forces a page-wide scrollbar. */
         #watchlist { min-width: 0; }
         #watchlist tbody tr { cursor: pointer; }
@@ -449,6 +449,12 @@
         .origin { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
             color: var(--series-port); border: 1px solid var(--series-port); border-radius: 3px;
             padding: 0 3px; margin-left: 6px; vertical-align: 1px; cursor: help; }
+        /* The owner-researched earnings basis is the default decision number. Keep the badge
+           quiet enough to scan past, but visible without a hover so it cannot be mistaken for
+           Yahoo's normalized figure. */
+        .basis-tag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--series-port); border-bottom: 1px dotted var(--series-port);
+            margin-left: 4px; cursor: help; }
         .gain { color: var(--good); }
         .loss { color: var(--bad); }
         /* An extended-hours move the displayed price does NOT include. Small and set in the
@@ -758,12 +764,12 @@
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
-                    <th data-sort="specialPe" title="Price ÷ recurring EPS — headline earnings with one-off items (asset sales, unrealized equity-stake marks) stripped out, so a name like Alphabet is not flattered by investment gains. Same basis as P/E (recurring) in the deep panel. A manual meta.json figure (FFO, adjusted EPS) would override it and is what the column was originally named for, but no holding uses one today; falls back to the plain P/E where Yahoo has no normalized figure.">Recurring PE</th>
-                    <th data-sort="peLow" title="The cheapest the market has priced this stock over the LAST FIVE YEARS: each weekly close divided by the trailing-twelve-month earnings that were actually public on that date. Point-in-time — never earnings the market had not seen. Five years rather than all time because a floor from 2013 is precise and unusable; 3y, 10y and all-time are kept in the deep panel as reference. The vs 5y column beside it says where today sits in that same five years — the number that decides anything.">PE Low (5y)</th>
-                    <th data-sort="pePctile" title="Where today’s multiple sits inside that same five-year distribution, as a percentile: 0 = cheaper than every week of the last five years, 100 = dearer than all of them. Every week in the window votes, so one panicked week cannot set it the way it can set the low next door. Green at 10 or below — the decile the valuation signal fires on.">vs 5y</th>
-                    <th data-sort="lowDate" title="When that cheapest multiple occurred. Hover the Implied cell for the low price and EPS behind it.">Low date</th>
-                    <th data-sort="implied" title="What the price would be at its cheapest multiple of the last five years, on today's EPS: PE Low (5y) × current EPS. Hover a value for the low price/EPS behind it.">Implied</th>
-                    <th data-sort="vsLow" title="Premium you pay over the trough-multiple price. Negative (green) = trading below its cheapest multiple of the last five years; positive (red) = dearer than at any point in those five years, on these earnings.">vs Low</th>
+                    <th data-sort="specialPe" title="Current price ÷ recurring EPS. Priority: a hand-researched, source-backed adjustment; then a manual stock-specific figure; then Yahoo normalized earnings; finally reported EPS. The displayed basis is named in the cell and in the deep panel.">Recurring PE</th>
+                    <th data-sort="peLow" title="The cheapest recurring multiple over the last five years. A source-backed research history is used first where available, then Yahoo normalized earnings, then filed earnings. Unadjusted years in the research history stay on filed earnings rather than inheriting Yahoo's opinion.">Recurring Low (5y)</th>
+                    <th data-sort="pePctile" title="Where today's recurring multiple sits in the matching five-year distribution. A source-backed research history is used first where available. Green at the cheapest 10% — the decile the valuation signal fires on.">vs 5y</th>
+                    <th data-sort="lowDate" title="When that recurring-basis low occurred. The deep panel shows the basis and the cited adjustments.">Low date</th>
+                    <th data-sort="implied" title="Research-basis low × current research recurring EPS. Left blank when current research EPS is unavailable, because mixing it with a Yahoo or filed denominator would invent a comparison.">Implied</th>
+                    <th data-sort="vsLow" title="Premium over the recurring-basis implied price. Negative (green) means below that basis's five-year low. Left blank unless the historical and current earnings basis match.">vs Low</th>
                     <th data-sort="trades" title="How many trades built this position, across every listing in the row. Sits at the end, out of the pinned block, because it was widening the position name — the one column that has to stay on screen. Expand the row (chevron) for the trades themselves.">Trades</th>
                 </tr>
             </thead>
@@ -788,8 +794,9 @@
                 <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
                 <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
                 <th data-sort="pe">P/E</th>
-                <th data-sort="peLow" title="The cheapest the market has priced this stock over the LAST FIVE YEARS, on the earnings that were public at the time. The vs 5y column beside it says where today sits in those five years. Same basis as the Stock tab.">PE Low (5y)</th>
-                <th data-sort="pePctile" title="Where today’s multiple sits inside that five-year distribution, as a percentile: 0 = cheaper than every week of it, 100 = dearer than all of them. Green at 10 or below.">vs 5y</th>
+                <th data-sort="specialPe" title="Current recurring P/E, prioritizing source-backed research adjustments, then Yahoo normalized earnings, then filed EPS.">Recurring P/E</th>
+                <th data-sort="peLow" title="The cheapest recurring multiple over the last five years, prioritizing source-backed research history, then Yahoo normalized earnings, then filed earnings.">Recurring Low (5y)</th>
+                <th data-sort="pePctile" title="Where today's recurring multiple sits in the matching five-year distribution. Green at 10 or below.">vs 5y</th>
                 <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
             </tr></thead>
             <tbody></tbody>
@@ -1122,14 +1129,33 @@
                         + `<span class="muted">${k}</span> ${num2(h[k].low)}×</span>`);
                 return parts.length ? parts.join('<span class="muted"> · </span>') : '<span class="muted">–</span>';
             };
+            const recurring = recurringNow(leg);
+            const recurringHist = recurringHistory(leg);
+            const recurringBasis = recurringHist.basis === 'research' ? 'research'
+                : recurringHist.basis === 'yahoo' ? 'Yahoo recurring' : 'reported fallback';
+            const histPctile = typeof recurringHist.pctile !== 'number'
+                ? '<span class="muted">–</span>'
+                : `<span class="${recurringHist.pctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(recurringHist.pctile * 100))} percentile</span>`
+                    + ` <span class="muted">— cheaper than ${(100 - recurringHist.pctile * 100).toFixed(0)}% of the last ${recurringHist.window || '5y'}</span>`
+                    + (recurringHist.from ? ` <span class="muted">(from ${ymd(recurringHist.from)}, ${recurringHist.weeks} weeks)</span>` : '');
+            const adjustmentSources = (q.adjustments || []).map(a => {
+                const label = `FY${a.fy}`;
+                const linked = a.source
+                    ? `<a href="${escapeHTML(String(a.source))}" target="_blank" rel="noopener">${label}</a>`
+                    : label;
+                return `${linked}: ${escapeHTML(a.description || 'source-backed one-off')}`;
+            }).join('<br>');
             const rows = [
                 ['Price', px(q.price)],
+                // The chosen decision basis leads the panel. renderFinancials fills both values
+                // after it has the filed quarters; normEpsOwn short-circuits that work when the
+                // quote already carries the owner-researched TTM figure.
+                ['Recurring EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
+                ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
                 ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
                     : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],
-                // Trailing recurring EPS + its P/E, filled by renderFinancials from the quarterly
-                // recurring/filed ratio (the deep dive has the quarters the table row does not).
-                ['Recurring EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
+                ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×'],
                 // Forward-looking earnings: the company's own full-year guidance, and the analyst
                 // consensus for the next twelve months. Both blank where the source has nothing.
                 ['EPS (guidance)', '<span id="deep-guidance-eps"></span>',
@@ -1137,8 +1163,6 @@
                 ['EPS (forward)', q.epsFwd == null
                     ? '<span class="muted">–</span>'
                     : px(q.epsFwd) + ' <span class="tag" title="Analyst consensus for the next twelve months (Yahoo), in the quote\'s currency and per the quoted unit. Not the company\'s own forecast — that is the guidance row. Suppressed where a share split falls inside the last year, because Yahoo restates the price for a split weeks before the consensus catches up.">consensus</span>'],
-                ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×',
-                    ' class="valuation-group-start"'],
                 // Filled where guidance.json carries a full-year forecast we can price.
                 ['P/E (guidance)', '<span id="deep-guidance-pe"></span>',
                     ' id="deep-guidance-pe-row" hidden'],
@@ -1148,50 +1172,42 @@
                 // recurring case is the P/E (recurring) row below, on trailing quarterly earnings.
                 leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
-                ['P/E (recurring)', '<span id="deep-rec-pe" class="muted">…</span>'],
-                // The five-year low, and — the row that actually decides anything — where today
-                // sits inside that same five years. A low on its own is one panicked week; the
-                // percentile is every week in the window. §6.1 fires in the cheapest 10%.
-                ['P/E low (5y)', leg.peLow == null ? '–' : num2(leg.peLow) + '×'],
-                ['vs own 5y', pctileRow(leg.quote)],
-                // 3y / 10y / all-time kept as reference: the long view answers “has this ever been
-                // hated?”, it is simply the wrong yardstick for “should I buy it this week”.
-                ['Cheapest by horizon', horizonRow(leg.quote)],
-                ['Low date', leg.lowDate || '–'],
-                ['Implied price', px(leg.implied)],
-                ['vs implied', leg.vsLow == null ? '–'
-                    : `<span class="${leg.vsLow >= 0 ? 'loss' : 'gain'}">${pct(leg.vsLow)}</span>`],
+                // Decision basis first. `peLowOwn` is the filed history after the cited one-offs;
+                // years with no researched adjustment remain filed. It never silently borrows a
+                // current Yahoo denominator: an unmatched implied price is a dash.
+                [`P/E low (${recurringBasis}, 5y)`, recurringHist.low == null
+                    ? '<span class="muted">–</span>'
+                    : num2(recurringHist.low) + '×' + basisTag(recurringHist.basis, q),
+                    ' class="valuation-group-start"'],
+                [`vs 5y (${recurringBasis})`, histPctile],
+                [`Low date (${recurringBasis})`, recurringHist.lowDate || '<span class="muted">–</span>'],
+                [`Implied price (${recurringBasis})`, recurringHist.implied == null
+                    ? `<span class="muted"${recurringHist.basis === 'research' ? ' title="No current owner-researched recurring EPS is available, so this does not mix bases."' : ''}>–</span>`
+                    : px(recurringHist.implied)],
+                [`vs implied (${recurringBasis})`, recurringHist.vsLow == null
+                    ? '<span class="muted">–</span>'
+                    : `<span class="${recurringHist.vsLow >= 0 ? 'loss' : 'gain'}">${pct(recurringHist.vsLow)}</span>`],
+                adjustmentSources ? ['Research adjustments', adjustmentSources] : null,
 
-                // The recurring basis repeated in full, and kept BELOW the reported block
-                // rather than interleaved with it. "Cheapest by horizon" is a reported-basis
-                // figure and sat directly under the recurring low, which read as though it
-                // belonged to it.
-                ['P/E low (recurring)', (() => {
-                    const r = q.peLowRecurring;
-                    if (r == null) return '<span class="muted">–</span>';
-                    const gap = leg.peLow > 0 ? r / leg.peLow - 1 : null;
-                    // Only worth flagging when the two disagree enough to change a decision.
-                    // Intel's reported floor is 5.5x and its recurring floor 27.5x: the first is
-                    // a year of one-off earnings, not a multiple anyone can pay again.
-                    const note = gap != null && Math.abs(gap) >= 0.15
-                        ? ` <span class="${gap > 0 ? 'loss' : 'gain'}" title="The reported floor was struck on earnings that included one-offs, so it is not a level these earnings can revisit. Yahoo's normalisation, applied with hindsight — the reported floor above stays the filed, point-in-time one.">${gap > 0 ? '+' : ''}${(gap * 100).toFixed(0)}% vs reported</span>`
-                        : '';
-                    return num2(r) + '×' + note;
-                })(), ' class="valuation-group-start"'],
-                ['Low date (recurring)', q.lowDateRecurring || '<span class="muted">–</span>'],
-                ['Implied price (recurring)', q.peLowRecurring != null && q.normEps > 0
-                    ? px(q.peLowRecurring * q.normEps)
-                    : '<span class="muted">–</span>'],
-                ['vs implied (recurring)', (() => {
-                    // Today's recurring multiple against its own recurring floor. Both halves
-                    // on one basis, which the reported pair above cannot answer for a name
-                    // whose floor was struck on one-off earnings.
-                    if (!(q.peLowRecurring > 0) || !(q.normEps > 0) || !(q.price > 0)) {
-                        return '<span class="muted">–</span>';
-                    }
-                    const v = q.price / (q.peLowRecurring * q.normEps) - 1;
-                    return `<span class="${v >= 0 ? 'loss' : 'gain'}">${pct(v)}</span>`;
-                })()],
+                // Keep Yahoo's normalized history directly underneath when research exists, then
+                // filed earnings as the final reference. The labels prevent either from being read
+                // as the selected decision basis.
+                recurringHist.basis === 'research' ? ['P/E low (Yahoo recurring)', q.peLowRecurring == null
+                    ? '<span class="muted">–</span>' : num2(q.peLowRecurring) + '×',
+                    ' class="valuation-group-start"'] : null,
+                recurringHist.basis === 'research' ? ['vs 5y (Yahoo recurring)', (() => {
+                    if (typeof q.pePctileRecurring !== 'number') return '<span class="muted">–</span>';
+                    return `<span class="${q.pePctileRecurring <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(q.pePctileRecurring * 100))} percentile</span>`;
+                })()] : null,
+                recurringHist.basis === 'research' ? ['Low date (Yahoo recurring)', q.lowDateRecurring || '<span class="muted">–</span>'] : null,
+
+                recurringHist.basis !== 'reported' ? ['P/E low (reported, 5y)', leg.peLow == null
+                    ? '<span class="muted">–</span>' : num2(leg.peLow) + '×',
+                    ' class="valuation-group-start"'] : null,
+                recurringHist.basis !== 'reported' ? ['vs 5y (reported)', pctileRow(leg.quote)] : null,
+                recurringHist.basis !== 'reported' ? ['Low date (reported)', leg.lowDate || '<span class="muted">–</span>'] : null,
+                // 3y / 10y / all-time are available only on the filed, point-in-time history.
+                ['Cheapest by horizon (reported)', horizonRow(leg.quote)],
 
                 // What the capital earns, kept below the multiples: a different question from
                 // "is it cheap", and it was previously splitting the reported trough in half.
@@ -1571,6 +1587,31 @@
                 // Recurring EPS = filed EPS on the normalized/reported income ratio, i.e. EPS with
                 // one-offs removed. Same recent-years coverage as opinc/shares (needs Yahoo's norm).
                 const recEps = y => y.norm != null && y.ni && y.eps != null ? y.norm * y.eps / y.ni : null;
+                const adjustments = leg.quote.adjustments || [];
+                const researchedRecEps = y => {
+                    if (!adjustments.length || y.eps == null) return null;
+                    let cut = 0;
+                    for (const a of adjustments) {
+                        if (!a || a.fy !== y.date) continue;
+                        if (Number.isFinite(a.amountPerShare)) cut += a.amountPerShare;
+                        else if (Number.isFinite(a.amount) && y.ni) cut += a.amount * y.eps / y.ni;
+                    }
+                    return y.eps - cut;
+                };
+                // Once a ticker has researched adjustments, its annual comparison stays on that
+                // explainable basis throughout: filed EPS less the adjustments we can cite. An
+                // untouched year therefore equals filed EPS, rather than silently taking Yahoo's
+                // normalized number.
+                const annualRecEps = y => adjustments.length ? researchedRecEps(y) : recEps(y);
+                const researchYearTag = y => {
+                    const hits = adjustments.filter(a => a?.fy === y.date);
+                    if (!hits.length) return '';
+                    const title = hits.map(a => a.description || 'source-backed one-off').join('; ');
+                    const source = hits.find(a => a.source)?.source;
+                    return source
+                        ? ` <a class="tag" href="${escapeHTML(String(source))}" target="_blank" rel="noopener" title="${escapeHTML(title)}">research</a>`
+                        : ` <span class="tag" title="${escapeHTML(title)}">research</span>`;
+                };
                 const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
                 const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
 
@@ -1628,11 +1669,11 @@
 
                 // Value over its YoY. `invert` flips the colour for share count: FEWER shares
                 // (a buyback) is the good outcome, so a negative change reads green.
-                const cell = (v, g, invert, format = big, derived) => {
+                const cell = (v, g, invert, format = big, derived, suffix = '') => {
                     const val = v == null ? '<span class="muted">–</span>'
                         : derived ? `<span class="derived" title="Reconstructed: annual EPS minus the other three quarters — Yahoo omits this quarter's per-share figure for this filer">${format(v)}</span>`
                         : format(v);
-                    return `<td>${val}${g == null ? '' : `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
+                    return `<td>${val}${suffix}${g == null ? '' : `<span class="yoy ${cls(invert ? -g : g)}">${pct(g)}</span>`}</td>`;
                 };
                 // Margin changes are percentage points, not relative growth: 10% to 12% is
                 // +2.0pp. Op is blank on the deep years Yahoo didn't cover.
@@ -1655,7 +1696,8 @@
                         ${marginCell(netMargin(y), p ? netMargin(p) : null)}
                         ${cell(shares(y), p ? yoy(shares(y), shares(p)) : null, true)}
                         ${cell(y.eps, yoy(y.eps, p?.eps), false, num2)}
-                        ${cell(recEps(y), p ? yoy(recEps(y), recEps(p)) : null, false, num2)}
+                        ${cell(annualRecEps(y), p ? yoy(annualRecEps(y), annualRecEps(p)) : null,
+                            false, num2, false, researchYearTag(y))}
                         ${bandCell(y)}
                     </tr>` };
                 });
@@ -1688,10 +1730,10 @@
                 // Recurring-EPS growth, over the years that carry it (recent Yahoo years, like
                 // shares). Direct ratio so a decline compounds negative, and it may span fewer
                 // years than the header's CAGR — a title spells out the actual span.
-                const withRec = years.filter(y => recEps(y) > 0);
+                const withRec = years.filter(y => annualRecEps(y) > 0);
                 const ref = withRec[0], rel = withRec[withRec.length - 1];
                 const rspan = ref && rel ? fy(rel) - fy(ref) : 0;
-                const reccagr = rspan > 0 ? (recEps(rel) / recEps(ref)) ** (1 / rspan) - 1 : null;
+                const reccagr = rspan > 0 ? (annualRecEps(rel) / annualRecEps(ref)) ** (1 / rspan) - 1 : null;
                 const cagrCell = (v, invert) => `<td>${v == null ? '–' :
                     `<span class="yoy ${cls(invert ? -v : v)}">${pct(v)}</span>`}</td>`;
                 const foot = span > 0 ? `<tr class="cagr">
@@ -1882,7 +1924,14 @@
                     const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
                     const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
                     let recEps = null, recPe = null, note = '', tag = '';
-                    if (tRec.v != null && fx != null) {
+                    if (leg.quote.normEpsOwn != null) {
+                        recEps = leg.quote.normEpsOwn;
+                        recPe = recEps > 0 ? leg.quote.price / recEps : null;
+                        note = 'Owner-researched recurring EPS: the broad recurring figure less '
+                            + 'source-backed one-offs recorded for the current, unfiled fiscal year. '
+                            + adjustmentSummary(leg.quote);
+                        tag = 'research';
+                    } else if (tRec.v != null && fx != null) {
                         recEps = tRec.v * fx;
                         // A loss-making recurring year has no meaningful multiple — same rule
                         // troughPe uses. Show the negative EPS, withhold the P/E.
@@ -1929,7 +1978,7 @@
                         <th>Net income</th><th>Net margin</th>
                         <th title="Diluted share count. A falling count is a buyback (green); a rising one dilutes you (red).">Shares</th>
                         <th title="Diluted earnings per share in the reporting currency; small text is change from the prior fiscal year.">EPS</th>
-                        <th title="EPS with one-off items (asset sales, unrealized equity-stake marks) stripped out — the recurring earnings the Special P/E is struck on. Small text is growth vs the prior year (or the same quarter a year earlier). Yahoo's recent periods only; blank where it has no normalized figure.">Recurring EPS</th>
+                        <th title="Annual rows prioritize the owner-researched basis: filed EPS less source-backed one-offs, with a linked research tag on an adjusted year. Other tickers and quarterly rows use Yahoo normalized earnings. Small text is growth vs the comparable prior period.">Recurring EPS</th>
                         <th title="Cheapest and dearest multiple the market struck inside that fiscal year, with the year's average beneath. Weekly closes ÷ the annual EPS already PUBLISHED by each date — so it is not the price divided by the EPS on the same row: results land months after the year they describe. The bands run back to the first year with earnings on file, so on a long history the lowest low here can sit BELOW the five-year P/E low in Valuation — that is the two windows differing, not a disagreement.">P/E paid</th>
                     </tr></thead>
                     <tbody>${body}${foot}${qrow}${interimRow}${ttmRow}${guidance?.row || ''}</tbody>
@@ -1938,7 +1987,9 @@
                     'Reported: net income is attributable to common shareholders after minorities; shares are diluted.',
                     'Coverage: shares, EPS, operating income and op margin cover Yahoo\'s recent years only.',
                     ...(bandBy.size ? ['P/E paid: the cheapest–dearest multiple struck inside each fiscal year, average beneath, from weekly closes over the annual EPS published by each date. Point-in-time, so a year is priced mostly on the PREVIOUS year’s earnings — the ones the market actually had — not on the EPS in its own row. Weekly closes, so the band is a little narrower than the true intraday range.'] : []),
-                    'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the Special P/E; the gap to filed EPS is how much one-offs flatter the headline.',
+                    adjustments.length
+                        ? 'Recurring EPS: owner-researched basis — filed EPS less the source-backed one-offs listed in Valuation. An adjusted annual row links to its source; an untouched year remains filed EPS. Quarterly rows stay on Yahoo normalized earnings because an annual adjustment cannot safely be assigned to a quarter.'
+                        : 'Recurring EPS: filed EPS with one-off items removed (Yahoo normalized income ÷ shares). This is the denominator behind the recurring P/E; the gap to filed EPS is how much one-offs flatter the headline.',
                     ...(qrow ? ['Quarters: up to the last four reported quarters, each with change vs the same quarter a year earlier (not the quarter beside it — that would just be seasonality). Read the guidance row below like-for-like against the year-ago quarter, not against the full-year rows.'] : []),
                     ...(qs.some(x => x.derivedQuarter) ? ['Derived quarter: Yahoo omits a quarter this filer did report, so it is reconstructed as the audited fiscal year minus the three filed quarters — exact for revenue and income, which accumulate over the year. That quarter carries no EPS or share count: those need its own share base, and a bonus issue or buyback inside the year would make an imputed per-share figure fiction.'] : []),
                     ...(interimRow ? ['Half years: typed from the company\'s own interim announcement (the row label links to it), because no data feed carries sub-annual figures for a semi-annual reporter. Compared to the same half a year earlier, never to the half beside it. Shares and recurring EPS are blank because the announcement does not give them.'] : []),
@@ -2836,6 +2887,46 @@
         // loss-making company isn't a meaningful multiple), so this only ever formats positives.
         const peCell = (n, label) => n == null ? '<span class="muted">–</span>'
             : `<span${label ? ` title="${label}"` : ''}>${n.toFixed(1)}x</span>`;
+        const quoteOf = item => item?.quote || (item?.legs?.length === 1 ? item.legs[0].quote : null);
+        const adjustmentSummary = q => (q?.adjustments || [])
+            .map(a => `FY${a.fy}: ${a.description || 'source-backed one-off'}`).join('; ');
+        const basisTag = (basis, q) => basis !== 'research' ? ''
+            : ` <span class="basis-tag" title="Owner-researched recurring basis. ${escapeHTML(adjustmentSummary(q))}">research</span>`;
+        // One presentation rule for the holdings table, watchlist and deep panel. A researched
+        // current-year adjustment wins; a stock-specific manual measure remains next; Yahoo's
+        // normalized figure is the broad fallback; filed EPS is the last honest denominator.
+        const recurringNow = item => {
+            const q = quoteOf(item);
+            if (!q) return { eps: null, pe: null, basis: 'reported', label: '' };
+            if (q.normEpsOwn > 0) return { eps: q.normEpsOwn, pe: q.price / q.normEpsOwn,
+                basis: 'research', label: 'Owner-researched recurring earnings', q };
+            if (item?.specialEpsLabel && item.specialEpsLabel !== 'Recurring') return {
+                eps: item.specialEps, pe: item.specialPe, basis: 'manual',
+                label: item.specialEpsLabel, q };
+            if (q.normEps > 0) return { eps: q.normEps, pe: q.price / q.normEps,
+                basis: 'yahoo', label: 'Yahoo normalized earnings', q };
+            return { eps: q.eps, pe: item?.pe ?? (q.eps > 0 ? q.price / q.eps : null),
+                basis: 'reported', label: 'Reported earnings; no recurring figure available', q };
+        };
+        // Historical research and current research are kept paired. When the stored adjustment
+        // changes the five-year history but no current research EPS exists yet, Implied stays blank
+        // instead of multiplying an own-history low by Yahoo or filed current earnings.
+        const recurringHistory = item => {
+            const q = quoteOf(item);
+            if (!q) return { low: null, pctile: null, lowDate: null, implied: null, vsLow: null,
+                basis: 'reported', q: null };
+            const own = q.peLowOwn != null;
+            const vendor = !own && q.peLowRecurring != null;
+            const basis = own ? 'research' : vendor ? 'yahoo' : 'reported';
+            const low = own ? q.peLowOwn : vendor ? q.peLowRecurring : q.peLow;
+            const pctile = own ? q.pePctileOwn : vendor ? q.pePctileRecurring : q.pePctile;
+            const lowDate = own ? q.lowDateOwn : vendor ? q.lowDateRecurring : q.lowDate;
+            const eps = own ? q.normEpsOwn : vendor ? q.normEps : q.eps;
+            const implied = low > 0 && eps > 0 ? low * eps : null;
+            return { low, pctile, lowDate, implied,
+                vsLow: implied > 0 && q.price > 0 ? q.price / implied - 1 : null,
+                basis, q, window: q.peWindow, from: q.peFrom, weeks: q.peWeeks };
+        };
         // 1st, 2nd, 3rd — "2th percentile" in a valuation column undermines every number beside it.
         const ordinal = n => n + ([, 'st', 'nd', 'rd'][n % 100 >> 3 ^ 1 && n % 10] || 'th');
         const peLowCell = (low, window) => low == null ? '<span class="muted">–</span>'
@@ -2889,6 +2980,12 @@
                 + `${r.lowDate ? ` (${ymd(r.lowDate)})` : ''}`
                 + `">`
                 + `${num2(r.implied)}</span>`;
+        const recurringLowCell = h => peLowCell(h.low, h.window) + basisTag(h.basis, h.q);
+        const recurringPctileCell = h => pctileCell(h.pctile, h.window, h.from, h.weeks)
+            + basisTag(h.basis, h.q);
+        const recurringImpliedCell = h => h.implied == null
+            ? `<span class="muted"${h.basis === 'research' ? ' title="No current owner-researched recurring EPS is available, so this does not mix bases."' : ''}>–</span>`
+            : `<span title="${h.basis === 'research' ? 'Owner-researched' : h.basis === 'yahoo' ? 'Yahoo recurring' : 'Reported'} low ${h.low.toFixed(1)}x × current matching-basis EPS">${num2(h.implied)}</span>`;
         const lowDateCell = d => d == null ? '<span class="muted">–</span>' : `<span class="muted">${ymd(d)}</span>`;
         // Colour is INVERTED against the rest of the table: below the trough multiple is the
         // good news here, so a negative premium reads green.
@@ -2937,6 +3034,12 @@
             if (key === 'held') return row.held ? row.held.days : null;
             if (key === 'live') return row.legs.some(l => isLive(l.quote)) ? 1 : 0;
             if (key === 'trades') return rowTrades(row) || null;
+            if (key === 'specialPe') return recurringNow(row).pe;
+            if (['peLow', 'pePctile', 'lowDate', 'implied', 'vsLow'].includes(key)) {
+                const h = recurringHistory(row);
+                return ({ peLow: h.low, pePctile: h.pctile, lowDate: h.lowDate,
+                    implied: h.implied, vsLow: h.vsLow })[key];
+            }
             return row[key];
         };
         // Ties fall back to value, largest first — the sort this table used to open on. Without
@@ -2958,13 +3061,20 @@
         // Sort keys map to the same field each watchlist cell shows, so the order always
         // matches the displayed numbers — price stays native (as in the holdings table)
         // rather than silently reordering by USD. Movement periods live on the quote.
-        const QUOTE_KEYS = new Set(['price', 'divYield', 'pePctile']);   // columns read off the quote, not the row
+        const QUOTE_KEYS = new Set(['price', 'divYield']);   // columns read off the quote, not the row
         const liveOf = q => isLive(q) ? 1 : 0;
-        const watchSortValue = (w, key) =>
+        const watchSortValue = (w, key) => {
             // `live` is derived, not a field: without this it read w.live, came back undefined for
             // every row, and the column sorted into a single null bucket that never moved.
-            key === 'live' ? liveOf(w.quote)
-                : portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
+            if (key === 'live') return liveOf(w.quote);
+            if (key === 'specialPe') return recurringNow(w).pe;
+            if (['peLow', 'pePctile', 'lowDate', 'implied', 'vsLow'].includes(key)) {
+                const h = recurringHistory(w);
+                return ({ peLow: h.low, pePctile: h.pctile, lowDate: h.lowDate,
+                    implied: h.implied, vsLow: h.vsLow })[key];
+            }
+            return portfolioLib.PERIODS.includes(key) || QUOTE_KEYS.has(key) ? w.quote[key] : w[key];
+        };
         function sortedWatch() {
             return [...visibleWatch()].sort((a, b) => {
                 const x = watchSortValue(a, watchSort.key), y = watchSortValue(b, watchSort.key);
@@ -3028,6 +3138,8 @@
             tbody.innerHTML = '';
             for (const r of shown) {
                 const multi = r.legs.length > 1;
+                const recurring = recurringNow(r);
+                const recurringHist = recurringHistory(r);
                 const trades = STATE.dim === 'instrument' ? r.legs[0].trades || [] : [];
                 const expandable = multi || trades.length > 0;
                 const tr = document.createElement('tr');
@@ -3056,17 +3168,19 @@
                     <td>${incomeCell(r.income)}</td>
                     <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
                     <td>${peCell(r.pe)}</td>
-                    <td>${peCell(r.specialPe, r.specialEpsLabel)}</td>
-                    <td>${peLowCell(r.peLow, r.peWindow)}</td>
-                    <td>${pctileCell(r.pePctile, r.peWindow, r.peFrom, r.peWeeks)}</td>
-                    <td>${lowDateCell(r.lowDate)}</td>
-                    <td>${impliedCell(r)}</td>
-                    <td>${vsLowCell(r.vsLow)}</td>
+                    <td>${peCell(recurring.pe, recurring.label)}${basisTag(recurring.basis, recurring.q)}</td>
+                    <td>${recurringLowCell(recurringHist)}</td>
+                    <td>${recurringPctileCell(recurringHist)}</td>
+                    <td>${lowDateCell(recurringHist.lowDate)}</td>
+                    <td>${recurringImpliedCell(recurringHist)}</td>
+                    <td>${vsLowCell(recurringHist.vsLow)}</td>
                     <td class="${rowTrades(r) ? '' : 'muted'}">${rowTrades(r) || '–'}</td>`;
                 tbody.appendChild(tr);
 
                 // Only multi-instrument rows have constituents to expand.
                 const legRows = multi ? r.legs.map(leg => {
+                    const legRecurring = recurringNow(leg);
+                    const legRecurringHist = recurringHistory(leg);
                     const el = document.createElement('tr');
                     el.className = 'leg';
                     el.style.setProperty('--mix', bar(leg.value));
@@ -3096,12 +3210,12 @@
                         <td>${incomeCell(leg.income)}</td>
                         <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
                         <td>${peCell(leg.pe)}</td>
-                        <td>${peCell(leg.specialPe, leg.specialEpsLabel)}</td>
-                        <td>${peLowCell(leg.peLow, leg.quote.peWindow)}</td>
-                        <td>${pctileCell(leg.quote.pePctile, leg.quote.peWindow, leg.quote.peFrom, leg.quote.peWeeks)}</td>
-                        <td>${lowDateCell(leg.lowDate)}</td>
-                        <td>${impliedCell(leg)}</td>
-                        <td>${vsLowCell(leg.vsLow)}</td>
+                        <td>${peCell(legRecurring.pe, legRecurring.label)}${basisTag(legRecurring.basis, legRecurring.q)}</td>
+                        <td>${recurringLowCell(legRecurringHist)}</td>
+                        <td>${recurringPctileCell(legRecurringHist)}</td>
+                        <td>${lowDateCell(legRecurringHist.lowDate)}</td>
+                        <td>${recurringImpliedCell(legRecurringHist)}</td>
+                        <td>${vsLowCell(legRecurringHist.vsLow)}</td>
                         <td class="${(leg.trades || []).length ? '' : 'muted'}">${(leg.trades || []).length || '–'}</td>`;
                     el.addEventListener('click', () => { const fix = pinRow(el); selectChart(leg.yahoo); fix(); });
                     tbody.appendChild(el);
@@ -3260,6 +3374,8 @@
             const tbody = document.querySelector('#watchlist tbody');
             tbody.textContent = '';
             for (const w of sortedWatch()) {
+                const recurring = recurringNow(w);
+                const recurringHist = recurringHistory(w);
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
@@ -3269,11 +3385,12 @@
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
                     <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
                     <td>${peCell(w.pe)}</td>
-                    <td>${peLowCell(w.peLow, w.quote.peWindow)}</td>
-                    <td>${pctileCell(w.quote.pePctile, w.quote.peWindow, w.quote.peFrom, w.quote.peWeeks)}</td>
-                    <td>${lowDateCell(w.lowDate)}</td>
-                    <td>${impliedCell(w)}</td>
-                    <td>${vsLowCell(w.vsLow)}</td>`;
+                    <td>${peCell(recurring.pe, recurring.label)}${basisTag(recurring.basis, recurring.q)}</td>
+                    <td>${recurringLowCell(recurringHist)}</td>
+                    <td>${recurringPctileCell(recurringHist)}</td>
+                    <td>${lowDateCell(recurringHist.lowDate)}</td>
+                    <td>${recurringImpliedCell(recurringHist)}</td>
+                    <td>${vsLowCell(recurringHist.vsLow)}</td>`;
                 tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(w.yahoo); fix(); });
                 tbody.appendChild(tr);
             }
