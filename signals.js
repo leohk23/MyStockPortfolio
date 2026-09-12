@@ -484,7 +484,7 @@ function bookExposure(holdings, quotes, rates) {
         return trim([...m].map(([k, v]) => ({ name: k, weight: share(v) })).sort((a, b) => b.weight - a.weight));
     })();
     return {
-        totalGBP: Math.round(total),
+        // No totalGBP since D67: weights are public, the amount is not.
         priced: rows.length,
         of: holdings.length,
         // Per position. `byCompany` differs from this only where a company is held through more
@@ -592,7 +592,8 @@ function main() {
         earnings: read('earnings.json', { eps: {} }),
         held: new Set((read('holdings.json', { holdings: [] }).holdings || []).map(h => h.yahoo)),
         // The full rows too, not just the ticker set: bookExposure needs qty and the groupings.
-        holdings: read('holdings.json', { holdings: [] }).holdings || [],
+        // Sealed since D67; without the passphrase there is no book rather than a book of zeros.
+        holdings: (() => { const h = require('./vault').readHoldings(); return h.full ? h.holdings : []; })(),
         potPositions: read('pot/positions.json'),
         previous: read('signals.json'),
     };

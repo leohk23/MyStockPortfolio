@@ -104,7 +104,11 @@ function potHoldings(trades) {
 }
 
 function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
-    const holdings = read('holdings.json')?.holdings || [];
+    // Pot trades live in the sealed half (vault.js, D67). Unopenable means no trades, and the book
+    // would silently read as unfunded — so refuse instead.
+    const vaulted = require('../vault').readHoldings(p('holdings.json'));
+    if (!vaulted.full) throw new Error('holdings.json is sealed and no passphrase is available (.holdings-key or HOLDINGS_KEY)');
+    const holdings = vaulted.holdings;
     const quotes = read('prices.json')?.quotes || {};
     const prev = read('pot/positions.json', {});
 

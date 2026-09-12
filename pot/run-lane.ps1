@@ -92,7 +92,7 @@ if ($Agent -eq 'codex') {
         'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
         'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
     $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
-        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**)'
+        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key)'
     $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
     # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.

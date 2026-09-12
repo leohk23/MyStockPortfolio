@@ -78,7 +78,11 @@ jobs:
       # extract-portfolio.js needs the workbook and never runs here.
       - run: node fetch-prices.js --selftest
       - run: node portfolio.js --selftest
+      # The passphrase seals the value history built from Leo's trades (vault.js, D67). Without it
+      # the quotes still publish and the value series is simply left out.
       - run: node fetch-prices.js
+        env:
+          HOLDINGS_KEY: ${{ secrets.HOLDINGS_KEY }}
 
       # earnings.json is the stored annual-EPS history: refreshed by fetch-prices only when it
       # ages out (weekly), not hourly — so most runs leave it untouched and it drops out here.

@@ -295,6 +295,12 @@
             #pot-body .pot-kv > div { grid-template-columns: 1fr; }
             #pot-body .pot-kv dd { white-space: normal; }
         }
+        #vault { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line);
+            border-radius: 8px; max-width: min(26rem, calc(100vw - 32px)); padding: 16px 18px; }
+        #vault::backdrop { background: rgba(0, 0, 0, .55); }
+        #vault input[type=password] { width: 100%; box-sizing: border-box; padding: 7px 9px; margin: 4px 0 10px;
+            background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; }
+        #vault .vault-actions { text-align: right; margin: 12px 0 0; }
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
         /* The holdings table's idiom: a rule under each row rather than a box around every cell,
@@ -619,6 +625,16 @@
     </style>
 </head>
 <body>
+    <dialog id="vault">
+        <form method="dialog">
+            <p><b>Unlock holdings</b></p>
+            <p class="muted">Quantities, costs and trades are encrypted, because this repo is public. Skip to browse prices, the watchlist and the pot without them.</p>
+            <input type="password" name="pass" autocomplete="current-password" aria-label="Passphrase" placeholder="Passphrase">
+            <label><input type="checkbox" name="remember"> Remember on this device</label>
+            <p id="vault-msg" class="loss" hidden>That passphrase did not open it.</p>
+            <p class="vault-actions"><button value="skip">Skip</button> <button value="ok">Unlock</button></p>
+        </form>
+    </dialog>
     <div id="preview-banner" hidden>
         <strong>PREVIEW</strong> — staging copy of the dashboard, reading the same live data as the
         real page. Changes here are not live until promoted.
@@ -999,11 +1015,56 @@
 
         const rateOf = c => portfolioLib.rateFor(c, STATE.rates);
 
+        // ---------------- sealed holdings (vault.js, D67) ----------------
+        // The repo is public, so quantities, costs, trades and the value series built from them are
+        // AES-GCM ciphertext. Same salt, iterations and blob format as vault.js — change both or
+        // neither. The key is derived once per page load; the passphrase is kept for the session,
+        // or on this device only if Leo ticks the box.
+        const VAULT_SALT = 'MyStockPortfolio/holdings/v1', VAULT_ITER = 600000;
+        let vaultKey = null;
+        const vaultBytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+        async function vaultKeyFrom(pass) {
+            const enc = new TextEncoder();
+            const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(VAULT_SALT), iterations: VAULT_ITER, hash: 'SHA-256' },
+                base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+        }
+        // A plain value passes through (a legacy file); a sealed one opens, or is null without a key.
+        async function vaultOpen(v) {
+            if (!v || !v.ct) return v;
+            if (!vaultKey) return null;
+            const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: vaultBytes(v.iv) }, vaultKey, vaultBytes(v.ct));
+            return JSON.parse(new TextDecoder().decode(pt));
+        }
+        async function unlockHoldings(sealed) {
+            const attempt = async pass => {
+                try { vaultKey = await vaultKeyFrom(pass); return await vaultOpen(sealed); }
+                catch { vaultKey = null; return null; }
+            };
+            let saved = null;
+            try { saved = sessionStorage.getItem('vaultPass') || localStorage.getItem('vaultPass'); } catch { }
+            if (saved) { const v = await attempt(saved); if (v) return v; }
+            const dlg = document.getElementById('vault'), form = dlg.querySelector('form');
+            for (;;) {
+                form.pass.value = '';
+                dlg.showModal();
+                await new Promise(r => dlg.addEventListener('close', r, { once: true }));
+                if (dlg.returnValue !== 'ok') return null;       // Skip or Esc: browse without holdings
+                const pass = form.pass.value;
+                const v = await attempt(pass);
+                if (v) {
+                    try { (form.remember.checked ? localStorage : sessionStorage).setItem('vaultPass', pass); } catch { }
+                    return v;
+                }
+                document.getElementById('vault-msg').hidden = false;
+            }
+        }
+
         function loadHistory() {
             if (HISTORY) return Promise.resolve(HISTORY);
             if (!historyPromise) historyPromise = fetch(DATA + 'history.json?t=' + Date.now())
                 .then(r => r.ok ? r.json() : Promise.reject(new Error('history ' + r.status)))
-                .then(h => (HISTORY = h));
+                .then(async h => { if (h.long) h.long.nav = await vaultOpen(h.long.nav); return (HISTORY = h); });
             return historyPromise;
         }
 
@@ -2146,7 +2207,8 @@
         };
 
         function portfolioValueSpec() {
-            const nav = longRange ? HISTORY.long.nav : STATE.nav;
+            // Null when the value series is sealed and was not unlocked, or CI had no key to build it.
+            const nav = (longRange ? HISTORY.long.nav : STATE.nav) || { days: [], values: [] };
             const { days, arrays } = sliceRange(nav.days, [nav.values], longRange ? STATE.firstTrade : '');
             const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
             const last = lastNonNull(values);
@@ -2162,7 +2224,8 @@
                 // misleading (see BACKLOG.md) has had no time to accumulate.
                 headline: valueHeadline(last, twrHoldings(STATE.holdings))
                     + dayTag(portfolioLib.weightedMove(STATE.rows.flatMap(r => r.legs), '1d')),
-                sub: `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                sub: days.length ? `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`
+                    : 'Holdings locked — reload and unlock to see value',
                 title: 'Portfolio value',
                 note: 'What the portfolio was actually worth: the Tradelog replayed against past prices, at today\'s FX. Switch to Performance for return with cash flows removed.',
                 tip: valueTip(values, new Map()),
@@ -4022,7 +4085,13 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(([{ holdings }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
+        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
+            // Sealed since D67. Skipping leaves an empty book: prices, the watchlist and the pot still work.
+            if (sealed) {
+                const inside = await unlockHoldings(sealed);
+                holdings = inside ? inside.holdings : [];
+            }
+            nav = await vaultOpen(nav);
             RATES = rates;
             POT = pot;
             // Held names are dropped: once you own it, the holdings table is the truth. This

@@ -10,6 +10,7 @@ A personal decision tool with one reader. The goal is **substance over surface**
 
 ```
 Tradelog.xlsx                 (gitignored — never leaves your machine; only the Tradelog tab is read)
+   .holdings-key                (gitignored — the passphrase that seals quantities, costs and trades)
    meta.json                  per-instrument facts: yahoo symbol, group, geography (committed)
    watchlist.json             stocks you watch but don't own (committed; never hits your totals)
         │  npm run extract     you run this after trading

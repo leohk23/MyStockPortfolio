@@ -181,6 +181,8 @@ The whole routine, on the owner's machine, on `main`:
 npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
 ```
 
+`extract-portfolio.js` refuses to write without the passphrase, so a missing `.holdings-key` can never publish positions in the clear. First-time setup: `tools/set-holdings-key.ps1`.
+
 Do not hand-edit `holdings.json`, and do not reconstruct trades by hand — the workbook is the source of truth and `extract-portfolio.js` is the only thing that reads it.
 
 - **Check the branch first.** `publish.js` commits to the current branch. Off `main`, the live site never sees it (Pages serves `main`). Fix: `git checkout main && git cherry-pick <sha>`.
@@ -194,7 +196,7 @@ New UI and content work goes to `preview/index.html` and is pushed to `main`, wh
 
 ## Invariants — do not break these
 
-1. **Public repo.** Tradelog comments are intentionally exported beside expanded trades at the owner's explicit request, so treat them as world-readable. Never export other account detail. `*.xlsx` is gitignored; keep it so.
+1. **Public repo, sealed positions (D67).** `holdings.json` publishes only `ticker`, `yahoo`, `group`, `geography`, `currency`; quantities, costs, trades (with their comments) sit in its `sealed` field, AES-GCM under Leo's passphrase (`vault.js`). Anything derived from them that carries an AMOUNT is sealed too — `prices.json nav` and `history.json long.nav` — or left out (`signals.json` has no `totalGBP`). Percentage weights and TWR percentages stay public. Read holdings with `require('./vault').readHoldings()` and check `.full`; never publish a new amount-bearing field in the clear. The passphrase is `HOLDINGS_KEY` (GitHub secret) or the gitignored `.holdings-key`; the page asks for it and can Skip. `*.xlsx` is gitignored; keep it so. Git history before D67 still holds plain holdings — accepted, not rewritten.
 2. **Currency.** Everything is computed in **USD**, then divided for the display toggle. `rateFor(code, rates)` handles `GBp`/`Gbpence` = GBP/100. A holding's declared `currency` is its **purchase** currency; the live price's currency comes from Yahoo (`meta.currency`) and can differ (e.g. CSUK: cost in GBP, quote in GBp). Convert both to USD to compare.
 3. **Movements are fractions**, not whole percents (0.25 = +25%) everywhere in the JSON. The page multiplies by 100 for display. (A past bug shipped -59% as -5900%.)
 4. **One y-axis per chart, ever.** Two different scales → index both to % (see the benchmark overlay) or use separate charts. Never dual-axis.

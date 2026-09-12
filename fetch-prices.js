@@ -1,7 +1,13 @@
 // Fetches quotes + FX rates from Yahoo Finance, writes prices.json.
 // Run by .github/workflows/prices.yml; also `node fetch-prices.js` locally.
 const fs = require('fs');
-const { holdings } = require('./holdings.json');
+// Quantities and trades are sealed in holdings.json (vault.js, D67). Without the passphrase the
+// quotes still fetch — tickers are public — but nothing sized by Leo's positions is written.
+const { seal: sealValue, readHoldings } = require('./vault');
+const { holdings, full: HOLDINGS_FULL, sealed: HOLDINGS_SEALED } = readHoldings();
+// A value series built from trades: ciphertext when the source was sealed, absent when it could not
+// be opened, plain only for a legacy unsealed holdings.json.
+const publishable = v => !HOLDINGS_FULL ? null : HOLDINGS_SEALED ? sealValue(v) : v;
 // Stocks watched but not owned. They ride the SAME pipeline (quotes, weekly history, trough
 // PE, annual financials) — no second fetch path — but they are deliberately absent from
 // navHistory() and from every portfolio total. See buildWatchlist() in portfolio.js.
@@ -2366,7 +2372,7 @@ async function main() {
         days: hist.days,
         closes,
         benchmarks,
-        long: { days: longHist.days, closes: longCloses, nav: longNav },
+        long: { days: longHist.days, closes: longCloses, nav: publishable(longNav) },
     }, null, 1));
 
     // Today's session for the 1D range. Written whole each run — intraday is only ever about
@@ -2640,10 +2646,11 @@ async function main() {
         for (let i = t.length - 1; i >= 0; i--) if (t[i] != null) return Number(t[i].toPrecision(4));
         return null;
     };
-    const performance = {
+    // Percentages, so public (D67) — but only meaningful when the trades could be read.
+    const performance = HOLDINGS_FULL ? {
         ytdTotal: ytdTwr(null),
         ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL'),
-    };
+    } : null;
 
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
@@ -2665,7 +2672,7 @@ async function main() {
         // A monitor, kept beside the quotes rather than inside them: 47 country funds nobody
         // intends to own individually would swamp every table that walks the holdings.
         countries,
-        nav,
+        nav: publishable(nav),
         performance,
         failed,
     }, null, 1));

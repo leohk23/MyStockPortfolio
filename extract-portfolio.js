@@ -238,9 +238,14 @@ async function main() {
 
     await verifyNewSymbols(holdings); // network only for symbols not already in prices.json
 
+    // Public half + sealed half (vault.js, D67). seal() throws without a passphrase, so a missing
+    // key refuses the write instead of publishing quantities in the clear.
+    const { seal, publicRow } = require('./vault');
     fs.writeFileSync('holdings.json', JSON.stringify({
         generated: new Date().toISOString(),
-        holdings,
+        note: 'Tickers and groupings only. Quantities, costs and trades are in `sealed` (vault.js).',
+        holdings: holdings.map(publicRow),
+        sealed: seal({ holdings }),
     }, null, 1));
 
     const groups = new Set(holdings.map(h => h.group));
