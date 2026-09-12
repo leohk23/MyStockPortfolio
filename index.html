@@ -326,10 +326,11 @@
            table far past the viewport and every other column goes with it; with one, the cell
            wraps and the row stays readable. Not applied to `paper`, whose cells are figures. */
         #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) td { max-width: 44ch; white-space: normal; }
-        /* The ceiling alone never wrapped anything: the global `td { white-space: nowrap }` still
-           applied, so a run report's `why` ran off the right edge. The last column is where the
-           sentence lives (why, detail, reason), so it gets the room and the short ones stay tight. */
-        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) td:last-child { max-width: 80ch; min-width: 32ch; }
+        /* max-width on a table cell is ignored by the table layout, so the 44ch ceiling never wrapped
+           anything and a run report's why ran off the page. Fitting the table to the page does: short
+           columns take their min-content and the sentence wraps in what is left. */
+        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) table { width: 100%; }
+        #pot-body:not([data-kind="paper"]):not([data-kind="runs"]) td:last-child { min-width: 32ch; }
         #pot-body[data-kind="paper"] .pot-scroll { max-width: none; }
         #pot-body[data-kind="paper"] th, #pot-body[data-kind="paper"] td {
             text-align: right; white-space: nowrap; vertical-align: middle; }
