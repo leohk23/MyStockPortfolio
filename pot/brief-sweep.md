@@ -122,8 +122,9 @@ with what is already priced in, and it is the failure mode of this lane. Prefer:
 - **second-order effects** of a shift, which are slow and under-covered
 - **what changed in the world of what Leo already owns** — highest value, needs no discovery
 - **what he is not exposed to.** `signals.json` → `book` carries where his money actually sits:
-  `names` and `byCompany` by weight, `byGeography`, and the GBP total. It is computed from market
-  value, so it is what he is exposed to *today*, not what he paid. Read it before section 3.
+  `names` and `byCompany` by weight and `byGeography` — percentages only; the GBP total is no longer
+  published (D67). It is computed from market value, so it is what he is exposed to *today*, not
+  what he paid. Read it before section 3.
 
   At the time of writing that book is **66% US** and the four largest positions are US megacap
   tech. A candidate that reduces a concentration that large is worth more than another good
