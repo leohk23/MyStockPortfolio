@@ -13,10 +13,13 @@ $repo = Split-Path $PSScriptRoot -Parent
 Set-Location $repo
 
 $plain = { param($s) [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)) }
-$a = & $plain (Read-Host 'Passphrase (12+ characters)' -AsSecureString)
+$a = & $plain (Read-Host 'Passphrase (a PIN works; longer is stronger)' -AsSecureString)
 $b = & $plain (Read-Host 'Again' -AsSecureString)
 if ($a -ne $b) { throw 'The two entries differ - nothing changed.' }
-if ($a.Length -lt 12) { throw 'Use at least 12 characters - nothing changed.' }
+if ($a.Length -lt 4) { throw 'Use at least 4 characters - nothing changed.' }
+# Leo's call (12 Sep): a short PIN is allowed. The sealed file is public and can be guessed offline -
+# all 10,000 four-digit PINs take ~9 minutes on an 8-core laptop - so it deters a glance, not an attempt.
+if ($a.Length -lt 12) { Write-Warning 'Short passphrase: this hides the numbers from casual viewers, not from someone who tries.' }
 
 # The secret first: if it fails, nothing local has changed either.
 $a | gh secret set HOLDINGS_KEY --repo leohk23/MyStockPortfolio
