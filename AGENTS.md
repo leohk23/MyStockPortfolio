@@ -130,6 +130,12 @@ Two things that constrain any change to it:
 Do **not** hand-run `pot/run-daily.ps1` to test a change: it spends a real 5% and takes 20–35
 minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` covers the JS.
 
+**How this file reaches a lane.** Codex loads it automatically, up to `project_doc_max_bytes`
+(131,072 in `~/.codex/config.toml`; past that the end is dropped silently — D38). Claude Code does
+not: `run-lane.ps1` passes it with `--append-system-prompt-file` (D64). An interactive Claude
+session does **not** load it, and there is deliberately no `CLAUDE.md`. The briefs assume it is
+in context, so keep both routes working.
+
 `npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
 would break D3 (no metered API spend), because CI has no subscription auth.
 
@@ -234,6 +240,22 @@ Two optional `meta.json` fields per instrument drive the PE columns:
 
 - `eps` — checked manual trailing EPS override. It takes precedence over Yahoo when present; use it only for a known bad/missing Yahoo figure. Native quote currency.
 - `specialEps` / `specialEpsLabel` — a stock- or industry-appropriate earnings figure that isn't plain trailing EPS (FFO/share for a REIT, adjusted/core EPS for a bank, a normalized multi-year average for a cyclical, ...) and a short label shown in the column's tooltip. Native quote currency. Omit both to leave Special PE identical to the normal PE.
+
+**Earnings bases — always say which one a multiple is on.** Filed figures are never overwritten; each
+basis sits beside the others in `prices.json`:
+
+| basis | fields | source |
+|---|---|---|
+| reported | `eps`, `peLow`, `pePctile` | as filed / Yahoo trailing |
+| vendor recurring | `normEps`, `peLowRecurring` | Yahoo normalized income — unsourced, restatable |
+| own | `normEpsOwn` (`peLowOwn` where arithmetic allows) | filed less cited one-offs in `pot/adjustments.json` |
+| research | `researchEps`, `researchEpsPeriods` | four consecutive quarters of issuer-stated adjusted EPS (`normalizedEps`), with sources |
+
+A gross `amount` only feeds arithmetic when sourced as after-tax and attributable to common
+shareholders; otherwise it is stored with `arithmetic:false` as evidence (D63). Current-year
+adjustments reach `normEpsOwn`, filed-year ones `adjustedYears` — never both (D61). Research low
+and percentile are withheld until enough adjusted quarters exist. `signals.js` `oneOffRisk` reads
+research → own → vendor and records `epsBasis` (D65).
 
 ## Trough-multiple valuation (the "is it cheap?" hint)
 
@@ -413,7 +435,7 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 
 ## Grouping (the "one line per company" feature)
 
-`holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, or `'instrument'`. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
+`holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, `'sector'`, or `'instrument'`. Sector reads `quote.sector` (Yahoo `assetProfile`); a fund has no single sector and sits under **Funds**. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
 ## Funds: what the deep panel shows instead of financials
 
