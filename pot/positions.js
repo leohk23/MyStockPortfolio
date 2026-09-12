@@ -112,7 +112,9 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     const claimed = new Set(trades.map(t => t.pot).filter(x => x && x !== 'Y'));
 
     let files = [];
-    try { files = fs.readdirSync(p('pot/proposals')).filter(f => f.endsWith('.md')).sort().reverse(); }
+    // A `-ranking.md` is the run's report, not a proposal: parsed as one it became ticker "ranking",
+    // counted as a live decision and was marked on the paper page.
+    try { files = fs.readdirSync(p('pot/proposals')).filter(f => f.endsWith('.md') && !f.endsWith('-ranking.md')).sort().reverse(); }
     catch { /* none yet */ }
 
     const proposals = files.map(file => {

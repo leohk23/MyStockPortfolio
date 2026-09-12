@@ -325,9 +325,10 @@ by hand and names the Sweep found were never judged and nobody could see that th
 Two tiers, so completeness does not mean 70 paragraphs:
 
 - **Ranked** — every name that clears §2.4's valuation filter gets a row with the reasoning below.
-- **Excluded** — everything else in one compact list, `TICKER — reason` on a line, where the reason
-  may be as short as "31st percentile, not cheapest decile" or "no local earnings". A name with
-  nothing to say still has to appear.
+- **Excluded** — everything else in one compact **table**, `| ticker | reason |`, one row per name,
+  where the reason may be as short as "31st percentile, not cheapest decile" or "no local earnings".
+  Not a run-on paragraph of `TICKER — reason ·` items: at 70 names that reads as a wall, and Leo asked
+  for a table on 12 Sep. A name with nothing to say still has to appear.
 
 **Ranked + excluded must equal the watchlist count, and state that count.** If a name cannot be
 assessed at all, that is an excluded line reading "no data", not an omission.

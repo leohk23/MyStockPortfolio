@@ -320,7 +320,7 @@ function writePaper(pos, hist) {
     // three times that day is the part worth seeing, not three copies of one number.
     const byDay = new Map();
     for (const p of ((pos && pos.proposals) || [])) {
-        if (!p.written || !p.ticker) continue;
+        if (!p.written || !p.ticker || p.ticker === 'none') continue;   // cash won: no name to mark
         const k = `${p.written}|${p.ticker}`;
         const e = byDay.get(k) || { date: p.written, ticker: p.ticker, n: 0 };
         e.n++;
@@ -851,7 +851,11 @@ does not look exactly like a healthy one.
     // meaning anything, and the count silently fell from nine to two — the two written after the
     // book was last built. A file the book has not seen yet is still awaiting a decision.
     const stateOf = new Map((pos.proposals || []).map(p => [p.file, p.state]));
-    const openProposals = proposals.filter(f => (stateOf.get(f) || 'open') === 'open');
+    // Nor are a run report, a `-none` (cash won: nothing to execute) or a superseded proposal
+    // awaiting anything — together they had inflated this to 68 on 12 Sep.
+    const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
+    const openProposals = proposals.filter(f => !/-(ranking|none)\.md$/.test(f) && !superseded.has(f)
+        && (stateOf.get(f) || 'open') === 'open');
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
