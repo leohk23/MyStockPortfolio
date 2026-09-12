@@ -839,6 +839,14 @@ function recurringEps(years, field = 'norm') {
     return years.map(y => (y[field] != null ? y[field] * anchor.eps / anchor.ni : null));
 }
 
+// Only adjustments whose units match the denominator may drive arithmetic. A directly stated
+// per-share effect is already on the right basis. An absolute amount must explicitly say it is
+// after-tax and attributable to common shareholders; a gross pre-tax gain is evidence, not EPS.
+const canApplyAdjustment = a => a?.arithmetic !== false && (
+    Number.isFinite(a?.amountPerShare)
+    || (Number.isFinite(a?.amount) && a.basis === 'after-tax attributable')
+);
+
 // Filed net income less the one-offs THIS repo can cite, from pot/adjustments.json. A third basis
 // beside reported and recurring, and the only one whose adjustments carry a source URL.
 //
@@ -863,7 +871,7 @@ function adjustedYears(years, adj) {
         if (y.ni == null) return y;
         let cut = 0;
         for (const a of adj) {
-            if (!a || a.fy !== y.date) continue;
+            if (!canApplyAdjustment(a) || a.fy !== y.date) continue;
             if (Number.isFinite(a.amount)) cut += a.amount;
             else if (Number.isFinite(a.amountPerShare)) {
                 const n = shares(y);
@@ -1019,9 +1027,13 @@ const HISTORY_FROM = {
 // Six years is enough to show a direction without the sparkline becoming a chart.
 // One-off adjustments this repo can cite, written by the Deep dive when it reconciles a filing by
 // hand. Absent file is normal and not an error: the store starts empty and fills a name at a time.
-let ADJUSTMENTS = {};
-try { ADJUSTMENTS = JSON.parse(fs.readFileSync('pot/adjustments.json', 'utf8')).adjustments || {}; }
-catch { console.log('note no pot/adjustments.json — no own-basis valuation'); }
+let ADJUSTMENTS = {}, RESEARCH_EPS = {};
+try {
+    const research = JSON.parse(fs.readFileSync('pot/adjustments.json', 'utf8'));
+    ADJUSTMENTS = research.adjustments || {};
+    RESEARCH_EPS = research.normalizedEps || {};
+}
+catch { console.log('note no pot/adjustments.json — no source-backed earnings research'); }
 
 const CAPITAL_YEARS = 6;
 
@@ -1635,7 +1647,7 @@ function ownTtmEps(entry, adjustments, normEps, currency, rates) {
     const shares = lastFiled.ni != null && lastFiled.eps > 0 ? lastFiled.ni / lastFiled.eps : null;
     let perShare = 0, applied = 0;
     for (const a of adjustments) {
-        if (!a || !a.fy || a.fy <= lastFiled.date) continue;          // filed years belong to adjustedYears
+        if (!canApplyAdjustment(a) || !a.fy || a.fy <= lastFiled.date) continue; // filed years belong to adjustedYears
         if (Number.isFinite(a.amountPerShare)) { perShare += a.amountPerShare; applied++; continue; }
         if (Number.isFinite(a.amount) && shares) { perShare += a.amount / shares; applied++; }
     }
@@ -1645,6 +1657,29 @@ function ownTtmEps(entry, adjustments, normEps, currency, rates) {
 }
 
 // The quarter the filed recurring sum runs through — surfaced so the page can name the window.
+// Direct, source-backed adjusted EPS beats trying to reverse-engineer it from a gross one-off.
+// Four consecutive company-reported quarters make one comparable TTM denominator. A missing
+// quarter, source or basis returns nothing: a partial hand-built series must never look complete.
+function researchTtm(record) {
+    if (!record?.basis || !Array.isArray(record.quarters)) return null;
+    const qs = record.quarters
+        .filter(q => q?.end && Number.isFinite(q.eps) && q.source)
+        .sort((a, b) => a.end.localeCompare(b.end)).slice(-4);
+    if (qs.length !== 4) return null;
+    const times = qs.map(q => Date.parse(q.end));
+    if (times.some(t => !Number.isFinite(t))) return null;
+    const gaps = times.slice(1).map((t, i) => (t - times[i]) / 864e5);
+    const span = (times[3] - times[0]) / 864e5;
+    if (span < 250 || span > 290 || gaps.some(d => d < 70 || d > 120)) return null;
+    const eps = qs.reduce((sum, q) => sum + q.eps, 0);
+    if (!(eps > 0)) return null;
+    return {
+        eps: Number(eps.toPrecision(6)), basis: record.basis, through: qs[3].end,
+        note: record.note || '', periods: qs.map(q => ({ end: q.end, eps: q.eps, source: q.source })),
+        annual: (record.annual || []).filter(y => y?.end && Number.isFinite(y.eps) && y.source),
+    };
+}
+
 const lastQuarterDate = entry => {
     const q = (entry?.quarters || []).filter(x => x.date && x.rev != null).map(x => x.date).sort();
     return q.length ? q[q.length - 1] : null;
@@ -2410,7 +2445,8 @@ async function main() {
         // The same window again on OUR OWN basis: filed net income less the one-offs pot/adjustments.json
         // can cite. Only computed where an adjustment exists — otherwise it would be an identical
         // copy of the reported series under a name that implies more work was done than was.
-        const myAdj = ADJUSTMENTS[t];
+        const filedYearEnds = new Set((store.eps[t]?.years || []).map(y => y.date));
+        const myAdj = (ADJUSTMENTS[t] || []).filter(a => canApplyAdjustment(a) && filedYearEnds.has(a.fy));
         if (myAdj?.length) {
             const ownEntry = { ...store.eps[t], years: adjustedYears(store.eps[t].years || [], myAdj) };
             const ownHist = peHistory(ownEntry, longHist.days, longHist.closes[t] || [],
@@ -2516,9 +2552,19 @@ async function main() {
     // aren't all in the store yet). This is the SAME rule the deep dive's P/E (recurring) applies,
     // so the table's Special PE and the panel cannot show two different recurring multiples for
     // one stock — which is exactly what they did while the annual proxy stood alone.
-    let recFiled = 0, fwdDropped = 0, fwdConverted = 0;
+    let recFiled = 0, researchCount = 0, fwdDropped = 0, fwdConverted = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
+        const researched = researchTtm(RESEARCH_EPS[t]);
+        if (researched) {
+            quotes[t].researchEps = researched.eps;
+            quotes[t].researchEpsBasis = researched.basis;
+            quotes[t].researchEpsThru = researched.through;
+            quotes[t].researchEpsNote = researched.note;
+            quotes[t].researchEpsPeriods = researched.periods;
+            quotes[t].researchAnnualEps = researched.annual;
+            researchCount++;
+        }
         // Consensus forward EPS needs the same UNIT as the price, and there are two different ways
         // it can fail to have one — which is why they get two different answers.
         //
@@ -2545,7 +2591,10 @@ async function main() {
             // Only on the filed-quarter basis: the annual proxy below is not a TTM, so a current-year
             // one-off has no window to sit in there.
             const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], rec, quotes[t].currency, rates);
-            if (own != null) quotes[t].normEpsOwn = own; else delete quotes[t].normEpsOwn;
+            if (own != null) {
+                quotes[t].normEpsOwn = own;
+                quotes[t].adjustments = (ADJUSTMENTS[t] || []).filter(canApplyAdjustment);
+            } else delete quotes[t].normEpsOwn;
             recFiled++;
             continue;
         }
@@ -2558,13 +2607,17 @@ async function main() {
             // removing it moves the multiple the honest way. Most names use this branch, not the
             // filed-quarter one: MWA falls here because its Sep 2025 quarter carries no EPS.
             const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], ne, quotes[t].currency, rates);
-            if (own != null) quotes[t].normEpsOwn = own; else delete quotes[t].normEpsOwn;
+            if (own != null) {
+                quotes[t].normEpsOwn = own;
+                quotes[t].adjustments = (ADJUSTMENTS[t] || []).filter(canApplyAdjustment);
+            } else delete quotes[t].normEpsOwn;
         }
     }
     console.log(`ok   recurring EPS: ${recFiled} from filed quarters, `
         + `${tickers.filter(t => quotes[t]?.normEps != null).length - recFiled} from the annual proxy`);
     const ownEps = tickers.filter(t => quotes[t]?.normEpsOwn != null).length;
     if (ownEps) console.log(`ok   current-year one-offs removed for ${ownEps} ticker(s) — normEpsOwn`);
+    if (researchCount) console.log(`ok   source-backed adjusted TTM EPS for ${researchCount} ticker(s)`);
     if (fwdDropped) console.log(`     consensus forward EPS dropped for ${fwdDropped} ticker(s): `
         + `stated per ordinary share against a receipt price`);
     if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
@@ -3560,13 +3613,18 @@ function selftest() {
     // adjustedYears / the own basis. Every input is a filed figure minus a cited one-off.
     const ayIn = [{ date: '2025-12-31', eps: 2, ni: 100, norm: 100 },
                   { date: '2026-12-31', eps: 3, ni: 150, norm: 150 }];
-    const ay = adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30 }]);
+    const ay = adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30,
+        basis: 'after-tax attributable' }]);
     assert.strictEqual(ay[0].normOwn, 100);          // untouched year falls back to filed ni
     assert.strictEqual(ay[1].normOwn, 120);          // 150 filed less a 30 one-off
     assert.strictEqual(ayIn[1].normOwn, undefined);  // the input array is not mutated
     // Two adjustments in one year add up.
-    assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30 },
-        { fy: '2026-12-31', amount: 20 }])[1].normOwn, 100);
+    assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31', amount: 30,
+        basis: 'after-tax attributable' }, { fy: '2026-12-31', amount: 20,
+        basis: 'after-tax attributable' }])[1].normOwn, 100);
+    // Gross absolute amounts cannot silently cross from pre-tax/consolidated into attributable EPS.
+    assert.strictEqual(adjustedYears(ayIn,
+        [{ fy: '2026-12-31', amount: 30 }])[1].normOwn, 150);
     // Junk entries are ignored rather than poisoning the year with NaN.
     assert.strictEqual(adjustedYears(ayIn, [{ fy: '2026-12-31' }])[1].normOwn, 150);
     assert.strictEqual(adjustedYears(ayIn, [])[1].normOwn, undefined);   // no adjustments, no basis
@@ -3575,7 +3633,8 @@ function selftest() {
     const psIn = [{ date: '2026-12-31', eps: 2, ni: 200 }];      // implied 100 shares
     assert.strictEqual(adjustedYears(psIn, [{ fy: '2026-12-31', amountPerShare: 0.5 }])[0].normOwn, 150);
     // Absolute and per-share entries in the same year add together.
-    assert.strictEqual(adjustedYears(psIn, [{ fy: '2026-12-31', amount: 20 },
+    assert.strictEqual(adjustedYears(psIn, [{ fy: '2026-12-31', amount: 20,
+        basis: 'after-tax attributable' },
         { fy: '2026-12-31', amountPerShare: 0.3 }])[0].normOwn, 150);
     // No usable share count means the per-share entry is SKIPPED, never guessed at.
     assert.strictEqual(adjustedYears([{ date: '2026-12-31', eps: 0, ni: 200 }],
@@ -3610,12 +3669,31 @@ function selftest() {
         const entry = { currency: 'USD', years: [{ date: '2025-09-30', ni: 200, eps: 2 }] };   // 100 shares implied
         const R = { USD: 1 };
         assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amountPerShare: 0.06 }], 1, 'USD', R), 0.94);
-        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amount: 10 }], 1, 'USD', R), 0.9);   // 10 / 100 shares
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amount: 10,
+            basis: 'after-tax attributable' }], 1, 'USD', R), 0.9);   // 10 / 100 shares
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amount: 10 }], 1, 'USD', R), null);
         // A filed year is adjustedYears' job; applying it here too would count it twice.
         assert.strictEqual(ownTtmEps(entry, [{ fy: '2025-09-30', amount: 10 }], 1, 'USD', R), null);
         assert.strictEqual(ownTtmEps(entry, [], 1, 'USD', R), null);
         // A one-off larger than the earnings leaves no meaningful multiple.
         assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amountPerShare: 2 }], 1, 'USD', R), null);
+        assert.strictEqual(ownTtmEps(entry, [{ fy: '2026-09-30', amountPerShare: 0.5,
+            arithmetic: false }], 1, 'USD', R), null);
+    }
+
+    // Direct company-adjusted quarters: four sourced, consecutive periods produce the TTM;
+    // a missing source or quarter refuses rather than presenting a partial research figure.
+    {
+        const rec = { basis: 'company-adjusted diluted EPS', quarters: [
+            { end: '2025-09-30', eps: 0.87, source: 'a' },
+            { end: '2025-12-31', eps: 0.87, source: 'b' },
+            { end: '2026-03-31', eps: 1.08, source: 'c' },
+            { end: '2026-06-30', eps: 0.97, source: 'd' },
+        ] };
+        assert.strictEqual(researchTtm(rec).eps, 3.79);
+        assert.strictEqual(researchTtm(rec).through, '2026-06-30');
+        assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.slice(1) }), null);
+        assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.map((q, i) => i ? q : { ...q, source: '' }) }), null);
     }
     console.log('selftest ok');
 }

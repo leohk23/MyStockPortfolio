@@ -35,7 +35,7 @@ file you open is resent on every turn that follows.
 | `watchlist.json` | the full set you must account for — every name, ranked or excluded |
 | `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
 | `pot/positions.json` | cash, holdings, and §4.5a's preference for a name not already held |
-| `pot/adjustments.json` | one-offs this repo can cite, and the own-basis multiples built from them |
+| `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
 
 **Filings are for the shortlist, not the list.** Accounting for all ~72 watchlist names (§D34) is a
 screening job done from local data — an excluded line may be one clause. Opening a company's own
@@ -379,7 +379,7 @@ Declining is still allowed, and often right, but it must be argued on the busine
 the data being incomplete. The 8 September run held all cash with seven of thirteen names blocked
 on unreconciled earnings; that was judgement, not a rule, and this is the rule.
 
-## Record every one-off you reconcile — `pot/adjustments.json`
+## Record every one-off and direct adjusted EPS — `pot/adjustments.json`
 
 You keep deriving these by hand and throwing them away. LULU's $134.5m tariff refund was found by
 reading the filing, used once, and re-derived from scratch the next run. Write it down instead.
@@ -395,7 +395,10 @@ repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the tick
 ```
 
 - `fy` is the fiscal year END exactly as it appears in `earnings.json`, or the row will never match.
-- `amount` is positive for income to REMOVE, in the filing's own currency.
+- `amount` is positive for income to REMOVE, in the filing's own currency. It may drive arithmetic
+  only when the source states the **after-tax amount attributable to common shareholders**; record
+  that as `"basis": "after-tax attributable"`. Otherwise add `"arithmetic": false` and keep it as
+  evidence.
 - **`amountPerShare` is accepted instead**, because that is how releases usually word it — MWA's
   was *"a one-time tax benefit of $0.06 per share"*. `fetch-prices.js` converts it using implied
   shares from the filer's own `ni / eps`, so you do not have to. Use whichever form the source
@@ -406,23 +409,23 @@ repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the tick
 - Never edit or delete an existing entry to make a name look better. Append a correcting entry and
   say so in `what`.
 
-**Quote `normEpsOwn` rather than deriving an adjusted multiple by hand.** Where a stored adjustment
-falls in the CURRENT, unfiled fiscal year, `prices.json` carries `normEpsOwn` beside `normEps`: the
-trailing recurring EPS with that one-off removed. On 11 September the TW proposal worked out its own
-$3.47 + $2.05 − $1.73 ≈ $3.79 and 26.8× in prose, because the pipeline offered nothing — the panel
-showed 24.3× on the vendor basis and the two never met. Use the field, and **say which basis each
-multiple is on**: reported, vendor recurring (`normEps`), or own (`normEpsOwn`, `peLowOwn`). Three
-numbers that disagree are fine; three numbers with no labels are not.
+**Prefer direct adjusted EPS when the company publishes it.** Add the annual and quarterly figures
+under `normalizedEps.<ticker>`, each with its period end and official source. Four consecutive
+quarters produce `prices.json researchEps`; quote that field rather than repeating arithmetic in
+prose. Tradeweb is the worked example: $0.87 + $0.87 + $1.08 + $0.97 = $3.79, or 26.8× at $101.44.
+The label must name the issuer's basis — **company-adjusted**, not GAAP and not independently
+reconstructed owner earnings.
 
-`fetch-prices.js` subtracts these from filed net income to build an **own basis** beside the
-reported and vendor ones: `peLowOwn`, `pePctileOwn`, and the entries themselves on the quote as
-`adjustments`. It is the only basis whose adjustments can be checked against a document.
+An absolute one-off may drive arithmetic only when it is on the same basis as the income it is
+subtracted from. The pipeline enforces this: an `amount` needs `"basis": "after-tax attributable"`.
+A pre-tax consolidated gain cannot be subtracted dollar-for-dollar from after-tax income
+attributable to common shareholders. Retain such evidence with `"arithmetic": false`; do not turn
+it into `normEpsOwn`, `peLowOwn` or a percentile.
 
-**What this does and does not fix.** Today's multiple can be corrected by one adjustment; the
-PERCENTILE cannot, because it is computed across ~200 weekly bars and needs a clean figure for each
-of the years in the window. So an own-basis percentile is only as good as the years somebody has
-actually read, and a year nobody has examined falls back to filed net income — which reads
-expensive rather than cheap. Say which basis you are quoting and how many years carry adjustments.
+**A current adjusted P/E does not create an adjusted history.** A research low or percentile needs
+enough consecutive adjusted quarters to replay the rolling denominator over the whole window.
+Until that exists, quote the current `researchEps` multiple and label reported/Yahoo historical
+figures as references. Never attach their percentile to the research denominator.
 
 ## Size — §4
 
@@ -549,8 +552,8 @@ Expected first-year costs: <breakdown, naming the broker assumed and the flat co
 | figure | value | source |
 <price, multiple, and whatever the thesis rests on — each with a URL or a local file>
 Local check: <agree / disagree, and which you used>
-**Adjustments:** <the entry you appended to pot/adjustments.json for any one-off you reconciled —
- ticker, fiscal year, amount or amountPerShare — or one clause saying why none was writable
+**Adjustments:** <the entry you appended to pot/adjustments.json for any one-off or direct adjusted
+ EPS you reconciled — ticker, period and amount/amountPerShare/EPS — or one clause saying why none was writable
  ("not separately quantified in the release"). Never blank, never omitted. If you adjusted the
  earnings you valued on, the adjustment is recordable; if it is not recordable, say why you trusted
  it enough to size on.>

@@ -1,27 +1,64 @@
 {
-  "_README": "One-off adjustments to filed net income that THIS repo can cite. Written by the Deep dive when it reconciles a filing by hand; read by fetch-prices.js, which subtracts them from filed `ni` to build an 'own' recurring basis beside Yahoo's `norm`. Never replaces filed figures. Every entry needs fy (the fiscal year END date exactly as it appears in earnings.json), what it was, a source URL to the company's or regulator's own document, and EITHER `amount` (absolute, in the filing's currency) OR `amountPerShare` (converted using implied shares from the filer's own ni/eps). Positive means income to REMOVE. Use whichever form the source states.",
+  "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when four consecutive quarters exist. Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-09-12",
+  "normalizedEps": {
+    "TW": {
+      "basis": "company-adjusted diluted EPS",
+      "note": "Tradeweb's non-GAAP definition. It excludes the Canton gains but also applies the company's stated acquisition, compensation, foreign-exchange, tax-receivable and share-basis adjustments; use it as a consistent company-adjusted comparison, not as GAAP or independently reconstructed owner earnings.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 3.47,
+          "source": "https://investors.tradeweb.com/static-files/47c1f1cf-30b4-4c44-9a4a-5302843e2198"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "eps": 0.87,
+          "source": "https://investors.tradeweb.com/static-files/9ae79958-26c6-4faf-97d0-3ed5557a3e21"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 0.87,
+          "source": "https://investors.tradeweb.com/static-files/47c1f1cf-30b4-4c44-9a4a-5302843e2198"
+        },
+        {
+          "end": "2026-03-31",
+          "eps": 1.08,
+          "source": "https://investors.tradeweb.com/news-releases/news-release-details/tradeweb-reports-first-quarter-2026-financial-results"
+        },
+        {
+          "end": "2026-06-30",
+          "eps": 0.97,
+          "source": "https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a"
+        }
+      ]
+    }
+  },
   "adjustments": {
     "TW": [
       {
         "fy": "2025-12-31",
         "amount": 270900000,
+        "arithmetic": false,
         "ccy": "USD",
         "what": "realised and unrealised gains on Canton Coin holdings, booked in Other income (loss), net — a non-operating line",
         "source": "https://www.sec.gov/Archives/edgar/data/1758730/000175873026000014/tw-2025xq4xex991.htm",
         "found": "2026-09-12",
-        "note": "Company-stated PRE-TAX, and before the Up-C allocation to non-controlling interests, so subtracting it from filed attributable net income removes more than the after-tax effect — the store's stated bias toward looking expensive. The filed inputs for anyone wanting the after-tax figure are all in the same release: FY2025 effective tax rate 21.6%, consolidated net income $921.500m of which $812.792m attributable to Tradeweb Markets Inc. $205.4m of the $270.9m fell in Q4 2025 alone, which is why the TRAILING multiple is affected. Yahoo's norm for FY2025 is $812.792m, equal to filed attributable ni — the vendor removed nothing."
+        "note": "REFERENCE ONLY, superseded for arithmetic by normalizedEps.TW. The amount is company-stated PRE-TAX and before the Up-C allocation to non-controlling interests, so subtracting it from filed attributable net income removes more than the after-tax effect and produced a misleading 37.1x historical floor. The filed inputs remain useful evidence: FY2025 effective tax rate 21.6%, consolidated net income $921.500m and $812.792m attributable to Tradeweb Markets Inc. Yahoo's norm for FY2025 equals filed attributable income, so the vendor removed nothing."
       }
     ],
     "NVO": [
       {
         "fy": "2026-12-31",
         "amount": 26800000000,
+        "arithmetic": false,
         "ccy": "DKK",
         "what": "reversal of a US 340B Drug Pricing Program sales rebate provision (USD 4.2bn), booked in Q1 2026 as a reduction of cost of goods sold and an increase in reported net sales; non-cash, and excluded by the company from its own adjusted figures",
         "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000018/caq12026.htm",
         "found": "2026-09-12",
-        "note": "Pre-tax, per the same convention as the TW entry; Novo guides a 21–23% effective rate for 2026. FY2026 is not yet a filed year in earnings.json, so this entry matches no row and is inert until the FY2026 accounts land — recorded now so the reconciliation is not thrown away again. Yahoo's norm for the Q1 2026 quarter equals filed ni exactly, so the vendor removed nothing. Going the other way in the same year, unrecorded here because the store only holds income to remove: DKK 6.3bn of non-cash pipeline impairments in Q2 2026, DKK 4.0bn of it monlunabant."
+        "note": "REFERENCE ONLY. This is a pre-tax amount, so it cannot be subtracted directly from normalized EPS or after-tax attributable income. Novo guides a 21–23% effective rate for 2026, but applying a tax estimate would still be a reconstruction rather than the company's adjusted per-share result. Yahoo's norm for the Q1 2026 quarter equals filed ni exactly, so the vendor removed nothing. Going the other way in the same year, unrecorded here because the store only holds income to remove: DKK 6.3bn of non-cash pipeline impairments in Q2 2026, DKK 4.0bn of it monlunabant."
       }
     ],
     "MWA": [
@@ -39,11 +76,12 @@
       {
         "fy": "2026-01-31",
         "amount": 134500000,
+        "arithmetic": false,
         "ccy": "USD",
         "what": "tariff refund and associated interest",
         "source": "https://www.sec.gov/Archives/edgar/data/1397187/000139718726000126/lulu-20260802xex991.htm",
         "found": "2026-09-08",
-        "note": "Yahoo's norm for this year equals filed ni exactly, so the vendor removed nothing."
+        "note": "REFERENCE ONLY. The source states a gross refund and associated interest, not its after-tax effect attributable to common shareholders, so it cannot be subtracted directly from filed net income. Yahoo's norm for this year equals filed ni exactly, so the vendor removed nothing."
       }
     ]
   }
