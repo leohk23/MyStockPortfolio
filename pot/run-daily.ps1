@@ -251,8 +251,9 @@ function Test-Allowance($lanes) {
     if ($a.hour5 + $h -gt 100) { $short += ("5-hour ({0}% + {1} > 100)" -f $a.hour5, $h) }
     if ($a.weekly + $w -gt 100) { $short += ("weekly ({0}% + {1} > 100)" -f $a.weekly, $w) }
     if (-not $short.Count) { return $true }
-    Note ("  NOT ENOUGH ALLOWANCE - skipping this cycle: " + ($short -join '; ')) | Out-Null
-    Note '  nothing was run and nothing was spent. The next cycle after the window resets will proceed.' | Out-Null
+    # Reports the shortfall only. Whether the cycle is skipped is Resolve-Plan's decision: on 13 Sep this
+    # printed "skipping this cycle... nothing was run" and the very next line moved a lane and ran.
+    Note ("  does not fit on Codex: " + ($short -join '; ')) | Out-Null
     return $false
 }
 
@@ -265,9 +266,12 @@ function Test-Allowance($lanes) {
 # the pot for four days while a second subscription sat unused, which is the opposite of what a
 # failover is for.
 #
-# Lanes move most-expensive-first, because moving the dearest lane buys the most Codex room per
-# move and leaves the cheap ones where the accounting is exact. If everything moves, the cycle
-# simply runs on Claude.
+# The Deep dive stays on its own model when it can (D68). Leo chose astra for that lane because it is
+# where model quality decides the output; Review and Sweep are cheaper and less sensitive. The first
+# version moved the dearest lane first — always the Deep dive — so on 13 Sep a forced cycle at 108%
+# sent the Deep dive to Claude when moving the Review alone (14 points) would have left astra room.
+# Now: move Review, then Sweep, until what remains fits. Only if the Deep dive does not fit even with
+# both moved does IT move, and then the cheap lanes come back to Codex if they fit on their own.
 # The exact model ID, never the `opus` alias. On 11 Sep `claude --model opus` resolved to
 # claude-opus-4-8, not Opus 5, so the first Claude cycle ran on a different model than the one
 # asked for and nothing in the run said so until the ledger row was read.
@@ -286,19 +290,28 @@ function Resolve-Plan($lanes) {
         Note '  -Failover none, so this cycle is skipped rather than moved to Claude' | Out-Null
         return $null
     }
-    $movable = if ($Failover -eq 'deepdive') { @('deepdive') } else { @('deepdive', 'sweep', 'review') }
-    $onCodex = @($lanes)
-    foreach ($l in $movable) {
-        if ($onCodex -notcontains $l) { continue }
-        $plan[$l] = 'claude'
-        $onCodex = @($onCodex | Where-Object { $_ -ne $l })
-        Note ("  moving {0} to Claude {1}" -f $l, $CLAUDE_MODEL) | Out-Null
-        if (-not $onCodex.Count) { break }                 # nothing left on Codex: trivially fits
-        if (Test-Allowance $onCodex) { break }
+    # Try each order in turn; the first that leaves a fitting Codex set wins.
+    $orders = if ($Failover -eq 'deepdive') { ,@('deepdive') }
+        else { @(@('review', 'sweep'), @('deepdive', 'review', 'sweep')) }
+    $chosen = $null
+    foreach ($order in $orders) {
+        $onCodex = @($lanes)
+        $moved = @()
+        foreach ($l in $order) {
+            if (-not $onCodex.Count -or (Test-Allowance $onCodex)) { break }
+            if ($onCodex -notcontains $l) { continue }
+            $onCodex = @($onCodex | Where-Object { $_ -ne $l })
+            $moved += $l
+        }
+        if (-not $onCodex.Count -or (Test-Allowance $onCodex)) { $chosen = $moved; break }
     }
-    if ($onCodex.Count -and -not (Test-Allowance $onCodex)) {
-        Note '  nothing left to move and it still does not fit - skipping' | Out-Null
+    if ($null -eq $chosen) {
+        Note '  NOT ENOUGH ALLOWANCE even with lanes moved to Claude - skipping this cycle; nothing was run or spent' | Out-Null
         return $null
+    }
+    foreach ($l in $chosen) {
+        $plan[$l] = 'claude'
+        Note ("  moving {0} to Claude {1}" -f $l, $CLAUDE_MODEL) | Out-Null
     }
     Note '  (Claude exposes no usage figure, so its side is not checked - a moved lane may still fail)' | Out-Null
     return $plan
