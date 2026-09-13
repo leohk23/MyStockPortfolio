@@ -24,7 +24,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 4.2  | Maximum position                         | 50% of the pot                                                                                                      |
 | 4.2a | **One whole share always clears §4.2**   | Fractions are not bought, so if one share exceeds the cap it is still bought — cap resumes once contributions cover it |
 | 4.2b | **A fee-charging venue may exceed 50%**   | Only where no ticket inside the cap clears §4.1a. On T212 (0.15% any size) the 50% cap binds strictly |
-| 4.2c | **Check other listings before rejecting** | A board lot or order minimum is a venue fact, not a business one — 1211.HK needs £3,948, BYDDY needs £8 |
+| 4.2c | **Check other listings before rejecting** | A board lot or order minimum is a venue fact, not a business one — 1211.HK needs a 100-share lot (~£750), BYDDY needs ~£8 |
 | 4.3  | Number of positions                      | No limit                                                                                                            |
 | 4.4  | May hold cash                            | Yes, no ceiling                                                                                                     |
 | 4.5  | May top up an existing position          | Yes                                                                                                                 |
@@ -301,9 +301,10 @@ venue, then a bigger ticket, then defer.
 **Q 4.2c** What if the listing itself cannot be bought? `[auto]`
 
 **A** — **Check the company's other listings before rejecting the company.** Board lots and per-order
-minimums belong to the venue, not the business. `1211.HK` trades in 500-share lots — a £3,948
-minimum against a £500 pot — while `BYDDY`, the same company, trades in single shares at the same
-price per share. `prices.json` already maps ten such pairs through each quote's `primary` field. A
+minimums belong to the venue, not the business. `1211.HK` trades in 100-share lots — about £750
+at HKD 79.85 (Sep 2026), more than twice the pot's cash — while `BYDDY`, the same company, trades in
+single shares at the same price per share. (The lot was 500 until 19 Sep 2025; lot sizes change, so
+check the exchange rather than this example.) `prices.json` already maps ten such pairs through each quote's `primary` field. A
 receipt is not identical to the share, so the swap is an argument to be made, not an automatic one.
 
 ---

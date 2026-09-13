@@ -452,8 +452,8 @@ figures as references. Never attach their percentile to the research denominator
 
 - **When a listing is unbuyable, check the company's other listings before rejecting it.** Board
   lots and per-order minimums are properties of the VENUE, not of the business. `1211.HK` trades in
-  **500-share board lots**: at £7.90 a share that is a **£3,948** minimum order, eight times the
-  whole pot — while `BYDDY`, the same company's ADR, trades in single shares at £7.87. Rejecting BYD
+  **100-share board lots** (500 until 19 Sep 2025): at HKD 79.85 that is about **£750** a lot, more
+  than twice the pot's cash — while `BYDDY`, the same company's ADR, trades in single shares. Rejecting BYD
   for being unaffordable would have been a fact about Hong Kong's lot rules, not about BYD.
   `prices.json` already carries the mapping: a quote's `primary` field names the listing it follows,
   so **BYDDY → 1211.HK**, and ten such pairs exist today. Scan the quotes for any whose `primary`
