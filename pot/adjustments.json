@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when four consecutive quarters exist. Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-12",
+  "updated": "2026-09-13",
   "normalizedEps": {
     "TW": {
       "basis": "company-adjusted diluted EPS",
@@ -34,6 +34,42 @@
           "source": "https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a"
         }
       ]
+    },
+    "EXPN.L": {
+      "basis": "company Benchmark diluted EPS, USD",
+      "ccy": "USD",
+      "note": "Issuer values in USD per ordinary share, not GBp and not the headline basic Benchmark EPS. Annual evidence only. researchTtm currently assumes EPS already matches quote units and has no currency conversion, so do not populate USD quarters for this GBp listing until that consumer supports currency safely. Current proposal translates the local share price to USD and leaves filed EPS unchanged.",
+      "annual": [
+        {
+          "end": "2025-03-31",
+          "eps": 1.555,
+          "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf"
+        },
+        {
+          "end": "2026-03-31",
+          "eps": 1.787,
+          "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf"
+        }
+      ],
+      "quarters": []
+    },
+    "MWA": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Direct issuer quarterly figures. Q3 FY2026 includes the separately recorded $0.06 one-time tax benefit and unquantified tariff benefits; company-adjusted does not mean one-off-free. Two nonconsecutive quarters do not establish research TTM EPS.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "eps": 0.34,
+          "source": "https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748"
+        },
+        {
+          "end": "2026-06-30",
+          "eps": 0.5,
+          "source": "https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748"
+        }
+      ]
     }
   },
   "adjustments": {
@@ -47,6 +83,16 @@
         "source": "https://www.sec.gov/Archives/edgar/data/1758730/000175873026000014/tw-2025xq4xex991.htm",
         "found": "2026-09-12",
         "note": "REFERENCE ONLY, superseded for arithmetic by normalizedEps.TW. The amount is company-stated PRE-TAX and before the Up-C allocation to non-controlling interests, so subtracting it from filed attributable net income removes more than the after-tax effect and produced a misleading 37.1x historical floor. The filed inputs remain useful evidence: FY2025 effective tax rate 21.6%, consolidated net income $921.500m and $812.792m attributable to Tradeweb Markets Inc. Yahoo's norm for FY2025 equals filed attributable income, so the vendor removed nothing."
+      },
+      {
+        "fy": "2026-12-31",
+        "amount": 26600000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Q2 2026 unrealised gains on minority equity investments within Other income (loss), net; company-adjusted EPS excludes this line.",
+        "source": "https://investors.tradeweb.com/static-files/e5696c92-ff61-4d32-85b0-678deedf8d9a",
+        "found": "2026-09-13",
+        "note": "Gross non-operating gain; no separately stated after-tax effect attributable to common shareholders. Recorded as evidence only, not subtracted from reported or vendor net income. The same quarter also had Canton-related losses, so this gross gain is not the net Other income line."
       }
     ],
     "NVO": [
@@ -82,6 +128,18 @@
         "source": "https://www.sec.gov/Archives/edgar/data/1397187/000139718726000126/lulu-20260802xex991.htm",
         "found": "2026-09-08",
         "note": "REFERENCE ONLY. The source states a gross refund and associated interest, not its after-tax effect attributable to common shareholders, so it cannot be subtracted directly from filed net income. Yahoo's norm for this year equals filed ni exactly, so the vendor removed nothing."
+      }
+    ],
+    "EXPN.L": [
+      {
+        "fy": "2026-03-31",
+        "amount": 101000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "FY2026 financing fair-value remeasurement gain, principally related to Brazilian intra-group funding; excluded in the issuer Benchmark earnings bridge.",
+        "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf",
+        "found": "2026-09-13",
+        "note": "Reference only: consolidated financing gain, not a separately reconciled after-tax amount attributable to ordinary shareholders. Do not subtract a USD amount from a GBp per-share denominator. Direct annual Benchmark diluted EPS is stored separately; no adjusted historical percentile is certified."
       }
     ]
   }
