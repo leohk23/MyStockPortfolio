@@ -66,7 +66,7 @@ remark; never let it downgrade a rank or suppress a proposal.
 ## Say what the proposal does to Leo's total exposure
 
 `signals.json` → `book` carries where the human book actually sits: `names` and `byCompany` by
-weight of market value, `byGeography`, and the GBP total. The pot is tracked separately (D4) and
+weight of market value and `byGeography` — percentages only; the GBP total is no longer published (D67). The pot is tracked separately (D4) and
 §3.3 explicitly permits buying what the main book already holds — **owning it already is not a
 thesis, and it is not a veto either.** But strategy.md attaches a warning to that permission:
 *"the more the pots overlap, the less the comparison tells you."*
