@@ -196,8 +196,11 @@ $LANE_MODEL = @{
 # worth finishing, and the failure this exists to prevent is spending the cheap lanes and then
 # dying on the expensive one.
 $LANE_COST = @{
-    'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 5; h = 55 } }
-    'gpt-5.6-sol'  = @{ review = @{ w = 1; h = 9 };  sweep = @{ w = 2; h = 9 };  deepdive = @{ w = 2; h = 14 } }
+    # sol review/sweep and astra deepdive re-measured 13 Sep from session logs: the 08:00 cycle passed
+    # the check at an estimated 73% of the 5-hour window and died in the deep dive at 99%. Actuals
+    # were review 13, sweep 23, deep dive 62+ (unfinished) - rounded up. The rest are older figures.
+    'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 11; h = 70 } }
+    'gpt-5.6-sol'  = @{ review = @{ w = 2; h = 14 }; sweep = @{ w = 3; h = 24 }; deepdive = @{ w = 2; h = 14 } }
 }
 
 # Current allowance, read from the newest session log rather than by probing — a probe costs tokens
