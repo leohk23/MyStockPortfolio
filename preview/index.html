@@ -1249,6 +1249,25 @@
                 ['Low date (Yahoo normalized)', q.lowDateRecurring || '<span class="muted">–</span>'],
                 ['Research low / percentile', '<span class="muted" title="Four adjusted quarters establish today\'s TTM P/E. A five-year percentile needs a comparable rolling adjusted denominator for the whole window.">not enough history</span>'],
 
+                // Price over operating cash flow (D71). What the Scan decided is read from its own
+                // output rather than re-derived here, so the page and signals.json cannot disagree
+                // about whether a name fired or on which multiple.
+                ['P/OCF', q.pocf == null ? '<span class="muted">–</span>'
+                    : num2(q.pocf) + '× <span class="tag" title="Each week&#39;s close over operating cash flow per share from the latest annual report already published. Amortisation and impairments are not cash, so this does not move when acquisition accounting moves reported earnings. Acquisitions and licensing payments are not in operating cash flow either, so a company that buys its growth looks cheaper here than it is.">annual cash</span>',
+                    ' class="valuation-group-start"'],
+                ['vs 5y (P/OCF)', typeof q.pocfPctile !== 'number' ? '<span class="muted">–</span>'
+                    : `<span class="${q.pocfPctile <= 0.10 ? 'gain' : ''}">${ordinal(Math.round(q.pocfPctile * 100))} percentile</span>`
+                        + ` <span class="muted">— median ${num2(q.pocfMedian)}×${q.pocfWeeks ? `, ${q.pocfWeeks} weeks` : ''}</span>`],
+                ['P/OCF low', q.pocfLow == null ? '<span class="muted">–</span>' : num2(q.pocfLow) + '×'],
+                ['Valuation signal', (() => {
+                    const hit = (STATE.signals?.fired || []).find(f => f.rule === '6.1 valuation' && f.ticker === leg.yahoo);
+                    if (!hit) return '<span class="muted">not firing — neither P/E nor P/OCF in its cheapest 10%</span>';
+                    const on = { both: 'cheap on earnings and cash', earnings: 'cheap on earnings only', cash: 'cheap on cash only' }[hit.cheapOn] || 'firing';
+                    return `<span class="${hit.cheapOn === 'both' ? 'gain' : ''}">${on}</span>`
+                        + (hit.denominatorDrift ? ` <span class="tag" title="${escapeHTML(hit.denominatorDrift.why)}. The reported earnings history may have moved rather than the price: check acquisition accounting, impairments or a one-off before relying on the P/E percentile.">drift</span>` : '')
+                        + (hit.oneOff ? ` <span class="tag" title="${escapeHTML(hit.oneOff.why)}">one-off?</span>` : '');
+                })()],
+
                 // What the capital earns, kept below the multiples: a different question from
                 // "is it cheap", and it was previously splitting the reported trough in half.
                 ['ROIC', capRow('roic', v => plain(v), cap?.year ? ' <span class="muted"' + (cap.taxFrom === 'median' ? ' title="This year reported a negative or absurd effective tax rate — a tax benefit rather than a charge — so NOPAT uses the company’s own median rate across every year on file. Its own numbers, just not one freak year’s."' : '') + '>FY' + String(cap.year).slice(0, 4) + (cap.taxFrom === 'median' ? ' · median tax' : '') + '</span>' : ''),
