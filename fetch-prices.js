@@ -1666,22 +1666,52 @@ function ownTtmEps(entry, adjustments, normEps, currency, rates) {
 // Direct, source-backed adjusted EPS beats trying to reverse-engineer it from a gross one-off.
 // Four consecutive company-reported quarters make one comparable TTM denominator. A missing
 // quarter, source or basis returns nothing: a partial hand-built series must never look complete.
-function researchTtm(record) {
+// Twelve contiguous months of issuer-stated adjusted EPS, converted into the quote's currency.
+//
+// Periods are quarters by default; `months: 6` marks a half-year, and a quarter an issuer never
+// states on its own (Q3 = nine months less H1) is allowed with a `derived` note saying so. D70:
+// the 14 Sep AZN.L deep dive found H1 Core EPS, could only store quarters, and parked it in fields
+// nothing read — and every half-year reporter (most of London and Europe) could never qualify.
+//
+// Currency: the record's `ccy` is the issuer's; the TTM is converted into the quote's through the
+// same rateFor route as ADR earnings, so pence works. The periods stay in the issuer's currency,
+// because the financials table they sit beside is in the reporting currency. Without this, AZN's
+// USD Core EPS against a GBp price reads about 135 times too cheap.
+function researchTtm(record, quoteCcy, rates) {
     if (!record?.basis || !Array.isArray(record.quarters)) return null;
-    const qs = record.quarters
-        .filter(q => q?.end && Number.isFinite(q.eps) && q.source)
-        .sort((a, b) => a.end.localeCompare(b.end)).slice(-4);
-    if (qs.length !== 4) return null;
-    const times = qs.map(q => Date.parse(q.end));
-    if (times.some(t => !Number.isFinite(t))) return null;
-    const gaps = times.slice(1).map((t, i) => (t - times[i]) / 864e5);
-    const span = (times[3] - times[0]) / 864e5;
-    if (span < 250 || span > 290 || gaps.some(d => d < 70 || d > 120)) return null;
-    const eps = qs.reduce((sum, q) => sum + q.eps, 0);
+    const ps = record.quarters
+        .filter(q => q?.end && Number.isFinite(q.eps) && q.source && Number.isFinite(Date.parse(q.end)))
+        .map(q => ({ ...q, months: q.months === 6 ? 6 : 3 }))
+        .sort((a, b) => b.end.localeCompare(a.end));
+    if (!ps.length) return null;
+    const monthsBefore = (iso, m) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() - m); return d.getTime(); };
+    // Newest period first, then any chain of periods each ending where the later one began, until
+    // exactly twelve months. Small search: a record holds a handful of periods, and an overlapping
+    // quarter and half-year ending the same day are both legitimate starting points.
+    const chain = (from, months, used) => {
+        if (months === 12) return used;
+        if (months > 12) return null;
+        const start = monthsBefore(from.end, from.months);
+        for (const p of ps) {
+            if (used.includes(p) || Math.abs(Date.parse(p.end) - start) > 20 * 864e5) continue;
+            const c = chain(p, months + p.months, [...used, p]);
+            if (c) return c;
+        }
+        return null;
+    };
+    const newestEnd = ps[0].end;
+    let got = null;
+    for (const p of ps.filter(x => x.end === newestEnd)) if ((got = chain(p, p.months, [p]))) break;
+    if (!got) return null;
+    const fx = epsToQuote({ currency: record.ccy }, quoteCcy, rates);
+    if (fx == null) return null;
+    const eps = got.reduce((sum, q) => sum + q.eps, 0) * fx;
     if (!(eps > 0)) return null;
     return {
-        eps: Number(eps.toPrecision(6)), basis: record.basis, through: qs[3].end,
-        note: record.note || '', periods: qs.map(q => ({ end: q.end, eps: q.eps, source: q.source })),
+        eps: Number(eps.toPrecision(6)), basis: record.basis, through: newestEnd,
+        note: record.note || '', ccy: record.ccy || quoteCcy,
+        periods: got.slice().reverse().map(q => ({ end: q.end, eps: q.eps, months: q.months, source: q.source,
+            ...(q.derived ? { derived: q.derived } : {}) })),
         annual: (record.annual || []).filter(y => y?.end && Number.isFinite(y.eps) && y.source),
     };
 }
@@ -2561,7 +2591,7 @@ async function main() {
     let recFiled = 0, researchCount = 0, fwdDropped = 0, fwdConverted = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
-        const researched = researchTtm(RESEARCH_EPS[t]);
+        const researched = researchTtm(RESEARCH_EPS[t], quotes[t].currency, rates);
         if (researched) {
             quotes[t].researchEps = researched.eps;
             quotes[t].researchEpsBasis = researched.basis;
@@ -3698,6 +3728,27 @@ function selftest() {
             { end: '2026-06-30', eps: 0.97, source: 'd' },
         ] };
         assert.strictEqual(researchTtm(rec).eps, 3.79);
+        // D70: half-years, derived quarters, and the issuer's currency.
+        {
+            const R = { USD: 1, GBP: 1.35 };
+            const azn = { basis: 'Core EPS', ccy: 'USD', quarters: [
+                { end: '2025-09-30', eps: 2.38, source: 's', derived: '9M 7.04 less H1 4.66' },
+                { end: '2025-12-31', eps: 2.12, source: 's' },
+                { end: '2026-06-30', eps: 5.21, months: 6, source: 's' },
+                { end: '2026-06-30', eps: 2.63, source: 's' },          // Q2 alone: overlaps H1, no Q1 beside it
+            ] };
+            const r = researchTtm(azn, 'GBp', R);
+            // 9.71 USD per share in pence: 9.71 / 1.35 * 100.
+            assert.ok(Math.abs(r.eps - 9.71 / 1.35 * 100) < 0.01, 'USD Core EPS converted into GBp');
+            assert.deepStrictEqual(r.periods.map(p => p.months), [3, 3, 6]);
+            assert.strictEqual(r.periods[0].derived, '9M 7.04 less H1 4.66');
+            // Two half-years make a year; a gap does not.
+            const halves = { basis: 'b', quarters: [{ end: '2025-12-31', eps: 1, months: 6, source: 's' }, { end: '2026-06-30', eps: 1.2, months: 6, source: 's' }] };
+            assert.strictEqual(researchTtm(halves, 'USD', R).eps, 2.2);
+            assert.strictEqual(researchTtm({ ...halves, quarters: [halves.quarters[1], { end: '2025-09-30', eps: 1, months: 6, source: 's' }] }, 'USD', R), null);
+            // Nine months is not a year.
+            assert.strictEqual(researchTtm({ basis: 'b', quarters: azn.quarters.slice(0, 2).concat([azn.quarters[3]]) }, 'USD', R), null);
+        }
         assert.strictEqual(researchTtm(rec).through, '2026-06-30');
         assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.slice(1) }), null);
         assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.map((q, i) => i ? q : { ...q, source: '' }) }), null);

@@ -96,11 +96,42 @@ async function main() {
         await sleep();
     }
 
-    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), capital }, null, 1) + '\n');
+    // Names asked for and not found: ETFs, some banks and new listings have nothing to return. Kept
+    // so the cycle's gap check (D70) does not re-crawl everything every run for names that cannot fill.
+    const unreachable = want.filter(t => !capital[t]).sort();
+    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), capital, unreachable }, null, 1) + '\n');
     const yrs = Object.values(capital).reduce((a, c) => a + Object.keys(c).length, 0);
     console.log(`wrote ${OUT} — ${ok} names, ${yrs} fiscal years`
         + `${empty ? `, ${empty} with nothing to return` : ''}${failed ? `, ${failed} failed` : ''}`);
 }
 
-if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1); });
-module.exports = { parse, TYPES, FIELD };
+// Tracked names with earnings but no capital facts from either source, and the age of the older
+// file. Pure so it can be tested; `--gaps` prints it for run-daily.ps1 (D70). On 14 Sep 48 watchlist
+// names had none — capital.json and capital-yahoo.json were last refreshed on 1 Sep and nothing ran
+// either script again, so every name added since read "capital test unavailable".
+function capitalGaps({ edgar = {}, yahoo = {}, quotes = {}, names = [] }, now = Date.now()) {
+    const have = new Set([...Object.keys(edgar.capital || {}), ...Object.keys(yahoo.capital || {}), ...(yahoo.unreachable || [])]);
+    const missing = [...new Set(names)].filter(t => t && quotes[t]?.eps > 0 && !have.has(t)).sort();
+    const age = u => (u ? (now - Date.parse(u)) / 864e5 : Infinity);
+    return { missing, ageDays: Math.round(Math.max(age(edgar.updated), age(yahoo.updated))) };
+}
+
+if (require.main === module && process.argv.includes('--gaps')) {
+    const read = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
+    const names = [...(read('holdings.json', {}).holdings || []), ...read('watchlist.json', [])].map(x => x.yahoo);
+    console.log(JSON.stringify(capitalGaps({ edgar: read('capital.json', {}), yahoo: read('capital-yahoo.json', {}),
+        quotes: read('prices.json', {}).quotes || {}, names })));
+} else if (require.main === module && process.argv.includes('--selftest')) {
+    const assert = require('assert');
+    const now = Date.parse('2026-09-14T00:00:00Z');
+    const g = capitalGaps({
+        edgar: { updated: '2026-09-01T00:00:00Z', capital: { GOOG: {} } },
+        yahoo: { updated: '2026-09-10T00:00:00Z', capital: { '1211.HK': {} }, unreachable: ['EWY'] },
+        quotes: { GOOG: { eps: 1 }, '1211.HK': { eps: 1 }, 'AZN.L': { eps: 4 }, EWY: { eps: 1 }, VOO: {} },
+        names: ['GOOG', '1211.HK', 'AZN.L', 'EWY', 'VOO', 'AZN.L'],
+    }, now);
+    assert.deepStrictEqual(g.missing, ['AZN.L'], 'held/covered/unreachable/no-EPS names are not gaps');
+    assert.strictEqual(g.ageDays, 13, 'the OLDER file sets the age');
+    console.log('selftest ok');
+} else if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1); });
+module.exports = { parse, TYPES, FIELD, capitalGaps };

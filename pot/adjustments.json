@@ -1,5 +1,5 @@
 {
-  "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when four consecutive quarters exist. Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
+  "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-09-14",
   "normalizedEps": {
     "TW": {
@@ -74,17 +74,14 @@
     "AZN.L": {
       "basis": "company Core EPS per ordinary share, USD",
       "ccy": "USD",
-      "note": "Evidence only. The London quote is GBp; researchTtm consumes quarters without currency handling. Keep quarters empty until that consumer supports the issuer currency. quarterlyEvidence and interim preserve direct issuer periods without feeding a mixed-currency TTM. Core EPS is not certified owner earnings.",
+      "note": "Direct issuer periods, USD per ordinary share against a GBp quote (converted by fetch-prices, D70). H1 2026 and Q2 2026 are held; research TTM needs Q3 and Q4 2025 (Q3 derivable as 9M less H1) before it can form. Core EPS is not certified owner earnings.",
       "annual": [],
-      "quarters": [],
-      "quarterlyEvidence": [
+      "quarters": [
         {
           "end": "2026-06-30",
           "eps": 2.63,
           "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf"
-        }
-      ],
-      "interim": [
+        },
         {
           "end": "2026-06-30",
           "months": 6,

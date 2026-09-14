@@ -434,9 +434,17 @@ repeat, append it to [`pot/adjustments.json`](adjustments.json)** under the tick
   say so in `what`.
 
 **Prefer direct adjusted EPS when the company publishes it.** Add the annual and quarterly figures
-under `normalizedEps.<ticker>`, each with its period end and official source. Four consecutive
-quarters produce `prices.json researchEps`; quote that field rather than repeating arithmetic in
-prose. Tradeweb is the worked example: $0.87 + $0.87 + $1.08 + $0.97 = $3.79, or 26.8× at $101.44.
+under `normalizedEps.<ticker>`, each with its period end and official source. **Twelve contiguous
+months** produce `prices.json researchEps` — four quarters, two half-years, or a mix — converted
+into the quote's currency; quote that field rather than repeating arithmetic in prose. (D70)
+
+- Every period goes in `quarters`. A half-year carries `"months": 6`; a quarter defaults to 3.
+- A quarter the issuer never states on its own may be derived — Q3 as nine months less H1 — with
+  `"derived": "9M $7.04 less H1 $4.66"` naming both figures. Cite the release holding each.
+- Set `"ccy"` on the record to the issuer's reporting currency (AZN.L reports Core EPS in USD
+  against a GBp quote); the conversion is done for you. Never convert by hand into the entry.
+- Do not invent other fields. The 14 Sep AZN.L run parked H1 Core EPS in `interim` and
+  `quarterlyEvidence`, which nothing reads, because the format could not hold a half-year. Tradeweb is the worked example: $0.87 + $0.87 + $1.08 + $0.97 = $3.79, or 26.8× at $101.44.
 The label must name the issuer's basis — **company-adjusted**, not GAAP and not independently
 reconstructed owner earnings.
 

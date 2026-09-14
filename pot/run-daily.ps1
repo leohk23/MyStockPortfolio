@@ -453,6 +453,30 @@ try {
     node fetch-prices.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
     if ($LASTEXITCODE -ne 0) { Note "fetch-prices exited $LASTEXITCODE - the Deep dive may lack data for new names" }
 
+    # ---- 4b. Capital facts (ROIC, gross profit / assets, turnover) for names that lack them. D70.
+    # A price fetch gives a new name its quote, EPS and bands, but not these: they come from two
+    # crawls nothing ran after 1 Sep, so by 14 Sep 48 watchlist names read "capital test
+    # unavailable" for data that was free to fetch. EDGAR first (US filers), then Yahoo for the rest,
+    # which skips what EDGAR covered; then re-price so the quotes carry the result. Only when a
+    # tracked name with earnings has none, or the files are over 30 days old - names that cannot
+    # fill (ETFs, some banks) are recorded as unreachable and do not re-trigger it.
+    $gaps = $null
+    try { $gaps = (node fetch-fundamentals.js --gaps) | ConvertFrom-Json } catch { }
+    if ($gaps -and (@($gaps.missing).Count -gt 0 -or $gaps.ageDays -gt 30)) {
+        Note ("  capital facts: {0} name(s) missing, files {1} days old - refreshing" -f @($gaps.missing).Count, $gaps.ageDays)
+        node fetch-filing-dates.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
+        node fetch-fundamentals.js 2>&1 | Select-Object -Last 1 | ForEach-Object { Note "  $_" }
+        node fetch-prices.js 2>&1 | Select-Object -Last 1 | ForEach-Object { Note "  $_" }
+        # Not CI-owned: CI only reads these, so committing them is how its own fetches get the facts.
+        git add capital.json capital-yahoo.json filing-dates.json 2>&1 | Out-Null
+        if (git diff --cached --name-only) {
+            git commit --quiet -m "fundamentals: capital facts refreshed, $started"
+            Note 'fundamentals committed'
+            Publish 'fundamentals'
+            Assert-Merged 'fundamentals'
+        }
+    }
+
     # ---- 5. Scan, now covering whatever the Sweep added.
     node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
     # Only signals.json is committed. The price files belong to CI, which rewrites them every

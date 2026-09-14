@@ -1628,7 +1628,8 @@
                 // It is a provider reference, not proof that every one-off was removed.
                 const recEps = y => y.norm != null && y.ni && y.eps != null ? y.norm * y.eps / y.ni : null;
                 const researchAnnual = leg.quote.researchAnnualEps || [];
-                const researchPeriods = leg.quote.researchEpsPeriods || [];
+                // Quarter rows only: a half-year period (D70) ending on a quarter's date is not that quarter's EPS.
+                const researchPeriods = (leg.quote.researchEpsPeriods || []).filter(p => !p.months || p.months === 3);
                 const researchFor = (rows, date) => rows.find(r => r.end === date) || null;
                 const annualRecEps = y => researchFor(researchAnnual, y.date)?.eps ?? recEps(y);
                 const quarterRecEps = y => researchFor(researchPeriods, y.date)?.eps ?? recEps(y);
