@@ -3053,7 +3053,7 @@
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
-                <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cls(gain)}">${pct(gain / cost)}</div></div>
+                <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cost > 0 ? cls(gain) : ''}">${cost > 0 ? pct(gain / cost) : '–'}</div></div>
                 ${perfTile('YTD Performance', perf.ytdTotal)}
                 ${perfTile('New Buys YTD', perf.ytdNew)}
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>`;
