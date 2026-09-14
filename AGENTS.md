@@ -136,6 +136,8 @@ not: `run-lane.ps1` passes it with `--append-system-prompt-file` (D64). An inter
 session does **not** load it, and there is deliberately no `CLAUDE.md`. The briefs assume it is
 in context, so keep both routes working.
 
+**Write lane output as UTF-8 with the file-editing tool, never through a PowerShell redirection, `Set-Content` or `Out-File`.** Windows PowerShell 5.1 re-encodes on the way out: on 14 Sep the deep dive's run report lost every £, € and — to a literal `?` (27 characters) while its three proposals, written the other way, were intact.
+
 `npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
 would break D3 (no metered API spend), because CI has no subscription auth.
 
