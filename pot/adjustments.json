@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when four consecutive quarters exist. Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-13",
+  "updated": "2026-09-14",
   "normalizedEps": {
     "TW": {
       "basis": "company-adjusted diluted EPS",
@@ -73,6 +73,41 @@
     }
   },
   "adjustments": {
+    "NKE": [
+      {
+        "fy": "2026-05-31",
+        "amountPerShare": 0.52,
+        "ccy": "USD",
+        "what": "Q4 FY2026 diluted EPS benefit from expected recovery of IEEPA tariffs",
+        "source": "https://www.sec.gov/Archives/edgar/data/320187/000032018726000076/q4fy26exhibit991er.htm",
+        "found": "2026-09-14",
+        "note": "Direct issuer per-share disclosure, not a tax estimate applied to the USD986m gross recovery. The disclosed benefit belongs to Q4; subtracting it from FY EPS is an approximate annual sensitivity because quarterly and annual weighted-average diluted shares differ. USD1.58 is not issuer-stated adjusted annual EPS. No adjusted historical percentile is established."
+      }
+    ],
+    "1038.HK": [
+      {
+        "fy": "2026-12-31",
+        "amount": 11208000000,
+        "arithmetic": false,
+        "ccy": "HKD",
+        "what": "H1 2026 gain on disposal of the direct joint-venture interest in UK Power Networks, note 5",
+        "source": "https://www.cki.com.hk/english/PDF_file/announcement/2026/20260812_1.pdf",
+        "found": "2026-09-14",
+        "note": "Consolidated gain before tax; not a separately stated after-tax attributable adjustment. This is only the direct UKPN gain, not all disposal income embedded in associates and joint ventures. Do not subtract it from EPS or annualise the prior half-year to invent continuing earnings. FY2026 has not yet been filed locally."
+      }
+    ],
+    "NFLX": [
+      {
+        "fy": "2026-12-31",
+        "amount": 2800000000,
+        "arithmetic": false,
+        "ccy": "USD",
+        "what": "Q1 2026 WBD merger termination fee received, recorded in Interest and other income (expense), note 6",
+        "source": "https://www.sec.gov/Archives/edgar/data/1065280/000106528026000212/nflx-20260630.htm",
+        "found": "2026-09-14",
+        "note": "Cash receipt and pre-tax income, not a separately disclosed after-tax attributable EPS benefit. Yahoo trailing normEps of 3.177 is almost identical to reported EPS 3.18 despite this material receipt. Evidence only; do not use a guessed tax rate or share base to publish adjusted TTM or historical percentile. FY2026 is not yet filed locally."
+      }
+    ],
     "TW": [
       {
         "fy": "2025-12-31",
