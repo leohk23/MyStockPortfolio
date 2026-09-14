@@ -1,12 +1,34 @@
 {
- "generated": "2026-09-14T22:18:58.161Z",
- "pricesAt": "2026-09-14T22:18:21.453Z",
+ "generated": "2026-09-14T22:35:57.539Z",
+ "pricesAt": "2026-09-14T22:35:51.608Z",
  "vix": {
   "close": 17.1,
   "day": 0.0795
  },
  "spxDay": -0.004832192326478579,
  "fired": [
+  {
+   "rule": "6.1 valuation",
+   "ticker": "EUZ.DE",
+   "where": "watchlist",
+   "pe": 15.437499999999998,
+   "pctile": 0.005495,
+   "window": "5y",
+   "weeks": 182,
+   "floor": 15.7692,
+   "floorDate": "2026-09-11",
+   "p5": 17.8846,
+   "median": 29.0076,
+   "vsFloor": -0.02103467518961022,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 13.2192,
+    "pctile": 0.01648,
+    "median": 17.9294,
+    "weeks": 182,
+    "window": "5y"
+   }
+  },
   {
    "rule": "6.1 valuation",
    "ticker": "AMZN",
@@ -132,6 +154,35 @@
     "why": "recurring earnings put it above its floor",
     "recurringPe": 17.727272727272727,
     "recurringVsFloor": 0.2552681027362913,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "ALO.PA",
+   "where": "watchlist",
+   "pe": 26.3,
+   "pctile": 0.03125,
+   "window": "5y",
+   "weeks": 64,
+   "floor": 26.1167,
+   "floorDate": "2026-07-10",
+   "p5": 26.4583,
+   "median": 76.7597,
+   "vsFloor": 0.007018497742823593,
+   "cheapOn": "earnings",
+   "cash": {
+    "pocf": 9.56364,
+    "pctile": 0.1026,
+    "median": 12.1,
+    "weeks": 117,
+    "window": "5y"
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 20.397637596801527,
+    "recurringVsFloor": 0.007017234667202832,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -289,23 +340,23 @@
    "pctile": 0.02747,
    "window": "5y",
    "weeks": 182,
-   "floor": 23.656,
+   "floor": 23.6612,
    "floorDate": "2026-08-14",
-   "p5": 26.1537,
-   "median": 41.6913,
-   "vsFloor": 0.04004222465322793,
+   "p5": 26.1595,
+   "median": 41.7005,
+   "vsFloor": 0.0398136555371984,
    "cheapOn": "both",
    "cash": {
-    "pocf": 17.6007,
+    "pocf": 17.6046,
     "pctile": 0.02747,
-    "median": 22.613,
+    "median": 22.6181,
     "weeks": 182,
     "window": "5y"
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 25.354110603500427,
-    "recurringVsFloor": 0.04004490146815054,
+    "recurringVsFloor": 0.039814569951582834,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -492,23 +543,23 @@
    "pctile": 0.03167,
    "window": "5y",
    "weeks": 221,
-   "floor": 21.6808,
+   "floor": 21.6856,
    "floorDate": "2026-07-10",
-   "p5": 25.2183,
-   "median": 37.117,
-   "vsFloor": 0.08943557021621906,
+   "p5": 25.2239,
+   "median": 37.1252,
+   "vsFloor": 0.08919442905632313,
    "cheapOn": "both",
    "cash": {
-    "pocf": 15.8836,
+    "pocf": 15.8872,
     "pctile": 0.07101,
-    "median": 23.5899,
+    "median": 23.5951,
     "weeks": 169,
     "window": "5y"
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
     "recurringPe": 23.63194364054309,
-    "recurringVsFloor": 0.08943129451148302,
+    "recurringVsFloor": 0.08919027877581431,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -956,6 +1007,28 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "GWRE",
+   "where": "watchlist",
+   "pe": 93.86503067484664,
+   "pctile": 0.3086,
+   "window": "5y",
+   "weeks": 81,
+   "floor": 53.371,
+   "floorDate": "2026-04-10",
+   "p5": 63.1493,
+   "median": 193.83,
+   "vsFloor": 0.758727224051388,
+   "cheapOn": "cash",
+   "cash": {
+    "pocf": 33.547,
+    "pctile": 0.01911,
+    "median": 87.882,
+    "weeks": 157,
+    "window": "5y"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "2681.T",
    "where": "watchlist",
    "pe": 10.101010101010102,
@@ -1200,7 +1273,9 @@
   "EXPN.L": "2026-11-18",
   "NKE": "2026-10-01",
   "AZN.L": "2026-10-30",
-  "UNFI": "2026-12-01"
+  "UNFI": "2026-12-01",
+  "EUZ.DE": "2026-11-12",
+  "ALO.PA": "2026-11-17"
  },
  "shadow": [
   {
@@ -2975,14 +3050,14 @@
    "name": "Nasdaq",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.17559999999999998
+   "inGBP": 0.1754
   },
   {
    "sym": "^HSI",
    "name": "Hang Seng",
    "group": "Equity",
    "mixed": true,
-   "inGBP": -0.053899999999999997
+   "inGBP": -0.054099999999999995
   },
   {
    "sym": "^N225",
@@ -3021,7 +3096,7 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.1562,
+   "real": 0.15589999999999998,
    "says": "16% net of the dollar — a real move, not currency",
    "mixed": true
   },
@@ -3029,16 +3104,16 @@
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.5884,
+   "real": 0.5888,
    "says": "59% net of the dollar — a real move, not currency"
   },
   {
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3398,
+   "real": -0.3419,
    "says": "-32% over a year but 20% over three months — cooling",
-   "cooling": 0.2011,
+   "cooling": 0.1974,
    "mixed": true
   }
  ],
