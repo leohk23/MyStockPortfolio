@@ -376,6 +376,12 @@ Use his own tests, not generic ones:
 - **Valuation as a filter, not an input** (§2.4) — a name he would like at the wrong price is a no.
 - **A `oneOff` flag is the first thing to answer**, not a footnote. The multiple that triggered the
   signal may be inflated by an exceptional gain.
+- **Say which multiple is cheap — `cheapOn` — and answer `denominatorDrift` before using the
+  percentile** (§6.1, D71). `both` is the strongest reading. `earnings` with the drift flag means
+  the reported P/E is cheap against its own past while the price over operating cash flow is not:
+  the percentile may not carry the argument, so find out why the earnings history moved (acquisition
+  accounting, impairments, a one-off) and argue on the basis that survives it. `cash` means earnings
+  look dear while cash does not — find the non-cash charge, or the working-capital release, behind it.
 
 **Before researching any name, check it is locally covered (§7.2)** — in `prices.json` with real
 `eps`, and `peBands` if it is an operating company. If not, say so and pick another: a fresh Sweep

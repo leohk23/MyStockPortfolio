@@ -888,6 +888,37 @@ function adjustedYears(years, adj) {
     });
 }
 
+// Operating cash flow per share, shaped like an earnings.json entry so peHistory prices it exactly
+// as it prices EPS: each weekly close over the latest ANNUAL figure published by that date. D71.
+//
+// Why cash: a reported P/E percentile can be cheap because the denominator changed, not the price.
+// AZN.L sat at the 2.2nd percentile of reported P/E on 14 Sep largely because Alexion acquisition
+// accounting had crushed its older reported EPS ($2.12 reported against $6.66 Core in 2022), which
+// inflated the historical multiples it was being compared with. Amortisation and impairments are
+// not cash, so a multiple of operating cash flow does not move for that reason.
+//
+// Shares come from the entry's own latest year (ni / eps), the same anchor normaliseEps uses, so
+// the per-share series is on today's share count like the EPS series beside it. Cash flow comes
+// from capital facts (EDGAR, or Yahoo in the reporting currency), matched to each fiscal year
+// within a fortnight for the same 52/53-week reason as the capital metrics.
+// ponytail: annual only — no quarterly OCF steps, so between annual reports this multiple moves on
+// price alone. Add filed quarterly cash flow if the lag ever matters.
+function ocfEntry(entry, capYears) {
+    const years = (entry?.years || []).filter(y => y.date);
+    if (!years.length || !capYears) return null;
+    const anchor = [...years].sort((a, b) => b.date.localeCompare(a.date)).find(y => y.eps > 0 && y.ni > 0);
+    if (!anchor) return null;
+    const perShare = anchor.eps / anchor.ni;
+    const ends = Object.keys(capYears);
+    const near = d => ends.find(e => Math.abs(Date.parse(e) - Date.parse(d)) <= 14 * 864e5);
+    const out = years.map(y => {
+        const e = near(y.date);
+        const cfo = e ? capYears[e]?.cfo : null;
+        return Number.isFinite(cfo) && cfo !== 0 ? { date: y.date, ni: cfo, eps: cfo * perShare } : null;
+    }).filter(Boolean);
+    return out.length ? { currency: entry.currency, years: out } : null;
+}
+
 function normaliseEps(years) {
     const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
     if (!anchor) return years.map(y => y.eps);          // no usable anchor — use EPS as filed
@@ -2450,7 +2481,7 @@ async function main() {
     try { const y = JSON.parse(fs.readFileSync('capital-yahoo.json', 'utf8')).capital || {};
         for (const [t, years] of Object.entries(y)) if (!capitalFacts[t]) capitalFacts[t] = years; }
     catch { /* optional: EDGAR-only coverage is still correct, just narrower */ }
-    let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0, ownBands = 0;
+    let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0, ownBands = 0, pocfOk = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         const filedOn = filedDates[t] || null;
@@ -2509,6 +2540,20 @@ async function main() {
             peWeeks: head.weeks ?? null,
             peHistory: hist.horizons,
         });
+        // The same weekly machinery on operating cash flow (ocfEntry, D71). Kept beside the P/E so
+        // the Scan can ask whether cheapness shows up in cash too, rather than on earnings alone.
+        const ocf = ocfEntry(store.eps[t], capitalFacts[t]);
+        const ocfHist = ocf && peHistory(ocf, longHist.days, longHist.closes[t] || [],
+            quotes[t].currency, rates, filedOn, null, HISTORY_FROM[t] || null);
+        const ocfHead = ocfHist?.horizons?.[HEADLINE_HORIZON] || ocfHist?.horizons?.all;
+        if (ocfHead) {
+            Object.assign(quotes[t], {
+                pocf: ocfHist.current, pocfPctile: ocfHead.pctile, pocfLow: ocfHead.low,
+                pocfMedian: ocfHead.median, pocfWeeks: ocfHead.weeks,
+                pocfWindow: ocfHist.horizons[HEADLINE_HORIZON] ? HEADLINE_HORIZON : 'all',
+            });
+            pocfOk++;
+        }
         // Match the newest fiscal year the two sources share — WITHIN A FORTNIGHT, not exactly.
         //
         // EDGAR carries the real 52/53-week period end and Yahoo a normalised month end, so
@@ -2659,6 +2704,7 @@ async function main() {
     if (fwdConverted) console.log(`ok   consensus forward EPS converted into the quote's `
         + `denomination for ${fwdConverted} ticker(s)`);
     console.log(`ok   trough PE for ${troughOk}/${tickers.length} tickers (${troughMissing} no earnings history)`);
+    console.log(`ok   P/OCF percentile for ${pocfOk}/${tickers.length} tickers (annual operating cash flow, point-in-time)`);
     console.log(`ok   per-year PE bands for ${bandOk}/${tickers.length} tickers (${realDated} on real filing dates, the rest on the 90-day lag)`);
     if (ownBands) console.log(`ok   own-basis valuation for ${ownBands} ticker(s) from `
         + `pot/adjustments.json — filed earnings less one-offs this repo can cite`);
@@ -3752,6 +3798,18 @@ function selftest() {
         assert.strictEqual(researchTtm(rec).through, '2026-06-30');
         assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.slice(1) }), null);
         assert.strictEqual(researchTtm({ ...rec, quarters: rec.quarters.map((q, i) => i ? q : { ...q, source: '' }) }), null);
+    }
+    // ocfEntry: cash per share on the latest year's share count, matched within a fortnight.
+    {
+        const entry = { currency: 'USD', years: [
+            { date: '2024-12-31', ni: 50, eps: 0.5 }, { date: '2025-12-31', ni: 100, eps: 1 } ] };   // 100 shares
+        const cap = { '2025-01-02': { cfo: 80 }, '2025-12-28': { cfo: 150 } };
+        const o = ocfEntry(entry, cap);
+        assert.deepStrictEqual(o.years.map(y => y.eps), [0.8, 1.5]);
+        // normaliseEps on that shape returns the same per-share figures, so peHistory prices it as-is.
+        assert.deepStrictEqual(normaliseEps(o.years), [0.8, 1.5]);
+        assert.strictEqual(ocfEntry(entry, { '2025-06-30': { cfo: 1 } }), null, 'no year within a fortnight');
+        assert.strictEqual(ocfEntry({ years: [{ date: '2025-12-31', ni: -5, eps: -1 }] }, cap), null, 'no share anchor');
     }
     console.log('selftest ok');
 }

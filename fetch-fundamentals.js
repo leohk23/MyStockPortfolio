@@ -26,11 +26,13 @@ const BASE = 'https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/fin
 const TYPES = [
     'annualTotalAssets', 'annualCurrentLiabilities', 'annualGrossProfit',
     'annualTotalRevenue', 'annualTaxProvision', 'annualPretaxIncome', 'annualOperatingIncome',
+    'annualOperatingCashFlow',       // D71: P/OCF for every name EDGAR cannot reach
 ];
 const FIELD = {
     annualTotalAssets: 'assets', annualCurrentLiabilities: 'liabCurrent',
     annualGrossProfit: 'grossProfit', annualTotalRevenue: 'rev',
     annualTaxProvision: 'tax', annualPretaxIncome: 'pretax', annualOperatingIncome: 'opinc',
+    annualOperatingCashFlow: 'cfo',
 };
 
 const sleep = (ms = 400) => new Promise(r => setTimeout(r, ms));

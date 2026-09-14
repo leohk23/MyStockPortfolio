@@ -32,7 +32,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 5.1  | Valid sell reasons                       | falsifier tripped · thesis played out · breached a §4 limit                                                      |
 | 5.2  | Minimum holding period                   | None                                                                                                                |
 | 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
-| 6.1  | Valuation signal                         | in the **cheapest 10%** of its own **5-year** multiple history (3y/10y/all kept as reference)      |
+| 6.1  | Valuation signal                         | in the **cheapest 10%** of its own **5-year** history on **P/E or P/OCF**, saying which; P/E-only cheapness with P/OCF above the 40th percentile is flagged `denominatorDrift` |
 | 6.2  | Drawdown signal                          | **−15% in 7 days**, or **−25% in 30**                                                                 |
 | 6.3  | Results signal                           | the day after results, for anything the pot holds                                                                   |
 | 6.4  | Dry-powder signal                        | at**£750** uninvested, then every **£250**                                                            |
@@ -461,6 +461,24 @@ market that no longer exists. A floor nobody expects to see again cannot say whe
 
 The minimum still travels with the signal, because *how cheap it has actually got* is worth knowing
 once the better question has been asked. It is context now, not the trigger.
+
+⚠ **Revised 14 Sep 2026 (D71), on Leo's instruction: not on the P/E alone.** The AZN.L proposal
+leaned on a 2.2nd-percentile reported P/E, and the review showed why that was weaker than it looked:
+Alexion acquisition accounting had crushed AZN's older reported earnings ($2.12 reported against
+$6.66 Core in 2022), so its historical multiples were inflated and today's looked cheap by
+comparison. The earnings figure had changed, not only the price.
+
+**A (revised)** — the same percentile on **two** multiples: P/E, and **price over operating cash
+flow per share**, built the same point-in-time way from annual cash flow. Amortisation and
+impairments are not cash, so the second does not move for that reason.
+
+- **Fires when either** is in the cheapest 10%, and the signal says which: `cheapOn` is
+  `earnings`, `cash` or `both`. A name can be dear on a P/E depressed by non-cash charges and
+  still cheap on the cash it produces.
+- **`denominatorDrift`** when the P/E is in the cheapest decile but P/OCF sits above the 40th
+  percentile. Flagged, never suppressed, exactly as `oneOff` is.
+- Cash flow has its own noise — working capital swings, as AZN's H1 2026 showed — so neither
+  multiple overrules the other. **Both cheap** is the strongest reading.
 
 **Q 6.2** Drawdown `[auto]` — a watchlist or held name falls hard, fast.
 

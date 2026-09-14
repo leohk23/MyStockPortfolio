@@ -17,7 +17,8 @@ const fs = require('fs');
 
 // Every threshold in strategy.md's rules-at-a-glance, in one place. Change them there first.
 const RULES = {
-    valuationPctile: 0.10,    // §6.1  in the cheapest 10% of its own five-year history
+    valuationPctile: 0.10,    // §6.1  in the cheapest 10% of its own five-year history — P/E OR P/OCF (D71)
+    cashDisagreePctile: 0.40, // §6.1  P/E cheapest decile but P/OCF above this: cheapness not in the cash
     drawdown7d: -0.15,        // §6.2  −15% in 7 days
     drawdown1m: -0.25,        // §6.2  ...or −25% in 30
     dryPowderFirst: 750,      // §6.4  £750 uninvested, then...
@@ -108,12 +109,28 @@ function oneOffRisk(quote, entry, floor, band) {
 //
 // The minimum is still reported alongside, because "how cheap has it actually got" is worth
 // knowing once the better question has been asked.
+// Two multiples, not one (D71). The signal fires when EITHER the P/E or the price over operating
+// cash flow is in the cheapest decile of its own five years, and always says which. A P/E alone
+// can be cheap because the earnings figure changed — AZN.L's reported history was depressed by
+// acquisition accounting, which made its old multiples look high and today's look cheap — and it
+// can be expensive for the same reason while the cash says otherwise. Where the two disagree the
+// disagreement is the finding, so it rides with the hit as a flag rather than being resolved here.
 function nearOwnFloor(quote, pctile = RULES.valuationPctile, entry = null) {
     const window = quote?.peWindow || '5y';
     const h = quote?.peHistory?.[window];
     if (!h || typeof quote.pePctile !== 'number') return null;
     if (!(quote.eps > 0) || !(quote.price > 0) || !(h.low > 0)) return null;
-    if (quote.pePctile > pctile) return null;
+    const cash = typeof quote.pocfPctile === 'number' && quote.pocf > 0 ? quote.pocfPctile : null;
+    const earningsCheap = quote.pePctile <= pctile;
+    const cashCheap = cash != null && cash <= pctile;
+    if (!earningsCheap && !cashCheap) return null;
+    const cheapOn = earningsCheap && cashCheap ? 'both' : earningsCheap ? 'earnings' : 'cash';
+    const cashView = cash == null ? null : { pocf: quote.pocf, pctile: cash, median: quote.pocfMedian ?? null,
+        weeks: quote.pocfWeeks ?? null, window: quote.pocfWindow || null };
+    // Cheap on earnings, not on cash: the reported denominator may have moved rather than the price.
+    const denominatorDrift = earningsCheap && cash != null && cash > RULES.cashDisagreePctile
+        ? { why: `P/E is in the cheapest decile but P/OCF is at the ${ordinal(Math.round(cash * 100))} percentile`,
+            pePctile: quote.pePctile, pocfPctile: cash } : null;
     const pe = quote.price / quote.eps;
     // The one-off check has to move onto the same footing. Comparing recurring earnings against
     // the five-year MINIMUM fired on almost every hit, because a name only reaches the cheapest
@@ -122,7 +139,8 @@ function nearOwnFloor(quote, pctile = RULES.valuationPctile, entry = null) {
     const oneOff = oneOffRisk(quote, entry, h.p25, 0);
     return { pe, pctile: quote.pePctile, window, weeks: h.weeks,
         floor: h.low, floorDate: h.lowDate, p5: h.p5, median: h.median,
-        vsFloor: pe / h.low - 1, ...(oneOff ? { oneOff } : {}) };
+        vsFloor: pe / h.low - 1, cheapOn, ...(cashView ? { cash: cashView } : { cash: 'no operating cash flow history' }),
+        ...(denominatorDrift ? { denominatorDrift } : {}), ...(oneOff ? { oneOff } : {}) };
 }
 
 // §6.2 — fell hard, fast. Either window qualifies on its own.
@@ -608,7 +626,7 @@ function main() {
     for (const [rule, list] of Object.entries(by)) {
         console.log(`\n  ${rule} — ${list.length}`);
         for (const f of list.slice(0, 8)) {
-            if (f.pctile != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} PE ${f.pe.toFixed(1)} = ${ordinal(Math.round(f.pctile*100))} pctile of ${f.window} (low ${f.floor.toFixed(1)} ${f.floorDate}, median ${f.median.toFixed(1)})  ${f.where}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS' : ''}`);
+            if (f.pctile != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} [${f.cheapOn}] PE ${f.pe.toFixed(1)} = ${ordinal(Math.round(f.pctile*100))} pctile${f.cash?.pctile != null ? `, P/OCF ${f.cash.pocf.toFixed(1)} = ${ordinal(Math.round(f.cash.pctile*100))}` : ', no P/OCF'} (low ${f.floor.toFixed(1)} ${f.floorDate}, median ${f.median.toFixed(1)})  ${f.where}${f.denominatorDrift ? '  DRIFT?' : ''}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS' : ''}`);
             else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
             else console.log(`     ${JSON.stringify(f)}`);
         }
@@ -642,6 +660,18 @@ function selftest() {
     assert.strictEqual(nearOwnFloor({ ...H, price: 200, eps: -1, pePctile: 0 }), null);
     assert.strictEqual(nearOwnFloor({ ...H, price: 0, eps: 10, pePctile: 0 }), null);
     assert.strictEqual(nearOwnFloor(undefined), null);
+    // D71: either multiple fires, and the hit says which; disagreement is flagged, never suppressed.
+    {
+        const base = { ...H, price: 200, eps: 10, pocf: 12 };
+        assert.strictEqual(nearOwnFloor({ ...base, pePctile: 0.5 }), null, 'no cash data: P/E alone decides, as before');
+        assert.strictEqual(nearOwnFloor({ ...base, pePctile: 0.5, pocfPctile: 0.05 }).cheapOn, 'cash');
+        assert.strictEqual(nearOwnFloor({ ...base, pePctile: 0.05, pocfPctile: 0.05 }).cheapOn, 'both');
+        const drift = nearOwnFloor({ ...base, pePctile: 0.02, pocfPctile: 0.6 });
+        assert.strictEqual(drift.cheapOn, 'earnings');
+        assert.ok(drift.denominatorDrift, 'cheap on P/E, dear on cash is flagged');
+        assert.strictEqual(nearOwnFloor({ ...base, pePctile: 0.02, pocfPctile: 0.3 }).denominatorDrift, undefined, 'mildly cheap cash is not drift');
+        assert.strictEqual(nearOwnFloor({ ...base, pocf: -3, pePctile: 0.5, pocfPctile: 0.01 }), null, 'negative cash flow is no multiple');
+    }
 
     // §6.2 — either window on its own, and both reported when both trip.
     assert.strictEqual(fellHard({ '7d': -0.14, '1m': -0.24 }), null);
