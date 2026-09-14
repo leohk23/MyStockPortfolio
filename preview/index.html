@@ -788,6 +788,7 @@
                     <th data-sort="specialPe" title="Current price ÷ normalized EPS. Priority: a direct, source-backed company-adjusted TTM series; then a manual stock-specific figure; then Yahoo normalized earnings; finally reported EPS. The displayed basis is named in the deep panel.">Normalized PE</th>
                     <th data-sort="peLow" title="The cheapest reported multiple over the last five years, using earnings public at each weekly close. Research low and percentile are withheld until enough comparable adjusted quarters exist to build the whole history.">P/E Low (reported, 5y)</th>
                     <th data-sort="pePctile" title="Where today's reported multiple sits in the reported five-year distribution. It is a reference, not a percentile for the normalized P/E beside it. Green at the cheapest 10%.">vs 5y reported</th>
+                    <th data-sort="pocfPctile" title="Where price over operating cash flow per share sits in its own five-year distribution (D71). Green at the cheapest 10%. The tag is the Scan's verdict: both = cheap on earnings and cash; cash = cheap on cash only; drift = cheap on the P/E but not on cash, so the earnings history may have moved rather than the price.">vs 5y cash</th>
                     <th data-sort="lowDate" title="When the reported-basis five-year low occurred.">Low date</th>
                     <th data-sort="implied" title="Reported five-year low × current reported EPS. This deliberately stays on one accounting basis.">Implied</th>
                     <th data-sort="vsLow" title="Premium over the reported-basis implied price. Negative (green) means below that reported five-year floor.">vs Low</th>
@@ -818,6 +819,7 @@
                 <th data-sort="specialPe" title="Current normalized P/E, prioritizing a direct source-backed company-adjusted TTM series, then Yahoo normalized earnings, then filed EPS.">Normalized P/E</th>
                 <th data-sort="peLow" title="The reported-basis five-year low. Research history is withheld until enough comparable adjusted quarters exist.">P/E Low (reported, 5y)</th>
                 <th data-sort="pePctile" title="Today's reported multiple inside its reported five-year distribution.">vs 5y reported</th>
+                <th data-sort="pocfPctile" title="Where price over operating cash flow per share sits in its own five-year distribution (D71). Green at the cheapest 10%. The tag is the Scan's verdict: both = cheap on earnings and cash; cash = cheap on cash only; drift = cheap on the P/E but not on cash, so the earnings history may have moved rather than the price.">vs 5y cash</th>
                 <th data-sort="lowDate">Low date</th><th data-sort="implied">Implied</th><th data-sort="vsLow">vs Low</th>
             </tr></thead>
             <tbody></tbody>
@@ -3051,6 +3053,16 @@
         // good news here, so a negative premium reads green.
         const vsLowCell = n => n == null ? '<span class="muted">–</span>'
             : `<span class="${cls(-n)}">${pct(n)}</span>`;
+        // P/OCF percentile (D71) with the Scan's verdict beside it. The verdict is read from
+        // signals.json rather than re-derived, so the table, the deep panel and the Scan agree.
+        const cashPctileCell = (q, yahoo) => {
+            if (typeof q?.pocfPctile !== 'number') return '<span class="muted">–</span>';
+            const hit = (STATE.signals?.fired || []).find(f => f.rule === '6.1 valuation' && f.ticker === yahoo);
+            const tag = !hit ? '' : hit.denominatorDrift ? 'drift'
+                : hit.cheapOn === 'both' ? 'both' : hit.cheapOn === 'cash' ? 'cash' : '';
+            return `<span class="${q.pocfPctile <= 0.10 ? 'gain' : ''}" title="P/OCF ${q.pocf == null ? '–' : num2(q.pocf) + '×'}, median ${q.pocfMedian == null ? '–' : num2(q.pocfMedian) + '×'}${q.pocfWeeks ? ' over ' + q.pocfWeeks + ' weeks' : ''}">${ordinal(Math.round(q.pocfPctile * 100))}</span>`
+                + (tag ? ` <span class="tag">${tag}</span>` : '');
+        };
 
         /* ---------------- filter ---------------- */
         // Everything you might reasonably type at a row: what it's called, every ticker inside
@@ -3095,6 +3107,8 @@
             if (key === 'live') return row.legs.some(l => isLive(l.quote)) ? 1 : 0;
             if (key === 'trades') return rowTrades(row) || null;
             if (key === 'specialPe') return recurringNow(row).pe;
+            // Single instruments only, like every multiple in this table.
+            if (key === 'pocfPctile') return row.legs.length === 1 ? row.legs[0].quote?.pocfPctile ?? null : null;
             if (['peLow', 'pePctile', 'lowDate', 'implied', 'vsLow'].includes(key)) {
                 const h = recurringHistory(row);
                 return ({ peLow: h.low, pePctile: h.pctile, lowDate: h.lowDate,
@@ -3128,6 +3142,7 @@
             // every row, and the column sorted into a single null bucket that never moved.
             if (key === 'live') return liveOf(w.quote);
             if (key === 'specialPe') return recurringNow(w).pe;
+            if (key === 'pocfPctile') return w.quote?.pocfPctile ?? null;
             if (['peLow', 'pePctile', 'lowDate', 'implied', 'vsLow'].includes(key)) {
                 const h = recurringHistory(w);
                 return ({ peLow: h.low, pePctile: h.pctile, lowDate: h.lowDate,
@@ -3231,6 +3246,7 @@
                     <td>${peCell(recurring.pe, recurring.label)}${basisTag(recurring.basis, recurring.q)}</td>
                     <td>${recurringLowCell(recurringHist)}</td>
                     <td>${recurringPctileCell(recurringHist)}</td>
+                    <td>${r.legs.length === 1 ? cashPctileCell(r.legs[0].quote, r.legs[0].yahoo) : '<span class="muted">–</span>'}</td>
                     <td>${lowDateCell(recurringHist.lowDate)}</td>
                     <td>${recurringImpliedCell(recurringHist)}</td>
                     <td>${vsLowCell(recurringHist.vsLow)}</td>
@@ -3273,6 +3289,7 @@
                         <td>${peCell(legRecurring.pe, legRecurring.label)}${basisTag(legRecurring.basis, legRecurring.q)}</td>
                         <td>${recurringLowCell(legRecurringHist)}</td>
                         <td>${recurringPctileCell(legRecurringHist)}</td>
+                        <td>${cashPctileCell(leg.quote, leg.yahoo)}</td>
                         <td>${lowDateCell(legRecurringHist.lowDate)}</td>
                         <td>${recurringImpliedCell(legRecurringHist)}</td>
                         <td>${vsLowCell(legRecurringHist.vsLow)}</td>
@@ -3448,6 +3465,7 @@
                     <td>${peCell(recurring.pe, recurring.label)}${basisTag(recurring.basis, recurring.q)}</td>
                     <td>${recurringLowCell(recurringHist)}</td>
                     <td>${recurringPctileCell(recurringHist)}</td>
+                    <td>${cashPctileCell(w.quote, w.yahoo)}</td>
                     <td>${lowDateCell(recurringHist.lowDate)}</td>
                     <td>${recurringImpliedCell(recurringHist)}</td>
                     <td>${vsLowCell(recurringHist.vsLow)}</td>`;
