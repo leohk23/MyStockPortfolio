@@ -70,6 +70,57 @@
           "source": "https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748"
         }
       ]
+    },
+    "AZN.L": {
+      "basis": "company Core EPS per ordinary share, USD",
+      "ccy": "USD",
+      "note": "Evidence only. The London quote is GBp; researchTtm consumes quarters without currency handling. Keep quarters empty until that consumer supports the issuer currency. quarterlyEvidence and interim preserve direct issuer periods without feeding a mixed-currency TTM. Core EPS is not certified owner earnings.",
+      "annual": [],
+      "quarters": [],
+      "quarterlyEvidence": [
+        {
+          "end": "2026-06-30",
+          "eps": 2.63,
+          "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf"
+        }
+      ],
+      "interim": [
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 5.21,
+          "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf"
+        }
+      ]
+    },
+    "UNFI": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Issuer reconciliation, including comparative periods. These adjustments do not certify owner earnings or an adjusted historical percentile. The two quarterly periods are not consecutive; no research TTM is established.",
+      "annual": [
+        {
+          "end": "2025-08-02",
+          "eps": 0.71,
+          "source": "https://www.sec.gov/Archives/edgar/data/1020859/000102085926000022/f26q4earningsrelease.htm"
+        },
+        {
+          "end": "2026-08-01",
+          "eps": 2.65,
+          "source": "https://www.sec.gov/Archives/edgar/data/1020859/000102085926000022/f26q4earningsrelease.htm"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-08-02",
+          "eps": -0.11,
+          "source": "https://www.sec.gov/Archives/edgar/data/1020859/000102085926000022/f26q4earningsrelease.htm"
+        },
+        {
+          "end": "2026-08-01",
+          "eps": 0.69,
+          "source": "https://www.sec.gov/Archives/edgar/data/1020859/000102085926000022/f26q4earningsrelease.htm"
+        }
+      ]
     }
   },
   "adjustments": {
@@ -175,6 +226,28 @@
         "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf",
         "found": "2026-09-13",
         "note": "Reference only: consolidated financing gain, not a separately reconciled after-tax amount attributable to ordinary shareholders. Do not subtract a USD amount from a GBp per-share denominator. Direct annual Benchmark diluted EPS is stored separately; no adjusted historical percentile is certified."
+      }
+    ],
+    "AZN.L": [
+      {
+        "fy": "2026-12-31",
+        "amount": 128000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "H1 2026 gains on disposal of intangible assets, identified in the operating cash-flow reconciliation.",
+        "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf",
+        "found": "2026-09-14",
+        "note": "Gross gain; no separate after-tax attributable effect certified. FY2026 is not yet filed locally. Core earnings are not assumed to exclude this gain."
+      },
+      {
+        "fy": "2026-12-31",
+        "amount": 19000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "H1 2026 favourable fair-value movements on contingent consideration arising from business combinations, deducted in the operating cash-flow reconciliation.",
+        "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf",
+        "found": "2026-09-14",
+        "note": "Gross non-cash gain; no separate after-tax attributable effect certified. Evidence only, not a per-share deduction."
       }
     ]
   }
