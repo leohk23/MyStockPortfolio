@@ -74,8 +74,14 @@
     "AZN.L": {
       "basis": "company Core EPS per ordinary share, USD",
       "ccy": "USD",
-      "note": "Direct issuer periods, USD per ordinary share against a GBp quote (converted by fetch-prices, D70). H1 2026 and Q2 2026 are held; research TTM needs Q3 and Q4 2025 (Q3 derivable as 9M less H1) before it can form. Core EPS is not certified owner earnings.",
-      "annual": [],
+      "note": "Direct issuer periods, USD per ordinary share against a GBp quote (converted by fetch-prices, D70). H1 2026 and Q2 2026 are held; research TTM needs Q3 and Q4 2025 (Q3 derivable as 9M less H1) before it can form. Core EPS is not certified owner earnings. Update 14 September 2026, 22:47 UTC: the appended issuer Q3 and Q4 2025 periods now complete twelve months with H1 2026, superseding the earlier missing-period statement. Core EPS is the issuer basic ordinary-share basis; no research historical percentile is certified.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 9.16,
+          "source": "https://www.astrazeneca.com/content/dam/az/PDF/2025/Q4-FY/Full-year-Q4-2025-results-announcement.pdf"
+        }
+      ],
       "quarters": [
         {
           "end": "2026-06-30",
@@ -87,6 +93,16 @@
           "months": 6,
           "eps": 5.21,
           "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf"
+        },
+        {
+          "end": "2025-09-30",
+          "eps": 2.38,
+          "source": "https://www.astrazeneca.com/content/dam/az/PDF/2025/9m-q3/9M-and-Q3-2025-results-announcement.pdf"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 2.12,
+          "source": "https://www.astrazeneca.com/content/dam/az/PDF/2025/Q4-FY/Full-year-Q4-2025-results-announcement.pdf"
         }
       ]
     },
@@ -188,6 +204,16 @@
         "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000018/caq12026.htm",
         "found": "2026-09-12",
         "note": "REFERENCE ONLY. This is a pre-tax amount, so it cannot be subtracted directly from normalized EPS or after-tax attributable income. Novo guides a 21–23% effective rate for 2026, but applying a tax estimate would still be a reconstruction rather than the company's adjusted per-share result. Yahoo's norm for the Q1 2026 quarter equals filed ni exactly, so the vendor removed nothing. Going the other way in the same year, unrecorded here because the store only holds income to remove: DKK 6.3bn of non-cash pipeline impairments in Q2 2026, DKK 4.0bn of it monlunabant."
+      },
+      {
+        "fy": "2025-12-31",
+        "amount": 2600000000,
+        "ccy": "DKK",
+        "arithmetic": false,
+        "what": "Q2 2025 US 340B sales-rebate provision reversal, identified in Appendix 7 of the Q2 2026 comparative reconciliation.",
+        "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000023/caq22026.htm",
+        "found": "2026-09-14",
+        "note": "Separate from the already recorded DKK26.8bn Q1 2026 reversal. Gross revenue effect, not a separately certified after-tax attributable amount; evidence only."
       }
     ],
     "MWA": [
@@ -211,6 +237,15 @@
         "source": "https://www.sec.gov/Archives/edgar/data/1397187/000139718726000126/lulu-20260802xex991.htm",
         "found": "2026-09-08",
         "note": "REFERENCE ONLY. The source states a gross refund and associated interest, not its after-tax effect attributable to common shareholders, so it cannot be subtracted directly from filed net income. Yahoo's norm for this year equals filed ni exactly, so the vendor removed nothing."
+      },
+      {
+        "fy": "2027-01-31",
+        "amountPerShare": 0.86,
+        "ccy": "USD",
+        "what": "CORRECTION to the 8 September evidence: Q2 fiscal 2026 tariff refunds and associated interest contributed USD0.86 diluted EPS, net of tax. The filing places the benefit in the year ending 31 January 2027, not the earlier stored FY2026-01-31 row.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1397187/000139718726000127/lulu-20260802.htm",
+        "found": "2026-09-14",
+        "note": "Issuer states fiscal year end and per-share after-tax benefit. Current-year evidence; that annual row is not filed locally yet. Source quarter ends 2 August 2026; Yahoo labels it 31 July. A quarterly EPS benefit is not an exact annual EPS restatement because weighted-average shares can differ. Prior gross evidence is retained and remains arithmetic:false."
       }
     ],
     "EXPN.L": [
@@ -245,6 +280,38 @@
         "source": "https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf",
         "found": "2026-09-14",
         "note": "Gross non-cash gain; no separate after-tax attributable effect certified. Evidence only, not a per-share deduction."
+      },
+      {
+        "fy": "2025-12-31",
+        "amount": 168000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "FY2025 gains on disposal of intangible assets",
+        "source": "https://www.astrazeneca.com/content/dam/az/PDF/2025/Q4-FY/Full-year-Q4-2025-results-announcement.pdf",
+        "found": "2026-09-14",
+        "note": "Gross cash-flow reconciliation item; no separately certified after-tax attributable effect. Evidence only. Core EPS is an issuer-defined basic per-ordinary-share measure, not diluted reported EPS."
+      },
+      {
+        "fy": "2025-12-31",
+        "amount": 97000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "FY2025 favourable fair-value movements on contingent consideration",
+        "source": "https://www.astrazeneca.com/content/dam/az/PDF/2025/Q4-FY/Full-year-Q4-2025-results-announcement.pdf",
+        "found": "2026-09-14",
+        "note": "Gross cash-flow reconciliation item; no separately certified after-tax attributable effect. Evidence only. Core EPS is an issuer-defined basic per-ordinary-share measure, not diluted reported EPS."
+      }
+    ],
+    "EUZ.DE": [
+      {
+        "fy": "2025-12-31",
+        "amount": 5000000,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "Q1 2025 extraordinary licensing revenue absent in H1 2026; the comparative H1 report separately describes EUR9m cash received after EUR1m Chinese withholding tax.",
+        "source": "https://www.ezag.com/Q22026en",
+        "found": "2026-09-14",
+        "note": "Revenue is not after-tax attributable income. The EUR5m revenue and EUR9m cash receipt are different accounting measures; do not subtract either from EPS or assume they are a reconciled profit adjustment."
       }
     ]
   }
