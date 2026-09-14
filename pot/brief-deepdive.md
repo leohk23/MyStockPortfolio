@@ -317,6 +317,29 @@ A ranking that is only an ordering makes the reader infer the decision from posi
 is not a decision — the 8 September run ranked INTU second and bought nothing, which a reader
 skimming ranks would have misread. The verdict says what the rank means.
 
+**Then compare with the previous deep dive — after deciding, never before.** Once your verdicts
+and share counts are final, open the newest earlier `pot/proposals/*-ranking.md` and add a short
+section to the run report, *Agreement with the previous run*:
+
+| name | previous run (model, stamp) | this run | same inputs? | why they differ |
+|---|---|---|---|---|
+
+- One row per name either run PROPOSED, plus any name whose verdict changed. Names both runs
+  excluded need no row.
+- **Same inputs?** — yes only if the price snapshot, newest Sweep, newest Review and pot cash are
+  unchanged. Say which one moved when they are not.
+- **Why they differ** — when the inputs are the same, a difference is not new evidence: it is two
+  readings of one rule. **Name the rule and quote the line both readings rest on.** That is the
+  point of the table. On 13 September three runs over unchanged Friday prices agreed on 1 TW and
+  split on EXPN.L (4 shares or 2, over whether the half-allocation applied) and on the MWA top-up
+  (§4.5a and the Review's falsifier finding) — two ambiguities in this brief that no single run
+  could have shown.
+- **Do not change a decision to agree.** The section above still binds: a pending draft does not
+  change what you propose. This table reports a difference; it never resolves one by deferring to
+  the earlier run, which is exactly how two runs would stop being independent checks.
+- No earlier ranking, or the earlier one predates a brief change that bears on the difference: say
+  so in one line instead of the table.
+
 **Account for every name in `watchlist.json`, not every name you happened to consider.** The list
 is 70+ names; the 8 September run ranked 23 and said nothing about the other 47, so names Leo added
 by hand and names the Sweep found were never judged and nobody could see that they had not been.
