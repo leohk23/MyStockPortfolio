@@ -102,7 +102,15 @@ if ($Agent -eq 'codex') {
     # token from `claude setup-token`, saved to the gitignored .claude-token, is passed for this
     # call only; without the file the CLI's own login is used, as before.
     $tokenFile = Join-Path $Repo '.claude-token'
-    if (Test-Path $tokenFile) { $env:CLAUDE_CODE_OAUTH_TOKEN = (Get-Content $tokenFile -Raw).Trim() }
+    if (Test-Path $tokenFile) {
+        $env:CLAUDE_CODE_OAUTH_TOKEN = (Get-Content $tokenFile -Raw).Trim()
+        # A stored interactive login wins over the token: probed 16 Sep, a deliberately invalid token
+        # still worked while ~/.claude held a valid login, and failed with 401 once it did not. So the
+        # token only protects a lane that cannot see that login - its own config folder holds none.
+        # Transcripts then land in ~/.claude-lanes/projects, which pot/report.js also reads.
+        $env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.claude-lanes'
+        New-Item -ItemType Directory -Force -Path $env:CLAUDE_CONFIG_DIR | Out-Null
+    }
     claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }

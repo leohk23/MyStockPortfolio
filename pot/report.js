@@ -509,6 +509,9 @@ function wishlistEntries(file = 'pot/data-wishlist.md') {
 // the prompt as plain text. No rate_limit records exist there, so `limits` stays null — Claude's
 // allowance is simply not visible from the transcript, and an invented number would be worse.
 const CLAUDE_SESSIONS = path.join(os.homedir(), '.claude', 'projects');
+// Claude lanes run with their own config folder when a long-lived token is present (D72), so their
+// transcripts live here instead. Both are read; a lane is a lane wherever its log landed.
+const CLAUDE_LANE_SESSIONS = path.join(os.homedir(), '.claude-lanes', 'projects');
 
 function claudeFiles(root = CLAUDE_SESSIONS, out = []) {
     let entries;
@@ -573,7 +576,7 @@ function build() {
     // Both agents, one ledger, sorted together. A lane is a lane whoever ran it.
     const runs = [
         ...sessionFiles(SESSIONS).map(summarise).filter(r => r && r.repo && r.brief),
-        ...claudeFiles().map(summariseClaude).filter(Boolean),
+        ...[...claudeFiles(), ...claudeFiles(CLAUDE_LANE_SESSIONS)].map(summariseClaude).filter(Boolean),
     ].sort((a, b) => Date.parse(a.started || 0) - Date.parse(b.started || 0));
     runs.sort((a, b) => (b.started || '').localeCompare(a.started || ''));
 
