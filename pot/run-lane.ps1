@@ -92,11 +92,17 @@ if ($Agent -eq 'codex') {
         'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
         'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
     $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
-        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key)'
+        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token)'
     $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
     # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
     $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
+    # Unattended runs need a login that does not lapse. The interactive OAuth session expired on
+    # 16 Sep after a day with no interactive use and could not refresh headless (D72). A long-lived
+    # token from `claude setup-token`, saved to the gitignored .claude-token, is passed for this
+    # call only; without the file the CLI's own login is used, as before.
+    $tokenFile = Join-Path $Repo '.claude-token'
+    if (Test-Path $tokenFile) { $env:CLAUDE_CODE_OAUTH_TOKEN = (Get-Content $tokenFile -Raw).Trim() }
     claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
         --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 }

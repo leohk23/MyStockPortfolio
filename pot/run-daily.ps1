@@ -357,10 +357,18 @@ function Invoke-Lane($brief) {
     try {
         & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
     } catch {
+        if ($laneAgent -eq 'claude') { Note "$brief threw on Claude: $($_.Exception.Message) - skipping this lane, the cycle continues"; return }
         Note "$brief threw: $($_.Exception.Message) - stopping the cycle"
         exit 1
     }
-    if ($LASTEXITCODE -ne 0) { Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1 }
+    if ($LASTEXITCODE -ne 0) {
+        # A lane on Claude is the failover, not the plan (D72). On 16 Sep an expired Claude login
+        # failed the moved Review in all three cycles, and each time the cycle stopped there - so
+        # the Sweep and the astra Deep dive, which fitted on Codex, never ran. Skip the failed
+        # failover lane and carry on; a lane failing on its planned agent still stops the cycle.
+        if ($laneAgent -eq 'claude') { Note "$brief exited $LASTEXITCODE on Claude - skipping this lane, the cycle continues"; return }
+        Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1
+    }
     # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
     # never started, whatever the exit code says.
     if ((Get-Item (Join-Path $Repo $log)).Length -le $before) {
