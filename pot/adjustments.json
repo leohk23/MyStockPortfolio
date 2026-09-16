@@ -1,7 +1,42 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-14",
+  "updated": "2026-09-16",
   "normalizedEps": {
+    "YUMC": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Issuer adjusted EPS equals GAAP EPS for these periods. It retains investment mark-to-market effects; do not describe it as owner earnings or as an independently normalized investment-income series. Q2 is contained within H1 and must not be added to it. Added by the 16 September 2026 deep dive.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 2.51,
+          "source": "https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-fourth-quarter-2025-results"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "eps": 0.76,
+          "source": "https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-third-quarter-2025-results"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 0.4,
+          "source": "https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-fourth-quarter-2025-results"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 1.57,
+          "source": "https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86"
+        },
+        {
+          "end": "2026-06-30",
+          "eps": 0.7,
+          "source": "https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86"
+        }
+      ]
+    },
     "TW": {
       "basis": "company-adjusted diluted EPS",
       "note": "Tradeweb's non-GAAP definition. It excludes the Canton gains but also applies the company's stated acquisition, compensation, foreign-exchange, tax-receivable and share-basis adjustments; use it as a consistent company-adjusted comparison, not as GAAP or independently reconstructed owner earnings.",
@@ -137,6 +172,16 @@
     }
   },
   "adjustments": {
+    "YUMC": [
+      {
+        "fy": "2024-12-31",
+        "amountPerShare": 0.08,
+        "ccy": "USD",
+        "what": "FY2024 mark-to-market investment gain, stated as an eight-cent diluted EPS benefit in the FY2025 comparative release. Remove the sourced per-share gain only from the matching historical fiscal year; it is not an adjustment to current TTM EPS.",
+        "source": "https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-fourth-quarter-2025-results",
+        "found": "2026-09-16"
+      }
+    ],
     "NKE": [
       {
         "fy": "2026-05-31",
