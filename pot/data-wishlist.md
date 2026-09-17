@@ -203,3 +203,10 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
+
+## 17 September 2026 deep dive
+
+| Date | Wanted | Source and decision it would improve |
+|---|---|---|
+| 2026-09-17 | Eckert & Ziegler cash conversion and comparable history after the Pentixapharm spin-off. | The [H1 2026 report](https://www.ezag.com/Q22026en) shows operating cash flow of EUR12.813m against EUR22.496m continuing profit, and tax receivables of EUR17.527m against EUR7.393m at year-end. Capture the cash and receivables bridge at each results release. Audit the historical prices and continuing EPS against the [2024 spin-off terms](https://www.ezag.com/fileadmin/user_upload/ezag/pdf/FAQs_Pentixapharm_Stand_23_09_2024.pdf) before treating the percentile from 2023-03-31 as a comparable distribution for the current business. `HISTORY_FROM` currently has no EUZ.DE entry; a boundary or reconciliation needs evidence, not an assumed truncation. |
+| 2026-09-17 | China restaurant-specific delivery competition, quarterly. | [Alibaba's June-quarter disclosure](https://www.sec.gov/Archives/edgar/data/1577552/000110465926099220/tm2623667d1_ex99-1.htm) reports China Quick Commerce revenue growth of 45%, but that category includes grocery and other retail. It is an external competitive indicator, not restaurant market share. A consistent restaurant-specific volume, price and share series would distinguish competition from category mix when testing Yum China's same-store sales and restaurant margins. No market-share estimate was substituted. |
