@@ -33,6 +33,9 @@ param(
     # Which lanes may move to Claude when the ChatGPT allowance runs out. 'all' (default) moves
     # whatever is needed, most-expensive-first; 'none' skips the cycle instead of using Claude.
     [ValidateSet('all', 'deepdive', 'none')][string]$Failover = 'all',
+    # How many lanes one cycle may move onto Claude. Claude has its own five-hour window and no
+    # readable usage figure, so this is the only brake on it (D73).
+    [int]$MaxClaudeLanes = 1,
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -282,12 +285,49 @@ $CLAUDE_MODEL = 'claude-opus-5'
 # **Blind in one direction and it says so:** the Claude CLI exposes no usage figure, so the Codex
 # side is priced exactly and the Claude side not at all. A lane moved to Claude may still fail, and
 # it fails no worse than not running. -Failover none refuses to use Claude at all.
+# Claude's own wall, learned from the only place it is visible: the refusal itself. A lane that hits
+# it logs "You've hit your session limit - resets 11:30am (Europe/London)", so the reset time is
+# recorded here and no lane is moved to Claude before it. D73: with Codex's weekly allowance gone
+# from 17 Sep, every cycle moved lanes to Claude and most died on this limit - a Sweep ran 14
+# minutes before the wall, spending the allowance and producing nothing.
+$CLAUDE_COOLDOWN = Join-Path $Repo 'pot/.claude-cooldown'
+
+function Claude-Cooling {
+    if (-not (Test-Path $CLAUDE_COOLDOWN)) { return $null }
+    $until = $null
+    try { $until = [datetime]::Parse((Get-Content $CLAUDE_COOLDOWN -Raw).Trim(), $null, 'RoundtripKind') } catch { return $null }
+    if ($until -le (Get-Date)) { Remove-Item $CLAUDE_COOLDOWN -Force -ErrorAction SilentlyContinue; return $null }
+    return $until
+}
+
+# Called after a Claude lane fails: if the tail of the log says the session limit was hit, park
+# Claude until the reset time it names, or five hours out when it names none (the window length).
+function Note-ClaudeLimit($tailText) {
+    if ($tailText -notmatch "hit your (session|usage) limit") { return }
+    $until = (Get-Date).AddHours(5)
+    if ($tailText -match 'resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)') {
+        $h = [int]$Matches[1] % 12
+        if ($Matches[3] -eq 'pm') { $h += 12 }
+        $m = if ($Matches[2]) { [int]$Matches[2] } else { 0 }
+        $t = (Get-Date).Date.AddHours($h).AddMinutes($m)
+        if ($t -le (Get-Date)) { $t = $t.AddDays(1) }
+        $until = $t
+    }
+    $until.ToString('o') | Set-Content $CLAUDE_COOLDOWN -Encoding utf8
+    Note ("  Claude hit its session limit - not using Claude again until {0}" -f $until.ToString('HH:mm'))
+}
+
 function Resolve-Plan($lanes) {
     $plan = @{}
     foreach ($l in $lanes) { $plan[$l] = 'codex' }
     if (Test-Allowance $lanes) { return $plan }
     if ($Failover -eq 'none') {
         Note '  -Failover none, so this cycle is skipped rather than moved to Claude' | Out-Null
+        return $null
+    }
+    $cooling = Claude-Cooling
+    if ($cooling) {
+        Note ("  Claude is cooling down until {0} after hitting its session limit - skipping this cycle" -f $cooling.ToString('HH:mm')) | Out-Null
         return $null
     }
     # Try each order in turn; the first that leaves a fitting Codex set wins.
@@ -308,6 +348,21 @@ function Resolve-Plan($lanes) {
     if ($null -eq $chosen) {
         Note '  NOT ENOUGH ALLOWANCE even with lanes moved to Claude - skipping this cycle; nothing was run or spent' | Out-Null
         return $null
+    }
+    # Claude is a subscription with a five-hour window of its own, so a cycle that moves three lanes
+    # onto it spends three times as fast and hits that window inside one cycle - which is what
+    # happened on 17 and 18 September. At most -MaxClaudeLanes move; the rest of the cycle is
+    # skipped rather than run. The Deep dive is kept first because it is the only lane that produces
+    # an order; a Sweep a cycle old is a smaller loss than no proposal at all.
+    if ($chosen.Count -gt $MaxClaudeLanes) {
+        $keep = @('deepdive', 'sweep', 'review') | Where-Object { $chosen -contains $_ } | Select-Object -First $MaxClaudeLanes
+        foreach ($l in $chosen) {
+            if ($keep -notcontains $l) {
+                $plan[$l] = 'skip'
+                Note ("  skipping {0}: only {1} lane(s) may move to Claude per cycle" -f $l, $MaxClaudeLanes) | Out-Null
+            }
+        }
+        $chosen = $keep
     }
     foreach ($l in $chosen) {
         $plan[$l] = 'claude'
@@ -348,6 +403,7 @@ function Invoke-Lane($brief) {
     # gpt-* name to Claude, or the reverse, is the obvious way to get this subtly wrong.
     $lane = ($brief -replace '.*brief-', '') -replace '.md$', ''
     $laneAgent = if ($PLAN[$lane]) { $PLAN[$lane] } else { 'codex' }
+    if ($laneAgent -eq 'skip') { Note "    skipped by the Claude budget - not run"; return }
     $laneModel = if ($laneAgent -eq 'claude') { $CLAUDE_MODEL }
         elseif ($Model) { $Model } else { $LANE_MODEL[$brief] }
     Note "    agent: $laneAgent, model: $laneModel" | Out-Null
@@ -366,7 +422,12 @@ function Invoke-Lane($brief) {
         # failed the moved Review in all three cycles, and each time the cycle stopped there - so
         # the Sweep and the astra Deep dive, which fitted on Codex, never ran. Skip the failed
         # failover lane and carry on; a lane failing on its planned agent still stops the cycle.
-        if ($laneAgent -eq 'claude') { Note "$brief exited $LASTEXITCODE on Claude - skipping this lane, the cycle continues"; return }
+        if ($laneAgent -eq 'claude') {
+            $tail = try { (Get-Content (Join-Path $Repo $log) -Tail 8 -ErrorAction SilentlyContinue) -join ' ' } catch { '' }
+            Note-ClaudeLimit $tail
+            Note "$brief exited $LASTEXITCODE on Claude - skipping this lane, the cycle continues"
+            return
+        }
         Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1
     }
     # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
