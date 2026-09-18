@@ -103,6 +103,17 @@ function potHoldings(trades) {
     return book;
 }
 
+// Through rateFor, not rates[ccy]: prices.json has no GBp key — pence is GBP/100, and only that
+// helper knows it. Without it the pot's first London trade (1 AZN.L at 12,484p on 18 Sep) could not
+// be converted, fell into `unconverted`, and the balance carried forward unchanged — £280.73 with
+// £124.84 already spent, which is the exact error the carry-forward exists to avoid.
+function gbpFrom(amt, ccy, rates) {
+    if (!rates) return null;
+    const { rateFor } = require('../portfolio.js');
+    const from = rateFor(ccy, rates), gbp = rateFor('GBP', rates);
+    return from > 0 && gbp > 0 ? amt * from / gbp : null;
+}
+
 function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     // Pot trades live in the sealed half (vault.js, D67). Unopenable means no trades, and the book
     // would silently read as unfunded — so refuse instead.
@@ -187,10 +198,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     // order on IBKR. Fix it by adding commission to the extracted trade if that ever matters.
     let rates = null;
     try { rates = JSON.parse(fs.readFileSync('prices.json', 'utf8')).rates || null; } catch { /* no rates */ }
-    const toGBP = (amt, ccy) => {
-        if (!rates || !rates[ccy] || !rates.GBP) return null;
-        return amt * rates[ccy] / rates.GBP;
-    };
+    const toGBP = (amt, ccy) => gbpFrom(amt, ccy, rates);
     let spent = 0, unconverted = [];
     for (const b of Object.values(book)) {
         for (const t of b.trades) {
@@ -240,6 +248,15 @@ module.exports = { build, parseProposal, potTrades, potHoldings };
 // ---------------------------------------------------------------- selftest
 if (process.argv.includes('--selftest')) {
     const assert = require('assert');
+
+    // Money in, money out: every currency the pot can trade must convert, pence included.
+    {
+        const rates = { USD: 1, GBP: 1.3347, HKD: 0.1285 };
+        assert.strictEqual(Math.round(gbpFrom(12484, 'GBp', rates) * 100) / 100, 124.84, 'GBp is GBP/100');
+        assert.strictEqual(Math.round(gbpFrom(101.97, 'USD', rates) * 100) / 100, 76.4);
+        assert.strictEqual(gbpFrom(100, 'JPY', rates), null, 'a currency with no rate converts to null, not zero');
+        assert.strictEqual(gbpFrom(100, 'GBP', rates), 100);
+    }
 
     // The section regex is the whole file's foundation and it was wrong in a way that returned
     // "" rather than throwing: with the `m` flag, `$` matches every LINE end, so a lazy group

@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-18T05:30:03.484Z",
- "cashGBP": 280.55,
+ "generated": "2026-09-18T12:57:53.945Z",
+ "cashGBP": 155.6,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -49,6 +49,20 @@
      "pot": "2026-09-14-0906-TW"
     }
    ]
+  },
+  "AZN.L": {
+   "qty": 1,
+   "cost": 12484,
+   "currency": "GBp",
+   "trades": [
+    {
+     "date": "2026-09-18",
+     "side": "BUY",
+     "qty": 1,
+     "price": 12484,
+     "pot": "2026-09-17-0557-AZN.L"
+    }
+   ]
   }
  },
  "proposals": [
@@ -85,7 +99,7 @@
   {
    "file": "2026-09-17-0557-AZN.L.md",
    "id": "2026-09-17-0557-AZN.L",
-   "state": "open",
+   "state": "accepted",
    "ticker": "AZN.L",
    "written": "2026-09-17",
    "side": "BUY",
@@ -93,6 +107,11 @@
    "warning": null,
    "break": "At FY2026 results, checked by **1 March 2027**, sell under §5.1 if that full-year cash-after-reinvestment measure is **zero or negative**, or if full-year OCF/attributable profit is below **0.8x**. Independently, sell if filed trailing operating profit after all operating charges divided by average opening/closing total assets falls below **10%**. These analyst thresholds test cash absorption and capital productivity directly; no revenue miss is required. Use issuer statements and the same cash definitions, not the vendor's operating-income field.",
    "reviewBy": "2026-11-02",
+   "executed": {
+    "date": "2026-09-18",
+    "qty": 1,
+    "price": 12484
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -138,9 +157,9 @@
    "warning": "Already active. H1 cash after reinvestment was **$1.581bn**, or **5.15% of revenue**, below my **8%** warning line; operating cash was **83.99% of reported operating profit**. At nine-month results, locally dated **30 October 2026**, re-read if the first ratio stays below 8%, or operating cash flow falls year on year while Core operating profit rises. Either warns independently. [H1 cash-flow and income statements](https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf).",
    "break": "At FY2026 results, reviewed by **1 March 2027**, sell under §5.1 if full-year cash after reinvestment is **below 5% of revenue**, or operating cash flow is **below 80% of reported operating profit**. Non-positive reported operating profit also breaks. These are independent analyst decision rules, not management guidance. Use the full year for the hard cash test to avoid turning H1 investment seasonality into a false sale. Explain material acquisitions and disposal proceeds; missing fields require review, not a green result. Both tiers can deteriorate while Core EPS grows. They test growth that fails to fund itself, rather than substituting a guidance miss for that risk.",
    "reviewBy": "2026-11-02",
-   "supersededBy": "2026-09-17-0557-AZN.L",
+   "supersededBy": null,
    "phase": "live",
-   "counts": false
+   "counts": true
   },
   {
    "file": "2026-09-14-2247-TW.md",
@@ -183,7 +202,7 @@
    "warning": "Re-read now because H1 cash after reinvestment is below an **8% of revenue** warning threshold. At the nine-month release, locally dated **30 October 2026**, keep that warning active if the same year-to-date ratio remains below 8%, or if cumulative operating cash flow declines year on year while Core operating profit grows. Either detects growth failing to deliver cash before headline EPS fails. The threshold is my judgement, not management guidance.",
    "break": "At FY2026 results, review no later than **1 March 2027**, sell under §5.1 if full-year cash after reinvestment is **below 5% of revenue**, or if full-year operating cash flow is **below 80% of reported operating profit**. These are independent routes. The full-year cash test reduces the risk of treating seasonal H1 investment timing as permanent deterioration. Missing information triggers review rather than a green verdict.",
    "reviewBy": "2026-11-02",
-   "supersededBy": "2026-09-17-0557-AZN.L",
+   "supersededBy": "2026-09-16-2049-AZN.L",
    "phase": "live",
    "counts": false
   },
@@ -218,7 +237,7 @@
    "warning": "At the **30 October 2026** nine-month result, re-read if this cash measure is **below 5% of nine-month revenue**, or operating cash flow divided by reported operating profit is **below 85%**. H1 baselines are 5.15% and 83.99%: the latter is **already a warning**, not a newly discovered future trigger. The present proposal explicitly accepts that warning at half size; failure to improve at the next result requires a fresh decision. These are my thresholds, not management guidance.",
    "break": "At FY2026 results, checked no later than **28 February 2027**, **cash after investment at or below zero**, or **operating cash flow below 70% of reported operating profit**, breaks the cash-funded growth thesis under §5.1. Either route suffices, irrespective of Core EPS growth. Also break if reported operating profit is non-positive. A one-period investment surge can trigger this rule even with a promising pipeline; that is the chosen protection against continuously buying growth that fails to fund itself. The [cash-flow statement](https://www.astrazeneca.com/content/dam/az/PDF/2026/h1q2/H1-and-Q2-2026-results-announcement.pdf) supplies each field. Compare like periods, retain the stated accounting basis and explain acquisitions separately. A missing field is unavailable evidence and triggers review, never an assumed pass.",
    "reviewBy": "2026-11-02",
-   "supersededBy": "2026-09-17-0557-AZN.L",
+   "supersededBy": "2026-09-16-2049-AZN.L",
    "phase": "live",
    "counts": false
   },
@@ -1404,6 +1423,7 @@
   }
  ],
  "open": [
+  "2026-09-17-0557-AZN.L",
   "2026-09-14-0906-TW",
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
