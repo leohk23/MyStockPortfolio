@@ -485,7 +485,17 @@ try {
     # only reads filenames, so asking all three here is free and the answers cannot drift.
     $doReview = Lane-Due 'pot/reviews' 2
     $doSweep = Lane-Due 'pot/sweeps' 1
-    $doDeep = $doSweep -or $Force -contains 'deepdive' -or $Force -contains 'all'
+    # Paired to the Sweep, but still once a day (D73). Pairing alone re-ran a Deep dive that had
+    # already written today's proposal whenever the Sweep stayed due: on 17 Sep the 05:30 Deep dive
+    # succeeded on astra, then ran again at 12:45 and 21:15 — both on Claude, both into its session
+    # limit — only because that morning's Sweep had failed and was still outstanding.
+    # Once a day on its OWN record, not on the Sweep's (D73). Pairing alone re-ran a Deep dive that
+    # had already written today's proposal whenever the Sweep stayed due: on 17 Sep the 05:30 Deep
+    # dive succeeded on astra, then ran again at 12:45 and 21:15 — both on Claude, both into its
+    # session limit — only because that morning's Sweep had failed and was still outstanding.
+    # Reading pot/proposals keeps the pairing where it matters (the Sweep still runs first inside a
+    # cycle) while letting a FAILED Deep dive retry at the next slot, which pairing would not.
+    $doDeep = (Lane-Due 'pot/proposals' 1) -or $Force -contains 'deepdive' -or $Force -contains 'all'
     $planned = @()
     if ($doReview) { $planned += 'review' }
     if ($doSweep) { $planned += 'sweep' }
