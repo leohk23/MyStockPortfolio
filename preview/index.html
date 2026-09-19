@@ -3696,16 +3696,13 @@ function buildPotNav(nav, docs) {
     }
     const order = { review: 0, sweep: 1, runreport: 2, proposal: 3, proposalpast: 3 };
     const laneLabel = d => d.kind === 'review' ? 'Review' : d.kind === 'sweep' ? 'Sweep'
-        : d.kind === 'runreport' ? 'Run report' : `Proposal · ${escapeHTML(potTicker(d.id))}${potStateTag(d)}`;
+        : d.kind === 'runreport' ? 'Run report' : `${escapeHTML(potTicker(d.id))} proposal${potStateTag(d)}`;
     parts.push(section('By run', runs.reverse().map((run, i) => {
         const docsIn = [...run].sort((a, b) => order[a.kind] - order[b.kind] || a.id.localeCompare(b.id));
-        const n = docsIn.filter(isProposal).filter(d => !/-none$/.test(d.id)).length;
-        const hasReport = docsIn.some(d => d.kind === 'runreport');
-        const what = [hasReport ? 'report' : '', n ? `${n} proposal${n === 1 ? '' : 's'}` : '',
-            docsIn.some(d => d.kind === 'sweep') ? 'sweep' : '', docsIn.some(d => d.kind === 'review') ? 'review' : '']
-            .filter(Boolean).join(' · ');
         const tickers = docsIn.filter(isProposal).map(d => potTicker(d.id)).join(' ');
-        return fold(`${escapeHTML(stamp(run[0].updated))} <span class="muted">${what}</span>`,
+        // The timestamp alone: the contents are one click away, and a summary line of facts joined
+        // by interpuncts is exactly what AGENTS.md's writing rules forbid.
+        return fold(escapeHTML(stamp(run[0].updated)),
             docsIn.map(d => potButton(d, laneLabel(d), `${isProposal(d) ? potTicker(d.id) : ''} ${run[0].updated}`)).join(''),
             `${tickers} ${run[0].updated} ${docsIn.map(d => d.id).join(' ')}`, i === 0);
     }).join('')));
