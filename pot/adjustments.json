@@ -1,7 +1,26 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-16",
+  "updated": "2026-09-19",
   "normalizedEps": {
+    "BBW": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "H1 fiscal 2026 excludes a USD7m prior-cost IEEPA tariff refund, USD5.338m after tax in the issuer reconciliation. GAAP H1 EPS is USD2.16 versus adjusted USD1.73. The refund was recognized in the current half, not the historical year in which the tariff costs arose. No annual adjustment is assigned because the current fiscal-year-end row is not yet in earnings.json. Issuer period ends differ from Yahoo month-end labels; these are literal issuer dates. H1 and Q2 overlap and must not be added. No research TTM or adjusted historical percentile is established. Added by the 19 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2026-08-01",
+          "months": 6,
+          "eps": 1.73,
+          "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm"
+        },
+        {
+          "end": "2026-08-01",
+          "eps": 0.70,
+          "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm"
+        }
+      ]
+    },
     "YUMC": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "USD",
