@@ -91,7 +91,12 @@ if ($Agent -eq 'codex') {
     $allow = 'Read Write Edit Glob Grep WebFetch WebSearch ' +
         'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
         'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
-    $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
+    # No subagents (D75). Agent was never in the allowlist, yet headless it needed no approval: the
+    # Claude lanes of 17-18 Sep spawned 155 of them (52 "research scouts" in one 14-minute Sweep),
+    # 131M cache reads against 37M for the lanes themselves - about 80% of what emptied the Claude
+    # 5-hour window while producing no Deep dive at all. A lane does its own research, in series.
+    $deny = 'Agent Task ' +
+        'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
         'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token)'
     $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
