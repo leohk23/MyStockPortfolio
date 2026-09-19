@@ -36,6 +36,7 @@ file you open is resent on every turn that follows.
 | `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
 | `pot/positions.json` | cash, holdings, and §4.5a's preference for a name not already held |
 | `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
+| `pot/origins.json` | why each name is on the watchlist at all, in the words of the Sweep that found it |
 
 **Filings are for the shortlist, not the list.** Accounting for all ~72 watchlist names (§D34) is a
 screening job done from local data — an excluded line may be one clause. Opening a company's own
@@ -322,6 +323,24 @@ unprompted, also kept:
 A ranking that is only an ordering makes the reader infer the decision from position, and position
 is not a decision — the 8 September run ranked INTU second and bought nothing, which a reader
 skimming ranks would have misread. The verdict says what the rank means.
+
+**Every ranked row says why the name is on the list, and whether that reason still holds** (D78).
+`pot/origins.json` carries the case the Sweep made when it found the name, with the date and the
+file. Most names arrive for a reason that is not cheapness — Hormuz war-risk pricing, tourists
+redirected from Japan to Korea, an EU isotope bottleneck, a thesis, a hole in Leo's book — and by
+the time §2.4 lets you rank the name, that Sweep is often weeks old and you never see it: you read
+only the newest one. Measured on 19 September: of 75 Sweep discoveries, 27 were in the cheapest
+decile and 10 had ever been proposed, and candidates lead with macro or a thesis about three times
+as often as with valuation. So, in one clause each:
+
+- **the case**, quoted or summarised from `origins.json`, with its date;
+- **whether it still holds** — intact, changed, or lapsed — and what says so. A dated event that has
+  since passed, a price that has already moved, a thesis the Sweep leaned on: say which.
+
+This is a disclosure, not a veto: a name whose original case has lapsed can still be the best thing
+on the page on today's evidence, and a name with a live case that fails §2.4 is still excluded. What
+it prevents is a ranking that silently forgets why anyone looked. A name with no recorded origin
+(Leo added it by hand, or the Sweep predates the record) gets one clause saying so.
 
 **Then compare with the previous deep dive — after deciding, never before.** Once your verdicts
 and share counts are final, open the newest earlier `pot/proposals/*-ranking.md` and add a short
