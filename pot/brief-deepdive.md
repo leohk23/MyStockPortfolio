@@ -45,6 +45,12 @@ every turn after it.
 `AGENTS.md` is already in your context before you start. Do not open it; reading it again pays for
 the same bytes twice, and five tool calls did exactly that on 8 September.
 
+**Subagents — Claude runs only (D76).** If a `scout-filings` subagent is available, you may use it
+to pull one figure or statement from an issuer's own documents: **at most 3 per run, at most 3 at
+once**. It returns the value, its period and basis, and the source URL, and cannot delegate further.
+§7.2 applies to everything it returns: a figure a scout fetched is a claim to check, not a check. No
+other subagent type is available, and on Codex there is none.
+
 ## A pending proposal is not a position — rank as if it did not exist
 
 Older files in `pot/proposals/` are **drafts awaiting Leo's decision, not commitments**, and they

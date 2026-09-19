@@ -136,6 +136,31 @@ not: `run-lane.ps1` passes it with `--append-system-prompt-file` (D64). An inter
 session does **not** load it, and there is deliberately no `CLAUDE.md`. The briefs assume it is
 in context, so keep both routes working.
 
+**Claude lane controls — every setting in one place (D72–D76).** A lane runs on Codex unless the
+pre-flight moves it; these govern what happens when it runs on Claude.
+
+| Setting | Value | Where | Why |
+|---|---|---|---|
+| Model per lane on Codex | Review, Sweep `gpt-5.6-sol`; Deep dive `gpt-6-astra` | `run-daily.ps1` `$LANE_MODEL` | D51 |
+| Model on Claude | `claude-opus-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8 |
+| When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
+| Lanes on Claude per cycle | **1** (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped | `run-daily.ps1` | D73 |
+| After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |
+| Failed lane on Claude | skipped; the cycle continues | `Invoke-Lane` | D72 |
+| Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due | `$doDeep` | D73 |
+| Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
+| Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths denied | `run-lane.ps1` `$allow` / `$deny` | D67 |
+| **Subagents** | Sweep: `scout` (Haiku). Deep dive: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
+| Scout tools | WebSearch, WebFetch only — no Agent, so a scout cannot spawn another | `pot/agents/*.md` | D76 |
+| Scouts per run | **at most 3, at most 3 at once** — a brief rule; the CLI has no hard count | `brief-sweep.md`, `brief-deepdive.md` | D76 |
+| Cost record | each Claude lane logs `total_cost_usd` and the models in it (subagents included) | `run-lane.ps1` | D76 |
+| Spend cap per lane | **not set yet** — `--max-budget-usd` works on the subscription token; to be calibrated from the logged costs | — | D76 |
+
+Two traps found the hard way: an agent definition written by Windows PowerShell 5.1's `-Encoding utf8`
+carries a BOM, its frontmatter does not parse, and the agent silently does not exist — so the lane script
+copies `pot/agents/*.md` into the lanes config without one. And a JSON argument such as `--agents '{...}'`
+loses its quotes on the way from PowerShell 5.1 to a program; use definition files, not inline JSON.
+
 **Write lane output as UTF-8 with the file-editing tool, never through a PowerShell redirection, `Set-Content` or `Out-File`.** Windows PowerShell 5.1 re-encodes on the way out: on 14 Sep the deep dive's run report lost every £, € and — to a literal `?` (27 characters) while its three proposals, written the other way, were intact.
 
 `npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI

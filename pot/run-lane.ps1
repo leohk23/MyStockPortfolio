@@ -91,14 +91,8 @@ if ($Agent -eq 'codex') {
     $allow = 'Read Write Edit Glob Grep WebFetch WebSearch ' +
         'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
         'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
-    # No subagents (D75). Agent was never in the allowlist, yet headless it needed no approval: the
-    # Claude lanes of 17-18 Sep spawned 155 of them (52 "research scouts" in one 14-minute Sweep),
-    # 131M cache reads against 37M for the lanes themselves - about 80% of what emptied the Claude
-    # 5-hour window while producing no Deep dive at all. A lane does its own research, in series.
-    $deny = 'Agent Task ' +
-        'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
+    $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
         'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token)'
-    $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
     # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
     $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
@@ -116,8 +110,60 @@ if ($Agent -eq 'codex') {
         $env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.claude-lanes'
         New-Item -ItemType Directory -Force -Path $env:CLAUDE_CONFIG_DIR | Out-Null
     }
-    claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
-        --output-format text 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
+
+    # Subagents: only the lane's own scout, never a built-in (D75, D76). Headless, the Agent tool
+    # needs no approval, and on 17-18 Sep the lanes fanned out into 155 general-purpose subagents on
+    # Opus - some spawning more - which emptied the 5-hour window and produced nothing. Now:
+    #   sweep    -> scout          (Haiku, web only: discovery lookups)
+    #   deepdive -> scout-filings  (Sonnet, web only: one figure from the issuer's own documents)
+    #   review   -> none
+    # Neither scout has the Agent tool, so neither can nest. Every built-in type is denied by name:
+    # denying general-purpose alone leaves `claude`, a second catch-all. The definitions are versioned
+    # in pot/agents and copied into the lanes-only config WITHOUT a BOM - PowerShell 5.1's
+    # -Encoding utf8 writes one, the frontmatter then does not parse, and the agent silently does
+    # not exist (found 19 Sep, after three failed registrations). Scouts exist only in the lanes'
+    # own config folder, so without .claude-token (lanes on the interactive config) Agent is denied.
+    # The per-run COUNT (at most 3, at most 3 at once) is a brief rule: the CLI has no hard cap.
+    $laneName = ($Brief -replace '.*brief-', '') -replace '\.md$', ''
+    $scoutFor = @{ sweep = 'scout'; deepdive = 'scout-filings' }
+    $builtinAgents = 'Agent(general-purpose) Agent(claude) Agent(Explore) Agent(Plan) Agent(claude-code-guide) Agent(statusline-setup)'
+    $scout = $scoutFor[$laneName]
+    if ($scout -and $env:CLAUDE_CONFIG_DIR -and $env:CLAUDE_CONFIG_DIR -like '*.claude-lanes') {
+        $agentsDir = Join-Path $env:CLAUDE_CONFIG_DIR 'agents'
+        New-Item -ItemType Directory -Force -Path $agentsDir | Out-Null
+        $noBom = New-Object Text.UTF8Encoding $false
+        foreach ($src in Get-ChildItem (Join-Path $Repo 'pot/agents') -Filter '*.md') {
+            # No BOM and LF endings: the frontmatter parser was proven on exactly that shape, and git
+            # may check these files out with CRLF.
+            $text = [IO.File]::ReadAllText($src.FullName).TrimStart([char]0xFEFF) -replace "`r`n", "`n"
+            [IO.File]::WriteAllText((Join-Path $agentsDir $src.Name), $text, $noBom)
+        }
+        $allow += " Agent($scout)"
+        $deny = "$builtinAgents $deny"
+        Note "  subagents: $scout only (built-ins denied)"
+    } else {
+        $deny = "Agent Task $deny"
+    }
+    $toolArgs = @('--allowedTools', $allow, '--disallowedTools', $deny)
+
+    # JSON rather than text so the run's cost is recorded (D76): `total_cost_usd` and the models in
+    # it, subagents included - that is what a future per-lane --max-budget-usd will be calibrated
+    # from. On a subscription it is a usage measure, not a bill. The result's last lines are still
+    # logged, so a session-limit refusal still reaches Note-ClaudeLimit in run-daily.ps1.
+    $raw = claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
+        --output-format json 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $jsonLine = ($raw -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -Last 1)
+    $parsed = $null
+    if ($jsonLine) { try { $parsed = $jsonLine | ConvertFrom-Json } catch { $parsed = $null } }
+    if ($parsed) {
+        ("$($parsed.result)" -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 3) | ForEach-Object { Note "  $_" }
+        $models = if ($parsed.modelUsage) { ($parsed.modelUsage | Get-Member -MemberType NoteProperty).Name -join ', ' } else { '?' }
+        Note ("  cost: {0:N2} USD-equivalent, {1} turns; models: {2}" -f [double]$parsed.total_cost_usd, $parsed.num_turns, $models)
+    } else {
+        ($raw -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 3) | ForEach-Object { Note "  $_" }
+    }
+    $global:LASTEXITCODE = $code
 }
 if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
 

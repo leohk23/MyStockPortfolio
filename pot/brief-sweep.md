@@ -172,6 +172,13 @@ and yen depreciation carefully."* Ask of every candidate: **is this the 7532.T m
   have candidates, add them to `watchlist.json` (`{"yahoo": "...", "name": "...",
   "geography": "..."}`), keeping the file valid JSON.
 - Touch nothing else.
+- **Subagents — Claude runs only (D76).** If a `scout` subagent is available, you may use it for
+  single web lookups: **at most 3 per run, at most 3 at once**, one thing each. It runs on a small
+  model, returns a few lines with the source, and cannot delegate further. It finds; you judge —
+  check anything you cite against the source it returns. No other subagent type is available, and
+  on Codex there is none. On 17 September a Sweep spawned 52 subagents in 14 minutes, emptied the
+  whole allowance and wrote nothing: do your own reading, and use a scout only where a lookup is
+  genuinely separate.
 
 ## Header your output with a provenance line
 
