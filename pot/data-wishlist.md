@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| volume / units | 29 | **earns a feed** |
-| margin | 25 | **earns a feed** |
-| cash conversion | 24 | **earns a feed** |
+| volume / units | 30 | **earns a feed** |
+| margin | 26 | **earns a feed** |
+| cash conversion | 25 | **earns a feed** |
 | leverage / net debt | 11 | **earns a feed** |
-| backlog / order intake | 9 | **earns a feed** |
+| backlog / order intake | 10 | **earns a feed** |
 | inventory | 8 | **earns a feed** |
 | capital returns | 8 | **earns a feed** |
 | return on capital | 8 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-156 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+160 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,10 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-19 | BBW current-year tariff refund period mapping and overlapping adjusted EPS. | The [27 August issuer reconciliation](https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm) gives H1 adjusted EPS USD1.73 and Q2 USD0.70, now stored with literal 1 August 2026 ends. Yahoo uses 31 July. The USD7m gross refund (USD5.338m after tax) belongs to the current half despite relating to prior-year costs; the current fiscal-year row is not yet in earnings.json. Match the filed year before adding annual arithmetic. H1 and Q2 overlap and must not be summed. |
+| 2026-09-19 | External delivery-competition checkpoint for YUMC. | Meituan IR pages timed out; its [HKEX Q2 filing](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0828/2026082800435.pdf) supplied Core Local Commerce margin 7.9% and incentive commentary. Wanted quarterly alongside YUMC brand transactions, ticket and restaurant margin. The platform margin is a broad competitive-pressure proxy, not YUMC unit economics. |
+| 2026-09-19 | MIR operating-company valuation coverage after its first fetch. | Deep dive 16:12 found price USD15.76, EPS USD0.09 and percentile fields in prices.json but no peBands. The brief requires bands before order research. Investigate whether filed positive earnings history can produce usable bands; do not fill the gap with a secondary-site valuation. |
+| 2026-09-19 | Nuclear-safety and radiation-instrumentation organic orders, backlog conversion and cash conversion. | Fetched from [Mirion's Q2 release](https://ir.mirion.com/news-events/press-releases/detail/182/mirion-announces-second-quarter-2026-financial-results), its [Q2 10-Q](https://ir.mirion.com/filings/all-sec-filings/content/0001628280-26-050604/mir-20260630.htm), and [Exosens's 17 September guidance upgrade](https://www.exosens.com/news/exosens-raises-2026-guidance). Mirion's reported growth is acquisition-heavy, so revenue alone cannot test the candidate; the useful set is ex-acquisition orders, organic revenue, segment backlog, GAAP free cash flow and an acquisition bridge. Wanted on results dates while MIR is tracked, with Exosens as the non-US demand cross-check. |
 | 2026-09-18 | Central-bank policy rates as a macro series. | The FOMC's 16 September statement is published as HTML and was read at source; the Bank of Japan's two 18 September decision documents are CID-keyed PDFs that neither the repo's `pdfText()` nor `WebFetch` can decode, so the new Japanese policy rate stayed press-reported and was not written down under §7.3. This is the second consecutive sweep blocked on a central-bank decision. Wanted every week: Fed funds target, BOJ policy rate, ECB deposit rate and Bank Rate, carried locally so no lane has to parse a PDF to learn the price of money. |
 | 2026-09-18 | Gulf aluminium smelter operating rates and restart schedules. | Fetched from Emirates Global Aluminium's own 2 July restart update (89 of 1,262 reduction cells restarted, "up to a year" to pre-incident levels) and Aluminium Bahrain's Q2 disclosure (net finished production −61% year on year). Nothing local carries physical capacity for any industry. Wanted on each company release while the Strait of Hormuz is contested, not weekly; the restart timetable is the falsifier for the Norsk Hydro candidate and no price series contains it. |
 | 2026-09-18 | Industrial metals prices in the macro block — aluminium and copper. | We carry gold, WTI and bitcoin but no industrial metal, so the central figure of this sweep had to be fetched off-universe and labelled provisional. Yahoo serves `ALI=F` (aluminium, $3,463.25/t) and `HG=F` (copper, $6.645/lb) on the same chart endpoint that already supplies `GC=F` and `CL=F`; both returned 200 when checked. Wanted every week, at a cost of two requests. One caveat belongs in the code: `ALI=F` is the **COMEX** contract and carries the US tariff premium, so it is a proxy for LME rather than LME, and the gap was material here — $3,463 against a London price reported near $3,250. This is the second metals reach in a single sweep counting copper. |
@@ -208,8 +212,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-19 | Nuclear-safety and radiation-instrumentation organic orders, backlog conversion and cash conversion. | Fetched from [Mirion's Q2 release](https://ir.mirion.com/news-events/press-releases/detail/182/mirion-announces-second-quarter-2026-financial-results), its [Q2 10-Q](https://ir.mirion.com/filings/all-sec-filings/content/0001628280-26-050604/mir-20260630.htm), and [Exosens's 17 September guidance upgrade](https://www.exosens.com/news/exosens-raises-2026-guidance). Mirion's reported growth is acquisition-heavy, so revenue alone cannot test the candidate; the useful set is ex-acquisition orders, organic revenue, segment backlog, GAAP free cash flow and an acquisition bridge. Wanted on results dates while MIR is tracked, with Exosens as the non-US demand cross-check. |
-| 2026-09-19 | MIR operating-company valuation coverage after its first fetch. | Deep dive 16:12 found price USD15.76, EPS USD0.09 and percentile fields in prices.json but no peBands. The brief requires bands before order research. Investigate whether filed positive earnings history can produce usable bands; do not fill the gap with a secondary-site valuation. |
-| 2026-09-19 | BBW current-year tariff refund period mapping and overlapping adjusted EPS. | The [27 August issuer reconciliation](https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm) gives H1 adjusted EPS USD1.73 and Q2 USD0.70, now stored with literal 1 August 2026 ends. Yahoo uses 31 July. The USD7m gross refund (USD5.338m after tax) belongs to the current half despite relating to prior-year costs; the current fiscal-year row is not yet in earnings.json. Match the filed year before adding annual arithmetic. H1 and Q2 overlap and must not be summed. |
-| 2026-09-19 | External delivery-competition checkpoint for YUMC. | Meituan IR pages timed out; its [HKEX Q2 filing](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0828/2026082800435.pdf) supplied Core Local Commerce margin 7.9% and incentive commentary. Wanted quarterly alongside YUMC brand transactions, ticket and restaurant margin. The platform margin is a broad competitive-pressure proxy, not YUMC unit economics. |
 <!-- entries:end -->

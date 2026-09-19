@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-19T15:48:23.409Z",
- "cashGBP": 156.43,
+ "generated": "2026-09-19T16:24:55.126Z",
+ "cashGBP": 156.35,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -67,6 +67,36 @@
  },
  "proposals": [
   {
+   "file": "2026-09-19-1612-YUMC.md",
+   "id": "2026-09-19-1612-YUMC",
+   "state": "open",
+   "ticker": "YUMC",
+   "written": "2026-09-19",
+   "side": "BUY",
+   "limit": 41.12,
+   "warning": "At Q3 results, locally estimated for **4 November 2026**, re-read by **6 November** if either brand's same-store sales turn negative while its transactions still grow, or its restaurant margin falls **at least 100 basis points year on year**. This detects traffic purchased at worsening economics before consolidated growth breaks. Separately, at Meituan's next quarterly release, checked by **1 December 2026**, re-read if Core Local Commerce operating margin falls below **5%** and the filing attributes the decline to renewed incentives/competition. These are analyst thresholds, not issuer forecasts.",
+   "break": "By FY2026 results, checked by **1 March 2027**, sell under §5.1 if **two consecutive post-entry quarters** show negative same-store sales alongside positive transaction growth for either brand, **and that same brand** loses at least 100 basis points of restaurant margin year on year in both quarters. This tests whether discount-driven volume destroys restaurant economics even while system sales and EPS grow. Missing unit or margin disclosure requires a re-read and an unresolved status, not a pass. Royalty savings could mask Pizza Hut deterioration; therefore also compare its disclosed margin with the purchase's expected benefit and explain the movement. Never replace a failed unit-economics test with EPS growth. Sources for baseline definitions: [Q2 release](https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86), [Meituan's quarterly filing](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0828/2026082800435.pdf).",
+   "reviewBy": "2026-11-06",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-09-19-1612-EUZ.DE.md",
+   "id": "2026-09-19-1612-EUZ.DE",
+   "state": "open",
+   "ticker": "EUZ.DE",
+   "written": "2026-09-19",
+   "side": "BUY",
+   "limit": 12.12,
+   "warning": "**Active at entry:** H1 operating cash flow divided by attributable profit is **0.573x** (€12.813m / €22.369m), below my **0.8x** warning threshold. At Q3 on **12 November 2026**, re-read if the same year-to-date ratio remains below 0.8x, or the approximately €80m full-year adjusted-EBIT forecast is cut. These are analyst tests; 0.8x is not management guidance. The cash baseline comes from the [H1 statements](https://www.ezag.com/Q22026en), guidance from the [issuer update](https://www.ezag.com/press/detail/?newsid=780d08ac-08f8-4397-a917-158b11dce9ac).",
+   "break": "At FY2026 accounts, due **24 March 2027**, sell under §5.1 if annual OCF / attributable profit remains below **0.8x**, or OCF less cash purchases of property, equipment and intangibles is **zero or negative**. A positive ratio with non-positive profit is not a pass. These analyst thresholds demand recovery over the full annual cycle, rather than penalising one half's working-capital timing. If the cash or profit definition is unavailable, flag an unresolved test rather than inventing a value.",
+   "reviewBy": "2026-11-13",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-09-17-0557-YUMC.md",
    "id": "2026-09-17-0557-YUMC",
    "state": "open",
@@ -77,9 +107,9 @@
    "warning": "At Q3, locally estimated **4 November 2026**, re-read if system same-store sales are flat/negative, or either KFC or Pizza Hut restaurant margin falls **100 basis points year on year**. Independently, re-read if Alibaba's quarterly China Quick Commerce revenue grows at least **30%** while Yum China's same-store sales are flat/negative: this is an external competitive-pressure flag, not proof of lost market share. Check the next Alibaba release by **30 November 2026**, even if it follows Yum China's result.",
    "break": "By **1 March 2027**, sell under §5.1 if Q3 and Q4 both have negative system same-store sales and either brand's restaurant margin falls at least **100 basis points year on year in both quarters**. Also break if Pizza Hut's margin alone falls at least **100 basis points in both**, even with positive group sales: royalty savings must not hide deteriorating restaurant economics. Use like-for-like brand definitions and each quarter's own prior-year comparator. These are analyst thresholds, not company guidance; they can fire while expansion and buybacks still lift EPS.",
    "reviewBy": "2026-11-05",
-   "supersededBy": null,
+   "supersededBy": "2026-09-19-1612-YUMC",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-17-0557-EUZ.DE.md",
@@ -92,9 +122,9 @@
    "warning": null,
    "break": "Sell under §5.1 if FY2026 OCF is below **50% of continuing profit**, or if full-year OCF less purchases of tangible and intangible assets is **zero or negative**. Check by **31 March 2027**, using the annual release if the report has not yet appeared. Independently, two consecutive post-entry reports with year-on-year declines in Medical adjusted EBIT break the claimed mix improvement. These are analyst thresholds; use issuer-defined continuing profit consistently, including non-controlling interests for the cash ratio, and period-matched comparatives. The warning already identifies the dominant problem. Buying under it is deliberate: the order is 6.19% of contributed capital, and today's cash shortfall is not being labelled resolved. The break does not require the share price or group revenue to fall.",
    "reviewBy": "2026-11-13",
-   "supersededBy": null,
+   "supersededBy": "2026-09-19-1612-EUZ.DE",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-17-0557-AZN.L.md",
@@ -127,7 +157,7 @@
    "warning": "At Q3, locally **estimated 4 November 2026**, re-read if system same-store sales are **flat or negative**, or KFC restaurant margin falls **at least 100 basis points year on year**. Compare the same quarter; the Q2 baseline is **17.1%**. These are analyst decision thresholds, not company guidance. Declining ticket value may buy traffic, so rising transaction count alone cannot clear the warning.",
    "break": "Examine Q3 and Q4 separately, no later than **1 March 2027**. Sell under §5.1 if **both** quarters show negative system same-store sales and a KFC restaurant-margin decline of at least 100 basis points year on year in each. Independently, exit if Pizza Hut restaurant margin falls at least **100 basis points year on year in both quarters**, despite the licence-fee saving following the brand acquisition. The second route does not require total revenue or group EPS to decline. Keep reported segment definitions and restated comparators consistent; a missing metric is unavailable, not a pass.",
    "reviewBy": "2026-11-05",
-   "supersededBy": "2026-09-17-0557-YUMC",
+   "supersededBy": "2026-09-19-1612-YUMC",
    "phase": "live",
    "counts": false
   },
@@ -187,7 +217,7 @@
    "warning": "At Q3 results, locally dated **12 November 2026**, re-read if nine-month operating cash flow divided by consolidated profit is **below 60%**, or Medical adjusted EBIT divided by Medical segment assets falls **more than 15% year on year** on matched nine-month periods. These are analyst thresholds. H1 CFO/profit is already **56.96%**, so the cash warning is active before entry; the purchase accepts that warning at reduced size.",
    "break": "At FY2026 results, review by **31 March 2027**, sell under §5.1 if full-year operating cash flow is **below 50% of consolidated profit**, or if full-year Medical adjusted EBIT divided by Medical segment assets declines **more than 25% year on year**. Either route breaks independently. Use positive profit denominators; a consolidated loss also breaks. Use the issuer's consistently defined segment assets at each year end, with any restatement applied to both sides; missing segment assets means unavailable, not a pass. Cash collection and segment profit earned per euro of assets can deteriorate while revenue still grows. These tests therefore answer the stated capital-return risk. The cash thresholds use the reported cash flow, with no repeat of the previous licence receipt assumed. Sources and starting figures: [H1 statement and segment note](https://www.ezag.com/Q22026en). The annual review deadline is an analyst deadline, not a claimed confirmed release date.",
    "reviewBy": "2026-11-13",
-   "supersededBy": "2026-09-17-0557-EUZ.DE",
+   "supersededBy": "2026-09-19-1612-EUZ.DE",
    "phase": "live",
    "counts": false
   },
