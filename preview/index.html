@@ -356,6 +356,14 @@
                 color: var(--text-muted); font: inherit; font-size: 12.5px; }
             #pot-list button:hover { background: var(--surface-2); color: var(--text-primary); }
             #pot-list button[aria-current="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }
+        #pot-filter { width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 6px 8px; font: inherit; font-size: 12px;
+            background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; }
+        #pot-list details.pot-fold { margin: 0 0 2px; }
+        #pot-list details.pot-fold > summary { cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 12.5px;
+            list-style-position: inside; }
+        #pot-list details.pot-fold > summary:hover { background: var(--surface-2); }
+        #pot-list details.pot-fold > button { padding-left: 20px; }
+        #pot-list .tag { font-size: 10px; }
         }
         #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
@@ -3636,6 +3644,114 @@ function showPotDoc(id) {
     document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
 }
 
+// ---------------- the pot sidebar: filter, by run, by ticker ----------------
+// ~300 documents by 19 Sep, listed by TYPE, while Leo reads by RUN ("what did last night find?")
+// and by NAME ("what is the story on MWA?"). The sidebar now offers both, folded, with a filter
+// over everything. The phone <select> keeps the flat list: a native picker has no folds.
+//
+// Proposal status comes from pot/positions.json, the derived book, loaded once; without it the
+// tags are simply absent. A cycle is inferred from time, not recorded: lane documents less than
+// 90 minutes apart belong to one run (a cycle takes 20-60 minutes; slots are hours apart).
+let potStates;                       // undefined = not asked yet, null = unavailable, else Map
+const POT_CYCLE_GAP_MS = 90 * 60 * 1000;
+const potTicker = id => id.replace(/^proposals\//, '').replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}(-\d{4})?-/, '');
+const potTime = d => Date.parse(d.updated || '') || 0;
+
+function potStateTag(d) {
+    const s = potStates && potStates.get(d.id.replace(/^proposals\//, ''));
+    if (!s) return '';
+    if (s.state === 'accepted') return ' <span class="tag gain">bought</span>';
+    if (s.supersededBy) return ' <span class="tag muted">superseded</span>';
+    if (s.state === 'expired') return ' <span class="tag muted">expired</span>';
+    return ' <span class="tag">open</span>';
+}
+
+function potButton(d, label, search) {
+    return `<button type="button" data-id="${escapeHTML(d.id)}" data-search="${escapeHTML((search || '') + ' ' + d.id + ' ' + d.title).toLowerCase()}">${label}</button>`;
+}
+
+function buildPotNav(nav, docs) {
+    const of = kind => docs.filter(d => d.kind === kind);
+    const isProposal = d => d.kind === 'proposal' || d.kind === 'proposalpast';
+    const plain = d => potButton(d, escapeHTML(d.title));
+    const section = (title, inner) => `<section class="pot-sec"><div class="pot-group">${title}</div>${inner}</section>`;
+    const fold = (summary, inner, search, open) =>
+        `<details class="pot-fold"${open ? ' open' : ''} data-search="${escapeHTML(search.toLowerCase())}"><summary>${summary}</summary>${inner}</details>`;
+    const parts = [];
+
+    parts.push(`<input type="search" id="pot-filter" placeholder="Filter: ticker or date (MWA, 09-18)" aria-label="Filter pot documents">`);
+    parts.push(section('Start here', [...of('summary'), ...of('paper')].map(plain).join('')));
+
+    const open = of('proposal').filter(d => !/-none$/.test(d.title));
+    if (open.length) parts.push(section('Current proposals',
+        open.map(d => potButton(d, `${escapeHTML(potTicker(d.id))} <span class="muted">${escapeHTML(d.title.slice(0, 15))}</span>${potStateTag(d)}`, potTicker(d.id))).join('')));
+
+    // By run: every lane document, clustered by time, newest run first and open.
+    const lane = docs.filter(d => ['runreport', 'proposal', 'proposalpast', 'review', 'sweep'].includes(d.kind) && potTime(d))
+        .sort((a, b) => potTime(a) - potTime(b));
+    const runs = [];
+    for (const d of lane) {
+        const last = runs[runs.length - 1];
+        if (last && potTime(d) - potTime(last[last.length - 1]) <= POT_CYCLE_GAP_MS) last.push(d); else runs.push([d]);
+    }
+    const order = { review: 0, sweep: 1, runreport: 2, proposal: 3, proposalpast: 3 };
+    const laneLabel = d => d.kind === 'review' ? 'Review' : d.kind === 'sweep' ? 'Sweep'
+        : d.kind === 'runreport' ? 'Run report' : `Proposal · ${escapeHTML(potTicker(d.id))}${potStateTag(d)}`;
+    parts.push(section('By run', runs.reverse().map((run, i) => {
+        const docsIn = [...run].sort((a, b) => order[a.kind] - order[b.kind] || a.id.localeCompare(b.id));
+        const n = docsIn.filter(isProposal).filter(d => !/-none$/.test(d.id)).length;
+        const hasReport = docsIn.some(d => d.kind === 'runreport');
+        const what = [hasReport ? 'report' : '', n ? `${n} proposal${n === 1 ? '' : 's'}` : '',
+            docsIn.some(d => d.kind === 'sweep') ? 'sweep' : '', docsIn.some(d => d.kind === 'review') ? 'review' : '']
+            .filter(Boolean).join(' · ');
+        const tickers = docsIn.filter(isProposal).map(d => potTicker(d.id)).join(' ');
+        return fold(`${escapeHTML(stamp(run[0].updated))} <span class="muted">${what}</span>`,
+            docsIn.map(d => potButton(d, laneLabel(d), `${isProposal(d) ? potTicker(d.id) : ''} ${run[0].updated}`)).join(''),
+            `${tickers} ${run[0].updated} ${docsIn.map(d => d.id).join(' ')}`, i === 0);
+    }).join('')));
+
+    // By ticker: every proposal ever written, grouped by name, the most recently proposed first.
+    const byTicker = new Map();
+    for (const d of docs.filter(isProposal)) {
+        const t = potTicker(d.id);
+        if (t === 'none') continue;
+        (byTicker.get(t) || byTicker.set(t, []).get(t)).push(d);
+    }
+    const tickers = [...byTicker].map(([t, list]) => [t, list.sort((a, b) => b.id.localeCompare(a.id))])
+        .sort((a, b) => b[1][0].id.localeCompare(a[1][0].id));
+    parts.push(section('By ticker', tickers.map(([t, list]) => {
+        const held = list.some(d => potStates && potStates.get(d.id.replace(/^proposals\//, ''))?.state === 'accepted');
+        return fold(`${escapeHTML(t)} <span class="muted">(${list.length})</span>${held ? ' <span class="tag gain">held</span>' : ''}`,
+            list.map(d => potButton(d, `${escapeHTML(d.title.slice(0, 15))}${potStateTag(d)}`, t)).join(''), `${t} ${list.map(d => d.id).join(' ')}`, false);
+    }).join('')));
+
+    const archive = of('archive');
+    parts.push(section('Reference', [...of('scan'), ...of('runs')].map(plain).join('')
+        + (archive.length ? fold(`Past run summaries <span class="muted">(${archive.length})</span>`, archive.map(plain).join(''), archive.map(d => d.id).join(' '), false) : '')));
+
+    nav.innerHTML = parts.join('');
+    nav.addEventListener('click', e => {
+        const b = e.target.closest('button[data-id]');
+        if (b) showPotDoc(b.dataset.id);
+    });
+    // Filter: a button shows if its search text holds every word typed; a fold shows (and opens)
+    // if anything inside it matches; a section hides when nothing in it is left.
+    const input = nav.querySelector('#pot-filter');
+    input.addEventListener('input', () => {
+        const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+        const hit = el => words.every(w => (el.dataset.search || '').includes(w));
+        nav.querySelectorAll('button[data-id]').forEach(b => { b.hidden = words.length > 0 && !hit(b); });
+        nav.querySelectorAll('details.pot-fold').forEach(f => {
+            const any = [...f.querySelectorAll('button[data-id]')].some(b => !b.hidden);
+            f.hidden = words.length > 0 && !any;
+            if (words.length) f.open = any;
+        });
+        nav.querySelectorAll('section.pot-sec').forEach(s => {
+            s.hidden = words.length > 0 && ![...s.querySelectorAll('button[data-id]')].some(b => !b.hidden && !b.closest('details[hidden]'));
+        });
+    });
+}
+
 function renderPot() {
     const sel = document.getElementById('pot-doc');
     const body = document.getElementById('pot-body');
@@ -3661,20 +3777,26 @@ function renderPot() {
         sel.addEventListener('change', () => showPotDoc(sel.value));
     }
     const nav = document.getElementById('pot-list');
-    if (!nav.children.length) {
-        nav.innerHTML = groups.map(([label, mine]) =>
-            `<div class="pot-group">${escapeHTML(label)}</div>` + mine.map(d =>
-                `<button type="button" data-id="${escapeHTML(d.id)}">${escapeHTML(d.title)}</button>`).join('')).join('');
-        nav.addEventListener('click', e => {
-            const b = e.target.closest('button[data-id]');
-            if (b) showPotDoc(b.dataset.id);
-        });
+    if (potStates === undefined) {
+        // Once, and never blocking: the list builds without tags if the book cannot be read.
+        potStates = null;
+        fetch(DATA + 'pot/positions.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(p => {
+            if (!p) return;
+            potStates = new Map((p.proposals || []).map(x => [x.file, x]));
+            nav.innerHTML = '';
+            renderPot();
+        }).catch(() => { });
     }
+    if (!nav.children.length) buildPotNav(nav, docs);
     // A remembered document that has since been renamed must not blank the tab.
     const doc = docs.find(d => d.id === potDoc) || docs[0];
     sel.value = doc.id;
-    nav.querySelectorAll('button[data-id]').forEach(b =>
-        b.setAttribute('aria-current', String(b.dataset.id === doc.id)));
+    nav.querySelectorAll('button[data-id]').forEach(b => {
+        const current = b.dataset.id === doc.id;
+        b.setAttribute('aria-current', String(current));
+        // Unfold whatever holds the document on screen, so the list shows where you are.
+        if (current) { const f = b.closest('details'); if (f) f.open = true; }
+    });
     // Shown in your own timezone, because that is how you read a clock — but the document's NAME
     // is UTC, which is an hour behind this in BST and looks like a mismatch. Say both.
     when.textContent = doc.updated ? stamp(doc.updated) : '';
