@@ -1,6 +1,6 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-20T01:08:58.234Z",
+ "generated": "2026-09-20T11:59:23.766Z",
  "cashGBP": 156.35,
  "contributions": [
   {
@@ -67,6 +67,36 @@
  },
  "proposals": [
   {
+   "file": "2026-09-20-0141-EXPN.L.md",
+   "id": "2026-09-20-0141-EXPN.L",
+   "state": "open",
+   "ticker": "EXPN.L",
+   "written": "2026-09-20",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At monthly external checks starting **20 October 2026**, either (a) FHFA/Fannie Mae publishes a firm implementation date reducing the standard three-bureau requirement to two, or (b) a named lender publishes a production deployment explicitly replacing paid Experian reports with first-party/open-banking underwriting, rather than supplementing them. Re-read immediately if either appears; do not wait for group revenue to fall.",
+   "break": "By the **18 November 2026** review, or any later monthly check, two independently named lenders have issuer-authored announcements explicitly describing that replacement, or Experian quantifies a year-on-year fall of at least 10% in comparable paid credit-data transactions while B2B nominal revenue remains non-negative. That would falsify the claimed durability of the current earning engine even if price/mix masks volume loss, and calls for an exit proposal under §5.1. These are analyst thresholds, not management guidance. An unreported unit series is **unknown**, not a passed test; do not manufacture a customer count. External baseline checked on 20 September: [Fannie Mae credit-score guidance](https://singlefamily.fanniemae.com/originating-underwriting/credit-score-models) and [credit-report requirements](https://selling-guide.fanniemae.com/sel/b3-5.2-01/requirements-credit-reports) retain three-bureau reports; [FHFA's programme](https://www.fhfa.gov/policy/credit-scores) separates score-model modernisation from the transition to fewer reports. [Plaid's underwriting documentation](https://plaid.com/docs/underwriting/) establishes a cash-flow report/score substitute capability, but supplies no comparable count of Experian reports displaced. These sources update on announcements, not a guaranteed quarterly adoption schedule. There is no clean displacement-rate baseline today; that limitation causes the half allocation. A supplementary financial warning is an H1 outlook cut or B2B organic growth below 5%, checked against the [issuer's next update](https://www.experianplc.com/newsroom/press-releases/2026/trading-update--first-quarter-fy27). It does not replace the external displacement test.",
+   "reviewBy": "2026-11-18",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-09-20-0141-EUZ.DE.md",
+   "id": "2026-09-20-0141-EUZ.DE",
+   "state": "open",
+   "ticker": "EUZ.DE",
+   "written": "2026-09-20",
+   "side": "BUY",
+   "limit": null,
+   "warning": "The H1 starting position is already strained: cash from operations / attributable profit is about **57%**, and cash after equipment/intangible capex and principal leases is only **€0.634m**. Re-read at **12 November 2026** if nine-month operating cash / attributable profit remains below **70%**, or cash after those capex and lease payments is zero or negative. A cut to the issuer's €320m sales / €80m adjusted EBIT outlook is an additional immediate warning. These conversion thresholds are analyst rules, not issuer guidance.",
+   "break": "At FY2026 results on **24 March 2027**, operating cash / positive attributable net income remains below **60%**, or operating cash minus equipment/intangible capex and principal leases is zero or negative. An earlier disclosure that the medical expansion cannot generate positive cash without repeated external funding also breaks the case. This tests cash return on production directly, even when revenue and adjusted EBIT still grow; it calls for an exit proposal under §5.1. Use the consolidated cash-flow statement and parent-attributable income for matching year-to-date periods, not an annualised quarter. Track loans/investments in Pentixapharm separately; they consume shareholder cash but are not equipment capex or recurring operating expense. If the November report omits a required line, the warning stays unresolved rather than passing by default. [H1 statement](https://www.ezag.com/wp-content/uploads/2026/08/euz226_d.pdf); [issuer results calendar](https://www.ezag.com/de/investoren/finanzkalender/).",
+   "reviewBy": "2026-11-12",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-09-19-1612-YUMC.md",
    "id": "2026-09-19-1612-YUMC",
    "state": "open",
@@ -92,9 +122,9 @@
    "warning": "**Active at entry:** H1 operating cash flow divided by attributable profit is **0.573x** (€12.813m / €22.369m), below my **0.8x** warning threshold. At Q3 on **12 November 2026**, re-read if the same year-to-date ratio remains below 0.8x, or the approximately €80m full-year adjusted-EBIT forecast is cut. These are analyst tests; 0.8x is not management guidance. The cash baseline comes from the [H1 statements](https://www.ezag.com/Q22026en), guidance from the [issuer update](https://www.ezag.com/press/detail/?newsid=780d08ac-08f8-4397-a917-158b11dce9ac).",
    "break": "At FY2026 accounts, due **24 March 2027**, sell under §5.1 if annual OCF / attributable profit remains below **0.8x**, or OCF less cash purchases of property, equipment and intangibles is **zero or negative**. A positive ratio with non-positive profit is not a pass. These analyst thresholds demand recovery over the full annual cycle, rather than penalising one half's working-capital timing. If the cash or profit definition is unavailable, flag an unresolved test rather than inventing a value.",
    "reviewBy": "2026-11-13",
-   "supersededBy": null,
+   "supersededBy": "2026-09-20-0141-EUZ.DE",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-17-0557-YUMC.md",
@@ -122,7 +152,7 @@
    "warning": null,
    "break": "Sell under §5.1 if FY2026 OCF is below **50% of continuing profit**, or if full-year OCF less purchases of tangible and intangible assets is **zero or negative**. Check by **31 March 2027**, using the annual release if the report has not yet appeared. Independently, two consecutive post-entry reports with year-on-year declines in Medical adjusted EBIT break the claimed mix improvement. These are analyst thresholds; use issuer-defined continuing profit consistently, including non-controlling interests for the cash ratio, and period-matched comparatives. The warning already identifies the dominant problem. Buying under it is deliberate: the order is 6.19% of contributed capital, and today's cash shortfall is not being labelled resolved. The break does not require the share price or group revenue to fall.",
    "reviewBy": "2026-11-13",
-   "supersededBy": "2026-09-19-1612-EUZ.DE",
+   "supersededBy": "2026-09-20-0141-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -217,7 +247,7 @@
    "warning": "At Q3 results, locally dated **12 November 2026**, re-read if nine-month operating cash flow divided by consolidated profit is **below 60%**, or Medical adjusted EBIT divided by Medical segment assets falls **more than 15% year on year** on matched nine-month periods. These are analyst thresholds. H1 CFO/profit is already **56.96%**, so the cash warning is active before entry; the purchase accepts that warning at reduced size.",
    "break": "At FY2026 results, review by **31 March 2027**, sell under §5.1 if full-year operating cash flow is **below 50% of consolidated profit**, or if full-year Medical adjusted EBIT divided by Medical segment assets declines **more than 25% year on year**. Either route breaks independently. Use positive profit denominators; a consolidated loss also breaks. Use the issuer's consistently defined segment assets at each year end, with any restatement applied to both sides; missing segment assets means unavailable, not a pass. Cash collection and segment profit earned per euro of assets can deteriorate while revenue still grows. These tests therefore answer the stated capital-return risk. The cash thresholds use the reported cash flow, with no repeat of the previous licence receipt assumed. Sources and starting figures: [H1 statement and segment note](https://www.ezag.com/Q22026en). The annual review deadline is an analyst deadline, not a claimed confirmed release date.",
    "reviewBy": "2026-11-13",
-   "supersededBy": "2026-09-19-1612-EUZ.DE",
+   "supersededBy": "2026-09-20-0141-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -312,9 +342,9 @@
    "warning": "Review on **19 November 2026**, following the locally dated 18 November half-year results. Re-read if North America B2B organic growth is **below 6%**, or if Experian reports shrinking decision/report volumes, material customer losses or price concessions despite positive revenue. Also trigger an immediate review, checked at least monthly from **14 October**, if [FHFA](https://www.fhfa.gov/policy/credit-scores) or [Fannie Mae](https://singlefamily.fanniemae.com/originating-underwriting/credit-score-models) gives optional bi-merge an effective implementation date: removing one bureau report per mortgage changes demand even while revenue can be supported by prices.",
    "break": "By **31 May 2027**, or earlier when disclosed, exit under §5.1 if Experian identifies lost/repriced data or decision contracts causing **at least 5% of annual B2B revenue loss**, or if two non-overlapping reported periods show non-positive North America B2B organic growth while [Equifax USIS Diversified Markets](https://investor.equifax.com/news-events/press-releases/detail/1414/equifax-delivers-strong-11-growth-in-second-quarter-2026) remains positive. Either route is sufficient; do not double-count a half-year and a quarter inside it. The 5% and 6% thresholds are my decision rules, not guidance. Separately, two comparable half-years with statutory operating margin below **20%** break the claimed earning quality even if the external comparison stays positive. The direct unit/customer test is incomplete because disclosures are discretionary; a missing number is **unobservable**, not a pass. Equifax's **6%** Q2 Diversified Markets growth is a comparator, not an agent-adoption measure. Mortgage report policy is externally observable on an event cadence but covers only part of Experian. **That limitation is why the order is halved.** [Existing disclosure gap](../data-wishlist.md).",
    "reviewBy": "2026-11-19",
-   "supersededBy": null,
+   "supersededBy": "2026-09-20-0141-EXPN.L",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-13-1823-TW.md",
@@ -342,7 +372,7 @@
    "warning": "— at the half-year results, locally dated **18 November 2026**, reviewed by **19 November**. Any one triggers a re-read: - North America B2B organic growth below **6%**, against **11%** in the quarter to 30 June 2026. - The half-year commentary attributes B2B growth to **price and mix with no volume or transaction statement**, while [Equifax's](https://investor.equifax.com/news-events/press-releases/detail/1414/equifax-delivers-strong-11-growth-in-second-quarter-2026) USIS **Diversified Markets** organic growth over a comparable period is 6% or better. Revenue rising on price while a same-market comparator grows is T2's stated early shape, in Leo's own words in [theses.md](../theses.md): *\"revenue growth that comes from price and mix while unit or customer counts flatten is this thesis arriving early.\"* - The FY27 expectation, currently \"unchanged\", is withdrawn or reduced.",
    "break": "— the first assessable pair checked by **31 January 2027**, then at FY27 results. Either route alone calls for exit under §5.1: - **(a)** Two successive **non-overlapping** reported periods of non-positive North America B2B organic growth while Equifax Diversified Markets stays positive. Do not manufacture two observations from a half-year total and a quarter inside it; if only one comparable period exists, that is one observation. - **(b)** A disclosed loss or repricing of a core data or decisioning contract reducing B2B annual revenue by **5% or more of the FY2026 base**, or a legal or regulatory loss of access to a core dataset that forces withdrawal of a material lending product. The second breaks the premise on disclosure alone, whatever revenue has done to date.",
    "reviewBy": "2026-11-19",
-   "supersededBy": "2026-09-14-0038-EXPN.L",
+   "supersededBy": "2026-09-20-0141-EXPN.L",
    "phase": "live",
    "counts": false
   },
@@ -392,7 +422,7 @@
    "warning": "At the half-year update, locally dated **18 November 2026**, trigger a re-read on any disclosed fall in B2B paid transactions, customer retention or contract value despite rising revenue; a price increase masking fewer units is a warning, not an excuse. Also warn if North American B2B organic growth drops below **6%** while Equifax USIS Diversified Markets still grows at least **6%** over a comparable period. Experian's current baseline is **11%** North American B2B organic growth; Equifax's June-quarter Diversified Markets baseline is **6%**, while its mortgage-driven total USIS growth of **17% is not the comparator**. These are analyst thresholds, not market-share calculations. [Experian Q1](https://www.experianplc.com/newsroom/press-releases/2026/trading-update--first-quarter-fy27), [Equifax Q2](https://investor.equifax.com/news-events/press-releases/detail/1414/equifax-delivers-strong-11-growth-in-second-quarter-2026).",
    "break": "Sell under §5.1 on an issuer or customer disclosure that lost/repriced data or decision contracts reduce annual recurring revenue by **5% or more of the FY26 B2B base**, or on **two successive reported periods** of non-positive North American B2B organic growth while Equifax Diversified Markets remains positive. Review the first possible pair by **31 January 2027**, using non-overlapping reported periods where available; otherwise do not manufacture two observations from a half-year total and one quarter inside it. Separately, a legal loss of access to a core dataset that forces withdrawal of a material lending product breaks the data-ownership premise when disclosed, irrespective of revenue to date. The named contract-loss threshold is my decision rule, not a prediction or a presently disclosed loss. Experian's unit/retention data and the competitive split may remain unavailable. Neither revenue nor the Equifax proxy can certify that T2 is absent, and silence is not green: keep the Rule 4 reduced size, log the missing evidence at each review, and seek customer/competitor disclosures. There is no automatic permission to increase size after a revenue beat.",
    "reviewBy": "2026-11-19",
-   "supersededBy": "2026-09-14-0038-EXPN.L",
+   "supersededBy": "2026-09-20-0141-EXPN.L",
    "phase": "live",
    "counts": false
   },
