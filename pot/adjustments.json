@@ -1,7 +1,27 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-19",
+  "updated": "2026-09-20",
   "normalizedEps": {
+    "LSEG.L": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "GBp",
+      "note": "Direct issuer diluted adjusted EPS, not headline basic adjusted EPS. These two half-years are separated by the missing H2 2025 and must not be summed into TTM. Exclusions follow the issuer definition; this is not independently reconstructed owner earnings. Added by the 20 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 207.7,
+          "source": "https://www.lseg.com/content/dam/lseg/en_us/documents/investor-relations/financial-results/interim-report/lseg-interim-report-h1-2026-30july2026.pdf"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 243.9,
+          "source": "https://www.lseg.com/content/dam/lseg/en_us/documents/investor-relations/financial-results/interim-report/lseg-interim-report-h1-2026-30july2026.pdf"
+        }
+      ]
+    },
     "BBW": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "USD",
@@ -313,6 +333,26 @@
       }
     ],
     "EXPN.L": [
+      {
+        "fy": "2026-03-31",
+        "amount": 9000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "FY2026 profit on disposal of operations, principally EMEA and Asia Pacific subsidiaries.",
+        "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf",
+        "found": "2026-09-20",
+        "note": "Gross gain in notes 9(b) and 17. No separately reconciled after-tax attributable amount; evidence only, not an EPS deduction."
+      },
+      {
+        "fy": "2026-03-31",
+        "amount": 2000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "FY2026 gain from remeasurement of contingent consideration, deducted in the operating cash reconciliation.",
+        "source": "https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf",
+        "found": "2026-09-20",
+        "note": "Gross non-cash gain in notes 17 and 21(c). No separately reconciled after-tax attributable amount; evidence only. Do not mix USD amounts with a GBp per-share denominator."
+      },
       {
         "fy": "2026-03-31",
         "amount": 101000000,
