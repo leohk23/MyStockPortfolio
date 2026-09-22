@@ -1,7 +1,21 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-20",
+  "updated": "2026-09-21",
   "normalizedEps": {
+    "RSGN.SW": {
+      "basis": "company divestment-adjusted basic EPS",
+      "ccy": "CHF",
+      "note": "H1 2025 comparative adjusted for the electrical switches and connectors business divested in December 2025. Basic EPS, not diluted or independently reconstructed owner earnings. One half-year only; no research TTM or adjusted historical percentile. Added by the 21 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 0.76,
+          "source": "https://ir.the-rsgroup.com/news/rands-group-publishes-semi-annual-report-2026/d0818ab8-90b1-4cb1-83ff-5a1f617aa2ae"
+        }
+      ]
+    },
     "LSEG.L": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "GBp",
@@ -38,6 +52,17 @@
           "end": "2026-08-01",
           "eps": 0.70,
           "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm"
+        },
+        {
+          "end": "2025-08-02",
+          "months": 6,
+          "eps": 2.11,
+          "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm"
+        },
+        {
+          "end": "2025-08-02",
+          "eps": 0.94,
+          "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm"
         }
       ]
     },
@@ -46,6 +71,11 @@
       "ccy": "USD",
       "note": "Issuer adjusted EPS equals GAAP EPS for these periods. It retains investment mark-to-market effects; do not describe it as owner earnings or as an independently normalized investment-income series. Q2 is contained within H1 and must not be added to it. Added by the 16 September 2026 deep dive.",
       "annual": [
+        {
+          "end": "2024-12-31",
+          "eps": 2.33,
+          "source": "https://ir.yumchina.com/news-releases/news-release-details/yum-china-reports-fourth-quarter-2025-results"
+        },
         {
           "end": "2025-12-31",
           "eps": 2.51,

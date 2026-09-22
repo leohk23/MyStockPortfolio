@@ -31,8 +31,8 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | reached for | sweeps | |
 |---|---:|---|
 | volume / units | 32 | **earns a feed** |
+| cash conversion | 27 | **earns a feed** |
 | margin | 27 | **earns a feed** |
-| cash conversion | 26 | **earns a feed** |
 | leverage / net debt | 12 | **earns a feed** |
 | backlog / order intake | 10 | **earns a feed** |
 | inventory | 8 | **earns a feed** |
@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-168 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+174 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,9 +52,12 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-21 | Complete discovery origins for recent additions. | VAIAS.HE and LSEG.L have no origins.json entry in this snapshot. The latest Sweep establishes Vaisala's water-measurement case; the previous run report traces LSEG to the 20 September Sweep. Preserve these discovery cases on the next normal origins rebuild. This lane leaves the derived origins file untouched. |
+| 2026-09-21 | Filed operating-profit reconciliation for YUMC and EUZ.DE. | Deep dive: YUMC Q2 local operating profit is USD360m versus USD348m in the [issuer release](https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86); EUZ H1 local quarterly sum is EUR33.414m versus EUR33.591m filed EBIT and EUR33.318m adjusted EBIT in the [interim report](https://www.ezag.com/wp-content/uploads/2026/08/euz226_d.pdf). Use the filings for review tests; vendor-derived historical capital ratios remain labelled proxies. Wanted at results, with a bridge rather than overwriting unlike definitions. |
 | 2026-09-21 | Global terrestrial water storage, river discharge, glacier loss and observation coverage. | Fetched from the WMO's [17 September launch statement](https://public.wmo.int/content/launch-of-global-water-report-2025). The repo carries no physical water or hydrology series. Wanted annually when the report is published, with the latest assessment carried forward; it distinguishes an investable measurement need from a generic climate narrative. |
-| 2026-09-21 | Vaisala business-area orders, Xweather ARR and cash conversion. | Fetched from the issuer's [H1 report](https://www.vaisala.com/en/stock-exchange-releases/2026-07/vaisala-corporation-half-year-financial-report-january-june-2026-strong-growth-orders-received-driven-record-high-demand). Wanted on results dates while VAIAS.HE is tracked. The split is decisive because group growth is currently led by Industrial Measurements while the WMO-linked Weather, Energy and Environment business had weaker project orders. |
+| 2026-09-21 | RSGN tradable alternative and broker availability. | [IBKR Switzerland](https://www.interactivebrokers.co.uk/en/pricing/commissions-stocks.php) has a CHF1.50 tiered minimum before external fees; even all GBP156.35 fails the 0.5% broker-fee gate at local FX. A T212 RSGN instrument page could not be verified, and no locally covered alternative exists. Recheck an exact ISIN listing and its fee schedule before proposing; a failed public lookup does not prove broker unavailability. |
 | 2026-09-21 | VAIAS.HE price, filed earnings, comparable valuation history and Yahoo sector classification. | The name was outside the repository and no external price was substituted. Added to `watchlist.json`; the normal pipeline should establish the comparable record and show whether it offsets sector concentration or only the book's US concentration. No separate manual feed wanted. |
+| 2026-09-21 | Vaisala business-area orders, Xweather ARR and cash conversion. | Fetched from the issuer's [H1 report](https://www.vaisala.com/en/stock-exchange-releases/2026-07/vaisala-corporation-half-year-financial-report-january-june-2026-strong-growth-orders-received-driven-record-high-demand). Wanted on results dates while VAIAS.HE is tracked. The split is decisive because group growth is currently led by Industrial Measurements while the WMO-linked Weather, Energy and Environment business had weaker project orders. |
 | 2026-09-20 | Energy inflation, renewable generation mix and UK consumption response. | Fetched from Eurostat's [August HICP release](https://ec.europa.eu/eurostat/en/web/products-euro-indicators/w/2-17092026-ap), its [Q2 electricity release](https://ec.europa.eu/eurostat/en/web/products-eurostat-news/w/ddn-20260918-1), and the ONS [August retail bulletin](https://www.ons.gov.uk/businessindustryandtrade/retailindustry/bulletins/retailsales/august2026). The local macro block carries WTI but not its pass-through into inflation, electricity generation or fuel volumes. Wanted monthly for inflation and retail, quarterly for generation mix, with the latest release carried forward. |
 | 2026-09-20 | Experian substitution observability, extending the paid-usage gap. | [Fannie Mae](https://singlefamily.fanniemae.com/originating-underwriting/credit-score-models) still requires three-bureau reports; [Plaid](https://plaid.com/docs/underwriting/) documents a cash-flow underwriting substitute but no comparable count of Experian reports displaced. Need named lenders' actual replacement deployments and paid bureau units, not scores supported or launches. Check monthly from 20 October and at 18 November H1 results; missing data keeps Rule 4 half-sizing. |
 | 2026-09-20 | EXPN.L transaction-tax evidence update. | [Experian's current FAQ](https://www.experianplc.com/investors/shareholders/faqs) places incorporation and register in Jersey; [HMRC](https://www.gov.uk/tax-buy-shares) distinguishes foreign shares outside a UK register. Expected SDRT is zero by that combined evidence, retaining 0.5% cash contingency until a broker ticket confirms treatment. Extends, rather than deletes, the 13 September uncertainty. |
