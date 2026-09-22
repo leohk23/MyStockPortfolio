@@ -142,7 +142,7 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Setting | Value | Where | Why |
 |---|---|---|---|
 | Model per lane on Codex | Review, Sweep `gpt-5.6-sol`; Deep dive `gpt-6-astra` | `run-daily.ps1` `$LANE_MODEL` | D51 |
-| Model on Claude | `claude-opus-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8 |
+| Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
 | Lanes on Claude per cycle | **1** (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped | `run-daily.ps1` | D73 |
 | After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |

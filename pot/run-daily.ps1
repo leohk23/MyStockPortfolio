@@ -278,7 +278,7 @@ function Test-Allowance($lanes) {
 # The exact model ID, never the `opus` alias. On 11 Sep `claude --model opus` resolved to
 # claude-opus-4-8, not Opus 5, so the first Claude cycle ran on a different model than the one
 # asked for and nothing in the run said so until the ledger row was read.
-$CLAUDE_MODEL = 'claude-opus-5'
+$CLAUDE_MODEL = 'claude-opus-5-5'
 
 # Decide which agent each lane runs on, or $null to skip the cycle.
 #

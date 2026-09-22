@@ -73,6 +73,7 @@
            rather than a gap on the parent, because [hidden] takes it out of flow entirely — so the
            portfolio view, where the button is not shown, keeps its spacing exactly as it was. */
         #clear-wrap { margin-bottom: 8px; }
+        #clear-wrap[hidden] { display: none; }   /* .btns sets display:flex, which beats [hidden] */
         #chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
         #chart-change { font-size: 18px; font-weight: 600; margin: 2px 0; }
         #chart-sub { font-size: 12px; color: var(--text-muted); }
@@ -685,8 +686,8 @@
                     <button data-metric="gain" aria-pressed="false">Gain/Loss</button>
                 </div>
                 <div id="pmetric" class="btns" role="group" aria-label="Portfolio chart metric">
-                    <button data-pmetric="value" aria-pressed="true">Value</button>
-                    <button data-pmetric="twr" aria-pressed="false">Performance</button>
+                    <button data-pmetric="value" aria-pressed="false">Value</button>
+                    <button data-pmetric="twr" aria-pressed="true">Performance</button>
                 </div>
                 <div id="cohorts" class="btns" role="group" aria-label="Performance cohorts" style="display:none">
                     <button class="cohort" data-cohort="total" aria-pressed="true">Total</button>
@@ -703,8 +704,8 @@
                     <button data-days="21" aria-pressed="false">1M</button>
                     <button data-days="63" aria-pressed="false">3M</button>
                     <button data-days="126" aria-pressed="false">6M</button>
-                    <button data-ytd aria-pressed="false">YTD</button>
-                    <button data-days="0" aria-pressed="true">12M</button>
+                    <button data-ytd aria-pressed="true">YTD</button>
+                    <button data-days="0" aria-pressed="false">12M</button>
                     <button data-years="2" data-long aria-pressed="false">2Y</button>
                     <button data-years="5" data-long aria-pressed="false">5Y</button>
                     <button data-years="10" data-long aria-pressed="false" title="Ten years of weekly closes — far enough back to put the COVID crash inside the window.">10Y</button>
@@ -1008,7 +1009,7 @@
         let filterText = '';
         let rangeDays = 0;       // 0 = whole series
         let rangeYears = 0;
-        let rangeYtd = false;    // from last year's close to now (daily)
+        let rangeYtd = true;     // from last year's close to now (daily) — the default range
         // Today's session at 15-minute bars, from intraday.json. Single instruments only — see
         // instrumentSpec; the button disables itself for anything else rather than drawing a line
         // that stitches together markets which were never open at the same time.
@@ -1017,7 +1018,7 @@
         let chartSel = null;     // null = portfolio/group; else a yahoo symbol
         let chartGroup = null;   // selected Company/Geography row
         let instrumentMetric = 'price';
-        let portfolioMetric = 'value';        // whole-portfolio chart: 'value' (NAV proxy) or 'twr'
+        let portfolioMetric = 'twr';          // whole-portfolio chart: 'value' (NAV proxy) or 'twr'
         const benchOn = new Set();
         const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
         const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
@@ -2131,6 +2132,7 @@
         // (positions from before this year, held flat), New buys (this year's purchases).
         // Each line is rebased to 0% at the left edge of the range.
         function portfolioTwrSpec(hold, label) {
+            if (!HISTORY) return null;   // not fetched yet: drawChart skips, updateChart redraws on arrival
             const history = longRange ? HISTORY.long : HISTORY;
             const DEFS = {
                 total:    { label: 'Total',    color: PORT_COLOR,          filter: null },
@@ -2148,14 +2150,24 @@
                 label: DEFS[k].label, color: DEFS[k].color,
                 values: portfolioLib.twr(arrays[idx * 2], arrays[idx * 2 + 1]),
             }));
+            // Trades sit on the first line drawn (Total unless it is switched off).
+            const { markers, byIndex } = valueMarkers(hold, days, series[0]?.values || []);
+            // CAGR over the span on screen. Same rule as the table's CAGR column: blank under a
+            // year, where annualising turns a short move into a meaningless rate.
+            const years = days.length ? (Date.parse(days[days.length - 1]) - Date.parse(days[0])) / 864e5 / 365 : 0;
+            const cagrTag = v => `<span class="muted" title="${years >= 1
+                ? `Compound annual rate over the ${years.toFixed(1)} years charted: (1 + return) ^ (1 ÷ years) − 1.`
+                : 'Under a year is charted, so it is not annualised, the same rule as the CAGR column in the table.'}">`
+                + `CAGR ${v == null || years < 1 ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
             return {
                 days, series, percent: true, zero: true,
+                markers, markersByIndex: byIndex,
                 fmtY: v => pct(v),
-                headline: series.map(s => `<span style="color:${s.color}">${pct(lastNonNull(s.values))}</span>`).join(' <span class="muted">·</span> '),
+                headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagrTag(v)}`; }).join(' <span class="muted">·</span> '),
                 sub: `Time-weighted return · indexed to ${ymd(days[0])} = 0%`,
                 title: `${label} performance`,
-                note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. Today\'s FX; dividends and realized gains excluded. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases.',
-                tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
+                note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. Today\'s FX; dividends and realized gains excluded. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases. ▲ buy, ▼ sell.',
+                tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join('') + tradeRows(byIndex.get(i)),
             };
         }
 
@@ -2165,8 +2177,12 @@
         function valueMarkers(legs, days, values) {
             const dayIndex = new Map(days.map((d, i) => [d, i]));
             const markers = [], byIndex = new Map();
+            // Before the window: skip, or every earlier trade piles onto the first bar. One bar's
+            // spacing of slack keeps a trade just before the first WEEKLY bar (the All range).
+            const slack = days.length > 1 ? Date.parse(days[1]) - Date.parse(days[0]) : 0;
             for (const leg of legs) {
                 for (const raw of (leg.trades || [])) {
+                    if (!days.length || Date.parse(days[0]) - Date.parse(raw.date) >= slack) continue;
                     let i = dayIndex.get(raw.date);
                     if (i == null) { i = days.findIndex(d => d >= raw.date); if (i < 0) continue; }
                     if (values[i] == null) continue;
@@ -2186,13 +2202,11 @@
         // A value chart states what something was worth. It makes no performance claim: the
         // change in a value line is deposits AND growth mixed together, so a % here would say
         // you'd "gained" by paying money in. Performance mode answers that question properly.
-        const valueTip = (values, byIndex) => i => {
-            let s = money(values[i] * RATES[display]);
-            for (const t of (byIndex.get(i) || []))
-                s += `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>`
-                    + `${t.side} ${t.qty} ${t.yahoo || ''} @ ${t.price.toLocaleString()} ${t.currency}</div>`;
-            return s;
-        };
+        const valueTip = (values, byIndex) => i => money(values[i] * RATES[display]) + tradeRows(byIndex.get(i));
+        // One line per trade on that bar. A quantity is an amount, so the privacy toggle hides it.
+        const tradeRows = ts => (ts || []).map(t =>
+            `<div class="row"><i style="background:var(--${t.side === 'SELL' ? 'bad' : 'good'})"></i>`
+            + `${t.side} ${priv ? '' : t.qty + ' '}${t.yahoo || ''} @ ${t.price.toLocaleString()} ${t.currency}</div>`).join('');
 
         // The return over the SAME window the value chart is showing, computed the same way
         // Performance mode computes it: cohortMV replayed against past prices, then twr(), so
@@ -2242,9 +2256,11 @@
             const { days, arrays } = sliceRange(nav.days, [nav.values], longRange ? STATE.firstTrade : '');
             const values = arrays[0].map(v => v == null ? null : v / RATES[display]);
             const last = lastNonNull(values);
+            const { markers, byIndex } = valueMarkers(STATE.holdings, days, values);
             return {
                 days,
                 series: [{ label: 'Portfolio', color: PORT_COLOR, values, area: true }],
+                markers, markersByIndex: byIndex,
                 // A value line blends deposits with growth, so a span across it is a change in
                 // VALUE, not a return. spanText says so rather than implying performance.
                 deposits: true,
@@ -2257,8 +2273,8 @@
                 sub: days.length ? `Asset value · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`
                     : 'Holdings locked — reload and unlock to see value',
                 title: 'Portfolio value',
-                note: 'What the portfolio was actually worth: the Tradelog replayed against past prices, at today\'s FX. Switch to Performance for return with cash flows removed.',
-                tip: valueTip(values, new Map()),
+                note: 'What the portfolio was actually worth: the Tradelog replayed against past prices, at today\'s FX. Switch to Performance for return with cash flows removed. ▲ buy, ▼ sell.',
+                tip: valueTip(values, byIndex),
             };
         }
 
@@ -2489,6 +2505,7 @@
 
         function drawChart() {
             const spec = chartSpec();
+            if (!spec) return;   // Performance before history.json lands; updateChart draws it on arrival
             const svg = document.getElementById('chart');
             const tip = document.getElementById('tip');
             const { days, series } = spec;
@@ -4281,7 +4298,9 @@ function renderPot() {
             // Restore a selected stock last: selectChart loads its history, charts it and opens the
             // deep panel — safe only once STATE.rows exist. Ignore a symbol no longer on the page.
             const sel = url.get('sel');
-            if (sel && legOf(sel)) selectChart(sel);
+            // Otherwise updateChart, not renderAll's bare drawChart: the default Performance view
+            // needs history.json, and only updateChart fetches it and sets the toggles to match.
+            if (sel && legOf(sel)) selectChart(sel); else updateChart();
             // Just the timestamp. The two hints that used to trail it ("click a row to chart it",
             // "click the chevron to expand") taught a one-reader page something it learns in a
             // single session, then sat there for good — costing a line at the top of every phone
