@@ -36,6 +36,10 @@ param(
     # How many lanes one cycle may move onto Claude. Claude has its own five-hour window and no
     # readable usage figure, so this is the only brake on it (D73).
     [int]$MaxClaudeLanes = 1,
+    # Put every lane on Claude without asking whether Codex could take it - a measurement run, e.g.
+    # -OnClaude -Force all -MaxClaudeLanes 3 to see what a whole cycle costs Claude's window (D80).
+    # The cooldown and the -MaxClaudeLanes cap still apply.
+    [switch]$OnClaude,
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -320,8 +324,8 @@ function Note-ClaudeLimit($tailText) {
 function Resolve-Plan($lanes) {
     $plan = @{}
     foreach ($l in $lanes) { $plan[$l] = 'codex' }
-    if (Test-Allowance $lanes) { return $plan }
-    if ($Failover -eq 'none') {
+    if (-not $OnClaude -and (Test-Allowance $lanes)) { return $plan }
+    if (-not $OnClaude -and $Failover -eq 'none') {
         Note '  -Failover none, so this cycle is skipped rather than moved to Claude' | Out-Null
         return $null
     }
@@ -331,9 +335,11 @@ function Resolve-Plan($lanes) {
         return $null
     }
     # Try each order in turn; the first that leaves a fitting Codex set wins.
-    $orders = if ($Failover -eq 'deepdive') { ,@('deepdive') }
+    # -OnClaude skips the search: every lane is chosen, and only the cap below trims it.
+    $orders = if ($OnClaude) { @() }
+        elseif ($Failover -eq 'deepdive') { ,@('deepdive') }
         else { @(@('review', 'sweep'), @('deepdive', 'review', 'sweep')) }
-    $chosen = $null
+    $chosen = if ($OnClaude) { @($lanes) } else { $null }
     foreach ($order in $orders) {
         $onCodex = @($lanes)
         $moved = @()
