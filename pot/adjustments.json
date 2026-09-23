@@ -1,7 +1,20 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-21",
+  "updated": "2026-09-23",
   "normalizedEps": {
+    "BVI.PA": {
+      "basis": "company-adjusted EPS (excludes amortisation of acquired intangibles, disposal results, restructuring and other adjustment items)",
+      "ccy": "EUR",
+      "note": "Half-years only. H2 2025 is derived as FY2025 adjusted EPS less H1 2025 adjusted EPS, both issuer-stated. Company-adjusted, not GAAP and not independently reconstructed. Added by the 23 September 2026 19:18 deep dive.",
+      "annual": [
+        { "end": "2024-12-31", "eps": 1.38, "source": "https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy" },
+        { "end": "2025-12-31", "eps": 1.42, "source": "https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy" }
+      ],
+      "quarters": [
+        { "end": "2025-12-31", "months": 6, "eps": 0.77, "derived": "FY2025 EUR1.42 less H1 2025 EUR0.65", "source": "https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy and https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html" },
+        { "end": "2026-06-30", "months": 6, "eps": 0.68, "source": "https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html" }
+      ]
+    },
     "RSGN.SW": {
       "basis": "company divestment-adjusted basic EPS",
       "ccy": "CHF",
@@ -241,6 +254,18 @@
     }
   },
   "adjustments": {
+    "BVI.PA": [
+      {
+        "fy": "2026-12-31",
+        "amount": 75700000,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "H1 2026 'other adjustment items', a net expense of EUR75.7m against net income of EUR21.6m in H1 2025. It includes net losses on disposals and acquisitions of EUR9.8m, restructuring of EUR9.6m and costs of the Government Services exit (a EUR32.0m provision for exit risks at 30 June 2026). This is why reported attributable profit fell 26.2% to EUR237.9m while adjusted EPS rose 4.8% to EUR0.68.",
+        "source": "https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html",
+        "found": "2026-09-23",
+        "note": "Issuer press release as distributed on GlobeNewswire. This run could not confirm that the amount is after tax and attributable to shareholders, so it is evidence only. Use normalizedEps.BVI.PA for the adjusted denominator."
+      }
+    ],
     "YUMC": [
       {
         "fy": "2024-12-31",
