@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| volume / units | 32 | **earns a feed** |
-| margin | 30 | **earns a feed** |
-| cash conversion | 27 | **earns a feed** |
-| leverage / net debt | 13 | **earns a feed** |
-| backlog / order intake | 11 | **earns a feed** |
+| volume / units | 33 | **earns a feed** |
+| margin | 32 | **earns a feed** |
+| cash conversion | 28 | **earns a feed** |
+| leverage / net debt | 14 | **earns a feed** |
+| backlog / order intake | 13 | **earns a feed** |
 | return on capital | 9 | **earns a feed** |
 | inventory | 8 | **earns a feed** |
 | capital returns | 8 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-180 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+188 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -53,11 +53,13 @@ every report run. Do not hand-edit between the markers.
 | date | wanted | detail |
 |---|---|---|
 | 2026-09-23 | EU medical-product supplier concentration and shortage mapping. | The OECD's [22 September report](https://www.oecd.org/en/publications/strengthening-the-eu-s-medical-supply-chains_cc235a9c-en.html) found that national injectable-corticosteroid markets commonly depend on one or two suppliers per molecule and identified sterile fill-and-finish plus internationally sourced APIs and intermediates as critical bottlenecks. Wanted when the OECD or EU updates the mapping, not weekly; it can distinguish supply-chain infrastructure from a generic healthcare theme. |
-| 2026-09-23 | STVN price, filed earnings and comparable valuation history. | The name was outside the repository, so no external price or multiple was substituted. Added to `watchlist.json`; the normal pipeline should establish whether the profitable drug-containment and delivery supplier clears the valuation filter. No separate manual feed wanted. |
-| 2026-09-23 | Stevanato high-value-solutions mix, capacity-ramp cash conversion and leverage. | Fetched from the issuer's [Q2 release](https://ir.stevanatogroup.com/news-events/press-releases/detail/183/stevanato-group-delivers-8-revenue-growth-for-the-second). Wanted on results dates while STVN is tracked. Revenue and adjusted margin are not enough while expansion capex leaves free cash flow negative and net debt elevated. |
+| 2026-09-23 | Experian bypass adoption: signed distribution reach versus actual paid usage. | Deep dive verified FICO's 13 August release: direct-license partners represent 73.1% of mortgage reseller volume, but the release explicitly awaits a commercial-availability update (https://investors.fico.com/news-releases/news-release-details/informative-research-joins-fico-mortgage-direct-license-program). Need production activation, actual scores delivered, and Experian net fees/paid units displaced; partner coverage is not adoption. Check announcements monthly from 23 October and the issuer's 18 November H1 result. This extends the 20 September observability gap and retains Rule 4 half-sizing. |
+| 2026-09-23 | Experian current annual diluted EPS missing from the local FY2026 row. | The issuer FY26 note 12 reports statutory diluted USD1.634 and Benchmark diluted USD1.787 (https://www.experianplc.com/content/dam/marketing/global/plc/en/assets/documents/results-and-presentations/2026/Experian-fy26-fy-results-announcement.pdf); earnings.json has the year's revenue/income but no EPS, while prices.json carries 122 GBp. Proposal uses native issuer USD EPS against a labelled USD-equivalent price, never overwrites filed data or attaches a reported percentile to Benchmark EPS. Existing normalizedEps annual evidence is reused. |
+| 2026-09-23 | OECD September 2026 interim outlook projections. | The [release page](https://www.oecd.org/en/publications/oecd-economic-outlook-interim-report-september-2026_f751d02b-en.html) scheduled publication for 10:00 CET, after this 05:34 UTC sweep. No figures were inferred from the title. Wanted once on release and thereafter only on the OECD outlook cadence. |
 | 2026-09-23 | OXB.L price, filed financials and a loss-company valuation basis. | The name was outside the repository, so no external price or multiple was used. Added to `watchlist.json`; the normal pipeline can fetch price and filings, but a loss-making CDMO needs cash, backlog conversion and capacity utilisation rather than a P/E screen. Wanted on results dates, not weekly. |
 | 2026-09-23 | Oxford Biomedica backlog conversion, gross margin and site utilisation. | Fetched from the issuer's [H1 release](https://oxb.com/news/oxford-biomedica-plc-interim-results-for-the-six-months-ended-30-june-2026/). Wanted on results dates while OXB.L is tracked. The Durham ramp must turn contracted work into revenue and positive operating EBITDA rather than only enlarge reported backlog. |
-| 2026-09-23 | OECD September 2026 interim outlook projections. | The [release page](https://www.oecd.org/en/publications/oecd-economic-outlook-interim-report-september-2026_f751d02b-en.html) scheduled publication for 10:00 CET, after this 05:34 UTC sweep. No figures were inferred from the title. Wanted once on release and thereafter only on the OECD outlook cadence. |
+| 2026-09-23 | Stevanato high-value-solutions mix, capacity-ramp cash conversion and leverage. | Fetched from the issuer's [Q2 release](https://ir.stevanatogroup.com/news-events/press-releases/detail/183/stevanato-group-delivers-8-revenue-growth-for-the-second). Wanted on results dates while STVN is tracked. Revenue and adjusted margin are not enough while expansion capex leaves free cash flow negative and net debt elevated. |
+| 2026-09-23 | STVN price, filed earnings and comparable valuation history. | The name was outside the repository, so no external price or multiple was substituted. Added to `watchlist.json`; the normal pipeline should establish whether the profitable drug-containment and delivery supplier clears the valuation filter. No separate manual feed wanted. |
 | 2026-09-22 | Cash-only screening for companies with current losses. | 1137.HK has local pocfPctile 0.02186 with 183 observations but no Scan valuation row, while current EPS is negative. The deep dive accounts for it and rejects the business today. Audit whether the Scan intentionally requires positive trailing EPS for a cash trigger; do not assume its silence means no qualifying cash screen. Sources: prices.json and signals.json at 08:43 UTC. |
 | 2026-09-22 | EU data-centre energy, water, heat-reuse and grid-support performance. | The European Commission's [21 September rating proposal](https://commission.europa.eu/news-and-media/news/making-data-centres-energy-efficient-thanks-new-eu-rating-system-2026-09-21_en) defines the scope and timetable, but the repo carries no data-centre resource-use or efficiency series and the first comparable labels are not expected until 2027. Wanted when the Commission publishes the aggregate dataset and minimum standards, then on their official update cadence; the data would distinguish provable efficiency from an AI label. |
 | 2026-09-22 | MTRS.ST price, filed earnings and comparable valuation history. | Yahoo confirmed the symbol but its indexed quote was stale, so no external price or multiple was adopted. Added to `watchlist.json`; the normal pipeline should establish price, filed earnings and valuation bands before a Deep dive treats the order story as investable. No separate manual feed wanted. |
