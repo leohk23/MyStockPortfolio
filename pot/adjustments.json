@@ -1,7 +1,27 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-23",
+  "updated": "2026-09-25",
   "normalizedEps": {
+    "NVO": {
+      "basis": "company-adjusted diluted EPS per share/ADR",
+      "ccy": "DKK",
+      "note": "Issuer Q2 2026 report, page 3 and Appendix 7. Adjusted EPS excludes specified intangible charges, major impairments/legal/restructuring items and 340B provision reversals with their related tax effects. H1 and Q2 overlap; never sum them. Only six months are covered, so these entries do not establish research TTM EPS or adjusted historical percentiles. DKK per ADR is explicitly the issuer unit, not USD. Added by the 25 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        { "end": "2026-06-30", "months": 6, "eps": 12.81, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
+        { "end": "2026-06-30", "eps": 6.18, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" }
+      ]
+    },
+    "REL.L": {
+      "basis": "company-adjusted EPS",
+      "ccy": "GBP",
+      "note": "Issuer H1 2026 release states adjusted EPS in pence: 68.6p for H1 2026 and 63.5p for H1 2025. Stored as GBP0.686 and GBP0.635, a unit scaling only, not FX conversion. The intervening H2 is not recorded here; no research TTM EPS or adjusted percentile is established. Added by the 25 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        { "end": "2025-06-30", "months": 6, "eps": 0.635, "source": "https://www.relx.com/media/press-releases/year-2026/first-half-2026" },
+        { "end": "2026-06-30", "months": 6, "eps": 0.686, "source": "https://www.relx.com/media/press-releases/year-2026/first-half-2026" }
+      ]
+    },
     "BVI.PA": {
       "basis": "company-adjusted EPS (excludes amortisation of acquired intangibles, disposal results, restructuring and other adjustment items)",
       "ccy": "EUR",
