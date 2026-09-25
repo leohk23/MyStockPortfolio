@@ -170,7 +170,9 @@ would break D3 (no metered API spend), because CI has no subscription auth.
 `npm run pot-report` regenerates `pot/SUMMARY.md` (the entry point), `pot/summaries/*.md` (one dated
 report per run), `pot/runs.md` (the cost ledger) and `pot/logs/*.md` (transcripts made readable).
 All four are derived and gitignored; every figure in them is read from the Codex session logs, never
-from what an agent said about itself.
+from what an agent said about itself. It also writes the two performance pages, `pot/performance.md`
+(what the money did, against VUSA.L, D81) and `pot/paper.md` (every call marked as if bought), from
+`positions.json`, `prices.json` and `history.json`.
 
 ## Files
 

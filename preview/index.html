@@ -3639,10 +3639,11 @@
 // A <select> rather than a row of tabs on purpose: there are already 38 documents and the list
 // only grows, and a native picker is the one control a phone renders well without help.
 // An allowlist, not a passthrough: a doc whose kind is missing here is in pot.json and invisible
-// on the page. Paper performance sits second on purpose — after the Summary it is the closest
-// thing to "is any of this working", and burying it under the proposals it judges would be odd.
+// on the page. The two performance pages sit straight after the Summary on purpose: they are the
+// closest thing to "is any of this working". Actual (what the money did) comes before Paper (every
+// call, bought or not), and burying either under the proposals they judge would be odd.
 const POT_GROUPS = [
-    ['summary', 'Summary'], ['paper', 'Paper performance'],
+    ['summary', 'Summary'], ['actual', 'Actual performance'], ['paper', 'Paper performance'],
     // The cycle's own account of itself comes first: one document per run rather than every
     // proposal ever written in one flat list. Files are unchanged — the filename is still the
     // proposal id a Tradelog `Pot` cell points at.

@@ -221,6 +221,7 @@ const splitProposals = () => {
         ...splitProposals(),
         ...listDir('pot/sweeps', 'sweep'),
         ...listDir('pot/reviews', 'review'),
+        { dir: 'pot', file: 'performance.md', kind: 'actual', title: 'Actual performance' },
         { dir: 'pot', file: 'paper.md', kind: 'paper', title: 'Paper performance' },
         { dir: 'pot', file: 'runs.md', kind: 'runs', title: 'Runs and cost' },
         { dir: 'pot', file: 'scan.md', kind: 'scan', title: 'Scan' },

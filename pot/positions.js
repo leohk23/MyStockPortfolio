@@ -114,6 +114,20 @@ function gbpFrom(amt, ccy, rates) {
     return from > 0 && gbp > 0 ? amt * from / gbp : null;
 }
 
+// Paid in, less every pot purchase, plus every sale, in GBP at today's rates. Every pot TRADE, not
+// the book's: potHoldings deletes a name sold outright, and walking the book dropped that round
+// trip's proceeds from cash, so the first full exit would have left the pot short by the whole sale.
+// Null cash, with the culprits named, when any currency cannot be converted.
+function cashFrom(paidIn, trades, rates) {
+    let spent = 0;
+    const unconverted = [];
+    for (const t of trades) {
+        const gbp = gbpFrom((t.side === 'SELL' ? -1 : 1) * t.qty * t.price, t.currency, rates);
+        if (gbp == null) unconverted.push(t.currency); else spent += gbp;
+    }
+    return { cash: unconverted.length ? null : Math.round((paidIn - spent) * 100) / 100, unconverted };
+}
+
 function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     // Pot trades live in the sealed half (vault.js, D67). Unopenable means no trades, and the book
     // would silently read as unfunded — so refuse instead.
@@ -198,19 +212,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     // order on IBKR. Fix it by adding commission to the extracted trade if that ever matters.
     let rates = null;
     try { rates = JSON.parse(fs.readFileSync('prices.json', 'utf8')).rates || null; } catch { /* no rates */ }
-    const toGBP = (amt, ccy) => gbpFrom(amt, ccy, rates);
-    let spent = 0, unconverted = [];
-    for (const b of Object.values(book)) {
-        for (const t of b.trades) {
-            const signed = (t.side === 'SELL' ? -1 : 1) * t.qty * t.price;
-            const gbp = toGBP(signed, b.currency);
-            if (gbp == null) unconverted.push(b.currency); else spent += gbp;
-        }
-    }
+    const { cash, unconverted } = cashFrom(paidIn, trades, rates);
     // A currency prices.json cannot price must not silently vanish from the balance. Fall back to
     // carrying the previous number and say so, rather than reporting a total that is quietly wrong.
-    const cashGBP = unconverted.length ? (prev.cashGBP ?? paidIn)
-        : Math.round((paidIn - spent) * 100) / 100;
+    const cashGBP = cash == null ? (prev.cashGBP ?? paidIn) : cash;
     if (unconverted.length) {
         console.log(`  cash carried forward: no rate for ${[...new Set(unconverted)].join(', ')}`);
     }
@@ -309,6 +314,10 @@ if (process.argv.includes('--selftest')) {
     const book = potHoldings(trades);
     assert.strictEqual(book.NVDA.qty, 1);
     assert.ok(!('GME' in book), 'a closed position is still on the book');
+    // ...but its round trip stays in cash: 500 - 200 (NVDA) - 20 + 24 (GME bought, then sold).
+    // Walking the book instead of the trades read 300, losing the £24 the sale brought in.
+    assert.strictEqual(cashFrom(500, trades, { USD: 1, GBP: 1 }).cash, 304, 'a sold-out name dropped out of cash');
+    assert.strictEqual(cashFrom(500, trades, { GBP: 1 }).cash, null, 'an unconvertible trade must not read as spent-nothing');
 
     // Superseding collapses files to decisions, and must never touch an executed thesis.
     {

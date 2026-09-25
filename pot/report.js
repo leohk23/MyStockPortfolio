@@ -271,10 +271,9 @@ function unannotatedLines(files) {
 /* ---------------- paper performance ---------------- */
 
 // Every name this pot has named, marked from the day it was named as if bought at that day's
-// close and held. NOT P&L: nothing has been bought, cash is £0, and positions.js scores nothing
-// until a contribution lands (every proposal sits at phase 'pre-live'). This page exists because
-// during the phase where you are deciding WHETHER to fund, the thing that needs measuring is the
-// judgement — and the scoring machinery deliberately measures nothing until money is committed.
+// close and held. NOT P&L: it scores every call, bought or not. Written before the pot had money,
+// when judgement was the only thing to measure; since the first contribution (4 Sep) the money
+// itself is measured on performance.md, and the two answer different questions.
 //
 // Local currency, deliberately. A GBP mark folds in FX and answers a different question; the
 // question here is whether the name itself was a good call. The FX leg earns its column when real
@@ -351,9 +350,8 @@ function writePaper(pos, hist) {
 Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from \`history.json\` closes.
 
 Every name this pot has named, marked from the day it was named, as if bought at that day's close
-and held. **Nothing has been bought** — pot cash is £0 and no contribution has been made, so this
-is not P&L. It exists because \`positions.js\` scores nothing until money is committed, which leaves
-the phase where you are deciding *whether* to commit with no measure at all.
+and held, **whether or not it was bought**. This is not P&L: it scores the calls, including the ones
+nobody acted on. What the money actually did is on [Actual performance](performance.md).
 
 ${verdict}
 
@@ -385,6 +383,139 @@ A blank row means there is no local price series for that ticker: a fact worth s
 a zero worth trusting.
 `);
     return { marked: all.length, mature: mature.length };
+}
+
+/* ---------------- actual performance ---------------- */
+
+// What the money did: holdings at today's prices plus cash, against what was paid in, and against
+// the same contributions put into VUSA.L on the days they arrived. Paper performance asks whether
+// the Deep dive picks well; this asks whether the whole process made money, with Leo's choices,
+// fills, costs and idle cash all in it. The two can disagree, which is why both exist.
+//
+// ponytail: every conversion is at TODAY's rate, the convention positions.js already uses for
+// cash. No historical FX is stored, so what a currency move did to money already spent is not in
+// here; the page says so. The benchmark is quoted in GBP and needs none. Upgrade path: record the
+// GBP actually debited on each trade.
+const BENCH = 'VUSA.L';
+
+function actual(pos, prices, hist) {
+    const { rateFor } = require('../portfolio.js');
+    const rates = prices && prices.rates, quotes = (prices && prices.quotes) || {};
+    const gbp = (amt, ccy) => {
+        const from = rates ? rateFor(ccy, rates) : null, to = rates ? rateFor('GBP', rates) : null;
+        return from > 0 && to > 0 ? amt * from / to : null;
+    };
+    const days = (hist && hist.days) || [];
+    const tradingDays = from => { const i = days.findIndex(d => d >= from); return i < 0 ? 0 : days.length - 1 - i; };
+
+    const rows = Object.entries((pos && pos.holdings) || {}).map(([ticker, h]) => {
+        const q = quotes[ticker];
+        const value = q && q.price != null ? gbp(h.qty * q.price, q.currency) : null;
+        const cost = gbp(h.cost, h.currency);
+        const since = h.trades.map(t => t.date).sort()[0];
+        return {
+            ticker, qty: h.qty, cost, value, since, days: tradingDays(since),
+            gain: value != null && cost != null ? value - cost : null,
+            pots: [...new Set(h.trades.map(t => t.pot).filter(p => p && p !== 'Y'))],
+        };
+    }).sort((a, b) => a.since.localeCompare(b.since) || a.ticker.localeCompare(b.ticker));
+
+    const contributions = (pos && pos.contributions) || [];
+    const paidIn = contributions.reduce((a, c) => a + (c.amountGBP || 0), 0);
+    const cash = pos && pos.cashGBP != null ? pos.cashGBP : null;
+    // One unpriced holding makes the total unknowable, not smaller.
+    const held = rows.every(r => r.value != null) ? rows.reduce((a, r) => a + r.value, 0) : null;
+    const total = held != null && cash != null ? held + cash : null;
+
+    // Each contribution buys the index at the first close on or after the day it arrived.
+    let bench = null;
+    const series = hist && hist.closes && hist.closes[BENCH], bq = quotes[BENCH];
+    if (series && bq && bq.price > 0 && contributions.length) {
+        let units = 0;
+        for (const c of contributions) {
+            const i = days.findIndex(d => d >= c.date);
+            const entry = i < 0 ? null : series.slice(i).find(v => v != null);
+            const entryGBP = entry != null ? gbp(entry, bq.currency) : null;
+            if (!(entryGBP > 0)) { units = null; break; }
+            units += c.amountGBP / entryGBP;
+        }
+        if (units != null) bench = gbp(units * bq.price, bq.currency);
+    }
+    return { rows, contributions, paidIn, cash, held, total, bench };
+}
+
+const gbp2 = v => v == null ? '–' : v.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const signed = v => v == null ? '–' : `${v >= 0 ? '+' : '−'}${gbp2(Math.abs(v))}`;
+
+function writeActual(pos, prices, hist) {
+    const a = actual(pos, prices, hist);
+    const first = a.contributions.map(c => c.date).sort()[0];
+    const age = first ? Math.round((Date.now() - Date.parse(first)) / 864e5) : 0;
+    const mature = a.rows.filter(r => r.days >= NOISE_DAYS).length;
+    // The headline is the MATURITY again, for the reason paper.md gives: a green number three
+    // weeks in reads as a result and is nothing of the kind.
+    const verdict = !a.rows.length
+        ? '**Nothing bought yet.**'
+        : mature === 0
+            ? `**Every figure here is noise.** The pot is ${age} days old and none of its ${a.rows.length} `
+              + `holdings has been held ${NOISE_DAYS} trading days. Read this page for whether the arithmetic `
+              + 'works, not for whether the pot is any good.'
+            : `**${mature} of ${a.rows.length} holdings have been held ${NOISE_DAYS} trading days** and can be `
+              + 'read as something; the rest (†) are still noise.';
+    const gain = a.total != null ? a.total - a.paidIn : null;
+    const ret = (v, base) => v == null || !base ? '' : ` (${pct1(v / base)})`;
+    const vs = a.total != null && a.bench != null ? a.total - a.bench : null;
+    const link = id => `[${id}](proposals/${id}.md)`;
+    const row = r => `| ${r.since} | \`${r.ticker}\` | ${r.qty} | ${gbp2(r.cost)} | ${gbp2(r.value)} `
+        + `| ${signed(r.gain)} | ${r.gain != null && r.cost ? pct1(r.gain / r.cost) : '–'}${r.days < NOISE_DAYS ? ' †' : ''} `
+        + `| ${r.days} | ${r.pots.map(link).join(', ') || 'not tagged'} |`;
+
+    fs.writeFileSync('pot/performance.md', `# Actual performance
+
+Generated ${when(new Date().toISOString())} by \`npm run pot-report\`, from \`pot/positions.json\` and \`prices.json\`.
+
+What the pot's money is worth now, against what was paid in and against putting the same
+contributions into ${BENCH} on the days they arrived. [Paper performance](paper.md) scores every
+call the Deep dive made; this page is only what was actually bought, at the prices actually paid.
+
+${verdict}
+
+| | £ |
+|---|---:|
+| Paid in | ${gbp2(a.paidIn)} |
+| Holdings at today's prices | ${gbp2(a.held)} |
+| Cash | ${gbp2(a.cash)} |
+| **Pot value** | **${gbp2(a.total)}** |
+| **Gain** | **${signed(gain)}${ret(gain, a.paidIn)}** |
+| Same contributions in ${BENCH} | ${gbp2(a.bench)}${ret(a.bench != null ? a.bench - a.paidIn : null, a.paidIn)} |
+| **Pot against ${BENCH}** | **${signed(vs)}** |
+
+## Holdings
+
+${a.rows.length ? `| since | ticker | shares | net cost £ | value £ | gain £ | gain | trading days | proposal |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+${a.rows.map(row).join('\n')}` : '_None yet._'}
+${a.rows.some(r => r.days < NOISE_DAYS) ? `\n† held fewer than ${NOISE_DAYS} trading days: a wiggle, not a result.\n` : ''}
+## Contributions
+
+| date | £ |
+|---|---:|
+${a.contributions.map(c => `| ${c.date} | ${gbp2(c.amountGBP)} |`).join('\n') || '| – | – |'}
+
+## How to read this
+
+- **Every conversion is at today's exchange rate**, the same convention the pot's cash figure
+  uses. No past rates are stored, so what a currency move did to money already spent is not in
+  these numbers. The ${BENCH} comparison is priced in pounds and is not affected.
+- **Net cost** is what was paid for the shares still held, less anything sold. A name sold
+  outright leaves the table; its result stays in cash, and so in the total.
+- **Commission is not deducted.** It is zero on Trading 212, where the pot trades by default.
+- **No annualised figure until the pot is a year old**, the same rule as the CAGR column on the
+  main page.
+- ${BENCH} is bought at the first close on or after each contribution's date, and valued at its
+  latest price. It pays no dividends in this comparison, and neither do the holdings.
+`);
+    return a;
 }
 
 // The wishlist is keyed by date and company, which is right for an audit trail and useless for its
@@ -605,8 +736,11 @@ function build() {
     // quote its counts, and best-effort: history.json is ~4MB and CI-owned, so a missing or
     // half-written one must cost this page, never the whole report.
     let paper = { marked: 0, mature: 0 };
-    try { paper = writePaper(pos, read('history.json')); }
+    const hist = read('history.json');
+    try { paper = writePaper(pos, hist); }
     catch (e) { console.error(`skip paper.md: ${e.message}`); }
+    try { writeActual(pos, read('prices.json'), hist); }
+    catch (e) { console.error(`skip performance.md: ${e.message}`); }
     // By modification time. Sorting these by NAME put "smoke.md" after every dated sweep and
     // "2026-08-29-RSGN.SW.md" after "2026-08-29-1442-...", so the summary confidently named the
     // wrong output for both lanes: a smoke test as the latest Sweep, and a proposal four runs
@@ -968,5 +1102,40 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
     if (strandedSweep) console.log(`  ${strandedSweep} quoted a provisional price but added nothing to watchlist.json`);
 }
 
-if (require.main === module) build();
+function selftest() {
+    const assert = require('assert');
+    // Rates are USD per unit: £1 = $1.25, so $110 = £88. GBp is GBP/100.
+    const prices = {
+        rates: { USD: 1, GBP: 1.25 },
+        quotes: { TW: { price: 110, currency: 'USD' }, 'AZN.L': { price: 12600, currency: 'GBp' },
+                  'VUSA.L': { price: 110, currency: 'GBP' } },
+    };
+    const hist = { days: ['2026-09-03', '2026-09-04', '2026-09-07', '2026-09-08'],
+                   closes: { 'VUSA.L': [99, 100, 105, 110] } };
+    const pos = {
+        cashGBP: 100,
+        // The second arrives on a Saturday: it buys at Monday's close, not Friday's.
+        contributions: [{ date: '2026-09-04', amountGBP: 250 }, { date: '2026-09-05', amountGBP: 210 }],
+        holdings: {
+            TW: { qty: 1, cost: 100, currency: 'USD', trades: [{ date: '2026-09-07', pot: '2026-09-06-0900-TW' }] },
+            'AZN.L': { qty: 1, cost: 12500, currency: 'GBp', trades: [{ date: '2026-09-04', pot: 'Y' }] },
+        },
+    };
+    const a = actual(pos, prices, hist);
+    const near = (x, y, m) => assert.ok(Math.abs(x - y) < 1e-9, `${m}: ${x} vs ${y}`);
+    near(a.rows.find(r => r.ticker === 'TW').value, 88, 'USD holding converts at today\'s rate');
+    near(a.rows.find(r => r.ticker === 'TW').gain, 8, 'gain is value less net cost, both in GBP');
+    near(a.rows.find(r => r.ticker === 'AZN.L').value, 126, 'pence priced as GBP/100');
+    near(a.total, 88 + 126 + 100, 'pot value is holdings plus cash');
+    near(a.paidIn, 460, 'paid in sums the contributions');
+    // 250/100 + 210/105 = 4.5 units, worth 4.5 x 110.
+    near(a.bench, 4.5 * 110, 'each contribution buys the index at the first close on or after it');
+    assert.strictEqual(a.rows[0].ticker, 'AZN.L', 'oldest holding first');
+    assert.deepStrictEqual(a.rows.find(r => r.ticker === 'AZN.L').pots, [], "an untagged 'Y' trade links no proposal");
+    delete prices.quotes.TW;
+    assert.strictEqual(actual(pos, prices, hist).total, null, 'an unpriced holding leaves the total unknown, not smaller');
+    console.log('report.js selftest ok');
+}
+
+if (require.main === module) process.argv.includes('--selftest') ? selftest() : build();
 module.exports = { summarise, sessionFiles, renderTranscript };
