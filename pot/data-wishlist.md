@@ -30,9 +30,9 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
+| margin | 33 | **earns a feed** |
 | volume / units | 33 | **earns a feed** |
-| margin | 32 | **earns a feed** |
-| cash conversion | 28 | **earns a feed** |
+| cash conversion | 29 | **earns a feed** |
 | leverage / net debt | 14 | **earns a feed** |
 | backlog / order intake | 13 | **earns a feed** |
 | return on capital | 9 | **earns a feed** |
@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-198 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+199 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,10 +52,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-24 | DRAM contract prices and Chinese production capacity. | Michael Burry's public post supplied the lead, but no clean primary time series was found. Wanted monthly or quarterly if one becomes available; it is needed before a memory-supply opinion can support a company screen. |
 | 2026-09-24 | Global debt by sector and borrower. | The Institute of International Finance reported the global headline, but the risk cannot be assigned without the composition. Wanted quarterly with the Global Debt Monitor rather than as a weekly headline. |
 | 2026-09-24 | KWS segment growth, margins, cash conversion and research returns. | Fetched from KWS's FY2025/26 results. Wanted on results dates while KWS is tracked; these measures test whether heavy seed research creates organic growth and cash returns rather than merely supporting an adaptation narrative. |
 | 2026-09-24 | KWS.DE price and valuation history. | Fetched provisionally from Yahoo Finance while the name was off-universe. Wanted only until the watchlist addition lets the existing scheduled pipeline replace the manual snapshot. |
-| 2026-09-24 | DRAM contract prices and Chinese production capacity. | Michael Burry's public post supplied the lead, but no clean primary time series was found. Wanted monthly or quarterly if one becomes available; it is needed before a memory-supply opinion can support a company screen. |
+| 2026-09-24 | Suppress invalid P/E cheapness when current EPS is non-positive. | Deep dive 05:54 UTC: prices.json at 05:49:42 carries 0823.HK EPS -2.86 and pePctile 0, with 53 historical observations; current P/E is not meaningful. Its P/OCF percentile is 0.4529, so neither valid basis clears the decile. Consumers screening directly on pePctile must check a positive denominator rather than read zero as cheap. Preserve valid cash-only screening for loss-making names such as 1137.HK. Desired each fetch/display; no pipeline edit in this lane. |
 | 2026-09-23 | ENSO strength (Niño-3.4 / RONI) and its probabilities. | Fetched from NOAA Climate Prediction Center's monthly ENSO diagnostic discussion. Wanted monthly; one free series that drives Panama Canal capacity, palm oil yields, Asian and Australian crops and hydropower at once, and no earlier sweep had it. |
 | 2026-09-23 | EU medical-product supplier concentration and shortage mapping. | The OECD's [22 September report](https://www.oecd.org/en/publications/strengthening-the-eu-s-medical-supply-chains_cc235a9c-en.html) found that national injectable-corticosteroid markets commonly depend on one or two suppliers per molecule and identified sterile fill-and-finish plus internationally sourced APIs and intermediates as critical bottlenecks. Wanted when the OECD or EU updates the mapping, not weekly; it can distinguish supply-chain infrastructure from a generic healthcare theme. |
 | 2026-09-23 | Experian bypass adoption: signed distribution reach versus actual paid usage. | Deep dive verified FICO's 13 August release: direct-license partners represent 73.1% of mortgage reseller volume, but the release explicitly awaits a commercial-availability update (https://investors.fico.com/news-releases/news-release-details/informative-research-joins-fico-mortgage-direct-license-program). Need production activation, actual scores delivered, and Experian net fees/paid units displaced; partner coverage is not adoption. Check announcements monthly from 23 October and the issuer's 18 November H1 result. This extends the 20 September observability gap and retains Rule 4 half-sizing. |
@@ -250,5 +251,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-24 | Suppress invalid P/E cheapness when current EPS is non-positive. | Deep dive 05:54 UTC: prices.json at 05:49:42 carries 0823.HK EPS -2.86 and pePctile 0, with 53 historical observations; current P/E is not meaningful. Its P/OCF percentile is 0.4529, so neither valid basis clears the decile. Consumers screening directly on pePctile must check a positive denominator rather than read zero as cheap. Preserve valid cash-only screening for loss-making names such as 1137.HK. Desired each fetch/display; no pipeline edit in this lane. |
 <!-- entries:end -->
