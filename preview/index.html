@@ -3698,7 +3698,7 @@ function buildPotNav(nav, docs) {
     const parts = [];
 
     parts.push(`<input type="search" id="pot-filter" placeholder="Filter: ticker or date (MWA, 09-18)" aria-label="Filter pot documents">`);
-    parts.push(section('Start here', [...of('summary'), ...of('paper')].map(plain).join('')));
+    parts.push(section('Start here', [...of('summary'), ...of('actual'), ...of('paper')].map(plain).join('')));
 
     const open = of('proposal').filter(d => !/-none$/.test(d.title));
     if (open.length) parts.push(section('Current proposals',
