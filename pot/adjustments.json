@@ -1,7 +1,17 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-25",
+  "updated": "2026-09-26",
   "normalizedEps": {
+    "FUL": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Q3 issuer reconciliation, using literal fiscal period ends. Reported Q3 2026 EPS is USD1.44; adjusted EPS is USD1.52. The reconciliation removes a USD19.713m unrealized acquisition-related FX-forward gain alongside expense and tax adjustments. The gross gain is evidence only, not an after-tax attributable adjustment. No matching FY2026 row exists in earnings.json, so no annual amount is assigned to an invented fiscal date. These two comparative quarters do not establish twelve contiguous months or an adjusted historical percentile. Source for the gain and EPS: https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx . Added by the 26 September 2026 deep dive.",
+      "annual": [],
+      "quarters": [
+        { "end": "2025-08-30", "eps": 1.26, "source": "https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx" },
+        { "end": "2026-08-29", "eps": 1.52, "source": "https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx" }
+      ]
+    },
     "NVO": {
       "basis": "company-adjusted diluted EPS per share/ADR",
       "ccy": "DKK",
