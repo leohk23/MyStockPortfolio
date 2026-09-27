@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 34 | **earns a feed** |
-| volume / units | 33 | **earns a feed** |
-| cash conversion | 30 | **earns a feed** |
+| margin | 35 | **earns a feed** |
+| volume / units | 34 | **earns a feed** |
+| cash conversion | 31 | **earns a feed** |
+| leverage / net debt | 15 | **earns a feed** |
 | backlog / order intake | 14 | **earns a feed** |
-| leverage / net debt | 14 | **earns a feed** |
 | return on capital | 10 | **earns a feed** |
+| inventory | 9 | **earns a feed** |
 | capital returns | 9 | **earns a feed** |
-| inventory | 8 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-206 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+210 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -53,6 +53,7 @@ every report run. Do not hand-edit between the markers.
 | date | wanted | detail |
 |---|---|---|
 | 2026-09-26 | `FUL` local price and comparable valuation history. | Yahoo supplied a provisional 25 September close and trailing multiple because the name was outside the repository. Added to `watchlist.json`; the regular pipeline should replace the snapshot with its own quote, filed earnings and five-year valuation bands. No separate feed wanted; successful scheduled coverage remains to verify. |
+| 2026-09-26 | FUL coverage arrived, but latest filed quarter and gain bridge lag. | Deep dive: prices.json at 22:11 UTC now has FUL at USD50.06, EPS3.59 and five peBands; the Sweep's provisional 15.15x is replaced by local 13.94x. earnings.json still ends its quarterly accounts in May despite the 23 September release for 29 August. Added direct adjusted Q3 EPS1.52 and comparative EPS1.26 to normalizedEps.FUL. The release identifies a USD19.713m acquisition-related unrealized FX-forward gain; retained as sourced evidence in that record's note, without after-tax arithmetic or an invented FY2026 date (no matching annual row yet). On results dates, capture the actual fiscal end and the gain's separately stated tax/attribution if available. Source: https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx . |
 | 2026-09-26 | H.B. Fuller price-volume mix, working capital and post-AMS leverage. | Fetched from the company's Q3 release and 10-Q. Wanted on results dates while `FUL` is tracked: disclosed pricing and organic growth must be separated from physical volume, and DSO, inventory days, cash conversion, acquisition synergies and leverage must show whether margin expansion is compounding capital rather than borrowing against customers and the balance sheet. |
 | 2026-09-26 | US producer prices split by energy, transport and selected industrial inputs. | Fetched from the Bureau of Labor Statistics August PPI release. Wanted monthly while the energy shock persists; the adhesive-and-sealant series was directly useful for checking whether H.B. Fuller's pricing was industry inflation or company-specific value capture. This is the first direct reach for the detailed US PPI input split. |
 | 2026-09-25 | `TE.PA` local price and comparable valuation history. | Yahoo confirmed the ticker, but no provisional price or multiple was used. Added to `watchlist.json`; the normal pipeline should establish the quote, earnings history and valuation band. No separate feed wanted; successful scheduled coverage remains to verify. |
@@ -261,5 +262,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-26 | FUL coverage arrived, but latest filed quarter and gain bridge lag. | Deep dive: prices.json at 22:11 UTC now has FUL at USD50.06, EPS3.59 and five peBands; the Sweep's provisional 15.15x is replaced by local 13.94x. earnings.json still ends its quarterly accounts in May despite the 23 September release for 29 August. Added direct adjusted Q3 EPS1.52 and comparative EPS1.26 to normalizedEps.FUL. The release identifies a USD19.713m acquisition-related unrealized FX-forward gain; retained as sourced evidence in that record's note, without after-tax arithmetic or an invented FY2026 date (no matching annual row yet). On results dates, capture the actual fiscal end and the gain's separately stated tax/attribution if available. Source: https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx . |
 <!-- entries:end -->
