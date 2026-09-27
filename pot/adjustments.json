@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-26",
+  "updated": "2026-09-27",
   "normalizedEps": {
     "FUL": {
       "basis": "company-adjusted diluted EPS",
@@ -145,6 +145,12 @@
         {
           "end": "2026-06-30",
           "eps": 0.7,
+          "source": "https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86"
+        },
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 1.35,
           "source": "https://ir.yumchina.com/static-files/bca2bcb5-0485-4d34-9000-72195675bc86"
         }
       ]
