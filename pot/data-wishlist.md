@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 35 | **earns a feed** |
+| margin | 36 | **earns a feed** |
 | volume / units | 34 | **earns a feed** |
-| cash conversion | 31 | **earns a feed** |
+| cash conversion | 32 | **earns a feed** |
 | leverage / net debt | 15 | **earns a feed** |
 | backlog / order intake | 14 | **earns a feed** |
+| inventory | 10 | **earns a feed** |
 | return on capital | 10 | **earns a feed** |
-| inventory | 9 | **earns a feed** |
 | capital returns | 9 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-210 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+214 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,9 +52,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-09-28 | China industrial production by product, especially industrial robots and capital equipment. | Fetched from the [National Bureau of Statistics of China's August activity release](https://english.www.gov.cn/archive/statistics/202609/15/content_WS6aa8ac5ec6d00ca5f9a0d2f5.html). Wanted monthly while the manufacturing and consumer cycles diverge; robot output and equipment-manufacturing growth revealed a production mix that the existing broad PMI series does not. |
+| 2026-09-28 | Automation order quality, service mix and cash conversion. | Fetched from [FANUC's Q1 FY2027 presentation](https://www.fanuc.co.jp/en/ir/announce/pdf/2026/reference202606_e.pdf) and [Daifuku's H1 FY2026 update](https://www.daifuku.com/ir/policy/message/). Wanted on results dates for screened automation names, not weekly; production growth and record orders do not show whether demand is repeatable or compounds shareholder capital. |
+| 2026-09-27 | `ZAL.DE` local price, filed earnings and comparable valuation history. | Yahoo supplied a provisional 23 September history because the name was outside the repository. Added to `watchlist.json`; the normal pipeline should establish the quote, earnings record and five-year valuation bands independently. No separate feed wanted; successful scheduled coverage remains to verify. |
 | 2026-09-27 | Current central-bank policy rates and decision changes. | Fetched from the [Federal Reserve's 16 September statement](https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm) and the [ECB's 10 September decision](https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html). The repo's market yields show the consequence but not the policy setting. Wanted after every decision and then carried locally; this follows the 16 and 18 September reaches and now meets the repeated-use case for a small policy-rate feed. |
 | 2026-09-27 | EU small-parcel handling fee level and customs-reform enforcement detail. | The [Council](https://www.consilium.europa.eu/en/press/press-releases/2026/09/03/eu-customs-council-greenlights-landmark-reform/) and [Commission](https://taxation-customs.ec.europa.eu/customs/eu-customs-reform_en) establish platform importer responsibility, removal of the sub-€150 exemption and a November start, but the delegated act has not set the fee amount. Wanted event-driven until implementation, not weekly; the amount and enforcement decide whether the reform materially changes marketplace economics. |
-| 2026-09-27 | `ZAL.DE` local price, filed earnings and comparable valuation history. | Yahoo supplied a provisional 23 September history because the name was outside the repository. Added to `watchlist.json`; the normal pipeline should establish the quote, earnings record and five-year valuation bands independently. No separate feed wanted; successful scheduled coverage remains to verify. |
 | 2026-09-27 | Zalando stand-alone growth, B2C margin, partner-parcel exposure and cash conversion. | Fetched from [Zalando's Q2 release](https://corporate.zalando.com/en/financials/zalando-q2-2026-results). Headline group growth includes ABOUT YOU, and the EU customs reform may affect marketplace partners differently from owned inventory. Wanted on results dates while `ZAL.DE` is tracked: stand-alone customer and GMV growth, B2C margin, B2B margin, operating cash flow and exposure of partner parcels to importer obligations must test whether policy and mix gains reach shareholders. |
 | 2026-09-26 | `FUL` local price and comparable valuation history. | Yahoo supplied a provisional 25 September close and trailing multiple because the name was outside the repository. Added to `watchlist.json`; the regular pipeline should replace the snapshot with its own quote, filed earnings and five-year valuation bands. No separate feed wanted; successful scheduled coverage remains to verify. |
 | 2026-09-26 | FUL coverage arrived, but latest filed quarter and gain bridge lag. | Deep dive: prices.json at 22:11 UTC now has FUL at USD50.06, EPS3.59 and five peBands; the Sweep's provisional 15.15x is replaced by local 13.94x. earnings.json still ends its quarterly accounts in May despite the 23 September release for 29 August. Added direct adjusted Q3 EPS1.52 and comparative EPS1.26 to normalizedEps.FUL. The release identifies a USD19.713m acquisition-related unrealized FX-forward gain; retained as sourced evidence in that record's note, without after-tax arithmetic or an invented FY2026 date (no matching annual row yet). On results dates, capture the actual fiscal end and the gain's separately stated tax/attribution if available. Source: https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx . |
@@ -267,10 +269,3 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
-
-### 2026-09-27, deep dive 22:49 UTC
-
-- **ZAL.DE coverage now established.** The 22:41:53 UTC price snapshot has a EUR22.03 quote, EPS, earnings bands and the cash screen; earnings.json includes Q2 2026 revenue EUR3,424.4m and net income EUR73.8m, agreeing with the [issuer release](https://corporate.zalando.com/en/financials/zalando-q2-2026-results). This resolves the newest Sweep's first-fetch gap, not its investment questions. B2C profitability and cash after integration remain quarterly research needs.
-- **Origins registry trails the live watchlist.** FUL and ZAL.DE have no entries in pot/origins.json at this run, although their discovery is in the 26 September 21:59 and 27 September 22:29 Sweeps. The ranking recovered those cases directly rather than inventing an origin. Refresh the derived registry when the normal book/report cycle next runs.
-- **FUL quote and quarterly-store freshness diverge.** prices.json at 22:41:53 has trailing EPS USD3.59; earnings.json, checked this evening, still ends at May 2026. The [23 September Q3 release](https://investors.hbfuller.com/news/news-details/2026/H-B--Fuller-Reports-Third-Quarter-2026-Results/default.aspx) states reported EPS USD1.44 and adjusted USD1.52 for 29 August. Preserve issuer fiscal dates and the existing source-backed adjusted EPS; do not infer that a recent checked timestamp means the statement quarter has landed. Wanted after results, with explicit coverage provenance.
-- **External delivery-risk source fallback confirmed.** Meituan's issuer-hosted August PDF failed this run, but the [official HKEX Q2 filing](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0828/2026082800435.pdf) supplies Core Local Commerce margin 7.9%. Retain quarterly margin plus subsidy commentary alongside Yum China's brand sales/transactions and royalty-comparable restaurant margins. The platform is a pressure proxy, not Yum China's market share. Next observation to be checked by 1 December 2026.
