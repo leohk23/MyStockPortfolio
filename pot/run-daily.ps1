@@ -121,7 +121,14 @@ function Save-Scratch {
 function Restore-Scratch($saved) {
     if (-not $saved) { return }
     foreach ($kv in $saved.GetEnumerator()) {
-        Copy-Item $kv.Value $kv.Key -Force
+        # Retried: anything reading the file at that instant (an editor, a virus scan, a script
+        # of Leo's or Claude's) holds a mapped section, and Copy-Item fails with "user-mapped
+        # section open". On 29 Sep that aborted an ad hoc cycle before its Deep dive for a lock
+        # that lasted under a second. Ten tries a second apart; a lock longer than that is real.
+        foreach ($try in 1..10) {
+            try { Copy-Item $kv.Value $kv.Key -Force -ErrorAction Stop; break }
+            catch { if ($try -eq 10) { throw }; Start-Sleep -Seconds 1 }
+        }
         Remove-Item $kv.Value -Force -ErrorAction SilentlyContinue
     }
 }
