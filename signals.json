@@ -1,6 +1,6 @@
 {
- "generated": "2026-09-29T23:01:02.120Z",
- "pricesAt": "2026-09-29T22:50:27.779Z",
+ "generated": "2026-09-29T23:18:16.699Z",
+ "pricesAt": "2026-09-29T23:18:08.651Z",
  "vix": {
   "close": 16.04,
   "day": -0.0019
@@ -130,16 +130,16 @@
    "pctile": 0,
    "window": "5y",
    "weeks": 223,
-   "floor": 20.0654,
+   "floor": 20.0669,
    "floorDate": "2026-10-02",
-   "p5": 23.5152,
-   "median": 36.356,
-   "vsFloor": -0.00647463439713436,
+   "p5": 23.5169,
+   "median": 36.3587,
+   "vsFloor": -0.006548900379842459,
    "cheapOn": "both",
    "cash": {
-    "pocf": 13.4606,
+    "pocf": 13.4616,
     "pctile": 0,
-    "median": 22.7363,
+    "median": 22.7381,
     "weeks": 171,
     "window": "5y"
    }
@@ -573,6 +573,35 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "UU.L",
+   "where": "watchlist",
+   "pe": 16.36046511627907,
+   "pctile": 0.05263,
+   "window": "5y",
+   "weeks": 171,
+   "floor": 15.4312,
+   "floorDate": "2026-09-11",
+   "p5": 16.3403,
+   "median": 34.6221,
+   "vsFloor": 0.06021988674108747,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 6.96338,
+    "pctile": 0.05263,
+    "median": 9.14494,
+    "weeks": 171,
+    "window": "5y"
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 15.897388964025803,
+    "recurringVsFloor": 0.060214676316369564,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "HKXCY",
    "where": "HELD",
    "pe": 24.683417085427134,
@@ -608,16 +637,16 @@
    "pctile": 0.03261,
    "window": "5y",
    "weeks": 184,
-   "floor": 23.1776,
+   "floor": 23.1793,
    "floorDate": "2026-08-14",
-   "p5": 25.4711,
-   "median": 40.7624,
-   "vsFloor": 0.07027419687754133,
+   "p5": 25.473,
+   "median": 40.7654,
+   "vsFloor": 0.07019570157635924,
    "cheapOn": "both",
    "cash": {
-    "pocf": 17.6335,
+    "pocf": 17.6349,
     "pctile": 0.03804,
-    "median": 22.1171,
+    "median": 22.1188,
     "weeks": 184,
     "window": "5y"
    }
@@ -1099,7 +1128,7 @@
    "rule": "6.1 valuation",
    "ticker": "7203.T",
    "where": "watchlist",
-   "pe": 8.49624060150376,
+   "pe": 8.20355871886121,
    "pctile": 0.5848,
    "window": "5y",
    "weeks": 171,
@@ -1107,7 +1136,7 @@
    "floorDate": "2025-04-04",
    "p5": 6.72762,
    "median": 8.903,
-   "vsFloor": 0.3389500510608012,
+   "vsFloor": 0.29282536602781684,
    "cheapOn": "cash",
    "cash": {
     "pocf": 6.86208,
@@ -1118,8 +1147,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 9.501873004985887,
-    "recurringVsFloor": 0.4280456471207088,
+    "recurringPe": 9.174560216508796,
+    "recurringVsFloor": 0.3788534928384546,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -1605,7 +1634,8 @@
   "BWLP": "2026-11-23",
   "KWS.DE": "2026-11-11",
   "TE.PA": "2026-10-29",
-  "ZAL.DE": "2026-11-03"
+  "ZAL.DE": "2026-11-03",
+  "UU.L": "2026-11-12"
  },
  "shadow": [
   {
@@ -3838,7 +3868,7 @@
    "cooling": 0.0637,
    "says": "-9% over a year but 6% over three months — cooling",
    "mixed": true,
-   "inGBP": -0.0712
+   "inGBP": -0.0708
   },
   {
    "sym": "^N225",
@@ -3847,7 +3877,7 @@
    "cooling": -0.0709,
    "says": "46% over a year but -7% over three months — cooling",
    "mixed": true,
-   "inGBP": 0.414
+   "inGBP": 0.4101
   },
   {
    "sym": "DX-Y.NYB",
@@ -3865,14 +3895,14 @@
    "sym": "GC=F",
    "name": "Gold",
    "group": "Commodity",
-   "real": 0.05009999999999999,
+   "real": 0.05059999999999999,
    "mixed": true
   },
   {
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.3986,
+   "real": 0.3957,
    "says": "40% net of the dollar — a real move, not currency",
    "mixed": true
   },
@@ -3880,9 +3910,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3044,
-   "says": "-27% over a year but 39% over three months — cooling",
-   "cooling": 0.3924,
+   "real": -0.30219999999999997,
+   "says": "-27% over a year but 40% over three months — cooling",
+   "cooling": 0.3966,
    "mixed": true
   }
  ],
