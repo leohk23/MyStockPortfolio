@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 36 | **earns a feed** |
+| margin | 37 | **earns a feed** |
 | volume / units | 34 | **earns a feed** |
-| cash conversion | 32 | **earns a feed** |
+| cash conversion | 33 | **earns a feed** |
 | leverage / net debt | 15 | **earns a feed** |
 | backlog / order intake | 14 | **earns a feed** |
+| return on capital | 11 | **earns a feed** |
 | inventory | 10 | **earns a feed** |
-| return on capital | 10 | **earns a feed** |
 | capital returns | 9 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-214 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+218 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,8 +52,10 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-09-28 | China industrial production by product, especially industrial robots and capital equipment. | Fetched from the [National Bureau of Statistics of China's August activity release](https://english.www.gov.cn/archive/statistics/202609/15/content_WS6aa8ac5ec6d00ca5f9a0d2f5.html). Wanted monthly while the manufacturing and consumer cycles diverge; robot output and equipment-manufacturing growth revealed a production mix that the existing broad PMI series does not. |
 | 2026-09-28 | Automation order quality, service mix and cash conversion. | Fetched from [FANUC's Q1 FY2027 presentation](https://www.fanuc.co.jp/en/ir/announce/pdf/2026/reference202606_e.pdf) and [Daifuku's H1 FY2026 update](https://www.daifuku.com/ir/policy/message/). Wanted on results dates for screened automation names, not weekly; production growth and record orders do not show whether demand is repeatable or compounds shareholder capital. |
+| 2026-09-28 | BVI.PA and other Scan P/E signals: carry the percentile's actual current price, denominator, basis and date beside quote-TTM P/E. | Deep dive found BVI.PA at EUR27.03 / EUR1.13 = 23.9204x, above peHistory.5y.p25 21.961x, while signals reports an 8.475 percentile over 236 weeks from 2022-04-01. fetch-prices.js peHistory ranks the last historical observation on publishedEps, not quote.eps. Cash is at the 19.02 percentile, so today's reported multiple does not establish the advertised decile. Preserve both labelled measures and test same-denominator ranking; current company-adjusted EPS cannot inherit this history. No code changed in this lane. |
+| 2026-09-28 | BVI.PA operating-profit definitions, capital proxy and interim adjusted evidence. | Issuer FY2025 operating profit EUR992.4m differs from local EUR938.7m; FY2024 EUR933.4m differs from EUR912.1m. H1 2026 release Appendix 6 separately reconciles the EUR64.9m H1 2025 disposal/acquisition gain and EUR0.65 comparative adjusted EPS, now appended as evidence. Refresh definition labels before treating local capital ROIC as issuer-certified. Sources: https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy and https://group.bureauveritas.com/sites/g/files/zypfnx196/files/media/document/Press%20Release_H1_2026_Results.pdf . |
+| 2026-09-28 | China industrial production by product, especially industrial robots and capital equipment. | Fetched from the [National Bureau of Statistics of China's August activity release](https://english.www.gov.cn/archive/statistics/202609/15/content_WS6aa8ac5ec6d00ca5f9a0d2f5.html). Wanted monthly while the manufacturing and consumer cycles diverge; robot output and equipment-manufacturing growth revealed a production mix that the existing broad PMI series does not. |
 | 2026-09-27 | `ZAL.DE` local price, filed earnings and comparable valuation history. | Yahoo supplied a provisional 23 September history because the name was outside the repository. Added to `watchlist.json`; the normal pipeline should establish the quote, earnings record and five-year valuation bands independently. No separate feed wanted; successful scheduled coverage remains to verify. |
 | 2026-09-27 | Current central-bank policy rates and decision changes. | Fetched from the [Federal Reserve's 16 September statement](https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm) and the [ECB's 10 September decision](https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260910~314e508016.en.html). The repo's market yields show the consequence but not the policy setting. Wanted after every decision and then carried locally; this follows the 16 and 18 September reaches and now meets the repeated-use case for a small policy-rate feed. |
 | 2026-09-27 | EU small-parcel handling fee level and customs-reform enforcement detail. | The [Council](https://www.consilium.europa.eu/en/press/press-releases/2026/09/03/eu-customs-council-greenlights-landmark-reform/) and [Commission](https://taxation-customs.ec.europa.eu/customs/eu-customs-reform_en) establish platform importer responsibility, removal of the sub-€150 exemption and a November start, but the delegated act has not set the fee amount. Wanted event-driven until implementation, not weekly; the amount and enforcement decide whether the reform materially changes marketplace economics. |
@@ -268,6 +270,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-09-28 | BVI.PA and other Scan P/E signals: carry the percentile's actual current price, denominator, basis and date beside quote-TTM P/E. | Deep dive found BVI.PA at EUR27.03 / EUR1.13 = 23.9204x, above peHistory.5y.p25 21.961x, while signals reports an 8.475 percentile over 236 weeks from 2022-04-01. fetch-prices.js peHistory ranks the last historical observation on publishedEps, not quote.eps. Cash is at the 19.02 percentile, so today's reported multiple does not establish the advertised decile. Preserve both labelled measures and test same-denominator ranking; current company-adjusted EPS cannot inherit this history. No code changed in this lane. |
-| 2026-09-28 | BVI.PA operating-profit definitions, capital proxy and interim adjusted evidence. | Issuer FY2025 operating profit EUR992.4m differs from local EUR938.7m; FY2024 EUR933.4m differs from EUR912.1m. H1 2026 release Appendix 6 separately reconciles the EUR64.9m H1 2025 disposal/acquisition gain and EUR0.65 comparative adjusted EPS, now appended as evidence. Refresh definition labels before treating local capital ROIC as issuer-certified. Sources: https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy and https://group.bureauveritas.com/sites/g/files/zypfnx196/files/media/document/Press%20Release_H1_2026_Results.pdf . |
 <!-- entries:end -->
