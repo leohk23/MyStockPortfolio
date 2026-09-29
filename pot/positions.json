@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-29T23:00:59.821Z",
- "cashGBP": 313.36,
+ "generated": "2026-09-29T23:49:54.467Z",
+ "cashGBP": 313.37,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -99,6 +99,21 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-09-29-2346-NVO.md",
+   "id": "2026-09-29-2346-NVO",
+   "state": "open",
+   "ticker": "NVO",
+   "written": "2026-09-29",
+   "side": "BUY",
+   "limit": null,
+   "warning": "— read by the **10 November 2026** review, after Novo's Q3 on 4 November. Any one of these trips a re-read, not a sale: - US Operations sales growth at CER is **negative again in Q3 2026**, after +4% in Q2 and −4% for H1, with Novo again citing lower realised prices. - **Wegovy pill sales in Q3 2026 fall below Q2's DKK 3,141m.** - The 2026 outlook is **cut below its 0% to −6% range** for adjusted sales or adjusted operating profit growth at CER. - External, per Rule 3: Eli Lilly's own Q3 release shows its US tirzepatide revenue growth pulling further ahead of Novo's US GLP-1 growth than it did in Q2. The review records both companies' quarterly US figures side by side. This leg is recorded, not fired on a threshold, because I did not pull Lilly's Q2 base in this run.",
+   "break": "— propose a sale under §5.1 if any one of these happens: - US Operations sales growth at CER is negative in **both Q3 and Q4 2026**, the two post-entry quarters. That would be price falling faster than volume in the market that is over half of sales. - At FY2026 results (early February 2027), the **adjusted operating margin is below 40%**, against 44.6% in H1 2026 and 41.3% reported for FY2025. - **The 2027 outlook guides adjusted sales growth at CER below zero at its midpoint.** A second year of decline contradicts the \"in line with peers\" ambition that this thesis relies on.",
+   "reviewBy": "2026-11-10",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-09-29-0834-YUMC.md",
    "id": "2026-09-29-0834-YUMC",
@@ -757,9 +772,9 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": null,
+   "supersededBy": "2026-09-29-2346-NVO",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-12-0032-NVO.md",
@@ -772,7 +787,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-12-1230-NVO",
+   "supersededBy": "2026-09-29-2346-NVO",
    "phase": "live",
    "counts": false
   },
