@@ -37,6 +37,7 @@ file you open is resent on every turn that follows.
 | `pot/positions.json` | cash, holdings, and §4.5a's preference for a name not already held |
 | `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
 | `pot/origins.json` | why each name is on the watchlist at all, in the words of the Sweep that found it |
+| `pot/rejections.json` | companies Leo has turned down: not candidates, under any listing named |
 
 **Filings are for the shortlist, not the list.** Accounting for all ~72 watchlist names (§D34) is a
 screening job done from local data — an excluded line may be one clause. Opening a company's own
@@ -69,6 +70,22 @@ rule, and the output no longer said what the evidence said.
 That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecided draft is not in
 it. If you want to note that a name has been proposed before, put it in the ranking table as a
 remark; never let it downgrade a rank or suppress a proposal.
+
+## A company Leo rejected is out — `pot/rejections.json` (§3.2, D83)
+
+A draft Leo has not answered constrains nothing, as above. A company he has **rejected** is the
+opposite: it is excluded until he lifts it, under **every listing in its `listings`**. Do not
+propose it, do not rank it, and do not propose a top-up of it — a Scan signal on it changes
+nothing. It goes in the Excluded table as `rejected by Leo on <date>: <reason>`, in his words, with
+no argument against his decision anywhere in your output.
+
+**One exception, and it is a note, not a proposal.** If since the rejection date the company has
+published new results, or its price is at least **20% below** the `price` recorded with the
+rejection, say so in one line in the run report under **Rejected, but changed**: the ticker, what
+changed, and the date. Nothing more; Leo decides whether to lift it.
+
+A name the pot already holds stays with the Review lane whatever this file says. Rejecting a
+company stops new money going in; it does not sell anything.
 
 ## Say what the proposal does to Leo's total exposure
 

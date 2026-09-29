@@ -42,6 +42,7 @@ So:
 | `strategy.md` | the rules. **Authoritative** — what may be bought and on what basis |
 | `pot/reading.md` | articles Leo kept, each with why it caught him |
 | `watchlist.json`, `holdings.json` | the ~80 names already covered — do not re-propose these as new |
+| `pot/rejections.json` | companies Leo has rejected (§3.2) — **never raise one as a candidate**, under any listing |
 | `prices.json` (`macro`), `signals.json` | levels and moves we already hold, for checking figures |
 | `pot/positions.json` | what the pot holds and its cash |
 

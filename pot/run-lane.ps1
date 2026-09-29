@@ -49,6 +49,8 @@ if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) -
 
 # Only these paths may change. Anything else the agent touches is reverted below, not committed.
 $allowed = @('pot/*', 'watchlist.json')
+# ...except Leo's own decisions, which sit under pot/ but are never a lane's to change (D83).
+$protected = @('pot/rejections.json')
 
 # Whatever was already modified before the agent started is NOT the agent's doing, and must
 # survive. The revert below exists to stop a stray agent edit reaching a commit; on 30 Aug it
@@ -169,7 +171,7 @@ if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
 
 # Revert anything outside the allowlist before staging, so a stray edit cannot ride along.
 $stray = git status --porcelain | ForEach-Object { $_.Substring(3) } |
-    Where-Object { $p = $_; -not ($allowed | Where-Object { $p -like $_ }) -and $dirtyBefore -notcontains $p }
+    Where-Object { $p = $_; (-not ($allowed | Where-Object { $p -like $_ }) -or $protected -contains $p) -and $dirtyBefore -notcontains $p }
 if ($stray) {
     Note "reverting $($stray.Count) file(s) outside the allowlist: $($stray -join ', ')"
     git checkout -- $stray 2>&1 | Out-Null

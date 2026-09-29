@@ -300,7 +300,8 @@ const px = v => (v >= 1000 ? v.toFixed(0) : v.toFixed(2));
 
 function paperTable(rows, dateHeader) {
     if (!rows.length) return '_None yet._';
-    const name = r => `\`${r.ticker}\`${r.n > 1 ? ` ×${r.n}` : ''}`;
+    // Still marked once Leo has said no: over time this is the record of whether he was right to.
+    const name = r => `\`${r.ticker}\`${r.n > 1 ? ` ×${r.n}` : ''}${r.rejected ? ' rejected' : ''}`;
     const line = r => r.m
         ? `| ${r.date} | ${name(r)} | ${r.m.days} | ${px(r.m.entry)} | ${px(r.m.now)} `
           + `| ${pct1(r.m.ret)}${r.m.days < NOISE_DAYS ? ' †' : ''} |`
@@ -321,7 +322,7 @@ function writePaper(pos, hist) {
     for (const p of ((pos && pos.proposals) || [])) {
         if (!p.written || !p.ticker || p.ticker === 'none') continue;   // cash won: no name to mark
         const k = `${p.written}|${p.ticker}`;
-        const e = byDay.get(k) || { date: p.written, ticker: p.ticker, n: 0 };
+        const e = byDay.get(k) || { date: p.written, ticker: p.ticker, n: 0, rejected: p.state === 'rejected' };
         e.n++;
         byDay.set(k, e);
     }
@@ -731,6 +732,7 @@ function build() {
 
     const sig = read('signals.json');
     const pos = read('pot/positions.json', { cashGBP: 0, holdings: {} });
+    const rejections = read('pot/rejections.json', []);
 
     // Paper marks for every name the pot has named. Written before the summary so the summary can
     // quote its counts, and best-effort: history.json is ~4MB and CI-owned, so a missing or
@@ -1024,6 +1026,16 @@ ${strandedSweep
             + ' quoted a price for a name we do not carry. Rule 3 of [sources.md](sources.md) says '
             + 'add the ticker to `watchlist.json`, so the next fetch makes it local.'
         : ''}
+${openProposals.length ? '- To turn a company down for good: `node pot/reject.js TICKER "reason"`, or ask Claude.' : ''}
+
+## Rejected by you
+
+${rejections.length
+        ? 'Not proposed, ranked or raised by the Sweep again until you lift it (strategy.md §3.2). '
+            + 'A held position is still reviewed.' + String.fromCharCode(10) + String.fromCharCode(10)
+            + '| company | listings | since | reason | to lift |' + String.fromCharCode(10) + '|---|---|---|---|---|' + String.fromCharCode(10)
+            + rejections.map(r => `| \`${r.ticker}\` | ${r.listings.join(', ')} | ${r.date} | ${r.reason} | \`node pot/reject.js --lift ${r.ticker}\` |`).join(String.fromCharCode(10))
+        : '_Nothing rejected._'}
 
 ## The pot
 

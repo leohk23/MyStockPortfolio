@@ -146,13 +146,19 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     try { files = fs.readdirSync(p('pot/proposals')).filter(f => f.endsWith('.md') && !f.endsWith('-ranking.md')).sort().reverse(); }
     catch { /* none yet */ }
 
+    // Leo's rejections (pot/reject.js, D83): a company he has said no to is not awaiting anything.
+    const rejectedBy = new Map();
+    for (const r of read('pot/rejections.json', [])) for (const t of r.listings || [r.ticker]) rejectedBy.set(t, r);
+
     const proposals = files.map(file => {
         const parsed = parseProposal(file);
         if (!parsed) return null;
         const id = file.replace(/\.md$/, '');
         const trade = trades.find(t => t.pot === id);
+        const rejected = rejectedBy.get(parsed.ticker);
         let state = 'open';
-        if (trade) state = 'accepted';
+        if (trade) state = 'accepted';                      // a bought name stays bought, rejected or not
+        else if (rejected) state = 'rejected';
         else if (parsed.limit != null && parsed.side === 'BUY') {
             // A buy limit that today's price has left behind cannot be filled as written. That is
             // not a rejection - it is an order that expired, and it needs re-proposing, not
@@ -163,6 +169,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         return {
             file, id, state, ...parsed,
             ...(trade ? { executed: { date: trade.date, qty: trade.qty, price: trade.price } } : {}),
+            ...(!trade && rejected ? { rejected: { date: rejected.date, reason: rejected.reason } } : {}),
         };
     }).filter(Boolean);
 
@@ -240,7 +247,7 @@ if (require.main === module) {
     const live = out.proposals.filter(x => !x.supersededBy).length;
     const counting = out.proposals.filter(x => x.counts).length;
     console.log(`wrote pot/positions.json: ${Object.keys(out.holdings).length} holding(s), `
-        + `${out.proposals.length} proposal(s) — ${by('accepted')} accepted, ${by('open')} open, ${by('expired')} expired`);
+        + `${out.proposals.length} proposal(s) — ${by('accepted')} accepted, ${by('open')} open, ${by('expired')} expired, ${by('rejected')} rejected`);
     console.log(`  ${live} live decision(s), ${out.proposals.length - live} superseded, `
         + `${counting} scored (the rest are pre-live)`);
     const noFalsifier = out.proposals.filter(x => x.state === 'accepted' && !x.break);

@@ -16,7 +16,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | §   | Rule                                     | Value                                                                                                               |
 | ---- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | 3.1  | Universe                                 | No constraints                                                                                                      |
-| 3.2  | Permanent exclusions                     | None                                                                                                                |
+| 3.2  | Permanent exclusions                     | Companies Leo has rejected, until he lifts it (`pot/rejections.json`)                                               |
 | 3.3  | May buy what the main book already holds | Yes                                                                                                                 |
 | 3.4  | Single stocks / funds                    | Both                                                                                                                |
 | 4.1  | Minimum position                         | **No minimum** — but refuse a ticket whose first-year costs exceed **2%** of it                        |
@@ -237,6 +237,13 @@ No constraints, for now I will execute it myself until it's ready to be fully au
 > retrofit honestly once the agent has already recommended one.
 
 **A** — No.
+
+⚠ **Revised 29 Sep 2026 (D83): one exclusion, Leo's own.** A company Leo rejects is not
+proposed, ranked or raised as a Sweep candidate again until he lifts the rejection. It covers the
+company, every listing of it, not just the proposal he turned down. It records a one-line reason,
+and it does not touch a position the pot already holds, which is still reviewed as normal. The
+run report may note a material change, new results or a price 20% below where he rejected it, in
+one line; it never re-proposes. Recorded with `node pot/reject.js` in `pot/rejections.json`.
 
 **Q 3.3** May the pot buy something already in the main book? `[auto]`
 
