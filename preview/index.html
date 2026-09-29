@@ -3685,6 +3685,7 @@ function potStateTag(d) {
     const s = potStates && potStates.get(d.id.replace(/^proposals\//, ''));
     if (!s) return '';
     if (s.state === 'accepted') return ' <span class="tag gain">bought</span>';
+    if (s.state === 'rejected') return ' <span class="tag loss">rejected</span>';   // Leo's no (D83)
     if (s.supersededBy) return ' <span class="tag muted">superseded</span>';
     if (s.state === 'expired') return ' <span class="tag muted">expired</span>';
     return ' <span class="tag">open</span>';
@@ -3706,7 +3707,9 @@ function buildPotNav(nav, docs) {
     parts.push(`<input type="search" id="pot-filter" placeholder="Filter: ticker or date (MWA, 09-18)" aria-label="Filter pot documents">`);
     parts.push(section('Start here', [...of('summary'), ...of('actual'), ...of('paper')].map(plain).join('')));
 
-    const open = of('proposal').filter(d => !/-none$/.test(d.title));
+    // A rejected company is not a current proposal; it stays findable under By run and By ticker.
+    const open = of('proposal').filter(d => !/-none$/.test(d.title)
+        && potStates?.get(d.id.replace(/^proposals\//, ''))?.state !== 'rejected');
     if (open.length) parts.push(section('Current proposals',
         open.map(d => potButton(d, `${escapeHTML(potTicker(d.id))} <span class="muted">${escapeHTML(d.title.slice(0, 15))}</span>${potStateTag(d)}`, potTicker(d.id))).join('')));
 
