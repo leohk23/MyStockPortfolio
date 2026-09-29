@@ -50,6 +50,7 @@ Appended by the Sweep in any order and in any shape; sorted and tabulated here b
 every report run. Do not hand-edit between the markers.
 
 <!-- entries:start -->
+| 2026-09-29 | Current quote P/E versus the comparator used for the historical percentile, verified across the full screen. | Deep dive replayed existing publishedEps/peHistory read-only against history.json, earnings.json, filing-dates.json and SEC-first capital inputs: all available stored P/E counts/ranks and cash counts reproduced. Applying current quote.price / quote.eps instead makes BVI.PA 46.19th percentile over 236 weeks from 2022-04-01, versus stored 8.475th; it also admits 0006.HK, 0066.HK, SPIE.PA, 192820.KS, THEON.AS and 1038.HK numerically. None earned an order. Carry comparator EPS, date and basis beside the rank; do not present the weekly-series rank as necessarily the quote TTM rank. Cash start dates were recovered too (YUMC 188 weeks from 2023-03-03), rather than borrowed from P/E. Details: [29 September ranking](proposals/2026-09-29-0834-ranking.md). No producer change made. |
 | date | wanted | detail |
 |---|---|---|
 | 2026-09-29 | Global oil inventories, refined-product exports and refinery margins. | Fetched from the [IEA September Oil Market Report](https://www.iea.org/reports/oil-market-report-september-2026). Wanted monthly while Gulf and Russian disruptions persist; this repeated reach shows that crude alone misses the diesel bottleneck, inventory depletion and the point at which demand destruction becomes the balancing mechanism. |
