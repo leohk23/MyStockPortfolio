@@ -253,11 +253,22 @@
            World. Every other view here is display:block by default and never hit this. */
         #pot:not([hidden]) { display: grid; gap: 22px; align-items: start; }
         #pot-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-        #pot-doc { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px;
+        #pot-browse { max-width: 100%; padding: 7px 9px; font: inherit; font-size: 13px; text-align: left;
             color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--line);
-            border-radius: 6px; }
+            border-radius: 6px; cursor: pointer; }
+        #pot-browse::after { content: ' ▾'; color: var(--text-muted); }
+        #pot-browse[aria-expanded="true"]::after { content: ' ▴'; }
         #pot-when { font-size: 12px; }
-        #pot-list { display: none; }
+        #pot-list { display: none; font-size: 12.5px; }
+        /* The panel's own look, at every width: a sidebar on a wide screen, behind Pages on a phone. */
+        #pot-list .pot-group { text-transform: uppercase; letter-spacing: .04em; font-size: 10px;
+            color: var(--text-muted); margin: 14px 0 5px; }
+        #pot-list .pot-group:first-child { margin-top: 0; }
+        #pot-list button { display: block; width: 100%; text-align: left; background: none;
+            border: 0; padding: 4px 7px; margin: 0 0 1px; border-radius: 5px; cursor: pointer;
+            color: var(--text-muted); font: inherit; font-size: 12.5px; }
+        #pot-list button:hover { background: var(--surface-2); color: var(--text-primary); }
+        #pot-list button[aria-current="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }
         #pot-body { font-size: 15px; line-height: 1.65; min-width: 0; }
         /* Full width to the edge, by preference. 72ch is the readable-measure convention and
            this used to hold every element to it; Leo would rather use the screen he has. The
@@ -349,14 +360,7 @@
             #pot-pick { display: none; }
             #pot-list { display: block; position: sticky; top: 12px; max-height: calc(100vh - 40px);
                 overflow-y: auto; font-size: 12.5px; border-right: 1px solid var(--line); padding-right: 14px; }
-            #pot-list .pot-group { text-transform: uppercase; letter-spacing: .04em; font-size: 10px;
-                color: var(--text-muted); margin: 14px 0 5px; }
-            #pot-list .pot-group:first-child { margin-top: 0; }
-            #pot-list button { display: block; width: 100%; text-align: left; background: none;
-                border: 0; padding: 4px 7px; margin: 0 0 1px; border-radius: 5px; cursor: pointer;
-                color: var(--text-muted); font: inherit; font-size: 12.5px; }
-            #pot-list button:hover { background: var(--surface-2); color: var(--text-primary); }
-            #pot-list button[aria-current="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }
+        }
         #pot-filter { width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 6px 8px; font: inherit; font-size: 12px;
             background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; }
         #pot-list details.pot-fold { margin: 0 0 2px; }
@@ -365,6 +369,16 @@
         #pot-list details.pot-fold > summary:hover { background: var(--surface-2); }
         #pot-list details.pot-fold > button { padding-left: 20px; }
         #pot-list .tag { font-size: 10px; }
+        /* After the rules above on purpose: same specificity, so the later one wins. */
+        @media (max-width: 899px) {
+            /* Pages button, then the panel when open, then the document. */
+            #pot-pick { order: 0; }
+            #pot-list { order: 1; }
+            #pot-body { order: 2; }
+            #pot.browsing #pot-list { display: block; max-height: 65vh; overflow-y: auto; padding: 10px;
+                background: var(--surface-1); border: 1px solid var(--line); border-radius: 8px; }
+            /* Finger-sized: the sidebar's 4px rows are a mouse target. */
+            #pot-list button, #pot-list details.pot-fold > summary { padding: 8px 9px; font-size: 14px; }
         }
         #world-table tr.macro-head td, #macro-table tr.macro-head td { font-size: 11px; text-transform: uppercase;
             letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--line);
@@ -869,7 +883,7 @@
     <div id="pot" hidden>
         <nav id="pot-list" aria-label="Pot documents"></nav>
         <div id="pot-pick">
-            <select id="pot-doc" aria-label="Pot document"></select>
+            <button type="button" id="pot-browse" aria-expanded="false" aria-controls="pot-list"></button>
             <span id="pot-when" class="muted"></span>
         </div>
         <article id="pot-body"></article>
@@ -3632,25 +3646,14 @@
         // Default: furthest below its own peak first. Text sorts ascending, numbers descending —
         // the same convention the other tables use, so a click means the same thing everywhere.
         let worldSort = { key: 'fromAth', dir: -1 };
-// The pot documents, grouped the way they are read: what needs a decision first, the evidence
-// behind it after. The HTML is rendered by pot/bundle.js, so nothing here parses markdown —
+// The pot documents. The HTML is rendered by pot/bundle.js, so nothing here parses markdown —
 // this only chooses a document and puts it on the screen.
 //
-// A <select> rather than a row of tabs on purpose: there are already 38 documents and the list
-// only grows, and a native picker is the one control a phone renders well without help.
-// An allowlist, not a passthrough: a doc whose kind is missing here is in pot.json and invisible
-// on the page. The two performance pages sit straight after the Summary on purpose: they are the
-// closest thing to "is any of this working". Actual (what the money did) comes before Paper (every
-// call, bought or not), and burying either under the proposals they judge would be odd.
-const POT_GROUPS = [
-    ['summary', 'Summary'], ['actual', 'Actual performance'], ['paper', 'Paper performance'],
-    // The cycle's own account of itself comes first: one document per run rather than every
-    // proposal ever written in one flat list. Files are unchanged — the filename is still the
-    // proposal id a Tradelog `Pot` cell points at.
-    ['runreport', 'Run reports'], ['proposal', 'Proposals'], ['proposalpast', 'Past proposals'],
-    ['review', 'Reviews'], ['sweep', 'Sweeps'],
-    ['scan', 'Scan'], ['runs', 'Runs and cost'], ['archive', 'Past run reports'],
-];
+// One list, the panel built by buildPotNav, at every width: a sidebar on a wide screen, and
+// behind the Pages button on a phone. Phones used to get a <select> built from a separate
+// allowlist, and the two disagreed — the Actual performance page reached the <select> and not
+// the sidebar. The panel also puts any page it does not place under "Other", so a new kind of
+// document can never be invisible (D82).
 let potDoc = localStorage.getItem('potDoc') || null;
 
 // One way in, whichever control was used.
@@ -3658,6 +3661,9 @@ function showPotDoc(id) {
     potDoc = id;
     localStorage.setItem('potDoc', id);
     syncURL();
+    // A choice made from the phone panel closes it, so the page is what you see next.
+    document.getElementById('pot').classList.remove('browsing');
+    document.getElementById('pot-browse').setAttribute('aria-expanded', 'false');
     renderPot();
     document.getElementById('pot-body').scrollIntoView?.({ block: 'start' });
 }
@@ -3745,6 +3751,10 @@ function buildPotNav(nav, docs) {
         + (archive.length ? fold(`Past run summaries <span class="muted">(${archive.length})</span>`, archive.map(plain).join(''), archive.map(d => d.id).join(' '), false) : '')));
 
     nav.innerHTML = parts.join('');
+    // Whatever no section above placed, so a new kind of page shows up somewhere rather than nowhere.
+    const shown = new Set([...nav.querySelectorAll('button[data-id]')].map(b => b.dataset.id));
+    const other = docs.filter(d => !shown.has(d.id));
+    if (other.length) nav.insertAdjacentHTML('beforeend', section('Other', other.map(plain).join('')));
     nav.addEventListener('click', e => {
         const b = e.target.closest('button[data-id]');
         if (b) showPotDoc(b.dataset.id);
@@ -3768,29 +3778,22 @@ function buildPotNav(nav, docs) {
 }
 
 function renderPot() {
-    const sel = document.getElementById('pot-doc');
+    const browse = document.getElementById('pot-browse');
     const body = document.getElementById('pot-body');
     const when = document.getElementById('pot-when');
     const docs = POT?.docs || [];
     if (!docs.length) {
-        sel.innerHTML = '';
+        browse.textContent = 'Pages';
         when.textContent = '';
         body.innerHTML = '<p class="muted">No pot report yet. Run <code>npm run pot-report</code> '
             + 'to generate one, or wait for the daily cycle.</p>';
         return;
     }
-    // Rebuild the picker only once: re-rendering it on every view switch would throw away
-    // the open dropdown on a phone mid-tap.
-    // Two controls over one list: a <select> on phones, a sidebar on wide screens. Built
-    // together so they can never disagree about what exists.
-    const groups = POT_GROUPS.map(([kind, label]) => [label, docs.filter(d => d.kind === kind)])
-        .filter(([, mine]) => mine.length);
-    if (!sel.options.length) {
-        sel.innerHTML = groups.map(([label, mine]) =>
-            `<optgroup label="${label}">` + mine.map(d =>
-                `<option value="${escapeHTML(d.id)}">${escapeHTML(d.title)}</option>`).join('') + '</optgroup>').join('');
-        sel.addEventListener('change', () => showPotDoc(sel.value));
-    }
+    // Phones only (the button is hidden on a wide screen): opens the same panel the sidebar shows.
+    if (!browse.onclick) browse.onclick = () => {
+        const on = document.getElementById('pot').classList.toggle('browsing');
+        browse.setAttribute('aria-expanded', String(on));
+    };
     const nav = document.getElementById('pot-list');
     if (potStates === undefined) {
         // Once, and never blocking: the list builds without tags if the book cannot be read.
@@ -3805,7 +3808,7 @@ function renderPot() {
     if (!nav.children.length) buildPotNav(nav, docs);
     // A remembered document that has since been renamed must not blank the tab.
     const doc = docs.find(d => d.id === potDoc) || docs[0];
-    sel.value = doc.id;
+    browse.textContent = doc.title;
     nav.querySelectorAll('button[data-id]').forEach(b => {
         const current = b.dataset.id === doc.id;
         b.setAttribute('aria-current', String(current));
