@@ -103,7 +103,7 @@ if (Test-Path $lock) {
 #
 # So carry the scratch by hand: copy it out, let git have CI's version, copy it back verbatim.
 # No merge is attempted, so there is nothing to conflict.
-$ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json')
+$ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json', 'world-history.json')
 
 function Save-Scratch {
     $saved = @{}
