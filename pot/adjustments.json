@@ -1,7 +1,22 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-28",
+  "updated": "2026-09-30",
   "normalizedEps": {
+    "CME": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Added by the 30 September 2026 deep dive. H2 2025 is derived from issuer FY2025 less H1 2025; H2 plus H1 2026 covers twelve contiguous months. Company-adjusted excludes investment gains as well as amortisation and other charges; it is not independently reconstructed owner earnings. Two annual comparatives do not certify the full historical percentile. H1 and Q2 entries overlap and must not be added together.",
+      "annual": [
+        { "end": "2024-12-31", "eps": 10.26, "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html" },
+        { "end": "2025-12-31", "eps": 11.20, "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html" }
+      ],
+      "quarters": [
+        { "end": "2025-06-30", "months": 6, "eps": 5.75, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
+        { "end": "2025-12-31", "months": 6, "eps": 5.45, "derived": "FY2025 USD11.20 less H1 2025 USD5.75", "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html and https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
+        { "end": "2026-06-30", "months": 6, "eps": 6.35, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
+        { "end": "2026-06-30", "eps": 2.99, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" }
+      ]
+    },
     "FUL": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "USD",
@@ -291,6 +306,11 @@
     }
   },
   "adjustments": {
+    "CME": [
+      { "fy": "2026-12-31", "amount": 3900000, "ccy": "USD", "arithmetic": false, "what": "Q2 2026 unrealized and realized investment gains removed by the issuer reconciliation. Quarter-only evidence; H1's net investment category was a loss, so this must not be read as an annual gain.", "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html", "found": "2026-09-30", "note": "Pre-tax amount; retain as evidence and use direct company-adjusted EPS. FY2026 is not yet a filed annual row." },
+      { "fy": "2026-12-31", "amount": 9700000, "ccy": "USD", "arithmetic": false, "what": "Q2 2026 other income-tax benefits removed in the issuer reconciliation, related to state tax examinations and adjustments to tax reserves and receivables.", "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html", "found": "2026-09-30", "note": "Quarter-only consolidated reconciliation amount. Not separately certified attributable to common shareholders; no direct subtraction and no overlap with normalizedEps.CME." },
+      { "fy": "2025-12-31", "amount": 343700000, "ccy": "USD", "arithmetic": false, "what": "FY2025 net unrealized and realized investment gains removed in the issuer adjusted-income reconciliation; Q4 alone was USD349.8m. Full-year and quarterly amounts overlap and must not both be subtracted.", "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html", "found": "2026-09-30", "note": "Gross reconciliation category, not a separately stated after-tax attributable amount. Tax effects are supplied for the adjustment bundle. Evidence only; use normalizedEps.CME for the issuer adjusted basis." }
+    ],
     "BVI.PA": [
       {
         "fy": "2026-12-31",
