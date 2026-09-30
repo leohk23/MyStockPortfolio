@@ -90,7 +90,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json history.json earnings.json intraday.json
+          git add prices.json history.json earnings.json intraday.json world-history.json
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
           # No rebase. These four files are 100% derived, so on any divergence the right answer is

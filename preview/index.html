@@ -239,6 +239,7 @@
            height is a rendered fact (font, padding, border) and not a number to hardcode. */
         #world-table td:first-child { text-align: left; line-height: 1.3; }
         #world-table th[data-wsort] { cursor: pointer; user-select: none; }
+        #world-table tr[data-yahoo] { cursor: pointer; }
         #world-table th[aria-sort="ascending"]::after { content: " ▲"; }
         #world-table th[aria-sort="descending"]::after { content: " ▼"; }
         #world-table tr.world-dead td { color: var(--text-muted); }
@@ -1093,6 +1094,22 @@
             return historyPromise;
         }
 
+        // The World ETFs' weekly closes, only when a World row is clicked: a separate file so the
+        // 47 funds never weigh on history.json, which every visit now loads for the default chart.
+        let WORLD_HIST = null, worldPromise = null;
+        function loadWorld() {
+            if (WORLD_HIST) return Promise.resolve(WORLD_HIST);
+            if (!worldPromise) worldPromise = fetch(DATA + 'world-history.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : Promise.reject(new Error('world history ' + r.status)))
+                .then(w => (WORLD_HIST = w));
+            return worldPromise;
+        }
+        // A World fund charted as just its price. Always from the World tab, even for a fund that
+        // is also held or watched (EWY is on the watchlist): there Leo wants the chart and nothing
+        // else. From any other tab, a held or watched fund keeps its full view.
+        const worldOf = yahoo => !!STATE.countries?.[yahoo] && !STATE.countries[yahoo].dead && !STATE.countries[yahoo].gone
+            && (STATE.dim === 'world' || (!legOf(yahoo) && !watchOf(yahoo)));
+
         // Today's session, for the 1D range only — so nobody downloads it unless they ask for 1D.
         // Absent is fine: the button then says so rather than the page failing.
         let INTRADAY = null, intradayPromise = null;
@@ -1163,6 +1180,7 @@
 
         function renderDeep() {
             const box = document.getElementById('deep');
+            if (chartSel && worldOf(chartSel)) { box.hidden = true; return; }   // World: the chart only
             const leg = chartSel ? legOf(chartSel) : null;
             if (!leg) { box.hidden = true; return; }
             box.hidden = false;
@@ -2125,13 +2143,45 @@
 
         // Build the chart spec for the current mode. May need HISTORY; caller ensures it.
         function chartSpec() {
-            if (chartSel) return instrumentSpec(chartSel);
+            if (chartSel) return worldOf(chartSel) ? worldSpec(chartSel) : instrumentSpec(chartSel);
             if (chartGroup) return portfolioMetric === 'twr'
                 ? portfolioTwrSpec(twrHoldings(chartGroup.legs), chartGroup.name)
                 : groupValueSpec(chartGroup);
             if (portfolioMetric === 'twr') return portfolioTwrSpec(twrHoldings(STATE.holdings), 'Portfolio');
             if (benchOn.size) return benchmarkSpec();
             return portfolioValueSpec();
+        }
+
+        // A World fund's price, from weekly closes. The range is therefore a DATE, not a count of
+        // points: sliceRange counts daily bars, and 21 weekly bars would call five months "1M".
+        // Price only, no detail panel below it (renderDeep hides for anything not held or watched).
+        function worldSpec(sym) {
+            const s = WORLD_HIST?.series?.[sym];
+            if (!s || s.days.length < 2) return null;
+            const c = STATE.countries[sym];
+            const end = s.days[s.days.length - 1];
+            const back = n => { const t = new Date(end + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - n); return t.toISOString().slice(0, 10); };
+            let from = 0;
+            if (rangeYtd) from = Math.max(0, s.days.findIndex(d => d >= YEAR_START) - 1);   // last close of last year
+            else if (rangeYears || rangeDays > 0 || !longRange) {
+                const since = back(rangeYears ? 365 * rangeYears : rangeDays > 0 ? Math.ceil(rangeDays * 7 / 5) : 365);
+                from = Math.max(0, s.days.findIndex(d => d >= since));
+            }
+            const days = s.days.slice(from), values = s.closes.slice(from);
+            const ret = values[values.length - 1] / values[0] - 1;
+            return {
+                days,
+                series: [{ label: c.country, color: PORT_COLOR, values, area: true }],
+                markers: [], markersByIndex: new Map(),
+                fmtY: v => num2(v),
+                headline: `<span class="${cls(ret)}">${pct(ret)}</span> <span class="muted">${escapeHTML(c.currency || 'USD')} ${num2(c.price)}</span>`,
+                sub: `Weekly closes, ${ymd(days[0])} to ${ymd(days[days.length - 1])}`,
+                title: `${c.country} (${sym})`,   // set as textContent, so no escaping
+                note: 'Weekly closes from Yahoo, the same series the World table reads its all-time high from. '
+                    + 'Price only, no dividends. YTD runs from the year\'s first weekly close (2 Jan in 2026), '
+                    + 'the same base as the table. Ranges shorter than a few weeks hold only a point or two.',
+                tip: i => num2(values[i]),
+            };
         }
 
         // Normalise holdings (or a group's legs) into what cohortMV needs.
@@ -2719,14 +2769,16 @@
             // Gain/Loss replays YOUR trades, so it is meaningless for a stock you don't own:
             // hide the toggle and pin a watched stock to price. Force it back, or a stale 'gain'
             // selection would render a flat zero line and look like a bug.
-            const watched = !!chartSel && !!watchOf(chartSel);
+            // A World fund is price-only for the same reason: there are no trades to replay.
+            const world = !!chartSel && worldOf(chartSel);
+            const watched = !!chartSel && (!!watchOf(chartSel) || world);
             if (watched) instrumentMetric = 'price';
             document.getElementById('metric').style.display = chartSel && !watched ? '' : 'none';
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
             // 1D only means something for ONE listing, and only in price mode. Disabled rather
             // than hidden so the reason stays visible; if it was already active when the selection
             // moved to a basket, fall back to the default range instead of drawing nothing.
-            const oneStock = !!chartSel && instrumentMetric === 'price';
+            const oneStock = !!chartSel && !world && instrumentMetric === 'price';   // no intraday for World funds
             const oneDay = document.querySelector('#ranges button[data-intraday]');
             if (oneDay) {
                 oneDay.disabled = !oneStock;
@@ -2747,7 +2799,10 @@
             document.getElementById('clear-wrap').hidden = !selected;
             renderDeep();
             syncURL();
-            if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
+            if (world) loadWorld().then(drawChart).catch(e => {
+                document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
+            });
+            else if (longRange || selected || benchOn.size || twrMode) loadHistory().then(drawChart).catch(e => {
                 document.getElementById('chart-note').textContent = 'Chart data unavailable: ' + e.message;
             });
             else {
@@ -2863,7 +2918,7 @@
             updateChart();
         }
         function markSelectedRow() {
-            document.querySelectorAll('#portfolio tr, #watchlist tr, #calendar tr').forEach(tr =>
+            document.querySelectorAll('#portfolio tr, #watchlist tr, #calendar tr, #world-table tr').forEach(tr =>
                 tr.classList.toggle('sel', (!!chartSel && tr.dataset.yahoo === chartSel)
                     || (!!chartGroup && tr.dataset.group === chartGroup.name)));
         }
@@ -3881,7 +3936,7 @@ function renderPot() {
                 return typeof x === 'string' ? dir * x.localeCompare(y) : dir * (x - y);
             });
             const dead = all.filter(c => c.dead || c.gone);
-            const row = c => `<tr><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
+            const row = c => `<tr data-yahoo="${escapeHTML(c.yahoo)}"><td>${escapeHTML(c.country)}<span class="macro-sym">${escapeHTML(c.yahoo)}</span></td>`
                 + `<td>${num2(c.price)}</td>`
                 + `<td>${num2(c.ath)}</td>`
                 + `<td class="muted">${c.athDay ? ymd(c.athDay) : '–'}</td>`
@@ -3900,6 +3955,10 @@ function renderPot() {
             tbody.innerHTML = live.map(row).join('')
                 + (dead.length ? `<tr class="macro-head"><td colspan="9">No longer trading</td></tr>`
                     + dead.map(deadRow).join('') : '');
+            // Click charts the fund's price above, like a row on the Stock tab; again to go back.
+            tbody.querySelectorAll('tr[data-yahoo]').forEach(tr =>
+                tr.addEventListener('click', () => { const fix = pinRow(tr); selectChart(tr.dataset.yahoo); fix(); }));
+            markSelectedRow();
             // Rebound off the live table each render, because innerHTML replaced the old rows.
             document.querySelectorAll('#world-table th[data-wsort]').forEach(th => {
                 th.setAttribute('aria-sort', th.dataset.wsort === worldSort.key
@@ -4307,7 +4366,7 @@ function renderPot() {
             const sel = url.get('sel');
             // Otherwise updateChart, not renderAll's bare drawChart: the default Performance view
             // needs history.json, and only updateChart fetches it and sets the toggles to match.
-            if (sel && legOf(sel)) selectChart(sel); else updateChart();
+            if (sel && (legOf(sel) || worldOf(sel))) selectChart(sel); else updateChart();
             // Just the timestamp. The two hints that used to trail it ("click a row to chart it",
             // "click the chevron to expand") taught a one-reader page something it learns in a
             // single session, then sat there for good — costing a line at the top of every phone

@@ -74,6 +74,7 @@ index.html + portfolio.js   all arithmetic in the browser
 ```
 
 - **prices.json** loads on every page view (small). **history.json** is **lazy-loaded** only for a stock, benchmark, or 2Y/5Y/All range — keep it that way.
+- **world-history.json** is the World tab's 43 country ETFs as weekly closes, written by `fetchCountry` from the same fetch that finds each fund's all-time high, and loaded only when a World row is clicked. Kept out of history.json, which the default Performance chart now loads on every visit.
 - Committing prices.json/history.json re-triggers the Pages build, so the site follows each scheduled refresh automatically.
 
 ## The AI pot (early development)

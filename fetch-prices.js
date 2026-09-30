@@ -209,7 +209,12 @@ async function fetchCountry(ticker) {
     // A year back on the same weekly grid, for the 1Y column.
     const aYearAgo = bars.filter(b => b.day <= yearAgo).pop() || bars[0];
     const jan1 = `${new Date().getUTCFullYear()}-01-01`;
-    const first = bars.find(b => b.day >= jan1) || bars[bars.length - 1];
+    // YTD base: the last weekly bar DATED before 1 Jan. A weekly bar is dated by its Monday and
+    // closes on its Friday, so that bar closes in the year's first days (2 Jan in 2026) — one
+    // trading day past the true 31 Dec base. The first bar dated in January closed on 9 Jan and
+    // missed a week: it put EWY's YTD at +71.8% against +92.5% on daily closes. The World chart
+    // uses the same base, so the table and the chart print one YTD.
+    const first = bars.filter(b => b.day < jan1).pop() || bars[0];
 
     const vols = last52.map(b => b.vol).filter(v => v > 0);
     const avgVol = vols.length > 4 ? vols.slice(0, -1).reduce((a, b) => a + b, 0) / (vols.length - 1) : null;
@@ -228,6 +233,9 @@ async function fetchCountry(ticker) {
         ytd: first?.close > 0 ? pc(price / first.close - 1) : null,
         volRatio: avgVol ? pc(bars[bars.length - 1].vol / avgVol) : null,
         weeks: bars.length, since: bars[0].day,
+        // The whole weekly series, already fetched for the high above. It used to be thrown away;
+        // it now goes to world-history.json so a World row can chart it (the caller splits it off).
+        series: { days: bars.map(b => b.day), closes: bars.map(b => pc(b.close)) },
     };
 }
 
@@ -2380,16 +2388,27 @@ async function main() {
 
     // World breadth. Best-effort per fund, same as the macro block: one that fails is a blank
     // row in a monitor, never a broken price file.
-    const countries = {};
+    const countries = {}, worldSeries = {};
     let worldOk = 0;
     try {
         const list = JSON.parse(fs.readFileSync('countries.json', 'utf8')).funds || [];
         for (const c of list) {
-            try { countries[c.yahoo] = { ...c, ...await fetchCountry(c.yahoo) }; worldOk++; }
+            try {
+                const { series, ...info } = await fetchCountry(c.yahoo);
+                countries[c.yahoo] = { ...c, ...info };
+                if (series) worldSeries[c.yahoo] = series;   // a wound-up fund has none
+                worldOk++;
+            }
             catch (e) { countries[c.yahoo] = { ...c, gone: true, why: e.message }; console.error(`gone world ${c.yahoo}: ${e.message}`); }
             await sleep();
         }
         const dead = Object.values(countries).filter(c => c.dead || c.gone).length;
+        // Its own file, lazy-loaded by the page only when a World row is clicked. Not written when
+        // nothing came back, so an outage cannot replace yesterday's history with an empty one.
+        if (Object.keys(worldSeries).length) {
+            fs.writeFileSync('world-history.json', JSON.stringify({ updated: new Date().toISOString(), series: worldSeries }));
+            console.log(`wrote world-history.json (${Object.keys(worldSeries).length} funds, ${Math.round(fs.statSync('world-history.json').size / 1024)}KB)`);
+        }
         console.log(`ok   world breadth for ${worldOk}/${list.length} country funds`
             + (dead ? ` (${dead} wound up or delisted — flagged, not dropped)` : ''));
     } catch { console.log('note no countries.json — world breadth skipped'); }
