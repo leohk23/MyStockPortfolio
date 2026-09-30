@@ -983,8 +983,9 @@
             return (v < 0 ? '-' : '') + CURRENCIES[display] + Math.round(Math.abs(v)).toLocaleString();
         };
         const qtyCell = n => priv ? HIDDEN : n == null ? '–' : num2(n);
-        const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
-        const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
+        // Not finite means no figure (a 0/0 with amounts locked printed "NaN%"): say "–".
+        const pct = n => n == null || !Number.isFinite(n) ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
+        const plain = n => n == null || !Number.isFinite(n) ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
         const realizedCls = n => n == null || Math.abs(n) < 1e-9 ? 'muted' : cls(n);
         const escapeHTML = text => String(text).replace(/[&<>"']/g, c => ({
@@ -2198,7 +2199,36 @@
         // Each line is rebased to 0% at the left edge of the range.
         function portfolioTwrSpec(hold, label) {
             if (!HISTORY) return null;   // not fetched yet: drawChart skips, updateChart redraws on arrival
-            // Skipped the passphrase: no trades to replay. A flat 0% line would read as a result.
+            // Skipped the passphrase: no trades to replay, so draw the lines the price bot published
+            // (D84), rebased to this range. (1 + I_t) / (1 + I_start) - 1 is exactly what twr() gives
+            // on the slice, because twr() chains daily returns. Whole portfolio only: a group's line
+            // would need its own. Without published lines, say so rather than draw a flat 0%.
+            const published = !hold.some(h => h.trades.length) && label === 'Portfolio'
+                && (longRange ? HISTORY.long?.twr : HISTORY.twr);
+            if (published) {
+                const hist = longRange ? HISTORY.long : HISTORY;
+                const keys = ['total', 'existing', 'new'].filter(k => cohortOn.has(k) && published[k]);
+                const { days, arrays } = sliceRange(hist.days, keys.map(k => published[k]), longRange ? STATE.firstTrade : '');
+                const DEFS = { total: ['Total', PORT_COLOR], existing: [`Existing (pre-${YEAR_START.slice(0, 4)})`, BENCH_COLOR['^GSPC']],
+                    new: [`New buys (${YEAR_START.slice(0, 4)})`, BENCH_COLOR['^HSI']] };
+                const series = keys.map((k, idx) => {
+                    const a = arrays[idx], s = a.findIndex(v => v != null);
+                    return { label: DEFS[k][0], color: DEFS[k][1],
+                        values: a.map((v, i) => v == null || s < 0 || i < s ? null : (1 + v) / (1 + a[s]) - 1) };
+                });
+                const years = days.length ? (Date.parse(days[days.length - 1]) - Date.parse(days[0])) / 864e5 / 365 : 0;
+                const cagr = v => `<span class="muted">CAGR ${v == null || years < 1 ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
+                return {
+                    days, series, percent: true, zero: true, markers: [], markersByIndex: new Map(),
+                    fmtY: v => pct(v),
+                    headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagr(v)}`; }).join(' <span class="muted">·</span> '),
+                    sub: `Time-weighted return, indexed to ${ymd(days[0])} = 0%`,
+                    title: `${label} performance`,
+                    note: 'Holdings locked: this line was computed by the price bot, which has the passphrase, and published as percentages only. '
+                        + 'Trade markers need the trades, so they are not shown.',
+                    tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
+                };
+            }
             if (!hold.some(h => h.trades.length)) return {
                 days: [], series: [], headline: '–', title: `${label} performance`,
                 sub: 'Holdings locked. Performance replays your trades, so reload and unlock to see it.',
@@ -2517,7 +2547,10 @@
                 : watch ? `${watch.name} · ${yahoo}` : yahoo;
             const fmt = gainMode ? (v => priv ? '' : money(v * RATES[display])) : (v => nativePrice(v, q.currency));
             const lastCostUSD = gainMode ? lastNonNull(costsUSD) : null;
-            const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty || 0;
+            const shownQty = gainMode ? quantities[quantities.length - 1] : holding?.qty ?? null;
+            // A share count is an amount: hidden by the eye button like every other (it was shown
+            // regardless), and "–" when locked rather than a made-up 0.
+            const qtyText = priv ? HIDDEN : shownQty == null ? '–' : shownQty;
             const gainPct = lastCostUSD ? last * RATES[display] / lastCostUSD : null;
 
             // Average cost, on the same scale as the price line: converted from the PURCHASE
@@ -2539,7 +2572,7 @@
                     : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
                         + `<span class="muted">${fmt(last)}</span>${dayTag(q['1d'])}`,
                 // "0 shares" would be a lie about a watched stock — it isn't a sold-out position.
-                sub: `${watch ? 'not held · watchlist' : shownQty + ' shares'} · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
+                sub: `${watch ? 'not held · watchlist' : qtyText + ' shares'} · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: gainMode ? `${name} Gain/Loss` : name,
                 note: gainMode
                     ? `Unrealized gain/loss from Tradelog balance quantity and average cost, using today's FX — realized gains excluded. ▲ buy · ▼ sell.`
@@ -2781,7 +2814,8 @@
             // selection would render a flat zero line and look like a bug.
             // A World fund is price-only for the same reason: there are no trades to replay.
             const world = !!chartSel && worldOf(chartSel);
-            const watched = !!chartSel && (!!watchOf(chartSel) || world);
+            // Locked, too: Gain/Loss replays the sealed trades, so it would draw a flat zero.
+            const watched = !!chartSel && (!!watchOf(chartSel) || world || !!STATE.locked);
             if (watched) instrumentMetric = 'price';
             document.getElementById('metric').style.display = chartSel && !watched ? '' : 'none';
             document.getElementById('pmetric').style.display = chartSel ? 'none' : '';
@@ -3302,6 +3336,9 @@
                 pb.setAttribute('aria-label', what + ' amounts');
             };
             paint();
+            // Locked (passphrase skipped): the eye stays shut, since there are no amounts to show.
+            pb.disabled = !!STATE.locked;
+            if (STATE.locked) pb.title = 'Amounts are sealed: reload and unlock to see them. Percentages are public.';
             pb.onclick = () => { priv = !priv; localStorage.setItem('priv', priv ? '1' : '0');
                 paint(); renderAll(); };
         }
@@ -3533,7 +3570,16 @@
 
         function rebuildRows() {
             STATE.rows = portfolioLib.build(STATE.holdings, STATE.rates, STATE.quotes, STATE.dim);
-            STATE.total = STATE.rows.reduce((a, r) => a + r.value, 0);
+            // Locked: no quantities, so stand the published weights (D84) in for value. The total is
+            // then 1 and Mix reads the true share; a multi-listing row's moves are weighted properly;
+            // rows sort by size. Never displayed as money: locked forces the eye view, so money()
+            // prints ••• before it could show one of these fractions as a pound figure.
+            if (STATE.locked && STATE.weights) for (const r of STATE.rows) {
+                for (const leg of r.legs) leg.value = STATE.weights[leg.yahoo] ?? null;
+                r.value = r.legs.some(l => l.value != null) ? r.legs.reduce((a, l) => a + (l.value || 0), 0) : null;
+                r.moves = Object.fromEntries(portfolioLib.PERIODS.map(p => [p, portfolioLib.weightedMove(r.legs, p)]));
+            }
+            STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
         }
 
         // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
@@ -4335,15 +4381,18 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
+        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance, weights }, watchlist, signals, pot]) => {
             // Sealed since D67. Skipping keeps the PUBLIC half of holdings.json: which stocks are held
             // (ticker, group, geography, currency), with prices, moves and valuation, and no amounts.
             // It used to fall back to an empty list, blanking the table, although D67 kept the
-            // tickers public on purpose.
+            // tickers public on purpose. Skipped = locked: the eye view, forced on (D84), with the
+            // published weights and performance lines standing in for what the trades would give.
+            let locked = false;
             if (sealed) {
                 const inside = await unlockHoldings(sealed);
-                if (inside) holdings = inside.holdings;
+                if (inside) holdings = inside.holdings; else locked = true;
             }
+            if (locked) priv = true;
             nav = await vaultOpen(nav);
             RATES = rates;
             POT = pot;
@@ -4361,7 +4410,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, firstTrade, dim, updated };
+            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, weights, locked, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.

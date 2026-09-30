@@ -2447,12 +2447,26 @@ async function main() {
     for (const [sym, name] of Object.entries(BENCHMARKS)) {
         if (benchQuotes[sym]) benchmarks[sym] = { name, currency: benchQuotes[sym].currency };
     }
+    // The Performance chart's three lines as cumulative returns, percentages only, so the page
+    // can draw them when the passphrase is skipped (D84; D67 keeps TWR percentages public). The
+    // page rebases to any range as (1 + I_t) / (1 + I_start) - 1, which is exactly what twr()
+    // gives on the slice, because twr() chains daily returns. Same cohorts, and the same rounded
+    // closes the page itself reads. Null without the passphrase: no trades, no line.
+    const perfYear = new Date().getUTCFullYear() + '-01-01';
+    const perfCohorts = { total: null, existing: t => t.date < perfYear,
+        new: t => t.date >= perfYear && t.side !== 'SELL' };
+    const perfHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
+    const perfLines = (days, cl) => HOLDINGS_FULL ? Object.fromEntries(Object.entries(perfCohorts).map(([k, f]) => {
+        const { mv, flow } = cohortMV(days, perfHold, cl, rates, f);
+        return [k, twr(mv, flow).map(v => v == null ? null : Number(v.toFixed(5)))];
+    })) : null;
     fs.writeFileSync('history.json', JSON.stringify({
         updated: new Date().toISOString(),
         days: hist.days,
         closes,
         benchmarks,
-        long: { days: longHist.days, closes: longCloses, nav: publishable(longNav) },
+        twr: perfLines(hist.days, closes),
+        long: { days: longHist.days, closes: longCloses, nav: publishable(longNav), twr: perfLines(longHist.days, longCloses) },
     }, null, 1));
 
     // Today's session for the 1D range. Written whole each run — intraday is only ever about
@@ -2747,6 +2761,19 @@ async function main() {
         ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL'),
     } : null;
 
+    // Each holding's share of the book by value, a fraction (D67 keeps weights public), for the Mix
+    // column and for weighting a multi-listing row's moves when the passphrase is skipped (D84).
+    // Same arithmetic as the page: quantity x price, converted from the QUOTE's currency.
+    let weights = null;
+    if (HOLDINGS_FULL) {
+        const v = {};
+        for (const h of priced) {
+            const x = h.qty * quotes[h.yahoo].price * rateFor(quotes[h.yahoo].currency, rates);
+            if (x > 0) v[h.yahoo] = (v[h.yahoo] || 0) + x;
+        }
+        const tot = Object.values(v).reduce((p, x) => p + x, 0);
+        if (tot > 0) weights = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, Number((x / tot).toFixed(5))]));
+    }
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
     fs.writeFileSync('prices.json', JSON.stringify({
@@ -2769,6 +2796,7 @@ async function main() {
         countries,
         nav: publishable(nav),
         performance,
+        weights,
         failed,
     }, null, 1));
     const kb = f => (fs.statSync(f).size / 1024).toFixed(0);
