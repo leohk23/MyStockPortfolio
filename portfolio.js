@@ -10,6 +10,10 @@ function rateFor(code, rates) {
 // reports one number rather than separate HK-line and ADR numbers. Instruments with
 // no data for the period are left out of both sides of the ratio.
 function weightedMove(legs, period) {
+    // One leg is 100% of its row whatever it is worth, so its own move is exact — and it still is
+    // when values are unknown (holdings locked behind the passphrase), where weighting several
+    // legs would be a guess and stays null.
+    if (legs.length === 1) return legs[0].quote?.[period] ?? null;
     let num = 0, den = 0;
     for (const leg of legs) {
         const move = leg.quote[period];
@@ -505,6 +509,9 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     // A leg with no data for the period must not drag the average toward zero.
     assert.strictEqual(weightedMove([...legs, { value: 1000, quote: { '1y': null } }], '1y'), 0.05);
     assert.strictEqual(weightedMove([{ value: 5, quote: { '1y': null } }], '1y'), null);
+    // Locked: no values. One leg keeps its own move; two legs cannot be weighted, so null.
+    assert.strictEqual(weightedMove([{ value: null, quote: { '1y': 0.07 } }], '1y'), 0.07);
+    assert.strictEqual(weightedMove([{ value: null, quote: { '1y': 0.07 } }, { value: null, quote: { '1y': 0.01 } }], '1y'), null);
     assert.strictEqual(weightedMove([], '1y'), null);
 
     // Two instruments of one company collapse into a single row, costs and values summed.

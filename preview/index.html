@@ -978,10 +978,11 @@
         const HIDDEN = '•••';
         const money = usd => {
             if (priv) return HIDDEN;
+            if (usd == null || Number.isNaN(usd)) return '–';   // Skip: amounts stay sealed
             const v = usd / RATES[display];
             return (v < 0 ? '-' : '') + CURRENCIES[display] + Math.round(Math.abs(v)).toLocaleString();
         };
-        const qtyCell = n => priv ? HIDDEN : num2(n);
+        const qtyCell = n => priv ? HIDDEN : n == null ? '–' : num2(n);
         const pct = n => n == null ? '–' : `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)}%`;
         const plain = n => n == null ? '–' : `${(n * 100).toFixed(1)}%`;
         const cls = n => n == null ? 'muted' : n >= 0 ? 'gain' : 'loss';
@@ -2197,6 +2198,12 @@
         // Each line is rebased to 0% at the left edge of the range.
         function portfolioTwrSpec(hold, label) {
             if (!HISTORY) return null;   // not fetched yet: drawChart skips, updateChart redraws on arrival
+            // Skipped the passphrase: no trades to replay. A flat 0% line would read as a result.
+            if (!hold.some(h => h.trades.length)) return {
+                days: [], series: [], headline: '–', title: `${label} performance`,
+                sub: 'Holdings locked. Performance replays your trades, so reload and unlock to see it.',
+                note: 'The YTD Performance figure in the tiles above is published without the passphrase.',
+            };
             const history = longRange ? HISTORY.long : HISTORY;
             const DEFS = {
                 total:    { label: 'Total',    color: PORT_COLOR,          filter: null },
@@ -2578,12 +2585,15 @@
             const fmtX = spec.fmtX || ymd;
             const W = svg.clientWidth || svg.parentNode.clientWidth;
             const H = 210, L = 64, R = 14, T = 10, B = 22;
-            if (!W || days.length < 2) return;
+            if (!W) return;
 
+            // Before the empty-series exit, so a chart with nothing to draw still says why
+            // ("Holdings locked ...") instead of leaving the last chart's words on screen.
             document.getElementById('chart-title').textContent = spec.title;
             document.getElementById('chart-change').innerHTML = spec.headline;
             document.getElementById('chart-sub').textContent = spec.sub;
             document.getElementById('chart-note').textContent = spec.note;
+            if (days.length < 2) { svg.innerHTML = ''; return; }
 
             // Legend (always shown for >=2 series).
             const legend = document.getElementById('legend');
@@ -4326,10 +4336,13 @@ function renderPot() {
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
         ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance }, watchlist, signals, pot]) => {
-            // Sealed since D67. Skipping leaves an empty book: prices, the watchlist and the pot still work.
+            // Sealed since D67. Skipping keeps the PUBLIC half of holdings.json: which stocks are held
+            // (ticker, group, geography, currency), with prices, moves and valuation, and no amounts.
+            // It used to fall back to an empty list, blanking the table, although D67 kept the
+            // tickers public on purpose.
             if (sealed) {
                 const inside = await unlockHoldings(sealed);
-                holdings = inside ? inside.holdings : [];
+                if (inside) holdings = inside.holdings;
             }
             nav = await vaultOpen(nav);
             RATES = rates;
