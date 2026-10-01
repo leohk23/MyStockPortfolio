@@ -4020,6 +4020,14 @@ function renderPot() {
                 title="Show ${escapeHTML(text)}">${td.innerHTML}</a>`;
         }
     });
+    // A proposal's title links to the stock it proposes (its watchlist or holding view), the same
+    // link a ticker cell gets. The ticker comes from the file name, which is the proposal id, so a
+    // title worded any way still finds it; a name the repo does not carry stays plain text.
+    if (doc.kind === 'proposal' || doc.kind === 'proposalpast') {
+        const t = potTicker(doc.id), h1 = body.querySelector('h1');
+        if (h1 && STATE.quotes?.[t] && !h1.querySelector('a'))
+            h1.innerHTML = `<a href="#" class="pot-ticker" data-ticker="${escapeHTML(t)}" title="Show ${escapeHTML(t)}">${h1.innerHTML}</a>`;
+    }
     body.querySelectorAll('a[data-ticker]').forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
         // Leaving a proposal for a stock is the one transition worth a history entry: Back
