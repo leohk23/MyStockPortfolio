@@ -3574,10 +3574,20 @@
             // then 1 and Mix reads the true share; a multi-listing row's moves are weighted properly;
             // rows sort by size. Never displayed as money: locked forces the eye view, so money()
             // prints ••• before it could show one of these fractions as a pound figure.
+            // The published gain % (D85) gives each holding's cost on the same scale, value / (1 + g),
+            // so any row's gain % is exact: sum of value over sum of cost, as unlocked. Needs every
+            // leg of the row; one missing leaves the row "–" rather than a partial figure.
             if (STATE.locked && STATE.weights) for (const r of STATE.rows) {
-                for (const leg of r.legs) leg.value = STATE.weights[leg.yahoo] ?? null;
+                for (const leg of r.legs) {
+                    leg.value = STATE.weights[leg.yahoo] ?? null;
+                    const g = STATE.gains?.[leg.yahoo];
+                    leg.cost = leg.value != null && g != null ? leg.value / (1 + g) : null;
+                }
                 r.value = r.legs.some(l => l.value != null) ? r.legs.reduce((a, l) => a + (l.value || 0), 0) : null;
                 r.moves = Object.fromEntries(portfolioLib.PERIODS.map(p => [p, portfolioLib.weightedMove(r.legs, p)]));
+                r.cost = r.legs.every(l => l.cost != null) ? r.legs.reduce((a, l) => a + l.cost, 0) : null;
+                r.gain = r.cost != null ? r.value - r.cost : null;
+                r.gainPct = r.cost ? r.gain / r.cost : null;
             }
             STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
         }
@@ -4381,7 +4391,7 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance, weights }, watchlist, signals, pot]) => {
+        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance, weights, gains }, watchlist, signals, pot]) => {
             // Sealed since D67. Skipping keeps the PUBLIC half of holdings.json: which stocks are held
             // (ticker, group, geography, currency), with prices, moves and valuation, and no amounts.
             // It used to fall back to an empty list, blanking the table, although D67 kept the
@@ -4410,7 +4420,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, weights, locked, firstTrade, dim, updated };
+            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, weights, gains, locked, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.

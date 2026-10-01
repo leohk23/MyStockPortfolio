@@ -2774,6 +2774,16 @@ async function main() {
         const tot = Object.values(v).reduce((p, x) => p + x, 0);
         if (tot > 0) weights = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, Number((x / tot).toFixed(5))]));
     }
+    // Each holding's gain % on its open lots, the table's % column, by Leo's choice on 1 Oct (D85):
+    // with the public price it reveals the average price paid. One figure per holding is enough:
+    // with the weights above, cost = value / (1 + gain %), so the page rebuilds any row's gain %
+    // exactly. Same build() the page runs, so the number is the page's own arithmetic.
+    let gains = null;
+    if (HOLDINGS_FULL) {
+        const { build } = require('./portfolio.js');
+        gains = Object.fromEntries(build(priced, rates, quotes, 'instrument')
+            .filter(r => Number.isFinite(r.gainPct)).map(r => [r.legs[0].yahoo, Number(r.gainPct.toFixed(5))]));
+    }
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
     fs.writeFileSync('prices.json', JSON.stringify({
@@ -2797,6 +2807,7 @@ async function main() {
         nav: publishable(nav),
         performance,
         weights,
+        gains,
         failed,
     }, null, 1));
     const kb = f => (fs.statSync(f).size / 1024).toFixed(0);
