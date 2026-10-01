@@ -45,6 +45,11 @@ on:
     # '3,18,33,48 0,1,5-21 * * 1-5'.
     - cron: '3,33 0,1,5-21 * * 1-5'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test phone alert (push-alerts.js)
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -91,13 +96,24 @@ jobs:
         env:
           HOLDINGS_KEY: ${{ secrets.HOLDINGS_KEY }}
 
+      # Big-move alerts to Leo's phone (push-alerts.js, D86): a holding, book or pot, moving 5% in a
+      # day. After the fetch, so it reads today's moves; before the commit, so its once-per-move
+      # memory (alerts-state.json) goes out with the prices. Never fails the job: missing secrets or
+      # an expired subscription only log.
+      - run: node push-alerts.js --selftest
+      - run: node push-alerts.js
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTION: ${{ secrets.PUSH_SUBSCRIPTION }}
+          ALERT_TEST: ${{ github.event.inputs.test_alert == 'true' && '1' || '' }}
+
       # earnings.json is the stored annual-EPS history: refreshed by fetch-prices only when it
       # ages out (weekly), not hourly — so most runs leave it untouched and it drops out here.
       - name: Commit prices.json + history.json + earnings.json + intraday.json
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json history.json earnings.json intraday.json world-history.json
+          git add prices.json history.json earnings.json intraday.json world-history.json alerts-state.json
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "prices: $(date -u +%Y-%m-%dT%H:%MZ)"
           # No rebase. These four files are 100% derived, so on any divergence the right answer is

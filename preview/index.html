@@ -308,12 +308,16 @@
             #pot-body .pot-kv > div { grid-template-columns: 1fr; }
             #pot-body .pot-kv dd { white-space: normal; }
         }
-        #vault { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line);
+        #vault, #alerts { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line);
             border-radius: 8px; max-width: min(26rem, calc(100vw - 32px)); padding: 16px 18px; }
-        #vault::backdrop { background: rgba(0, 0, 0, .55); }
+        #vault::backdrop, #alerts::backdrop { background: rgba(0, 0, 0, .55); }
         #vault input[type=password] { width: 100%; box-sizing: border-box; padding: 7px 9px; margin: 4px 0 10px;
             background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; }
-        #vault .vault-actions { text-align: right; margin: 12px 0 0; }
+        #vault .vault-actions, #alerts .vault-actions { text-align: right; margin: 12px 0 0; }
+        #alerts textarea { width: 100%; box-sizing: border-box; font: 11px/1.4 ui-monospace, monospace; padding: 6px;
+            background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; }
+        #alerts-btn { line-height: 0; padding: 5px 8px; }
+        #alerts-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
         #pot-body .pot-scroll { overflow-x: auto; margin: 0 0 14px; max-width: 100%; }
         #pot-body table { border-collapse: collapse; font-size: 12.5px; }
         /* The holdings table's idiom: a rule under each row rather than a box around every cell,
@@ -659,6 +663,14 @@
             <p class="vault-actions"><button value="skip">Skip</button> <button value="ok">Unlock</button></p>
         </form>
     </dialog>
+    <dialog id="alerts">
+        <form method="dialog">
+            <p><b>Phone alerts</b></p>
+            <p class="alerts-msg muted"></p>
+            <textarea readonly rows="6" hidden aria-label="This phone's subscription"></textarea>
+            <p class="vault-actions"><button type="button" id="alerts-copy" hidden>Copy</button> <button value="close">Close</button></p>
+        </form>
+    </dialog>
     <div id="preview-banner" hidden>
         <strong>PREVIEW</strong> — staging copy of the dashboard, reading the same live data as the
         real page. Changes here are not live until promoted.
@@ -674,6 +686,7 @@
         <div class="btns" id="ccy-switch" role="group" aria-label="Display currency"></div>
         <div class="btns" id="privacy">
             <button id="priv-toggle" type="button" aria-pressed="false"></button>
+            <button id="alerts-btn" type="button" title="Phone alerts when a holding moves 5% in a day" aria-label="Set up phone alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
         </div>
     </div>
 
@@ -1087,6 +1100,47 @@
                 document.getElementById('vault-msg').hidden = false;
             }
         }
+
+        // ---------------- phone alerts (push-alerts.js, D86) ----------------
+        // The price workflow sends a notification when a holding, book or pot, moves 5% in a day.
+        // The site has no server, so this button only does the phone's half: permission, the
+        // service worker (sw.js, at the site root so it serves live and preview alike), and a
+        // subscription Leo sends once to become the PUSH_SUBSCRIPTION secret. The public key
+        // below pairs with the VAPID_PRIVATE_KEY secret and the gitignored .vapid-key.
+        const VAPID_PUBLIC = 'BFPAesfmo5RTld3FAkbTMZhHBTRvcBzewEYDrUH_LCb0RG6HaLaEg-n3QMUHa4wIqZIIKJaKRE1msP7waAeYhoo';
+        document.getElementById('alerts-btn').addEventListener('click', async () => {
+            const dlg = document.getElementById('alerts');
+            const msg = dlg.querySelector('.alerts-msg'), box = dlg.querySelector('textarea'), copy = document.getElementById('alerts-copy');
+            const show = (text, code) => {
+                msg.textContent = text;
+                box.hidden = copy.hidden = !code;
+                box.value = code || '';
+                if (!dlg.open) dlg.showModal();
+            };
+            if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window))
+                return show('This browser cannot receive push notifications.');
+            try {
+                show('Asking this browser for permission…');
+                if (await Notification.requestPermission() !== 'granted')
+                    return show('Notifications are blocked for this site. Allow them in the browser\'s site settings, then press the bell again.');
+                const reg = await navigator.serviceWorker.register(DATA + 'sw.js');
+                await navigator.serviceWorker.ready;
+                const pad = '='.repeat((4 - VAPID_PUBLIC.length % 4) % 4);
+                const key = Uint8Array.from(atob((VAPID_PUBLIC + pad).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+                const sub = await reg.pushManager.getSubscription()
+                    || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+                show('This phone is ready. Copy the code below and send it to Claude, or save it as the GitHub '
+                    + 'secret PUSH_SUBSCRIPTION. Alerts start with the next price run. Once per phone; again only if '
+                    + 'you clear this site\'s data.', JSON.stringify(sub));
+            } catch (e) {
+                show('Could not set up alerts: ' + e.message);
+            }
+        });
+        document.getElementById('alerts-copy').addEventListener('click', async e => {
+            const box = document.querySelector('#alerts textarea');
+            try { await navigator.clipboard.writeText(box.value); e.target.textContent = 'Copied'; }
+            catch { box.select(); e.target.textContent = 'Select all, then copy'; }
+        });
 
         function loadHistory() {
             if (HISTORY) return Promise.resolve(HISTORY);
