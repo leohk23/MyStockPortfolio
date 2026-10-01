@@ -36,7 +36,14 @@ on:
     # 76 firings a weekday. GitHub says Actions is free on public repos with standard runners, but
     # the Additional Product Terms also say GitHub may monitor use, so asking for less than the
     # maximum during hours nobody reads is cheap insurance rather than a saving.
-    - cron: '3,18,33,48 0,1,5-21 * * 1-5'
+    #
+    # TEST from 1 Oct 2026: every 30 minutes (:03 and :33, 38 firings a weekday) instead of 15.
+    # Over the 16 days before it, GitHub ran only ~4-5 of the 76 a weekday, each promptly (median
+    # 10 min late) but about six hours apart, which looks like a cap rather than random drops.
+    # If halving the ask does not raise the count, frequency is not the lever. Read the result
+    # and decide per BACKLOG.md, "CI and scheduling"; the 15-minute line was
+    # '3,18,33,48 0,1,5-21 * * 1-5'.
+    - cron: '3,33 0,1,5-21 * * 1-5'
   workflow_dispatch:
   push:
     branches: [main]

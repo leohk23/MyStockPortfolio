@@ -53,10 +53,19 @@ webb-database reports 0002.HK's latest interim as period end **2026-01-31**, ann
 
 ## CI and scheduling
 
-### The 15-minute price refresh is not happening, and no explanation has survived
+### The 15-minute price refresh is not happening: a 30-minute test runs until 6 Oct
 Leo's stated hard requirement is a 15-minute refresh. The workflow asks for it — `'3,18,33,48 0,1,5-21 * * 1-5'`, 76 firings a weekday — and GitHub delivers a small fraction. Monday 7 Sep produced **2 scheduled firings in 13 hours** against ~44 expected, with a 346-minute gap.
 Two explanations were tested and **both are dead**. It is not minute-0 contention: the cron was moved off the hour on 4 Sep and the rate did not change. It is not the push cascade saturating the `prices` concurrency group: 7 Sep had exactly **one** push-triggered run all day and the schedule still fired twice.
 What remains is that GitHub simply drops most scheduled firings on this repo, which its own docs permit — `schedule` is best-effort. If that is the answer, no cron shape fixes it and the requirement needs a different mechanism (a `repository_dispatch` pinged from somewhere that does keep time, or accepting a lower rate). Monday 14 Sep is the first full weekday of clean data since the change; decide after it, not before.
+
+**Update 1 Oct 2026: the shape of the drops, and a test running now.**
+- **16 days to 1 Oct:** 75 scheduled runs, about **4–5 a weekday** against 76 asked for. Each one fired **promptly**, a median 10 minutes after its slot, and they came roughly **six hours apart** (recently 00:43, 06:00, 12:25, 18:05, 22:20, 05:36, 11:50 UTC). Random drops under load would leave scattered, late survivors; this looks like a cap on how often the workflow is scheduled.
+- **What keeps the site fresh anyway:** the workflow also runs on every push to `main`, which was 234 of the last 300 runs (pot cycles, Tradelog publishes, Claude's commits). In practice prices refresh after each push, plus about every six hours.
+- **The test, from 1 Oct:** the cron is every 30 minutes, `'3,33 0,1,5-21 * * 1-5'` (38 a weekday). If GitHub's limit is per firing, the count should hold or rise; if it is a cap, it stays at 4–5 or falls.
+- **Judge it on Tue 6 Oct**, after three full weekdays (Thu 1 is partial, then Fri 2, Mon 5). Count scheduled runs per weekday since the change:
+  `gh run list --workflow prices.yml --limit 300 --json createdAt,event --jq '.[] | select(.event=="schedule") | .createdAt'`
+- **Then decide:** if the count clearly rises, keep 30 minutes, or try 15 again with what was learned. If it stays at 4–5, frequency is not the lever: revert to the 15-minute line (kept in the workflow comment) and meet the requirement another way. The candidates are the laptop running `gh workflow run prices.yml` every 15 minutes while it is awake (free, nothing external, gaps when it sleeps), or an outside scheduler calling `workflow_dispatch` with a token scoped to this repo (reliable, but a service holding a token). Leo was offered both on 1 Oct and chose to test first.
+- **The docs overstate it meanwhile:** AGENTS.md and the workflow's own comment describe a 15-minute refresh that does not happen. Fix them to whatever the test settles.
 
 ## The pot
 
