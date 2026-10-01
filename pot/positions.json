@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-09-30T06:53:08.719Z",
- "cashGBP": 313.39,
+ "generated": "2026-10-01T05:30:03.916Z",
+ "cashGBP": 314.25,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -99,6 +99,36 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-09-30-0722-CME.md",
+   "id": "2026-09-30-0722-CME",
+   "state": "open",
+   "ticker": "CME",
+   "written": "2026-09-30",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At the September activity release, check by **8 October 2026**, re-read if total ADV falls year on year, or interest-rate ADV falls year on year for a second consecutive month. At **21 October 2026**, also warn if quarterly GAAP operating margin is below **64%**, or clearing/transaction revenue falls while total ADV grows. These are analyst thresholds, not management guidance; the revenue-volume divergence tests monetization rather than celebrating activity alone.",
+   "break": "Propose an exit under §5.1 if **two consecutive post-entry quarters** both have lower year-on-year clearing/transaction revenue and GAAP operating margin below **60%**, checked at Q3 and at FY2026 results **no later than 1 March 2027**. A material clearing-member loss borne by CME that forces emergency capital raising breaks the capital-preservation case immediately. Monthly activity can warn before two quarterly failures; no stock-price condition is used.",
+   "reviewBy": "2026-10-08",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-09-30-0722-BVI.PA.md",
+   "id": "2026-09-30-0722-BVI.PA",
+   "state": "open",
+   "ticker": "BVI.PA",
+   "written": "2026-09-30",
+   "side": "BUY",
+   "limit": null,
+   "warning": "Check the **21 October 2026** revenue release for continuing-business organic growth below **4%**, or withdrawal of the upgraded organic-growth outlook. At **25 February 2027**, re-read if annual operating cash less capital expenditure, lease payments and net acquisition/shareholder-settlement cash is negative, or if company net debt/EBITDA exceeds **2.0x**. These are analyst tests; a scope change requires a like-for-like bridge, not a mechanical comparison of differently defined divisions.",
+   "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if the same cash-after-reinvestment-and-acquisitions measure is negative **and** leverage exceeds **2.0x**, or if a material acquisition impairment is accompanied by a withdrawal of the organic-growth outlook. That combination would show that reported growth is being bought with a weakening balance sheet, the dominant risk below. An isolated planned acquisition does not automatically break the thesis. Cash definition: start with the issuer's FCF, subtract the separate lease-and-interest payment line and the net-acquisition/amounts-owed-to-shareholders line, using consistent classifications and counting each cash flow once. H1 reference: **€157.7m − €68.4m − €52.5m = €36.8m**, before dividends and buybacks. Reconcile any reclassification explicitly. This includes acquisition cash that an ordinary capex-only FCF test misses. [Issuer cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
+   "reviewBy": "2026-10-21",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-09-29-2346-NVO.md",
    "id": "2026-09-29-2346-NVO",
@@ -1825,5 +1855,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-09-30"
+ "today": "2026-10-01"
 }
