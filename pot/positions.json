@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-01T05:30:03.916Z",
- "cashGBP": 314.25,
+ "generated": "2026-10-02T15:14:56.215Z",
+ "cashGBP": 313.08,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -100,6 +100,21 @@
  },
  "proposals": [
   {
+   "file": "2026-10-01-0557-CME.md",
+   "id": "2026-10-01-0557-CME",
+   "state": "open",
+   "ticker": "CME",
+   "written": "2026-10-01",
+   "side": "BUY",
+   "limit": null,
+   "warning": null,
+   "break": "propose an exit under §5.1 if **both Q3 and Q4 2026** show clearing/transaction fee revenue down **at least 5% year on year** and GAAP operating margin **below 60%** in each quarter; also break immediately if either quarter's margin is **below 55%**. Check Q3 on 21 October and Q4 by **28 February 2027**, an analyst review deadline rather than an announced earnings date. Use reported operating profit divided by revenue, not adjusted net income. Sustained loss of fee income and operating leverage would contradict the earning-engine case; the thresholds are my decision rules, not management guidance.",
+   "reviewBy": "2026-10-08",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-09-30-0722-CME.md",
    "id": "2026-09-30-0722-CME",
    "state": "open",
@@ -110,9 +125,9 @@
    "warning": "At the September activity release, check by **8 October 2026**, re-read if total ADV falls year on year, or interest-rate ADV falls year on year for a second consecutive month. At **21 October 2026**, also warn if quarterly GAAP operating margin is below **64%**, or clearing/transaction revenue falls while total ADV grows. These are analyst thresholds, not management guidance; the revenue-volume divergence tests monetization rather than celebrating activity alone.",
    "break": "Propose an exit under §5.1 if **two consecutive post-entry quarters** both have lower year-on-year clearing/transaction revenue and GAAP operating margin below **60%**, checked at Q3 and at FY2026 results **no later than 1 March 2027**. A material clearing-member loss borne by CME that forces emergency capital raising breaks the capital-preservation case immediately. Monthly activity can warn before two quarterly failures; no stock-price condition is used.",
    "reviewBy": "2026-10-08",
-   "supersededBy": null,
+   "supersededBy": "2026-10-01-0557-CME",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-30-0722-BVI.PA.md",
@@ -559,7 +574,7 @@
   {
    "file": "2026-09-16-2049-TW.md",
    "id": "2026-09-16-2049-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-16",
    "side": "BUY",
@@ -574,7 +589,7 @@
   {
    "file": "2026-09-16-2049-AZN.L.md",
    "id": "2026-09-16-2049-AZN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "AZN.L",
    "written": "2026-09-16",
    "side": "BUY",
@@ -1855,5 +1870,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-10-01"
+ "today": "2026-10-02"
 }

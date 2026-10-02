@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-09-30",
+  "updated": "2026-10-01",
   "normalizedEps": {
     "CME": {
       "basis": "company-adjusted diluted EPS",
@@ -8,13 +8,17 @@
       "note": "Added by the 30 September 2026 deep dive. H2 2025 is derived from issuer FY2025 less H1 2025; H2 plus H1 2026 covers twelve contiguous months. Company-adjusted excludes investment gains as well as amortisation and other charges; it is not independently reconstructed owner earnings. Two annual comparatives do not certify the full historical percentile. H1 and Q2 entries overlap and must not be added together.",
       "annual": [
         { "end": "2024-12-31", "eps": 10.26, "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html" },
-        { "end": "2025-12-31", "eps": 11.20, "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html" }
+        { "end": "2025-12-31", "eps": 11.20, "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html" },
+        { "end": "2022-12-31", "eps": 7.97, "source": "https://www.cmegroup.com/media-room/press-releases/2023/2/08/cme_group_inc_reportsfourth-quarterandfull-year2022financialresu.html" },
+        { "end": "2023-12-31", "eps": 9.34, "source": "https://www.cmegroup.com/media-room/press-releases/2024/2/14/cme_group_inc_reportsfourth-quarterandfull-year2023financialresu.html" }
       ],
       "quarters": [
         { "end": "2025-06-30", "months": 6, "eps": 5.75, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
         { "end": "2025-12-31", "months": 6, "eps": 5.45, "derived": "FY2025 USD11.20 less H1 2025 USD5.75", "source": "https://www.cmegroup.com/media-room/press-releases/2026/2/04/cme_group_inc_reportsfourthconsecutiveyearofrecordannualrevenuea.html and https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
         { "end": "2026-06-30", "months": 6, "eps": 6.35, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
-        { "end": "2026-06-30", "eps": 2.99, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" }
+        { "end": "2026-06-30", "eps": 2.99, "source": "https://www.cmegroup.com/media-room/press-releases/2026/7/22/cme_group_inc_reportsstrongfinancialresultsforq22026.html" },
+        { "end": "2022-12-31", "eps": 1.92, "source": "https://www.cmegroup.com/media-room/press-releases/2023/2/08/cme_group_inc_reportsfourth-quarterandfull-year2022financialresu.html" },
+        { "end": "2023-12-31", "eps": 2.37, "source": "https://www.cmegroup.com/media-room/press-releases/2024/2/14/cme_group_inc_reportsfourth-quarterandfull-year2023financialresu.html" }
       ]
     },
     "FUL": {
@@ -34,7 +38,9 @@
       "annual": [],
       "quarters": [
         { "end": "2026-06-30", "months": 6, "eps": 12.81, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
-        { "end": "2026-06-30", "eps": 6.18, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" }
+        { "end": "2026-06-30", "eps": 6.18, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
+        { "end": "2025-06-30", "months": 6, "eps": 12.71, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
+        { "end": "2025-06-30", "eps": 5.89, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" }
       ]
     },
     "REL.L": {

@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 41 | **earns a feed** |
+| margin | 42 | **earns a feed** |
 | cash conversion | 34 | **earns a feed** |
 | volume / units | 34 | **earns a feed** |
-| leverage / net debt | 16 | **earns a feed** |
-| backlog / order intake | 14 | **earns a feed** |
+| leverage / net debt | 17 | **earns a feed** |
+| backlog / order intake | 15 | **earns a feed** |
+| inventory | 13 | **earns a feed** |
 | return on capital | 12 | **earns a feed** |
-| inventory | 11 | **earns a feed** |
 | capital returns | 9 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-233 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+238 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,9 +52,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-10-01 | UK real business investment, GDP expenditure and manufacturing inventories. | Fetched from the Office for National Statistics quarterly national accounts. Wanted quarterly rather than weekly; the combination distinguishes capital spending from inventory accumulation and showed investment growth continuing while manufacturers destocked. |
-| 2026-10-01 | Sulzer segment order intake, aftermarket growth, backlog conversion, inventory and contract assets, free cash flow and net debt. | Fetched from Sulzer's midyear report. Wanted on results dates while `SUN.SW` is tracked; the set tests whether service resilience and higher margins convert into cash rather than being absorbed by delayed projects and working capital. |
 | 2026-10-01 | `SUN.SW` quote, Yahoo sector and comparable valuation history. | No outside quote adopted; the candidate was handed to the normal watchlist pipeline. No manual series wanted because the repository should establish it on its normal fetch cadence. |
+| 2026-10-01 | Match the current valuation denominator to the historical percentile, and retain the denominator used by the screen. | Deep dive reproduced BVI.PA's 6.356% from the final historical P/E of 20.8083 (inferred annual EPS 1.290832), while current quote EPS 1.13 gives 23.7699x and ranks 42.797% against exactly the same 236 stored observations. P/OCF is outside the decile too. Sources: prices.json, earnings.json, history.json and fetch-prices.js peHistory. This is a mixed annual/TTM comparison, not an adjusted percentile. Needed every scan; report does not modify the pipeline. |
+| 2026-10-01 | NFLX split-restatement and derived Q4 consistency check. | filing-dates.json records Q1/Q2 2025 EPS 0.066/0.072 despite alternatives 0.66/0.72, then derives Q4 at 1.805; earnings.json has Q4 0.56. The historical current TTM becomes 4.422, versus Yahoo trailing 3.21 and stored four-quarter sum 3.177. Check source restatement before applying another split adjustment and require quarterly sums to reconcile with the annual EPS. Current historical percentile is not a percentile of today's quoted P/E. No history repaired in this lane. |
+| 2026-10-01 | Sulzer segment order intake, aftermarket growth, backlog conversion, inventory and contract assets, free cash flow and net debt. | Fetched from Sulzer's midyear report. Wanted on results dates while `SUN.SW` is tracked; the set tests whether service resilience and higher margins convert into cash rather than being absorbed by delayed projects and working capital. |
+| 2026-10-01 | UK real business investment, GDP expenditure and manufacturing inventories. | Fetched from the Office for National Statistics quarterly national accounts. Wanted quarterly rather than weekly; the combination distinguishes capital spending from inventory accumulation and showed investment growth continuing while manufacturers destocked. |
 | 2026-09-30 | `KEMIRA.HE` quote, Yahoo sector and comparable valuation history. | No outside quote was adopted. Added to `watchlist.json`; wanted on the normal fetch cadence so the repository can establish the price, sector and valuation independently. |
 | 2026-09-30 | `UU.L` local price, earnings and comparable valuation history. | Yahoo identified the London symbol and supplied a provisional quote because the repository did not yet carry it. Added to `watchlist.json`, so the normal pipeline should establish the quote and valuation record independently. No separate manual feed is wanted; successful scheduled coverage remains to verify. |
 | 2026-09-30 | BVI cash after acquisition spending and an observed AI-services revenue series. | [H1 cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html) allows FCF less lease/interest payments less net acquisition/shareholder-settlement spending. [September CMD](https://group.bureauveritas.com/newsroom/bureau-veritas-confirms-leap-28-ambition-upgrades-total-revenue-growth-double-digit-2027) accelerates acquisitions and sets an AI revenue ambition, not a verified recurring-assurance revenue series. Wanted each financial result; next full cash test 25 February 2027. |
@@ -288,4 +290,9 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
+| 2026-10-02 | Global manufacturing output, new orders, inventory motive and input prices. | Fetched from [S&P Global's September global manufacturing survey](https://www.spglobal.com/market-intelligence/en/news-insights/research/2026/10/global-manufacturing-pmi-hits-highest-since-february-2022-but-price-growth-also-accelerates). Wanted monthly and carried into weekly sweeps; the split distinguishes broad production growth from conflict-driven precautionary stocking and shows whether input inflation accompanies it. |
+| 2026-10-02 | US manufacturing new orders, backlogs, customer inventories and input prices. | Fetched from the [Institute for Supply Management's September report](https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/september/). Wanted monthly; this repeated reach combines demand quality, supply strain and pricing pressure rather than treating a headline PMI as a clean industrial recovery. |
+| 2026-10-02 | Euro-area headline, ex-energy and energy inflation. | Fetched from [Eurostat's September flash HICP](https://ec.europa.eu/eurostat/en/web/products-euro-indicators/w/2-02102026-ap). Wanted monthly while the energy shock persists; this repeated reach now clearly supports a small recurring feed that separates energy pass-through from broader inflation. |
+| 2026-10-02 | Midea segment growth and margins, geographic revenue, operating cash flow and working-capital bridge. | Fetched from [Midea's 2026 interim report](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0828/2026082802074.pdf). Wanted on results dates while `0300.HK` is tracked; the set tests whether overseas own-brand, building and robotics growth compounds capital through weak Chinese appliance demand rather than being offset by lower margin or supplier funding. |
+| 2026-10-02 | `0300.HK` quote, Yahoo sector and comparable valuation history. | Yahoo was used only to confirm that the symbol resolves to Midea Group; no outside quote or multiple was adopted. Added to `watchlist.json`, so the normal pipeline should establish the quote and valuation record independently. No separate manual feed wanted. |
 <!-- entries:end -->
