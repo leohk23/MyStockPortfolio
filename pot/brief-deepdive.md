@@ -657,6 +657,22 @@ hand-wave the accounts. His stated regret is 7532.T, *"blinded by the tourist re
 looking at the fundamentals, valuation, forward prospectus and yen depreciation carefully"* —
 so answer, explicitly, **why this is not that mistake again.**
 
+**§2.4b — a shrinking business must be argued, never implied.** If the company's operating profit
+fell in its latest fiscal year, or it guides sales or operating profit to fall this year (midpoint
+below 0%), it may still be proposed, as a recovery, but:
+
+1. **The thesis says so in its first sentences, with the sign.** "Guides 2026 sales and operating
+   profit to fall 0–6% at CER." Quote guidance as a range with its direction, every time and
+   anywhere in your output: an outlook that moved from a 4–12% decline to a 0–6% decline
+   **narrowed its expected decline**. Never write "raised" or "lowered" alone. On 4 Oct a Novo
+   proposal said the company "raised its full-year adjusted outlook", and a business guiding to
+   shrink read as one guiding to grow.
+2. **Name when growth resumes and what would show it**: the period, and the figure in which filing.
+3. **P3 tests that resumption by that date.** The recovery is the thesis, so it is the falsifier.
+
+This is the 7532.T question in its sharpest form, so answer it directly: what makes this recovery
+visible in the accounts rather than only in the story.
+
 ## Rules
 
 - Write `pot/proposals/…`, and append to `pot/adjustments.json` and `pot/data-wishlist.md` where

@@ -15,6 +15,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 
 | §   | Rule                                     | Value                                                                                                               |
 | ---- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 2.4b | **A shrinking business must be argued**  | Falling or guided-to-fall sales/op. profit: state it with its sign, name when growth resumes, test that in P3       |
 | 3.1  | Universe                                 | No constraints                                                                                                      |
 | 3.2  | Permanent exclusions                     | Companies Leo has rejected, until he lifts it (`pot/rejections.json`)                                               |
 | 3.3  | May buy what the main book already holds | Yes                                                                                                                 |
@@ -217,6 +218,28 @@ invented one. Absent is an answer; 38 of 59 holdings carry them.
 
 None of this displaces the filter. Valuation still screens things out. This says what has to be
 true of the business *before* the multiple is worth arguing about.
+
+**Q 2.4b** What if the business is shrinking? `[agent]`
+
+> Raised by Leo on 4 Oct 2026 over an NVO proposal whose thesis said Novo had "raised its full-year
+> adjusted outlook": from a 4-12% decline to a 0-6% decline, so still a decline. Growth is one of
+> his four measures of earnings quality above, but nothing made a proposal confront it, and the
+> word "raised" let a shrinking business read as a growing one.
+
+**A** — **Allowed, but it must be argued, never implied.** A company whose operating profit fell in
+its latest fiscal year, or which guides sales or operating profit to fall this year (the midpoint
+below 0%), may still be proposed, as a recovery. The proposal must then:
+
+1. **Say it in the thesis, with the sign.** "Guides 2026 sales and operating profit to fall 0-6%",
+   never "raised its outlook". Guidance is always quoted as a range with its direction: an outlook
+   that improved from a 4-12% decline to a 0-6% decline "narrowed its expected decline".
+2. **Say when growth resumes and what would show it**: the period, and the figure in a filing that
+   would prove it.
+3. **Make that the falsifier.** P3 tests the resumption by that date, so the recovery case is
+   checked rather than assumed.
+
+And it must answer the 7532.T question directly, since a rebound bought on hope is that mistake:
+what makes this recovery visible in the accounts, not just in the story.
 
 ---
 
