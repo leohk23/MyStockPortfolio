@@ -208,7 +208,7 @@ if ($Push) {
     #
     # Same remedy as run-daily.ps1's Publish, and the two must stay in step: copy the scratch out,
     # let git take CI's version, copy it back verbatim. No merge attempted, nothing to conflict.
-    $ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json')
+    $ciOwned = @('prices.json', 'history.json', 'intraday.json', 'earnings.json', 'world-history.json')   # same list as run-daily.ps1
     $saved = @{}
     foreach ($f in $ciOwned) {
         if (git status --porcelain -- $f) {
