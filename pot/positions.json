@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-03T08:00:03.353Z",
- "cashGBP": 314.21,
+ "generated": "2026-10-04T08:00:03.887Z",
+ "cashGBP": 314.11,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -100,6 +100,36 @@
  },
  "proposals": [
   {
+   "file": "2026-10-03-0815-NVO.md",
+   "id": "2026-10-03-0815-NVO",
+   "state": "open",
+   "ticker": "NVO",
+   "written": "2026-10-03",
+   "side": "BUY",
+   "limit": null,
+   "warning": "at the **Q3 report on 4 November 2026**, re-read if any of these happens: - 2026 adjusted sales or operating profit guidance is **cut below the 0% to −6% range**, meaning its lower bound falls under −6%; - US Operations sales growth at CER is **worse than −5%** for Q3 (Q2 was −2%); - Lilly's Q3 release (late October) shows Mounjaro plus Zepbound still growing **above 40%** while Novo's Wegovy grows below 0% at CER. Q2 was +91% and +46% against Wegovy's +1%. The third leg is the external read Rule 3 asks for. Any one trips a re-read, not a sale.",
+   "break": "propose a sale under §5.1 if either: - **US Operations sales growth at CER is negative in both Q3 and Q4 2026**, and Lilly's tirzepatide revenue grows above 30% in both of the same quarters. That is share loss to a rival, not a shrinking market. The Q4 report is expected in early February 2027. - **FY2026 adjusted sales growth comes in below −6% at CER**, outside the guidance raised in August.",
+   "reviewBy": "2026-11-05",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-03-0815-CME.md",
+   "id": "2026-10-03-0815-CME",
+   "state": "open",
+   "ticker": "CME",
+   "written": "2026-10-03",
+   "side": "BUY",
+   "limit": null,
+   "warning": "at the **Q3 result on 21 October 2026**, re-read if either: - the average rate per contract is below **$0.658** (3% below Q2 2026's $0.678); or - clearing and transaction fee revenue grows by **less than half** of Q3's +16% ADV growth, year on year. Either says record volume is being bought with price. This trips a re-read, not a sale.",
+   "break": "propose a sale under §5.1 if either: - **Q3 and Q4 2026** (the Q4 result is expected in early February 2027) **both** show clearing and transaction fee revenue growing by less than half of ADV growth, with RPC down year on year in each. Volume would then be growing while monetisation is not, which is the competitive risk arriving. - Independently, at either result, CME discloses lost market share in US Treasury futures to a competing venue. Read this from CME's own release, and from the CFTC's weekly Commitments of Traders open interest for Treasury futures by exchange.",
+   "reviewBy": "2026-10-22",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-02-1538-NVO.md",
    "id": "2026-10-02-1538-NVO",
    "state": "open",
@@ -110,9 +140,9 @@
    "warning": "— read at the **10 November 2026** review, after Novo's nine-month report on",
    "break": "— propose a sale under §5.1 if any one of these happens: - US Operations sales growth at CER is negative in **both Q3 and Q4 2026**. That is price falling faster than volume in the market that is over half of sales. - At FY2026 results (early February 2027), the **adjusted operating margin is below 40%**, against 44.6% in H1 2026. - **The 2027 outlook guides adjusted sales growth at CER below zero at its midpoint.** That is the first year carrying the January 2027 US list-price cut (P6), so a second year of decline would contradict the \"in line with peers\" premise of the price.",
    "reviewBy": "2026-11-10",
-   "supersededBy": null,
+   "supersededBy": "2026-10-03-0815-NVO",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-02-1538-CME.md",
@@ -125,9 +155,9 @@
    "warning": null,
    "break": "— propose an exit under §5.1 if **both Q3 and Q4 2026** show clearing and transaction fee revenue down **at least 5%** year on year and a GAAP operating margin **below 60%**; or if either quarter's margin is **below 55%**. Q3 is read on 21 October, Q4 by **28 February 2027**. Use reported operating profit over revenue. These are my thresholds, not management guidance.",
    "reviewBy": "2026-10-21",
-   "supersededBy": null,
+   "supersededBy": "2026-10-03-0815-CME",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-01-0557-CME.md",
@@ -140,7 +170,7 @@
    "warning": null,
    "break": "propose an exit under §5.1 if **both Q3 and Q4 2026** show clearing/transaction fee revenue down **at least 5% year on year** and GAAP operating margin **below 60%** in each quarter; also break immediately if either quarter's margin is **below 55%**. Check Q3 on 21 October and Q4 by **28 February 2027**, an analyst review deadline rather than an announced earnings date. Use reported operating profit divided by revenue, not adjusted net income. Sustained loss of fee income and operating leverage would contradict the earning-engine case; the thresholds are my decision rules, not management guidance.",
    "reviewBy": "2026-10-08",
-   "supersededBy": "2026-10-02-1538-CME",
+   "supersededBy": "2026-10-03-0815-CME",
    "phase": "live",
    "counts": false
   },
@@ -155,7 +185,7 @@
    "warning": "At the September activity release, check by **8 October 2026**, re-read if total ADV falls year on year, or interest-rate ADV falls year on year for a second consecutive month. At **21 October 2026**, also warn if quarterly GAAP operating margin is below **64%**, or clearing/transaction revenue falls while total ADV grows. These are analyst thresholds, not management guidance; the revenue-volume divergence tests monetization rather than celebrating activity alone.",
    "break": "Propose an exit under §5.1 if **two consecutive post-entry quarters** both have lower year-on-year clearing/transaction revenue and GAAP operating margin below **60%**, checked at Q3 and at FY2026 results **no later than 1 March 2027**. A material clearing-member loss borne by CME that forces emergency capital raising breaks the capital-preservation case immediately. Monthly activity can warn before two quarterly failures; no stock-price condition is used.",
    "reviewBy": "2026-10-08",
-   "supersededBy": "2026-10-02-1538-CME",
+   "supersededBy": "2026-10-03-0815-CME",
    "phase": "live",
    "counts": false
   },
@@ -185,7 +215,7 @@
    "warning": "— read by the **10 November 2026** review, after Novo's Q3 on 4 November. Any one of these trips a re-read, not a sale: - US Operations sales growth at CER is **negative again in Q3 2026**, after +4% in Q2 and −4% for H1, with Novo again citing lower realised prices. - **Wegovy pill sales in Q3 2026 fall below Q2's DKK 3,141m.** - The 2026 outlook is **cut below its 0% to −6% range** for adjusted sales or adjusted operating profit growth at CER. - External, per Rule 3: Eli Lilly's own Q3 release shows its US tirzepatide revenue growth pulling further ahead of Novo's US GLP-1 growth than it did in Q2. The review records both companies' quarterly US figures side by side. This leg is recorded, not fired on a threshold, because I did not pull Lilly's Q2 base in this run.",
    "break": "— propose a sale under §5.1 if any one of these happens: - US Operations sales growth at CER is negative in **both Q3 and Q4 2026**, the two post-entry quarters. That would be price falling faster than volume in the market that is over half of sales. - At FY2026 results (early February 2027), the **adjusted operating margin is below 40%**, against 44.6% in H1 2026 and 41.3% reported for FY2025. - **The 2027 outlook guides adjusted sales growth at CER below zero at its midpoint.** A second year of decline contradicts the \"in line with peers\" ambition that this thesis relies on.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-10-02-1538-NVO",
+   "supersededBy": "2026-10-03-0815-NVO",
    "phase": "live",
    "counts": false
   },
@@ -847,7 +877,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-10-02-1538-NVO",
+   "supersededBy": "2026-10-03-0815-NVO",
    "phase": "live",
    "counts": false
   },
@@ -862,7 +892,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-10-02-1538-NVO",
+   "supersededBy": "2026-10-03-0815-NVO",
    "phase": "live",
    "counts": false
   },
@@ -1900,5 +1930,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-10-03"
+ "today": "2026-10-04"
 }
