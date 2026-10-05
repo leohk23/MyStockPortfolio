@@ -64,7 +64,7 @@ Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read
       │  node extract-portfolio.js   (needs the xlsx dev-dep; user runs it)
       ▼
 holdings.json          positions, cost basis, geography, group, full trade log  (committed)
-      │  node fetch-prices.js        (GitHub Actions, every 15 min Mon-Fri; dependency-free)
+      │  node fetch-prices.js        (GitHub Actions: every 15 min Mon-Fri from an outside trigger, and on every push; dependency-free)
       ▼
 prices.json            quotes, FX rates, portfolio value series (replayed) (committed)
 history.json           daily + weekly closes, long NAV + benchmarks (committed, ~2MB)
@@ -189,7 +189,7 @@ from what an agent said about itself. It also writes the two performance pages, 
 | `index.html`                   | Dark-only UI: totals, chart, sortable/groupable table.                                                                                                                                                                                                       | Browser                                   |
 | `push-alerts.js` + `sw.js` | Phone alerts (D86): after each price fetch, a holding (book or pot) moving ±5% on the day sends one Web Push notification; `sw.js` shows it on the phone. Secrets `VAPID_PRIVATE_KEY` and `PUSH_SUBSCRIPTION`; memory in `alerts-state.json`. The bell button on the page produces the subscription. Dependency-free. | GitHub Actions (prices.yml) + browser |
 | `publish.js`                   | `npm run publish`: extract → commit holdings.json → rebase → push.                                                                                                                                                                                      | User's machine                            |
-| `.github/workflows/prices.yml` | `*/15 * * * 1-5` cron; runs selftests, fetches, commits. Weekdays only — every exchange in the book is shut at weekends. Public repo, so the runs are free.                                                                                                                                                                                                               | GitHub                                    |
+| `.github/workflows/prices.yml` | Run every 15 min on weekdays by an **outside scheduler** calling `workflow_dispatch` (GitHub's own cron delivers only ~1 run in 6 hours and stays as a backup), and on every push; runs selftests, fetches, sends phone alerts, commits. Weekdays only — every exchange in the book is shut at weekends. Public repo, so the runs are free.                                                                                                                                                                                                               | GitHub                                    |
 
 ## How to run / test
 

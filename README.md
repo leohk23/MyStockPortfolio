@@ -16,7 +16,7 @@ Tradelog.xlsx                 (gitignored — never leaves your machine; only th
         │  npm run extract     you run this after trading
         ▼
    holdings.json              positions, cost basis, full trade log   (committed)
-        │  fetch-prices.js     GitHub Actions, every 15 min on weekdays
+        │  fetch-prices.js     GitHub Actions, every 15 min on weekdays (outside trigger)
         ▼
    prices.json                quotes, FX rates, portfolio NAV series  (committed)
    history.json               per-stock daily closes + benchmarks     (committed)

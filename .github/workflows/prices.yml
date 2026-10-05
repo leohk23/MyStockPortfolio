@@ -37,13 +37,12 @@ on:
     # the Additional Product Terms also say GitHub may monitor use, so asking for less than the
     # maximum during hours nobody reads is cheap insurance rather than a saving.
     #
-    # TEST from 1 Oct 2026: every 30 minutes (:03 and :33, 38 firings a weekday) instead of 15.
-    # Over the 16 days before it, GitHub ran only ~4-5 of the 76 a weekday, each promptly (median
-    # 10 min late) but about six hours apart, which looks like a cap rather than random drops.
-    # If halving the ask does not raise the count, frequency is not the lever. Read the result
-    # and decide per BACKLOG.md, "CI and scheduling"; the 15-minute line was
-    # '3,18,33,48 0,1,5-21 * * 1-5'.
-    - cron: '3,33 0,1,5-21 * * 1-5'
+    # BUT GitHub does not deliver this. It runs about one firing in six hours (4-5 a weekday),
+    # promptly but on what looks like a cap: a 30-minute test (1-5 Oct) gave 3-4 a weekday, no
+    # better. So this schedule is now only the BACKUP. The 15-minute refresh comes from an outside
+    # scheduler calling workflow_dispatch every 15 minutes with a token scoped to this repo's
+    # Actions (BACKLOG.md, "CI and scheduling"), plus a run on every push.
+    - cron: '3,18,33,48 0,1,5-21 * * 1-5'
   workflow_dispatch:
     inputs:
       test_alert:

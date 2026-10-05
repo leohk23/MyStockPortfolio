@@ -53,7 +53,7 @@ webb-database reports 0002.HK's latest interim as period end **2026-01-31**, ann
 
 ## CI and scheduling
 
-### The 15-minute price refresh is not happening: a 30-minute test runs until 6 Oct
+### The 15-minute price refresh: GitHub cannot deliver it, so an outside scheduler does (6 Oct)
 Leo's stated hard requirement is a 15-minute refresh. The workflow asks for it — `'3,18,33,48 0,1,5-21 * * 1-5'`, 76 firings a weekday — and GitHub delivers a small fraction. Monday 7 Sep produced **2 scheduled firings in 13 hours** against ~44 expected, with a 346-minute gap.
 Two explanations were tested and **both are dead**. It is not minute-0 contention: the cron was moved off the hour on 4 Sep and the rate did not change. It is not the push cascade saturating the `prices` concurrency group: 7 Sep had exactly **one** push-triggered run all day and the schedule still fired twice.
 What remains is that GitHub simply drops most scheduled firings on this repo, which its own docs permit — `schedule` is best-effort. If that is the answer, no cron shape fixes it and the requirement needs a different mechanism (a `repository_dispatch` pinged from somewhere that does keep time, or accepting a lower rate). Monday 14 Sep is the first full weekday of clean data since the change; decide after it, not before.
@@ -66,6 +66,8 @@ What remains is that GitHub simply drops most scheduled firings on this repo, wh
   `gh run list --workflow prices.yml --limit 300 --json createdAt,event --jq '.[] | select(.event=="schedule") | .createdAt'`
 - **Then decide:** if the count clearly rises, keep 30 minutes, or try 15 again with what was learned. If it stays at 4–5, frequency is not the lever: revert to the 15-minute line (kept in the workflow comment) and meet the requirement another way. The candidates are the laptop running `gh workflow run prices.yml` every 15 minutes while it is awake (free, nothing external, gaps when it sleeps), or an outside scheduler calling `workflow_dispatch` with a token scoped to this repo (reliable, but a service holding a token). Leo was offered both on 1 Oct and chose to test first.
 - **The docs overstate it meanwhile:** AGENTS.md and the workflow's own comment describe a 15-minute refresh that does not happen. Fix them to whatever the test settles.
+
+**Result, 6 Oct 2026: frequency is not the lever.** Asking every 30 minutes gave **3-4 scheduled runs a weekday** (Fri 2 Oct: 4, Mon 5 Oct: 3), against 3-5 when asking every 15. GitHub still ran about one every six hours. The 15-minute cron is restored as a **backup only**, and Leo chose the outside scheduler: a free cron service calls `POST /repos/leohk23/MyStockPortfolio/actions/workflows/prices.yml/dispatches` every 15 minutes on weekdays, with a fine-grained token limited to this repository and Actions read/write. The laptop trigger was rejected because the laptop sleeps when unplugged (5 Oct: asleep 02:36-10:41). **Still to confirm once it is set up:** `workflow_dispatch` runs arriving every ~15 minutes in `gh run list --workflow prices.yml`. **Recurring chore:** the token expires; renew it and paste the new one into the scheduler before then.
 
 ## The pot
 
