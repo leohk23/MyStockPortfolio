@@ -1,7 +1,17 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-01",
+  "updated": "2026-10-05",
   "normalizedEps": {
+    "CTEC.L": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Added by the 5 October 2026 deep dive. Issuer states cents per share, stored here as USD per share. Two H1 observations alone do not establish twelve contiguous months; no research TTM or adjusted historical percentile is implied. The issuer cash conversion measures exclude growth capex and must not be described as cash after all reinvestment.",
+      "annual": [],
+      "quarters": [
+        { "end": "2025-06-30", "months": 6, "eps": 0.080, "source": "https://www.investegate.co.uk/announcement/rns/convatec-group--ctec/interim-results-for-6-months-ended-30-june-2026/9702429" },
+        { "end": "2026-06-30", "months": 6, "eps": 0.085, "source": "https://www.investegate.co.uk/announcement/rns/convatec-group--ctec/interim-results-for-6-months-ended-30-june-2026/9702429" }
+      ]
+    },
     "CME": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "USD",
