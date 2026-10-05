@@ -130,6 +130,7 @@ checked against it.
 | D85 | **Each holding's gain % is published too, for the locked view: supersedes D84's exclusion of it.** Leo, 1 Oct, the day after D84: he wants the gain/loss % shown when the passphrase is skipped, having been told that with the public price it reveals the average price paid per share. `prices.json` `gains` carries one figure per holding, the table's % column on open lots, computed with the page's own `build()`. One per holding is enough: with D84's weights, a holding's cost on the same scale is value / (1 + gain %), so every row's gain % rebuilds exactly, multi-listing rows included. Verified across all 60 rows: identical locked and unlocked (AMD +442.3%, BYD -31.1%, S&P 500 +108.5%), and the total +63.5% in both. **Still not published:** per-holding CAGR, last trade, since and held, which need trade dates. | 1 Oct 2026 |
 | D86 | **Phone alerts when a holding moves 5% in a day, book or pot, as browser push from the site.** Leo, 1 Oct, on Android; he chose browser push over the ntfy app, and a holding ±5% in a day with the pot's holdings included. The site has no server, so the price workflow is the sender: after each fetch `push-alerts.js` finds held names past ±5% on the day and sends one notification listing them. **Once per band per trading day:** a move alerts at 5%, again only at 10%, keyed by the date of the price itself, so a quote that has not traded since yesterday cannot alert twice; the memory is `alerts-state.json`, committed with the prices and trimmed to a week. Dependency-free like `fetch-prices.js`: the VAPID signature (RFC 8292) and aes128gcm payload encryption (RFC 8291) use Node's crypto, and the selftest decrypts what it encrypts. **Keys and secrets:** the VAPID private key is the `VAPID_PRIVATE_KEY` secret and the gitignored `.vapid-key` (lanes denied it); the public half is in the page. The phone's subscription is the `PUSH_SUBSCRIPTION` secret, produced once by the bell button. A missing secret or an expired subscription only logs; the price job never fails on it. `workflow_dispatch` takes `test_alert` to send a test. **Limits:** one phone; an alert is only as timely as the workflow, which is after each push and every few hours on schedule (BACKLOG.md, CI and scheduling); the 1-day move is the regular session's, so a move in pre- or after-hours does not alert. | 1 Oct 2026 |
 | D87 | **A shrinking business may be proposed only if the decline is argued — new rule §2.4b.** Leo, 4 Oct, reading the NVO proposal: its thesis said Novo had "raised its full-year adjusted outlook", which was true and misleading, since the guidance had moved from a 4-12% decline to a 0-6% decline, and he asked how a company guiding to shrink squared with his philosophy. It did not, quite: his §2.4 answer counts **growth** as one of four measures of earnings quality, but only valuation is a hard filter, so the agent could weigh margin (41.3%) and ROIC (30.6%) against slipping margin and flat-to-falling profit and never say it had. Offered a hard exclusion, a disclosure rule or no change, Leo chose **must be argued**: a company whose operating profit fell in its latest fiscal year, or which guides sales or operating profit to fall this year, may still be proposed as a recovery, but the thesis states the decline with its sign in its first sentences, names when growth resumes and what filing figure would show it, and P3 tests that resumption by that date. Guidance is always quoted as a range with its direction ("narrowed its expected decline"), never "raised" or "lowered" alone. It sharpens the 7532.T question the brief already asks. **The 4 Oct NVO proposal stands as written**, under the rules of its day; the next Deep dive applies §2.4b. | 4 Oct 2026 |
+| D88 | **A second daily run on Monday, Wednesday and Friday, at 12:45, on Claude Opus 5.5: Sweep and Deep dive.** Leo, 5 Oct, choosing the days, the slot and the lanes from options. On 24 Sep he had asked whether two Sweeps and two Deep dives a day would fit; Codex could not carry it (the measured week was already at 91-105% with one of each), so the second run goes to Claude. A second Task Scheduler entry, `MyStockPortfolio pot second run`, fires Mon/Wed/Fri 12:45 and runs `run-daily.ps1 -Force sweep,deepdive -OnClaude -MaxClaudeLanes 2` through `-Command` (under `-File` the lane list arrives as one string and fails `-Force`'s allowed values); the main entry's 12:45 trigger now fires Tuesday and Thursday only, so the two never meet on the lock. Timing stays in the scheduler, not the script (§4.2). **This supersedes D80's "never scheduled" for `-OnClaude`**, and lifts D73's one-Claude-lane cap to two for this run only; the cooldown after Claude's session limit still applies. **Cost:** the 23 Sep measurement put a Sweep plus Deep dive on Opus 5.5 at about 11 USD-equivalent. What share of Claude's five-hour and weekly windows three of those a week take is still unmeasured, because the CLI does not expose it; extra usage is off on Leo's account (23 Sep), so a run past the limit is refused, not billed. **Watch:** whether the second run produces anything the morning one did not, given the pot's cash (£114.84 on 5 Oct), and Claude refusals in `pot/run-log.txt`. | 5 Oct 2026 |
 
 ### AGREED — the design
 
@@ -281,7 +282,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
 
 | | 06:30 | 09:00 | 12:45 | 21:15 |
 |---|:---:|:---:|:---:|:---:|
-| **Mon–Fri** | ● | | ● | ● |
+| **Mon, Wed, Fri** | ● | | ● **second run, Claude** | ● |
+| **Tue, Thu** | ● | | ● | ● |
 | **Sat–Sun** | | ● | | |
 
 UK local time, four weekly triggers, no repetition interval. A cycle takes 20–35 minutes, so each
@@ -294,6 +296,22 @@ nobody reads is spent allowance:
 | **12:45** | Asia's close (09:00) — the only slot that reads it fresh, and the book is HK-heavy | lunch break |
 | **21:15** | the whole global day: US closed at 21:00, London at 16:30, Asia at 09:00 | evening |
 | **Sat/Sun 09:00** | nothing new — markets shut, and CI prices are weekdays only (`*/15 * * * 1-5`) | unhurried, with time to decide |
+
+**The second run (D88).** On **Monday, Wednesday and Friday at 12:45** a second Task Scheduler entry,
+**`MyStockPortfolio pot second run`**, replaces the ordinary 12:45 cycle (whose trigger now fires on
+Tuesday and Thursday only). It runs the same script with the Sweep and Deep dive forced and both on
+Claude Opus 5.5, so the day gets a second look after the 06:30 Codex cycle without spending Codex's
+weekly allowance, which cannot carry a doubling:
+
+```
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
+               -Command "& 'C:\Users\leohk\MyStockPortfolio\pot\run-daily.ps1' -Force sweep,deepdive -OnClaude -MaxClaudeLanes 2"
+```
+
+`-Command`, not `-File`: under `-File` the lane list arrives as one string, `"sweep,deepdive"`, and
+`-Force`'s allowed-values check rejects it. The Claude cooldown still applies, so a run after Claude's
+session limit is skipped, not attempted. Same settings as the main entry: wakes the laptop, runs on
+battery, catches up a missed slot.
 
 **The allowance is the binding constraint, not the clock.** Codex runs on a ChatGPT subscription
 (D3), so a cycle costs weekly allowance rather than cash. Measured from the `weekly` column of
