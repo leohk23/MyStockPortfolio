@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 44 | **earns a feed** |
+| margin | 46 | **earns a feed** |
+| cash conversion | 35 | **earns a feed** |
 | volume / units | 35 | **earns a feed** |
-| cash conversion | 34 | **earns a feed** |
-| leverage / net debt | 18 | **earns a feed** |
+| leverage / net debt | 19 | **earns a feed** |
+| inventory | 17 | **earns a feed** |
 | backlog / order intake | 16 | **earns a feed** |
-| inventory | 15 | **earns a feed** |
-| return on capital | 14 | **earns a feed** |
+| return on capital | 15 | **earns a feed** |
 | capital returns | 9 | **earns a feed** |
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-252 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+259 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,13 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-05 | `CTEC.L` quote and comparable valuation history. | Yahoo was used only to confirm that the symbol resolves to Convatec; no outside quote or multiple was adopted. Added to `watchlist.json`, so the normal pipeline should establish price, earnings and history. No separate manual feed wanted. |
+| 2026-10-05 | Bureau Veritas FY2025 operating-profit reconciliation. | Local earnings.json holds EUR938.7m, while the issuer FY2025 release says EUR992.4m. Revenue and attributable income agree. This changes margin/ROIC interpretation and the recovery baseline; source: https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy. Disclosed and half-sized in this run; no source data overwritten. |
+| 2026-10-05 | Convatec cash after all reinvestment, alongside its redefined free cash flow to equity. | Deep dive found H1 operating cash after interest/tax USD73m less PP&E USD94m, intangibles USD34m and lease principal USD16m = negative USD71m. The issuer's USD22m FCFE excludes growth capex. Retain both definitions at results; source: https://www.investegate.co.uk/announcement/rns/convatec-group--ctec/interim-results-for-6-months-ended-30-june-2026/9702429. |
+| 2026-10-05 | Convatec category organic growth, reported and adjusted margins, working-capital reversal, cash conversion and leverage. | Fetched from Convatec's 4 August company RNS. Wanted on results dates while `CTEC.L` is tracked; H1 growth was broad, but the candidate depends on the promised H2 acceleration and on inventory, payables and leverage converting adjusted profit into shareholder cash. |
+| 2026-10-05 | Global manufacturing production and exports, with a high-technology split. | Fetched from UNIDO's Q2 2026 World Manufacturing Production and Trade report. Wanted quarterly; the gap between production and export growth, and the stronger high-technology figures, tests whether an industrial thesis rests on broad physical demand or a narrower trade and technology cycle. |
+| 2026-10-05 | Oil-shock absorption buffers: alternative routes, strategic and commercial inventory drawdowns, non-Gulf supply and Chinese demand. | Fetched from the OECD's September Interim Economic Outlook. Wanted on each outlook update, and monthly while the Middle East supply shock persists; the local WTI price shows the shock but not whether the buffers holding growth up are replenishing or being depleted. |
+| 2026-10-05 | Start date for the P/OCF valuation window. | Quotes expose pocfWeeks and pocfWindow but no pocfFrom. Deep dive reports counts without inventing a start date. Retain the actual first priced cash-flow observation in a future pipeline change, especially for short or interrupted histories. |
 | 2026-10-04 | `UPR.IR` quote, Yahoo sector and comparable valuation history. | Yahoo was used only to confirm that the symbol resolves to Uniphar; no outside quote or multiple was adopted. Added to `watchlist.json`, so the normal pipeline should establish the quote and valuation record independently. No separate manual feed wanted. |
 | 2026-10-04 | BVI.PA historical endpoint EPS and issuer operating-profit reconciliation. | Deep dive traced `normaliseEps` and `peHistory`: FY2025 income EUR588m on the FY2024 share-base anchor produces EUR1.290832 EPS and a 20.5836x endpoint, whereas current quote EPS EUR1.13 gives 23.51x. Publish the endpoint basis beside its percentile rather than attaching it to quote P/E. Separately, the [issuer FY2025 release](https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy) reports operating profit EUR992.4m versus local EUR938.7m, and FY2024 EUR933.4m versus local EUR912.1m. Reconcile definitions before treating the local ROIC as independently certified. No generated data changed in this lane. |
 | 2026-10-04 | Candidate execution evidence and exact cash-history spans. | Waiting candidates 0388.HK/HKXCY, 6862.HK, 6690.HK and BBCA.JK still need sourced current lots, accessible listings and first-year costs before executable proposals; no lot or broker charge was assumed in this run. Separately, P/OCF quotes publish weeks but not the first eligible date, so the report states that missing span rather than borrowing peFrom when the earnings/cash histories differ. These gaps did not veto a company solely for unverified earnings. |
@@ -303,12 +310,5 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | refined-product flows, refinery margins and product-tanker rates. | Fetched from the IEA Oil Market Report and Scorpio Tankers' results. Wanted monthly from the IEA while Hormuz remains disrupted and on company results dates for TCE rates and fleet changes. |
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
-| 2026-10-05 | Global manufacturing production and exports, with a high-technology split. | Fetched from UNIDO's Q2 2026 World Manufacturing Production and Trade report. Wanted quarterly; the gap between production and export growth, and the stronger high-technology figures, tests whether an industrial thesis rests on broad physical demand or a narrower trade and technology cycle. |
-| 2026-10-05 | Oil-shock absorption buffers: alternative routes, strategic and commercial inventory drawdowns, non-Gulf supply and Chinese demand. | Fetched from the OECD's September Interim Economic Outlook. Wanted on each outlook update, and monthly while the Middle East supply shock persists; the local WTI price shows the shock but not whether the buffers holding growth up are replenishing or being depleted. |
-| 2026-10-05 | Convatec category organic growth, reported and adjusted margins, working-capital reversal, cash conversion and leverage. | Fetched from Convatec's 4 August company RNS. Wanted on results dates while `CTEC.L` is tracked; H1 growth was broad, but the candidate depends on the promised H2 acceleration and on inventory, payables and leverage converting adjusted profit into shareholder cash. |
-| 2026-10-05 | `CTEC.L` quote and comparable valuation history. | Yahoo was used only to confirm that the symbol resolves to Convatec; no outside quote or multiple was adopted. Added to `watchlist.json`, so the normal pipeline should establish price, earnings and history. No separate manual feed wanted. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-10-05 | Convatec cash after all reinvestment, alongside its redefined free cash flow to equity. | Deep dive found H1 operating cash after interest/tax USD73m less PP&E USD94m, intangibles USD34m and lease principal USD16m = negative USD71m. The issuer's USD22m FCFE excludes growth capex. Retain both definitions at results; source: https://www.investegate.co.uk/announcement/rns/convatec-group--ctec/interim-results-for-6-months-ended-30-june-2026/9702429. |
-| 2026-10-05 | Start date for the P/OCF valuation window. | Quotes expose pocfWeeks and pocfWindow but no pocfFrom. Deep dive reports counts without inventing a start date. Retain the actual first priced cash-flow observation in a future pipeline change, especially for short or interrupted histories. |
-| 2026-10-05 | Bureau Veritas FY2025 operating-profit reconciliation. | Local earnings.json holds EUR938.7m, while the issuer FY2025 release says EUR992.4m. Revenue and attributable income agree. This changes margin/ROIC interpretation and the recovery baseline; source: https://group.bureauveritas.com/newsroom/sector-leading-organic-revenue-growth-65-fy-2025-strong-margin-improvement-163-fy. Disclosed and half-sized in this run; no source data overwritten. |
 <!-- entries:end -->

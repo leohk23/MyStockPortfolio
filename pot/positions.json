@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-05T09:41:59.021Z",
- "cashGBP": 314.11,
+ "generated": "2026-10-06T05:30:03.428Z",
+ "cashGBP": 114.99,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -96,13 +96,57 @@
      "pot": "2026-09-23-1918-EXPN.L"
     }
    ]
+  },
+  "CME": {
+   "qty": 1,
+   "cost": 263.1,
+   "currency": "USD",
+   "trades": [
+    {
+     "date": "2026-10-05",
+     "side": "BUY",
+     "qty": 1,
+     "price": 263.1,
+     "pot": "2026-10-04-1816-CME"
+    }
+   ]
   }
  },
  "proposals": [
   {
+   "file": "2026-10-05-1040-CME.md",
+   "id": "2026-10-05-1040-CME",
+   "state": "open",
+   "ticker": "CME",
+   "written": "2026-10-05",
+   "side": "BUY",
+   "limit": null,
+   "warning": "At **21 October 2026 Q3 results**, re-read if total average rate per contract falls more than **5% year on year**, or clearing/transaction revenue growth trails total contract-volume growth by more than **10 percentage points**. Compare like periods and contract counts, not ADV without adjusting for trading days. Product mix can cause the warning, but does not excuse skipping it. Obtain the disclosed asset-class fee bridge before attributing the cause. Independently, check BGC/FMX disclosures by **15 November 2026**: quarterly futures ADV above **108,000** and open interest above **280,000** together warn of stronger substitution. These are twice BGC's Q2 reference levels, chosen by this analysis, not forecasts. They trigger a review even if CME revenue is rising.",
+   "break": "Propose a sale under §5.1 if **both Q3 and Q4 2026** show rate per contract down more than **10% year on year**, accompanied in each quarter by the same broad fee-revenue/contract-volume gap exceeding **10 percentage points**; review no later than **28 February 2027**. A company disclosure of sustained repricing/concessions causing that deterioration confirms the mechanism; absence of a causal explanation does not turn a measured breach into a pass. Separately, two consecutive quarterly GAAP operating margins below **60%** break the operating-leverage case. The early 5% warning precedes the 10% two-quarter break. These are analyst investment thresholds, not management guidance. If a series disappears or coverage changes, mark the test unavailable and re-read immediately; never mark it passed. Use [CME financial releases](https://www.cmegroup.com/investor-relations/financial-information.html), [monthly activity](https://cmegroupinc.gcs-web.com/monthly-volume) and [BGC filings](https://ir.bgcg.com/). BGC's cash-Treasury share is not a futures market share and cannot replace this comparator.",
+   "reviewBy": "2026-10-21",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-05-1040-BVI.PA.md",
+   "id": "2026-10-05-1040-BVI.PA",
+   "state": "open",
+   "ticker": "BVI.PA",
+   "written": "2026-10-05",
+   "side": "BUY",
+   "limit": null,
+   "warning": "**Active at entry.** H1 IFRS operating cash of EUR241.3m divided by company-adjusted net profit of EUR303.8m is **79.4%**, below my **90%** warning line, while reported operating profit is falling. On **21 October 2026**, review any new exit provisions, announced acquisition funding or guidance deterioration. The sales-only release cannot clear the cash warning. At **25 February 2027**, also warn if full-year operating cash/adjusted net profit is below 90%, or disclosed exit/restructuring cash charges exceed their comparable-year amount.",
+   "break": "At **25 February 2027 FY2026 results**, propose sale under §5.1 if any of the following holds: - Reported operating profit is **at or below EUR992.4m**, so the specified recovery has not occurred. - IFRS operating cash divided by positive adjusted net profit is **below 80%**; non-positive adjusted net profit also breaks. - Cash after **all PP&E purchases, intangible purchases and principal lease payments** is zero or negative. Also break if a disclosed exit liability or impairment makes the intended portfolio transformation dependent on a dilutive emergency equity raise. Ordinary planned acquisition borrowing is not silently reclassified as emergency funding. These are analyst ownership thresholds, not company guidance. Use the same consolidated scope and restated comparatives supplied by the issuer; if disposals change scope, show both reported total and issuer-provided comparable continuing operations. Do not waive a reported-total breach merely because organic growth was positive. Missing inputs trigger immediate re-read, not a pass. The warning is already observable; the break gives one full-year opportunity to recover. Definitions and figures: [issuer H1 statements and reconciliations](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
+   "reviewBy": "2026-10-21",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-04-1816-CME.md",
    "id": "2026-10-04-1816-CME",
-   "state": "open",
+   "state": "accepted",
    "ticker": "CME",
    "written": "2026-10-04",
    "side": "BUY",
@@ -110,6 +154,11 @@
    "warning": "At **21 October 2026 Q3 results**, re-read if all-product revenue per contract (RPC) is more than 5% below Q3 2025's USD0.702, hence below **USD0.6669**, while average daily volume is flat or rising; also warn if interest-rate or equity-index RPC falls more than 5% against its own year-ago figure, even when mix masks the aggregate. Separately warn if GAAP operating margin falls below **64%**. Q2 RPC was USD0.678 against USD0.690 and GAAP margin was 64.89%; the RPC trigger is not already breached, but Q2 profit contraction deserves attention.",
    "break": "Recommend exit under §5.1 if **two consecutive quarters** show RPC down more than 10% year on year at flat/rising volume **and** GAAP operating margin below 60%; alternatively if clearing and transaction revenue falls at rising volume for two consecutive quarters. Check Q3 on 21 October, then Q4/FY2026 by **28 February 2027** if no earlier results date is announced. Examine comparable product mix and segment RPC rather than explaining deterioration away as volume growth. These are analyst thresholds, not company guidance. Those observations would move when the dominant risk materialises: activity can rise while monetisation and operating returns deteriorate. A price decline alone is neither tier.",
    "reviewBy": "2026-10-21",
+   "executed": {
+    "date": "2026-10-05",
+    "qty": 1,
+    "price": 263.1
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -125,9 +174,9 @@
    "warning": null,
    "break": "Recommend exit under §5.1 if FY2026 operating cash remains below **0.80× positive adjusted attributable profit**, or if issuer free cash flow less lease principal/interest, net acquisition cash and the separately disclosed acquisition-related debt/shareholder payments is **zero or negative**. For H1 the explicitly defined subtotal is EUR157.7m − EUR68.4m − EUR13.8m − EUR40.3m = **EUR35.2m**; it excludes disposal proceeds and is not a claim to have deducted every investing cash flow. Include all equivalent line items next time even if renamed. Also break the recovery thesis if FY2026 reported operating profit fails to return to positive growth against **EUR992.4m FY2025**, using the issuer's disclosed like-for-like perimeter bridge. If no comparable bridge is supplied, mark the recovery unverified and withhold additions pending a dated re-read; do not silently substitute adjusted growth or a smaller local base. These are analyst tests, not management guidance. The primary cash test catches acquisitions consuming the very returns the thesis is buying. A revenue-only or adjusted-margin-only test would miss it.",
    "reviewBy": "2026-10-21",
-   "supersededBy": null,
+   "supersededBy": "2026-10-05-1040-BVI.PA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-04-0827-NVO.md",
@@ -155,7 +204,7 @@
    "warning": "At Q3 results on **21 October 2026**, re-read if aggregate revenue per contract is below **USD0.658**, or clearing/transaction-fee revenue grows less than **8% year on year** against the already reported 16% ADV increase. These are my thresholds, not guidance; product mix must be reconciled before calling a fee cut. Additionally, check BGC/FMX's October disclosures by **31 October**: FMX Treasury-futures ADV above **30,000** while CME Treasury-futures ADV falls year on year is an early rival-adoption warning.",
    "break": "Propose an exit under §5.1 if **both Q3 and Q4 2026** show lower year-on-year aggregate RPC and fee-revenue growth less than half the corresponding ADV growth, with positive ADV growth in both quarters. Alternatively, two consecutive quarterly disclosures in which FMX Treasury-futures ADV exceeds 30,000 and CME Treasury-futures ADV falls year on year break the retention case. Read Q4 by **28 February 2027**, an analyst deadline pending the earnings announcement. Compare futures with futures, never FMX cash Treasuries or FX with CME futures. Missing rival disclosure means unknown and a review, not zero. The warning can fire on the first observation; the break needs persistence. The external series is [BGC's quarterly filing](https://www.sec.gov/Archives/edgar/data/1094831/000162828026050814/bgc-20260630xexx991.htm), which reports about 54,000 total FMX-futures ADV and more than 15,000 Treasury-futures ADV in Q2. Those are adoption proxies, not a computed market share.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-04-1816-CME",
+   "supersededBy": "2026-10-05-1040-CME",
    "phase": "live",
    "counts": false
   },
@@ -170,7 +219,7 @@
    "warning": "Re-read at the **21 October 2026** revenue update if continuing-business organic growth is below **4%**, or management withdraws its organic-growth outlook. For the dominant acquisition-funding risk, the first full cash check is **25 February 2027**: warn if cash after reinvestment, lease payments and net acquisition/shareholder-settlement cash is non-positive, or adjusted net debt/EBITDA exceeds **2.0x**. Those are my thresholds; 2.0x is also the upper end of the issuer's September leverage ambition.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if that cash measure is non-positive **and** leverage exceeds 2.0x, or if a material acquisition impairment accompanies withdrawal of the organic-growth outlook. A disclosed acquisition requiring financing that takes leverage beyond 2.0x triggers the warning immediately; an ordinary planned deal is not automatically a break. Cash definition: start with issuer FCF, subtract the separately presented lease-and-interest line and net acquisitions/amounts owed to shareholders, reconciling classifications so each outflow is counted once. H1 reference is **EUR157.7m − 68.4m − 52.5m = EUR36.8m**, before dividends and buybacks ([H1 cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html)). This deliberately sees acquisition spending that an ordinary capex-only FCF test misses. The first financial warning and break can print on the same annual date; the warning is the weaker either-condition test, the break requires both. October sales are an earlier operating warning, not a substitute for the cash test.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-04-1816-BVI.PA",
+   "supersededBy": "2026-10-05-1040-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -200,7 +249,7 @@
    "warning": "at the **Q3 result on 21 October 2026**, re-read if either: - the average rate per contract is below **$0.658** (3% below Q2 2026's $0.678); or - clearing and transaction fee revenue grows by **less than half** of Q3's +16% ADV growth, year on year. Either says record volume is being bought with price. This trips a re-read, not a sale.",
    "break": "propose a sale under §5.1 if either: - **Q3 and Q4 2026** (the Q4 result is expected in early February 2027) **both** show clearing and transaction fee revenue growing by less than half of ADV growth, with RPC down year on year in each. Volume would then be growing while monetisation is not, which is the competitive risk arriving. - Independently, at either result, CME discloses lost market share in US Treasury futures to a competing venue. Read this from CME's own release, and from the CFTC's weekly Commitments of Traders open interest for Treasury futures by exchange.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-04-1816-CME",
+   "supersededBy": "2026-10-05-1040-CME",
    "phase": "live",
    "counts": false
   },
@@ -230,7 +279,7 @@
    "warning": null,
    "break": "— propose an exit under §5.1 if **both Q3 and Q4 2026** show clearing and transaction fee revenue down **at least 5%** year on year and a GAAP operating margin **below 60%**; or if either quarter's margin is **below 55%**. Q3 is read on 21 October, Q4 by **28 February 2027**. Use reported operating profit over revenue. These are my thresholds, not management guidance.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-04-1816-CME",
+   "supersededBy": "2026-10-05-1040-CME",
    "phase": "live",
    "counts": false
   },
@@ -245,7 +294,7 @@
    "warning": null,
    "break": "propose an exit under §5.1 if **both Q3 and Q4 2026** show clearing/transaction fee revenue down **at least 5% year on year** and GAAP operating margin **below 60%** in each quarter; also break immediately if either quarter's margin is **below 55%**. Check Q3 on 21 October and Q4 by **28 February 2027**, an analyst review deadline rather than an announced earnings date. Use reported operating profit divided by revenue, not adjusted net income. Sustained loss of fee income and operating leverage would contradict the earning-engine case; the thresholds are my decision rules, not management guidance.",
    "reviewBy": "2026-10-08",
-   "supersededBy": "2026-10-04-1816-CME",
+   "supersededBy": "2026-10-05-1040-CME",
    "phase": "live",
    "counts": false
   },
@@ -260,7 +309,7 @@
    "warning": "At the September activity release, check by **8 October 2026**, re-read if total ADV falls year on year, or interest-rate ADV falls year on year for a second consecutive month. At **21 October 2026**, also warn if quarterly GAAP operating margin is below **64%**, or clearing/transaction revenue falls while total ADV grows. These are analyst thresholds, not management guidance; the revenue-volume divergence tests monetization rather than celebrating activity alone.",
    "break": "Propose an exit under §5.1 if **two consecutive post-entry quarters** both have lower year-on-year clearing/transaction revenue and GAAP operating margin below **60%**, checked at Q3 and at FY2026 results **no later than 1 March 2027**. A material clearing-member loss borne by CME that forces emergency capital raising breaks the capital-preservation case immediately. Monthly activity can warn before two quarterly failures; no stock-price condition is used.",
    "reviewBy": "2026-10-08",
-   "supersededBy": "2026-10-04-1816-CME",
+   "supersededBy": "2026-10-05-1040-CME",
    "phase": "live",
    "counts": false
   },
@@ -275,7 +324,7 @@
    "warning": "Check the **21 October 2026** revenue release for continuing-business organic growth below **4%**, or withdrawal of the upgraded organic-growth outlook. At **25 February 2027**, re-read if annual operating cash less capital expenditure, lease payments and net acquisition/shareholder-settlement cash is negative, or if company net debt/EBITDA exceeds **2.0x**. These are analyst tests; a scope change requires a like-for-like bridge, not a mechanical comparison of differently defined divisions.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if the same cash-after-reinvestment-and-acquisitions measure is negative **and** leverage exceeds **2.0x**, or if a material acquisition impairment is accompanied by a withdrawal of the organic-growth outlook. That combination would show that reported growth is being bought with a weakening balance sheet, the dominant risk below. An isolated planned acquisition does not automatically break the thesis. Cash definition: start with the issuer's FCF, subtract the separate lease-and-interest payment line and the net-acquisition/amounts-owed-to-shareholders line, using consistent classifications and counting each cash flow once. H1 reference: **€157.7m − €68.4m − €52.5m = €36.8m**, before dividends and buybacks. Reconcile any reclassification explicitly. This includes acquisition cash that an ordinary capex-only FCF test misses. [Issuer cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-04-1816-BVI.PA",
+   "supersededBy": "2026-10-05-1040-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -518,7 +567,7 @@
   {
    "file": "2026-09-22-0852-EUZ.DE.md",
    "id": "2026-09-22-0852-EUZ.DE",
-   "state": "expired",
+   "state": "open",
    "ticker": "EUZ.DE",
    "written": "2026-09-22",
    "side": "BUY",
@@ -621,7 +670,7 @@
   {
    "file": "2026-09-19-1612-EUZ.DE.md",
    "id": "2026-09-19-1612-EUZ.DE",
-   "state": "expired",
+   "state": "open",
    "ticker": "EUZ.DE",
    "written": "2026-09-19",
    "side": "BUY",
@@ -709,7 +758,7 @@
   {
    "file": "2026-09-16-2049-TW.md",
    "id": "2026-09-16-2049-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-16",
    "side": "BUY",
@@ -1324,7 +1373,7 @@
   {
    "file": "2026-09-06-0920-TW.md",
    "id": "2026-09-06-0920-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-06",
    "side": "BUY",
@@ -1354,7 +1403,7 @@
   {
    "file": "2026-09-05-0818-TW.md",
    "id": "2026-09-05-0818-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-05",
    "side": "BUY",
@@ -1384,7 +1433,7 @@
   {
    "file": "2026-09-04-2207-TW.md",
    "id": "2026-09-04-2207-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-04",
    "side": "BUY",
@@ -1998,6 +2047,7 @@
   }
  ],
  "open": [
+  "2026-10-04-1816-CME",
   "2026-09-23-1918-EXPN.L",
   "2026-09-21-0930-EUZ.DE",
   "2026-09-17-0557-AZN.L",
@@ -2005,5 +2055,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-10-05"
+ "today": "2026-10-06"
 }
