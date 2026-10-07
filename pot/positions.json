@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-06T05:30:03.428Z",
- "cashGBP": 114.99,
+ "generated": "2026-10-07T16:41:46.009Z",
+ "cashGBP": 81.66,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -21,8 +21,8 @@
  ],
  "holdings": {
   "MWA": {
-   "qty": 8,
-   "cost": 191.08,
+   "qty": 10,
+   "cost": 234.8,
    "currency": "USD",
    "trades": [
     {
@@ -38,6 +38,13 @@
      "qty": 5,
      "price": 23.96,
      "pot": "2026-09-13-0830-MWA"
+    },
+    {
+     "date": "2026-10-06",
+     "side": "BUY",
+     "qty": 2,
+     "price": 21.86,
+     "pot": "2026-10-06-0558-MWA"
     }
    ]
   },
@@ -114,6 +121,41 @@
  },
  "proposals": [
   {
+   "file": "2026-10-06-0558-MWA.md",
+   "id": "2026-10-06-0558-MWA",
+   "state": "accepted",
+   "ticker": "MWA",
+   "written": "2026-10-06",
+   "side": "BUY",
+   "limit": 21.76,
+   "warning": "the next FY/Q4 release reports another quarter of declining physical volume, full-year sales below the company's **$1,470m lower bound**, or free cash flow / company-adjusted net income **at or below 70%**, the boundary of management's greater-than-70% commitment. Inspect the issuer release by **10 November 2026**; local Yahoo estimates 5 November, which is not confirmed. Use OCF less all capex for FCF; list tariff refunds separately if quantified. A warning requires a reread, not a sale.",
+   "break": "by **28 February 2027**, sell under §5.1 if Q4 FY2026 and Q1 FY2027 both report declining physical volumes and GAAP operating margins below **18%**, or either quarter's GAAP operating margin falls below **16%**, or trailing reported operating profit / average opening and closing total assets falls below **11%**. Also break at the FY release by 10 November if full-year cash after all capex is non-positive. The return test must use issuer GAAP operating income, not the local field that adds back charges. If unit volumes are only described qualitatively, “lower” counts as declining; silence is missing evidence, not growth. These are tests for the **new two-share allocation** and do not silently replace the original eight shares' Review record. P3 can deteriorate while price increases and tariff recoveries support revenue or adjusted EPS: that is the mechanism of the dominant risk.",
+   "reviewBy": "2026-11-10",
+   "executed": {
+    "date": "2026-10-06",
+    "qty": 2,
+    "price": 21.86
+   },
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-06-0558-BVI.PA.md",
+   "id": "2026-10-06-0558-BVI.PA",
+   "state": "open",
+   "ticker": "BVI.PA",
+   "written": "2026-10-06",
+   "side": "BUY",
+   "limit": 26.33,
+   "warning": null,
+   "break": null,
+   "reviewBy": "2026-10-21",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-05-1040-CME.md",
    "id": "2026-10-05-1040-CME",
    "state": "open",
@@ -139,9 +181,9 @@
    "warning": "**Active at entry.** H1 IFRS operating cash of EUR241.3m divided by company-adjusted net profit of EUR303.8m is **79.4%**, below my **90%** warning line, while reported operating profit is falling. On **21 October 2026**, review any new exit provisions, announced acquisition funding or guidance deterioration. The sales-only release cannot clear the cash warning. At **25 February 2027**, also warn if full-year operating cash/adjusted net profit is below 90%, or disclosed exit/restructuring cash charges exceed their comparable-year amount.",
    "break": "At **25 February 2027 FY2026 results**, propose sale under §5.1 if any of the following holds: - Reported operating profit is **at or below EUR992.4m**, so the specified recovery has not occurred. - IFRS operating cash divided by positive adjusted net profit is **below 80%**; non-positive adjusted net profit also breaks. - Cash after **all PP&E purchases, intangible purchases and principal lease payments** is zero or negative. Also break if a disclosed exit liability or impairment makes the intended portfolio transformation dependent on a dilutive emergency equity raise. Ordinary planned acquisition borrowing is not silently reclassified as emergency funding. These are analyst ownership thresholds, not company guidance. Use the same consolidated scope and restated comparatives supplied by the issuer; if disposals change scope, show both reported total and issuer-provided comparable continuing operations. Do not waive a reported-total breach merely because organic growth was positive. Missing inputs trigger immediate re-read, not a pass. The warning is already observable; the break gives one full-year opportunity to recover. Definitions and figures: [issuer H1 statements and reconciliations](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": null,
+   "supersededBy": "2026-10-06-0558-BVI.PA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-04-1816-CME.md",
@@ -174,7 +216,7 @@
    "warning": null,
    "break": "Recommend exit under §5.1 if FY2026 operating cash remains below **0.80× positive adjusted attributable profit**, or if issuer free cash flow less lease principal/interest, net acquisition cash and the separately disclosed acquisition-related debt/shareholder payments is **zero or negative**. For H1 the explicitly defined subtotal is EUR157.7m − EUR68.4m − EUR13.8m − EUR40.3m = **EUR35.2m**; it excludes disposal proceeds and is not a claim to have deducted every investing cash flow. Include all equivalent line items next time even if renamed. Also break the recovery thesis if FY2026 reported operating profit fails to return to positive growth against **EUR992.4m FY2025**, using the issuer's disclosed like-for-like perimeter bridge. If no comparable bridge is supplied, mark the recovery unverified and withhold additions pending a dated re-read; do not silently substitute adjusted growth or a smaller local base. These are analyst tests, not management guidance. The primary cash test catches acquisitions consuming the very returns the thesis is buying. A revenue-only or adjusted-margin-only test would miss it.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-05-1040-BVI.PA",
+   "supersededBy": "2026-10-06-0558-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -219,7 +261,7 @@
    "warning": "Re-read at the **21 October 2026** revenue update if continuing-business organic growth is below **4%**, or management withdraws its organic-growth outlook. For the dominant acquisition-funding risk, the first full cash check is **25 February 2027**: warn if cash after reinvestment, lease payments and net acquisition/shareholder-settlement cash is non-positive, or adjusted net debt/EBITDA exceeds **2.0x**. Those are my thresholds; 2.0x is also the upper end of the issuer's September leverage ambition.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if that cash measure is non-positive **and** leverage exceeds 2.0x, or if a material acquisition impairment accompanies withdrawal of the organic-growth outlook. A disclosed acquisition requiring financing that takes leverage beyond 2.0x triggers the warning immediately; an ordinary planned deal is not automatically a break. Cash definition: start with issuer FCF, subtract the separately presented lease-and-interest line and net acquisitions/amounts owed to shareholders, reconciling classifications so each outflow is counted once. H1 reference is **EUR157.7m − 68.4m − 52.5m = EUR36.8m**, before dividends and buybacks ([H1 cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html)). This deliberately sees acquisition spending that an ordinary capex-only FCF test misses. The first financial warning and break can print on the same annual date; the warning is the weaker either-condition test, the break requires both. October sales are an earlier operating warning, not a substitute for the cash test.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-05-1040-BVI.PA",
+   "supersededBy": "2026-10-06-0558-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -324,7 +366,7 @@
    "warning": "Check the **21 October 2026** revenue release for continuing-business organic growth below **4%**, or withdrawal of the upgraded organic-growth outlook. At **25 February 2027**, re-read if annual operating cash less capital expenditure, lease payments and net acquisition/shareholder-settlement cash is negative, or if company net debt/EBITDA exceeds **2.0x**. These are analyst tests; a scope change requires a like-for-like bridge, not a mechanical comparison of differently defined divisions.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if the same cash-after-reinvestment-and-acquisitions measure is negative **and** leverage exceeds **2.0x**, or if a material acquisition impairment is accompanied by a withdrawal of the organic-growth outlook. That combination would show that reported growth is being bought with a weakening balance sheet, the dominant risk below. An isolated planned acquisition does not automatically break the thesis. Cash definition: start with the issuer's FCF, subtract the separate lease-and-interest payment line and the net-acquisition/amounts-owed-to-shareholders line, using consistent classifications and counting each cash flow once. H1 reference: **€157.7m − €68.4m − €52.5m = €36.8m**, before dividends and buybacks. Reconcile any reclassification explicitly. This includes acquisition cash that an ordinary capex-only FCF test misses. [Issuer cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-05-1040-BVI.PA",
+   "supersededBy": "2026-10-06-0558-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -670,7 +712,7 @@
   {
    "file": "2026-09-19-1612-EUZ.DE.md",
    "id": "2026-09-19-1612-EUZ.DE",
-   "state": "open",
+   "state": "expired",
    "ticker": "EUZ.DE",
    "written": "2026-09-19",
    "side": "BUY",
@@ -773,7 +815,7 @@
   {
    "file": "2026-09-16-2049-AZN.L.md",
    "id": "2026-09-16-2049-AZN.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "AZN.L",
    "written": "2026-09-16",
    "side": "BUY",
@@ -1283,7 +1325,7 @@
   {
    "file": "2026-09-07-2038-REL.L.md",
    "id": "2026-09-07-2038-REL.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "REL.L",
    "written": "2026-09-07",
    "side": "BUY",
@@ -1313,7 +1355,7 @@
   {
    "file": "2026-09-07-1640-REL.L.md",
    "id": "2026-09-07-1640-REL.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "REL.L",
    "written": "2026-09-07",
    "side": "BUY",
@@ -1343,7 +1385,7 @@
   {
    "file": "2026-09-07-1413-REL.L.md",
    "id": "2026-09-07-1413-REL.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "REL.L",
    "written": "2026-09-07",
    "side": "BUY",
@@ -2047,6 +2089,7 @@
   }
  ],
  "open": [
+  "2026-10-06-0558-MWA",
   "2026-10-04-1816-CME",
   "2026-09-23-1918-EXPN.L",
   "2026-09-21-0930-EUZ.DE",
@@ -2055,5 +2098,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-10-06"
+ "today": "2026-10-07"
 }
