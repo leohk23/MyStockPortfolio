@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-07T16:41:46.009Z",
- "cashGBP": 81.66,
+ "generated": "2026-10-07T17:40:53.504Z",
+ "cashGBP": 81.61,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -121,6 +121,36 @@
  },
  "proposals": [
   {
+   "file": "2026-10-07-1711-MWA.md",
+   "id": "2026-10-07-1711-MWA",
+   "state": "open",
+   "ticker": "MWA",
+   "written": "2026-10-07",
+   "side": "BUY",
+   "limit": null,
+   "warning": "Active at entry because Q3 physical volumes declined. Re-read at FY2026 results, by **10 November 2026**, if volumes decline again, or if free cash flow is **70% or less of company-adjusted net income**. The latter is the boundary of management's greater-than-70% commitment. Define free cash flow as operating cash less all capex; list tariff refunds separately where quantified. Missing volume disclosure is unknown, not growth.",
+   "break": "By **28 February 2027**, recommend sale under §5.1 if Q4 FY2026 and Q1 FY2027 both show declining physical volumes **and** GAAP operating margins below **18%** in each; alternatively, a GAAP operating margin below **16%** in either quarter, or non-positive FY2026 operating cash after all capex, breaks the case immediately. These margin and cash break thresholds are analyst decisions. Use qualitative “lower volumes” when no numeric series is published and identify it explicitly. The warning can fire while price increases still support sales and tax benefits still support EPS; the break tests whether the operating economics have followed units down. The tests govern this proposed one-share addition. Existing accepted proposals and the Review's terms are not silently rewritten.",
+   "reviewBy": "2026-11-10",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-07-1711-BVI.PA.md",
+   "id": "2026-10-07-1711-BVI.PA",
+   "state": "open",
+   "ticker": "BVI.PA",
+   "written": "2026-10-07",
+   "side": "BUY",
+   "limit": null,
+   "warning": "Active at entry: H1 operating cash / adjusted attributable profit is **79.4%**, below my **90%** warning threshold. This is my ratio, **not** the company's differently defined cash-conversion KPI. At the **21 October 2026** revenue update, re-read immediately if management cuts its organic-growth or cash outlook, announces further material exit provisions, or attributes growth principally to acquisitions. The update need not contain cash statements; an absent cash figure does not clear the warning.",
+   "break": "At FY2026 results, checked by **1 March 2027**, recommend sale under §5.1 if **any** of these occurs: reported operating profit does not exceed **€992.4m**; operating cash / positive adjusted attributable profit remains below **80%**; or cash after gross tangible/intangible purchases, business acquisitions net of acquired cash, financial investments/advances, lease cash and interest, and acquisition-related settlements is non-positive. Deduct each cash category once; exclude ordinary debt refinancing, dividends and buybacks. Separately, a disclosed acquisition-related impairment that eliminates the year's reported profit breaks the capital-allocation case immediately. These are analyst thresholds, not management guidance. If scope changes, use the issuer's restated prior-year operating-profit comparator where provided and show the original €992.4m bridge. Missing comparable data requires immediate review; it is not a pass. Both tiers respond to the financial risk even if organic sales remain healthy.",
+   "reviewBy": "2026-10-21",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-06-0558-MWA.md",
    "id": "2026-10-06-0558-MWA",
    "state": "accepted",
@@ -151,9 +181,9 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-10-21",
-   "supersededBy": null,
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-05-1040-CME.md",
@@ -181,7 +211,7 @@
    "warning": "**Active at entry.** H1 IFRS operating cash of EUR241.3m divided by company-adjusted net profit of EUR303.8m is **79.4%**, below my **90%** warning line, while reported operating profit is falling. On **21 October 2026**, review any new exit provisions, announced acquisition funding or guidance deterioration. The sales-only release cannot clear the cash warning. At **25 February 2027**, also warn if full-year operating cash/adjusted net profit is below 90%, or disclosed exit/restructuring cash charges exceed their comparable-year amount.",
    "break": "At **25 February 2027 FY2026 results**, propose sale under §5.1 if any of the following holds: - Reported operating profit is **at or below EUR992.4m**, so the specified recovery has not occurred. - IFRS operating cash divided by positive adjusted net profit is **below 80%**; non-positive adjusted net profit also breaks. - Cash after **all PP&E purchases, intangible purchases and principal lease payments** is zero or negative. Also break if a disclosed exit liability or impairment makes the intended portfolio transformation dependent on a dilutive emergency equity raise. Ordinary planned acquisition borrowing is not silently reclassified as emergency funding. These are analyst ownership thresholds, not company guidance. Use the same consolidated scope and restated comparatives supplied by the issuer; if disposals change scope, show both reported total and issuer-provided comparable continuing operations. Do not waive a reported-total breach merely because organic growth was positive. Missing inputs trigger immediate re-read, not a pass. The warning is already observable; the break gives one full-year opportunity to recover. Definitions and figures: [issuer H1 statements and reconciliations](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-06-0558-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -216,7 +246,7 @@
    "warning": null,
    "break": "Recommend exit under §5.1 if FY2026 operating cash remains below **0.80× positive adjusted attributable profit**, or if issuer free cash flow less lease principal/interest, net acquisition cash and the separately disclosed acquisition-related debt/shareholder payments is **zero or negative**. For H1 the explicitly defined subtotal is EUR157.7m − EUR68.4m − EUR13.8m − EUR40.3m = **EUR35.2m**; it excludes disposal proceeds and is not a claim to have deducted every investing cash flow. Include all equivalent line items next time even if renamed. Also break the recovery thesis if FY2026 reported operating profit fails to return to positive growth against **EUR992.4m FY2025**, using the issuer's disclosed like-for-like perimeter bridge. If no comparable bridge is supplied, mark the recovery unverified and withhold additions pending a dated re-read; do not silently substitute adjusted growth or a smaller local base. These are analyst tests, not management guidance. The primary cash test catches acquisitions consuming the very returns the thesis is buying. A revenue-only or adjusted-margin-only test would miss it.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-06-0558-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -261,7 +291,7 @@
    "warning": "Re-read at the **21 October 2026** revenue update if continuing-business organic growth is below **4%**, or management withdraws its organic-growth outlook. For the dominant acquisition-funding risk, the first full cash check is **25 February 2027**: warn if cash after reinvestment, lease payments and net acquisition/shareholder-settlement cash is non-positive, or adjusted net debt/EBITDA exceeds **2.0x**. Those are my thresholds; 2.0x is also the upper end of the issuer's September leverage ambition.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if that cash measure is non-positive **and** leverage exceeds 2.0x, or if a material acquisition impairment accompanies withdrawal of the organic-growth outlook. A disclosed acquisition requiring financing that takes leverage beyond 2.0x triggers the warning immediately; an ordinary planned deal is not automatically a break. Cash definition: start with issuer FCF, subtract the separately presented lease-and-interest line and net acquisitions/amounts owed to shareholders, reconciling classifications so each outflow is counted once. H1 reference is **EUR157.7m − 68.4m − 52.5m = EUR36.8m**, before dividends and buybacks ([H1 cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html)). This deliberately sees acquisition spending that an ordinary capex-only FCF test misses. The first financial warning and break can print on the same annual date; the warning is the weaker either-condition test, the break requires both. October sales are an earlier operating warning, not a substitute for the cash test.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-06-0558-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -366,7 +396,7 @@
    "warning": "Check the **21 October 2026** revenue release for continuing-business organic growth below **4%**, or withdrawal of the upgraded organic-growth outlook. At **25 February 2027**, re-read if annual operating cash less capital expenditure, lease payments and net acquisition/shareholder-settlement cash is negative, or if company net debt/EBITDA exceeds **2.0x**. These are analyst tests; a scope change requires a like-for-like bridge, not a mechanical comparison of differently defined divisions.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if the same cash-after-reinvestment-and-acquisitions measure is negative **and** leverage exceeds **2.0x**, or if a material acquisition impairment is accompanied by a withdrawal of the organic-growth outlook. That combination would show that reported growth is being bought with a weakening balance sheet, the dominant risk below. An isolated planned acquisition does not automatically break the thesis. Cash definition: start with the issuer's FCF, subtract the separate lease-and-interest payment line and the net-acquisition/amounts-owed-to-shareholders line, using consistent classifications and counting each cash flow once. H1 reference: **€157.7m − €68.4m − €52.5m = €36.8m**, before dividends and buybacks. Reconcile any reclassification explicitly. This includes acquisition cash that an ordinary capex-only FCF test misses. [Issuer cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-06-0558-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -933,9 +963,9 @@
    "warning": "At the FY2026 release, locally estimated **5 November 2026**, re-read if the sales bridge again identifies declining consolidated physical volumes, or if full-year free cash flow is **70% or less of company-adjusted net income**, missing management's stated conversion objective. Also warn if trailing **GAAP operating income divided by average opening/closing total assets falls below 13%**. That asset-return measure is pre-tax operating return on assets, not ROIC; calculate it directly from filed annual/quarterly accounts, without annualising a single quarter.",
    "break": "At the first two results following this proposed purchase, checked no later than **28 February 2027**, any of these independent routes calls for exit under §5.1: **two consecutive quarters of falling consolidated volume with GAAP operating margin below 18% in each; GAAP operating margin below 16% in either quarter; or trailing GAAP operating income over average total assets below 11%**. The last two tests stand alone so that price increases cannot keep a failing physical/asset business green indefinitely. These are my decision thresholds, not management guidance. Missing volumes or asset balances mean unobservable, not a pass. Use operating income **after** reorganisation charges. These tests govern this proposed addition if accepted. The [latest Review](../reviews/2026-09-13-1811.md) correctly retains the accepted September 8 thesis for the existing three shares; this file does not silently rewrite that accepted contract. Acceptance of a common position-level monitoring contract needs to be recorded explicitly.",
    "reviewBy": "2026-11-10",
-   "supersededBy": null,
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-14-0038-EXPN.L.md",
@@ -1088,7 +1118,7 @@
    "warning": "At FY2026 results, locally estimated **5 November** (review by **10 November 2026**), re-read if consolidated volumes decline again, or FY free cash flow ÷ company-reconciled adjusted net income is **70% or less**, or the asset-return measure below is under **10%**. Use GAAP operating income after restructuring and impairments. Define the asset-return check as **trailing-four-quarter GAAP operating income × 0.75 ÷ average of opening and closing total assets** — an after-tax operating return on assets (the 0.75 is a fixed analytical factor, not a claimed tax rate), giving factory investment a denominator margin lacks. Record the FY baseline at the November review.",
    "break": "Sell the five-share tranche under §5.1 if **any one** occurs: (a) FY2026 free cash flow is",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1118,7 +1148,7 @@
    "warning": "At FY2026 results, locally estimated for **5 November**, review by **10 November 2026** if consolidated volumes decline again, or FY free cash flow divided by company-reconciled adjusted net income is **70% or less**. Also warn if the consistently defined asset-return measure below is below **10%**. A volume bridge's explicit direction is usable; undisclosed volume is unavailable evidence. Use GAAP operating income after restructuring and impairments. Define the asset-return check as **trailing-four-quarter GAAP operating income × 0.75 / average of opening and closing total assets**. The 25% tax factor is a deliberately fixed analytical assumption, not a claimed tax rate. This is an **after-tax operating return on assets**, not ROIC; do not substitute the local ROIC series or a changing tax rate. It gives factory investment a denominator that margin alone lacks. Calculate and record the FY baseline at the November review.",
    "break": "Sell the proposed five-share tranche under §5.1 if **any one** of the following occurs: (a) FY2026 free cash flow is **below 50%** of reconciled adjusted net income; (b) the asset-return measure is **below 8% at both 30 September and 31 December 2026**; or (c) filed GAAP operating margin is **below 18% in both post-entry quarters**. Assess September at FY results and December at Q1 FY2027, no later than **28 February 2027**. None of these requires volumes also to fall: pricing cannot keep a failing capital/cash test green. The 10%/8% thresholds deliberately separate warning from break; they are analyst choices, not historical local ROIC comparisons. Missing accounts prompt an urgent re-read, not a fabricated ratio.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1148,7 +1178,7 @@
    "warning": "At FY2026 results, locally estimated for **5 November 2026**, trigger a re-read if consolidated physical volume declines again, if full-year free cash flow / company-reconciled adjusted net income is **70% or less**, or if gross profit / year-end total assets falls below **26%**. Management's cash-conversion commitment is above 70%; the asset-productivity threshold is my early-warning level against the local FY2025 baseline of 28.10%. Volumes can be checked from the explicit direction in the issuer's sales bridge; absent disclosure is not a pass. [Q3 release and reconciliation](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748), [capital baseline](../../prices.json).",
    "break": "Assess FY2026 and then the trailing year ending December 2026, by **28 February 2027**. **Any one** of these is enough to call for exit of this proposed tranche under §5.1: - FCF / company-reconciled adjusted net income is **below 60% at both reporting dates**. FCF is operating cash flow less capital expenditures; construct the December trailing year as FY2026 plus the new December quarter less its year-ago quarter. Require positive adjusted net income; non-positive trailing adjusted income with non-positive FCF is itself a break. - Gross profit / closing total assets is **below 24% at both reporting dates**, using the same trailing-year flow and period-end asset convention as the baseline. Do not substitute operating margin or annualise one quarter. - GAAP operating margin is **below 18% in each of the September and December post-entry quarters**, independently of whether volumes decline. The 60%, 24% and 18% thresholds are my judgement, not company guidance. These independent routes address the [Review's objection](../reviews/2026-09-10-2024.md): price can hide lost volumes and accounting margin can hide capital tied up in inventory. A missing reconciliation triggers review, not a zero or an assumed pass. Newly disclosed refunds must be identified beside both cash and income; if their after-tax treatment cannot be reconciled, an apparent ratio pass remains uncertified and further additions stop pending review.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1178,7 +1208,7 @@
    "warning": "At FY2026 results, trigger a full re-read if consolidated physical volumes decline again, or full-year free cash flow is **70% or less of company-reconciled adjusted net income**. Check by **10 November 2026**, against the local **5 November estimate**, not a confirmed release. Use the sales bridge's stated volume direction if units are unavailable; silence is missing evidence. The cash threshold comes from management's commitment to exceed 70%. [Q3 release](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748).",
    "break": "By the Q2 FY2027 release, checked no later than **15 May 2027**, exit these proposed shares under §5.1 if trailing-twelve-month **(operating cash flow − capital expenditure) / reconciled adjusted net income is 60% or less**, independent of volumes or margin. Also break earlier if **two successive post-entry quarters have filed GAAP operating margins below 18%**, independent of volume direction. A non-positive earnings denominator is not a passing ratio: if TTM GAAP operating profit is non-positive, the earnings thesis itself breaks. These are my thresholds, not company guidance; the May date is a review deadline, not an announced release. For the cash test, derive March-2027 TTM values as FY2026 minus H1 FY2026 plus H1 FY2027, using the same company reconciliation each time. Keep recurring factory spending in capital expenditure; do not add it back to manufacture cash conversion. Separately show the denominator after any quantified one-time income and document definition changes. A missing reconciliation or unannounced result triggers review and remains unassessed, never a pass. The warning arrives at FY results before the TTM break; the independent margin path prevents stable volumes from hiding deteriorating profitability. This addresses the Review's criticism that the accepted proposal's break required both declining volumes and low margins. It does not retrospectively trigger a sale of the original three shares.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1208,7 +1238,7 @@
    "warning": "At FY2026 results, checked by **10 November 2026**, re-read upon any of: another disclosed decline in consolidated physical volumes; free cash flow at or below **70% of company-adjusted net income**; or **filed operating income / year-end total assets below 13.5%**. The cash threshold is management's commitment; the return threshold is my decision rule against a **14.17% FY2025 baseline**. Volumes come from the sales bridge, not a price-driven revenue percentage. No volume disclosure means unavailable evidence, not flat volume. [Q3 outlook](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748), [annual operating income](https://www.sec.gov/Archives/edgar/data/1350593/000135059325000066/R5.htm), [balance sheet](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm).",
    "break": "Recommend exit under §5.1 if FY2026 filed operating income / year-end total assets is **below 12%**, **or** FY2026 free cash flow is **below 50% of company-adjusted net income**. Check by **10 November 2026**, or immediately when the annual filing supplies the denominator. Independently, two successive September and December quarters with filed GAAP operating margin below **18% in each** break the case, checked by **28 February 2027**, whether or not reported volume also falls. These are my thresholds, not forecasts or management guidance. Define free cash flow as operating cash flow less capital expenditure, and use the company's reconciled adjusted net income for the cash-conversion test. Define operating return on assets as **full-year filed GAAP operating income / the same year-end's total assets**, retaining goodwill and cash: this deliberately tests all capital tied up, not only selected factory assets. It is **pre-tax operating ROA, not ROIC**. A disclosed material impairment of the expanded production assets prompts immediate review rather than waiting for the annual ratios. If accounts are delayed, review that delay explicitly; never manufacture a threshold result.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1253,7 +1283,7 @@
    "warning": "At FY2026 results, locally estimated for **5 November 2026**, re-read if consolidated physical volumes decline again year on year, **or** GAAP operating margin is below **19%**, **or** full-year free cash flow does not exceed **70% of adjusted net income**. Any one is sufficient. The volume statement may be directional, as in the current filing; an omitted bridge is unavailable evidence, not stable volumes. The cash reference is management's commitment; 19% is my early-warning threshold.",
    "break": "For these **additional shares**, exit under §5.1 if GAAP operating margin is below **18% in each of two successive post-entry quarters**, assessed by **28 February 2027**, regardless of sales growth. This standalone margin test addresses the Review's concern that price-led growth could keep a combined margin-and-growth test green. Also break if management discloses a material permanent shutdown or impairment of the capacity on which the efficiency case depends; ordinary restructuring expense alone is not that event. Use filed operating profit **after** reorganisation charges. The new margin-only test can fire while price rises keep revenue growing. It does not retrospectively change the conditions Leo accepted on the original three shares in [the 8 September proposal](2026-09-08-2133-MWA.md); the Review must distinguish the original holding and this proposed top-up until Leo adopts a common rule. [Current quarter filing](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm), [cash-conversion commitment](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748).",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1348,7 +1378,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1378,7 +1408,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1408,7 +1438,7 @@
    "warning": "At the FY2026 result currently estimated for 5 November 2026, trigger a full re-read if net sales are below management's $1.470bn lower bound, adjusted EBITDA is below $367m, or free cash flow is no more than 70% of adjusted net income. Any miss is the first hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([company outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than 7 May 2027, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below 17.0% while trailing-twelve-month revenue growth is below 3.0%. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1438,7 +1468,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1468,7 +1498,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1498,7 +1528,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below **$367m**, or free cash flow is no more than **70% of adjusted net income**. Any miss is the first hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([company outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the dominant risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1513,7 +1543,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1543,7 +1573,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1573,7 +1603,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "live",
    "counts": false
   },
@@ -1603,7 +1633,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1633,7 +1663,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1663,7 +1693,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1693,7 +1723,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1723,7 +1753,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1753,7 +1783,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1798,7 +1828,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that tariff refunds, compensation timing and pricing produced a peak rather than a durable reset in a growing business; it directly tests the strongest case against ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1828,7 +1858,7 @@
    "warning": "At the FY2026 result currently estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below **$367m**, or free cash flow is no more than **70% of adjusted net income**. Any miss is the earliest hard evidence that pricing and execution are not carrying into the full year; it is a warning, not an automatic sale ([Q3 outlook](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, to be checked no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that recent margin expansion came from tariff refunds, compensation timing and pricing rather than a durable improvement in a growing business; the date allows one warning and two subsequent quarters to test the real risk ([current filing and baseline](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm), [prior-year Q2 filing cadence](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000024/mwa-20260331.htm)).",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
@@ -1873,7 +1903,7 @@
    "warning": "At the FY2026 result estimated for **5 November 2026**, trigger a full re-read if net sales are below management's **$1.470bn** lower bound, adjusted EBITDA is below its **$367m** lower bound, or free cash flow is no more than **70% of adjusted net income**. Any miss would be the earliest hard evidence that current price/cost benefits are not carrying into the full year ([Q3 results](https://www.sec.gov/Archives/edgar/data/1350593/000135059326000034/exhibit991pressreleasefy26.htm), [local result date](../../prices.json)).",
    "break": "At the Q2 FY2027 filing, checkable no later than **7 May 2027**, put the position under §5.1 if trailing-twelve-month GAAP operating margin is below **17.0%** while trailing-twelve-month revenue growth is below **3.0%**. That combination would show that the margin expansion was a temporary product of tariff refunds, compensation timing and pricing rather than a durable improvement in a growing business; it directly answers the case against.",
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-09-14-0038-MWA",
+   "supersededBy": "2026-10-07-1711-MWA",
    "phase": "pre-live",
    "counts": false
   },
