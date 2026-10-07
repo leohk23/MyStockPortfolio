@@ -109,6 +109,9 @@ function shape(r) {
     const timestamps = r.timestamp || [];
     const closes = r.indicators?.quote?.[0]?.close || [];
     const divTTM = Object.values(r.events?.dividends || {}).reduce((sum, d) => sum + (d.amount || 0), 0);
+    const splits = Object.values(r.events?.splits || {}).filter(e => e.numerator > 0 && e.denominator > 0)
+        .map(e => ({ date: new Date(e.date * 1000).toISOString().slice(0, 10), ratio: e.numerator / e.denominator }));
+    const moves = { '1d': dailyMove(r.meta, closes, price), ...movements(timestamps, closes, price) };
     return {
         price,
         // Trust Yahoo over the workbook: .L tickers quote in pence ("GBp"), .T in JPY.
@@ -122,11 +125,19 @@ function shape(r) {
         divCount: Object.keys(r.events?.dividends || {}).length,
         divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
         splitRecently: hasSplit(r.events?.splits),
-        '1d': dailyMove(r.meta, closes, price),
-        ...movements(timestamps, closes, price),
+        // Working field, removed in main(): what splitsSinceFiled checks the share count against.
+        splits,
+        ...(halfSplit(moves['1d'], splits) ? Object.fromEntries(Object.keys(moves).map(k => [k, null])) : moves),
         series: { timestamps, closes }, // stripped before writing; only used to build NAV history
     };
 }
+
+// A split half applied: Yahoo restates the closes before the live price. TKOMY on 6 Oct 2026 read
+// +1,425% (its 15:1 times a real +1.7%) and sent a phone alert. Every move compares that price with
+// those closes, so a 1D matching a split from the past week voids them all: "–", not a fiction.
+const halfSplit = (move, splits, now = Date.now()) => move != null && splits.some(sp =>
+    now - Date.parse(sp.date) < 7 * DAY * 1000
+    && [sp.ratio, 1 / sp.ratio].some(x => Math.abs(Math.log((1 + move) / x)) < 0.15));
 
 // Weekly full-history closes for the long chart ranges (2Y/5Y/All). Weekly keeps the
 // file bounded — daily over 10y × 57 tickers would be several MB. Same {currency,series}
@@ -320,7 +331,7 @@ async function getCrumb() {
 // future date is a "next results" date; a past one is dropped rather than displayed as if it
 // were upcoming. `now` is a parameter so this stays testable.
 function parseQuotes(json, now = Date.now()) {
-    const eps = {}, earnings = {}, types = {}, session = {}, epsFwd = {};
+    const eps = {}, earnings = {}, types = {}, session = {}, epsFwd = {}, shares = {};
     for (const r of json.quoteResponse?.result || []) {
         // EQUITY vs ETF/INDEX/MUTUALFUND/CRYPTOCURRENCY. Rides this batch call for free, and is
         // what lets the caller skip the per-ticker gated fundamentals fetches (annual EPS,
@@ -361,6 +372,9 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
         if (typeof r.epsTrailingTwelveMonths === 'number') eps[r.symbol] = r.epsTrailingTwelveMonths;
+        // Today's share count, on the post-split basis as soon as a split takes effect — the
+        // evidence splitsSinceFiled needs before it believes Yahoo's split list.
+        if (r.sharesOutstanding > 0) shares[r.symbol] = r.sharesOutstanding;
         // Analyst consensus for the next twelve months, in the quote's own currency and per the
         // quoted unit (so an ADR's is per ADR — no FX or ratio to apply). Only positive figures:
         // a consensus loss has no meaningful multiple, same rule the trough uses. Whether it can
@@ -387,7 +401,7 @@ function parseQuotes(json, now = Date.now()) {
             };
         }
     }
-    return { eps, earnings, types, session, epsFwd };
+    return { eps, earnings, types, session, epsFwd, shares };
 }
 
 // Ex-dividend date, from quoteSummary's calendarEvents. NOT in the batch v7/quote response
@@ -926,6 +940,36 @@ function ocfEntry(entry, capYears) {
     }).filter(Boolean);
     return out.length ? { currency: entry.currency, years: out } : null;
 }
+
+// A split AFTER the latest filed year. Yahoo restates the price history the day it takes effect,
+// but every stored EPS stays per OLD share until the next annual is filed, and normaliseEps cannot
+// see it: it anchors on that latest year, which is the stale one. Tokio Marine's 15:1 (1 Oct 2026)
+// read P/E 1.8x and P/E Low 0.94x against ~27x and ~14x.
+//
+// Yahoo's split list alone is not evidence (BYD's phantom 6:1, below), so a split counts only when
+// today's share count agrees: shares outstanding / the anchor year's implied shares must match the
+// splits since that year end, within buyback drift. A filer that restated at filing, or Yahoo
+// restating the EPS later, fails the match and is left alone. Returns the qualifying splits or null.
+//
+// ponytail: splits come from the 1y daily chart, so a correction lapses if the next annual is still
+// unfiled a year after the split (usually 7-10 months); ask the weekly call for splits if one does.
+// An ADR whose quote counts receipts, not shares, also fails the match and stays uncorrected.
+function splitsSinceFiled(entry, splits, shares) {
+    const anchor = [...(entry?.years || [])].reverse().find(y => y.eps > 0 && y.ni > 0);
+    if (!anchor || !(shares > 0)) return null;
+    const after = (splits || []).filter(sp => sp.date > anchor.date);
+    const r = after.reduce((f, sp) => f * sp.ratio, 1);
+    const match = shares / (anchor.ni / anchor.eps) / r;
+    return r !== 1 && match > 0.8 && match < 1.25 ? after : null;
+}
+
+// EPS rows onto today's share basis: each divided by the splits dated after its period.
+const onShareBasis = (rows, splits, key = 'date') => rows && rows.map(x => typeof x.eps !== 'number' ? x
+    : { ...x, eps: x.eps / splits.filter(sp => sp.date > x[key]).reduce((f, sp) => f * sp.ratio, 1) });
+
+// Is a trailing EPS still per old share? Nearer the filed anchor than the rebased one.
+const onOldBasis = (eps, filed, r) => eps > 0 && filed > 0
+    && Math.abs(Math.log(eps / filed)) < Math.abs(Math.log(eps * r / filed));
 
 function normaliseEps(years) {
     const anchor = [...years].reverse().find(y => y.eps > 0 && y.ni > 0);
@@ -2046,11 +2090,11 @@ async function main() {
     const carried = previousEps();
     const manualEps = Object.fromEntries([...holdings, ...watchlist]
         .filter(x => typeof x.eps === 'number').map(x => [x.yahoo, x.eps]));
-    let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {}, freshFwd = {};
+    let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {}, freshFwd = {}, shareCount = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
         auth = await getCrumb();
-        ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions, epsFwd: freshFwd }
+        ({ eps: fresh, earnings: earningsDates, types: quoteTypes, session: sessions, epsFwd: freshFwd, shares: shareCount }
             = await fetchEps(fundTickers, auth));
     } catch (e) {
         console.error(`skip eps: ${e.message} — falling back to the previous run's EPS`);
@@ -2069,6 +2113,7 @@ async function main() {
     })();
     const todayISO = new Date().toISOString().slice(0, 10);
     let live = 0, stale = 0, viaPrimary = 0, viaFiling = 0;
+    const splitsOf = {};
     for (const t of tickers) {
         if (!quotes[t]) continue;
         // Not carried forward like EPS: a stale results date is worse than none, and this one
@@ -2109,6 +2154,7 @@ async function main() {
         // exactly the names most likely to be looked at. Dropped, not guessed at.
         if (freshFwd[t] != null && !quotes[t].splitRecently) quotes[t].epsFwd = freshFwd[t];
         delete quotes[t].splitRecently;              // a working flag, not something the page needs
+        splitsOf[t] = quotes[t].splits; delete quotes[t].splits;
         const eps = resolveEps(manualEps[t], fresh[t], carried[t], quotes[t].currency);
         if (eps === undefined) continue;
         quotes[t].eps = eps;
@@ -2514,12 +2560,30 @@ async function main() {
     try { const y = JSON.parse(fs.readFileSync('capital-yahoo.json', 'utf8')).capital || {};
         for (const [t, years] of Object.entries(y)) if (!capitalFacts[t]) capitalFacts[t] = years; }
     catch { /* optional: EDGAR-only coverage is still correct, just narrower */ }
+    // Stored EPS onto today's share basis where a confirmed split came after the latest filed year
+    // (splitsSinceFiled). In memory only: earnings.json was written above and keeps what was filed.
+    const fundEps = { ...store.eps };
+    for (const t of tickers) {
+        const after = quotes[t] && splitsSinceFiled(store.eps[t], splitsOf[t], shareCount[t]);
+        if (!after) continue;
+        const e = store.eps[t], q = quotes[t];
+        const r = after.reduce((f, sp) => f * sp.ratio, 1);
+        fundEps[t] = { ...e, years: onShareBasis(e.years, after), quarters: onShareBasis(e.quarters, after) };
+        if (filedQuarters[t]) filedQuarters[t] = onShareBasis(filedQuarters[t], after, 'end');
+        // The quote's trailing EPS lags the same way. Corrected only while it still sits on the old
+        // basis, so Yahoo's own restatement is taken as is whenever it lands. An override is its owner's.
+        const toQuote = rateFor(e.currency || q.currency, rates) / rateFor(q.currency, rates);
+        const filed = [...e.years].reverse().find(y => y.eps > 0 && y.ni > 0).eps * toQuote;
+        const ttmFixed = manualEps[t] == null && onOldBasis(q.eps, filed, r);
+        if (ttmFixed) q.eps = Number((q.eps / r).toPrecision(6));
+        console.log(`note ${t}: EPS rebased for a ${r}:1 split after the last filed year${ttmFixed ? ', trailing EPS too' : ''}`);
+    }
     let troughOk = 0, troughMissing = 0, bandOk = 0, realDated = 0, ownBands = 0, pocfOk = 0;
     for (const t of tickers) {
         if (!quotes[t]) continue;
         const filedOn = filedDates[t] || null;
         if (filedOn && Object.keys(filedOn).length) realDated++;
-        const bands = peBands(store.eps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
+        const bands = peBands(fundEps[t], longHist.days, longHist.closes[t] || [], quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
         if (bands) {
             quotes[t].peBands = bands.map(b => ({
                 fy: b.fy, end: b.end, weeks: b.weeks, ...(b.partial ? { partial: true } : {}),
@@ -2529,11 +2593,11 @@ async function main() {
             bandOk++;
         }
         // Every horizon in one pass; the headline is the five-year window (see peHistory).
-        const hist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
+        const hist = peHistory(fundEps[t], longHist.days, longHist.closes[t] || [],
             quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null);
         // The same window on recurring earnings. Both are kept: where they disagree materially,
         // the gap IS the finding — a floor set by a one-off year is a floor nobody can pay again.
-        const recHist = peHistory(store.eps[t], longHist.days, longHist.closes[t] || [],
+        const recHist = peHistory(fundEps[t], longHist.days, longHist.closes[t] || [],
             quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null, null, 'recurring');
         const recHead = recHist?.horizons?.[HEADLINE_HORIZON] || recHist?.horizons?.all;
         if (recHead) {
@@ -2545,10 +2609,10 @@ async function main() {
         // The same window again on OUR OWN basis: filed net income less the one-offs pot/adjustments.json
         // can cite. Only computed where an adjustment exists — otherwise it would be an identical
         // copy of the reported series under a name that implies more work was done than was.
-        const filedYearEnds = new Set((store.eps[t]?.years || []).map(y => y.date));
+        const filedYearEnds = new Set((fundEps[t]?.years || []).map(y => y.date));
         const myAdj = (ADJUSTMENTS[t] || []).filter(a => canApplyAdjustment(a) && filedYearEnds.has(a.fy));
         if (myAdj?.length) {
-            const ownEntry = { ...store.eps[t], years: adjustedYears(store.eps[t].years || [], myAdj) };
+            const ownEntry = { ...fundEps[t], years: adjustedYears(fundEps[t].years || [], myAdj) };
             const ownHist = peHistory(ownEntry, longHist.days, longHist.closes[t] || [],
                 quotes[t].currency, rates, filedOn, filedQuarters[t], HISTORY_FROM[t] || null, null, 'own');
             const ownHead = ownHist?.horizons?.[HEADLINE_HORIZON] || ownHist?.horizons?.all;
@@ -2575,7 +2639,7 @@ async function main() {
         });
         // The same weekly machinery on operating cash flow (ocfEntry, D71). Kept beside the P/E so
         // the Scan can ask whether cheapness shows up in cash too, rather than on earnings alone.
-        const ocf = ocfEntry(store.eps[t], capitalFacts[t]);
+        const ocf = ocfEntry(fundEps[t], capitalFacts[t]);
         const ocfHist = ocf && peHistory(ocf, longHist.days, longHist.closes[t] || [],
             quotes[t].currency, rates, filedOn, null, HISTORY_FROM[t] || null);
         const ocfHead = ocfHist?.horizons?.[HEADLINE_HORIZON] || ocfHist?.horizons?.all;
@@ -2596,7 +2660,7 @@ async function main() {
         const capYears = capitalFacts[t];
         if (capYears) {
             const ends = Object.keys(capYears).sort();
-            const ey = (store.eps[t]?.years || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            const ey = (fundEps[t]?.years || []).slice().sort((a, b) => b.date.localeCompare(a.date));
             // Every year the two share, not only the newest. A single year is a snapshot, and
             // direction usually says more than level: a ROIC falling 30% -> 20% is a worse sign
             // than one climbing 12% -> 15%, and neither is visible from one number.
@@ -2640,7 +2704,7 @@ async function main() {
     let derivedEps = 0;
     for (const t of tickers) {
         if (!quotes[t] || fresh[t] != null || manualEps[t] != null) continue;
-        const te = trailingEpsFromQuarters(store.eps[t], quotes[t].currency, rates);
+        const te = trailingEpsFromQuarters(fundEps[t], quotes[t].currency, rates);
         if (te != null) { quotes[t].eps = te; quotes[t].epsDerived = true; derivedEps++; }
     }
     if (derivedEps) console.log(`ok   trailing EPS summed from quarters for ${derivedEps} ticker(s)`);
@@ -2649,11 +2713,11 @@ async function main() {
     let fresher = 0;
     for (const t of tickers) {
         if (!quotes[t] || manualEps[t] != null || quotes[t].epsDerived) continue;
-        const s = preferSummedTtm(store.eps[t], quotes[t].eps, quotes[t].currency, rates, quotes[t].earnings?.date);
+        const s = preferSummedTtm(fundEps[t], quotes[t].eps, quotes[t].currency, rates, quotes[t].earnings?.date);
         if (s == null) continue;
         quotes[t].epsReported = quotes[t].eps;          // kept so the page can show what was replaced
         quotes[t].eps = s;
-        quotes[t].epsThru = lastQuarterDate(store.eps[t]);
+        quotes[t].epsThru = lastQuarterDate(fundEps[t]);
         fresher++;
     }
     if (fresher) console.log(`ok   trailing EPS refreshed from filed quarters for ${fresher} ticker(s)`
@@ -2691,20 +2755,20 @@ async function main() {
         //
         // So convert where the two are the same currency in different denominations, and drop only
         // where the unit genuinely differs.
-        const repCcy = store.eps[t]?.currency;
+        const repCcy = fundEps[t]?.currency;
         if (quotes[t].epsFwd != null && repCcy && repCcy !== quotes[t].currency) {
             const sameMoney = repCcy.replace(/^GBp$/, 'GBP') === quotes[t].currency.replace(/^GBp$/, 'GBP');
             const fx = sameMoney ? epsToQuote({ currency: repCcy }, quotes[t].currency, rates) : null;
             if (fx != null) { quotes[t].epsFwd = Number((quotes[t].epsFwd * fx).toPrecision(6)); fwdConverted++; }
             else { delete quotes[t].epsFwd; fwdDropped++; }
         }
-        const rec = recurringTtmFrom(store.eps[t], quotes[t].currency, rates);
+        const rec = recurringTtmFrom(fundEps[t], quotes[t].currency, rates);
         if (rec != null) {
             quotes[t].normEps = rec;
-            quotes[t].normEpsThru = lastQuarterDate(store.eps[t]);
+            quotes[t].normEpsThru = lastQuarterDate(fundEps[t]);
             // Only on the filed-quarter basis: the annual proxy below is not a TTM, so a current-year
             // one-off has no window to sit in there.
-            const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], rec, quotes[t].currency, rates);
+            const own = ownTtmEps(fundEps[t], ADJUSTMENTS[t], rec, quotes[t].currency, rates);
             if (own != null) {
                 quotes[t].normEpsOwn = own;
                 quotes[t].adjustments = (ADJUSTMENTS[t] || []).filter(canApplyAdjustment);
@@ -2712,7 +2776,7 @@ async function main() {
             recFiled++;
             continue;
         }
-        const ne = normEpsFrom(store.eps[t], quotes[t].eps);
+        const ne = normEpsFrom(fundEps[t], quotes[t].eps);
         if (ne != null) {
             quotes[t].normEps = ne;
             // The proxy is trailing reported EPS scaled by the last filed year vendor ratio, so a
@@ -2720,7 +2784,7 @@ async function main() {
             // because the ratio comes from an earlier year, but the one-off is a cited figure and
             // removing it moves the multiple the honest way. Most names use this branch, not the
             // filed-quarter one: MWA falls here because its Sep 2025 quarter carries no EPS.
-            const own = ownTtmEps(store.eps[t], ADJUSTMENTS[t], ne, quotes[t].currency, rates);
+            const own = ownTtmEps(fundEps[t], ADJUSTMENTS[t], ne, quotes[t].currency, rates);
             if (own != null) {
                 quotes[t].normEpsOwn = own;
                 quotes[t].adjustments = (ADJUSTMENTS[t] || []).filter(canApplyAdjustment);
@@ -3235,6 +3299,20 @@ function selftest() {
     assert.deepStrictEqual(normaliseEps([{ eps: 5 }, { eps: 6 }]), [5, 6]);
     assert.deepStrictEqual(normaliseEps([{ eps: -1, ni: -50 }]), [-1]);
     assert.deepStrictEqual(normaliseEps([]), []);
+    // A split after the last filed year counts only when today's share count confirms it.
+    const tk = { years: [{ date: '2025-03-31', eps: 231.23, ni: 450.4e9 }, { date: '2026-03-31', eps: 279.15, ni: 531.255e9 }] };
+    const tkSplit = [{ date: '2026-09-29', ratio: 15 }];
+    assert.deepStrictEqual(splitsSinceFiled(tk, tkSplit, 28.34e9), tkSplit);
+    assert.strictEqual(splitsSinceFiled(tk, tkSplit, 1.9e9), null, 'share count unchanged: phantom split, or EPS already restated');
+    assert.strictEqual(splitsSinceFiled(tk, [{ date: '2026-03-01', ratio: 15 }], 28.34e9), null, 'before the anchor: normaliseEps covers it');
+    assert.strictEqual(splitsSinceFiled(tk, [], 28.34e9), null);
+    assert.strictEqual(splitsSinceFiled(tk, tkSplit, undefined), null);
+    assert.deepStrictEqual(onShareBasis([{ date: '2026-03-31', eps: 279.15 }, { date: '2026-12-31', eps: 20 }, { date: '2026-06-30' }], tkSplit)
+        .map(x => x.eps == null ? null : Math.round(x.eps * 100) / 100), [18.61, 20, null]);
+    assert.strictEqual(onShareBasis(undefined, tkSplit), undefined);
+    assert.strictEqual(onOldBasis(1.85, 1.85, 15), true);
+    assert.strictEqual(onOldBasis(0.13, 1.85, 15), false, 'Yahoo restated it: leave it');
+    assert.strictEqual(onOldBasis(-1, 1.85, 15), false);
 
     // troughPe: each close over the latest EPS PUBLISHED by that date; cheapest ratio wins.
     // FY2023 eps 4 public 2024-03-30; FY2024 eps 5 public 2025-03-31; FY2025 eps 6 public
@@ -3467,6 +3545,15 @@ function selftest() {
     // 2026-08-10's 267.85 is +0.40%; the old rule skipped to 2026-08-07 and printed -4.83%.
     assert.strictEqual(dailyMove({}, [282.57, 267.85, null], 268.93),
         Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
+    // A split half applied voids the moves; a real move, an old split or no split does not.
+    const sNow = Date.parse('2026-10-06T20:00:00Z'), tk15 = [{ date: '2026-10-06', ratio: 15 }];
+    assert.strictEqual(halfSplit(14.25, tk15, sNow), true);
+    assert.strictEqual(halfSplit(0.017, tk15, sNow), false);
+    assert.strictEqual(halfSplit(14.25, tk15, sNow + 30 * DAY * 1000), false);
+    assert.strictEqual(halfSplit(-0.9, [{ date: '2026-10-06', ratio: 0.1 }], sNow), true, 'reverse split');
+    assert.strictEqual(halfSplit(-0.93, tk15, sNow), true, 'price restated, closes not');
+    assert.strictEqual(halfSplit(null, tk15, sNow), false);
+    assert.strictEqual(halfSplit(14.25, [], sNow), false);
     // ...and when today's bar IS present, it equals the live price and is still skipped.
     assert.strictEqual(dailyMove({}, [282.57, 267.85, 268.93], 268.93),
         Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
@@ -3483,8 +3570,8 @@ function selftest() {
     const QNOW = Date.UTC(2026, 6, 17);
     const future = Date.UTC(2026, 6, 30) / 1000, past = Date.UTC(2026, 4, 20) / 1000;
     assert.deepStrictEqual(
-        parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5 }, { symbol: '^GSPC' }] } }, QNOW),
-        { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {}, epsFwd: {} }
+        parseQuotes({ quoteResponse: { result: [{ symbol: 'AAPL', epsTrailingTwelveMonths: 6.5, sharesOutstanding: 14.8e9 }, { symbol: '^GSPC' }] } }, QNOW),
+        { eps: { AAPL: 6.5 }, earnings: {}, types: {}, session: {}, epsFwd: {}, shares: { AAPL: 14.8e9 } }
     );
 
     // Freshness: when was the price struck, and has the stock moved since? The extended-hours
