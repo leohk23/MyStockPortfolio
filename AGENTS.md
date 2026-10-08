@@ -483,6 +483,8 @@ Yahoo lists no individual gilts (no `.L` code resolves, and its search finds non
 - **Its price history exists only in `prices.json`.** The exchange has no history endpoint, so each run stores the mid in `quote.lseCloses` under today's London date (weekdays only), and the last run of a day leaves that day's close. The daily and weekly series are built from it. Not the exchange's `lastclose`: that is the last trade, often at the bid or offer, and against a mid it shows the spread as a move. Never drop the field or rebuild `prices.json` without it. A failed fetch keeps the last quote and its closes (stale, and `at` says so) rather than losing the history.
 - A period longer than the stored history shows "–" (`sinceStored`), never a move from the first close. Weekly bars are bucketed with the same `weekEnd` as Yahoo's (`weeklyFromDaily`).
 - `extract-portfolio.js` verifies a new gilt against the exchange instead of Yahoo.
+- **A bond fund's yield to maturity** is its issuer's figure, never computed here: `ishares` in `meta.json` (the fund page's `id/slug`; the id alone is refused) makes `fetchIsharesYtm` read the "Weighted Average YTM" iShares embeds in the page, into `quote.fundYtm` with its as-of date. Once a day, carried between, the last figure kept on failure. iShares sits behind bot protection that admits a browser's headers; a script's are refused.
+- **The Valuation box is hidden for a gilt or a bond fund** (Leo, 8 Oct): with no earnings every row is "–", and the yield that matters is in the facts box.
 - Ceilings: the yield ignores the ex-dividend window (the 7 business days before a coupon) and settlement ignores bank holidays, a basis point or so.
 
 ## Funds: what the deep panel shows instead of financials

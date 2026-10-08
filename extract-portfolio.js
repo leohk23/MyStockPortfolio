@@ -161,6 +161,9 @@ function buildHoldings(meta, bySymbol, realized) {
             // A gilt's London Stock Exchange code (TN28). Yahoo lists no gilts, so fetch-prices
             // prices this one from the exchange instead; `yahoo` is then just its key.
             lse: m.lse,
+            // An iShares bond fund's page path (id/slug), where its weighted average yield to
+            // maturity is published — see fetchIsharesYtm.
+            ishares: m.ishares,
             // Trough-multiple valuation: the cheapest this traded in living memory, and what
             // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
             lowPrice: m.lowPrice,

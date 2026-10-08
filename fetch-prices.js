@@ -211,6 +211,30 @@ function sinceStored(moves, first, now) {
     return out;
 }
 
+// A bond fund's yield to maturity is its issuer's figure, the weighted average of its holdings'
+// yields: iShares publishes it daily on the fund's page as "Weighted Average YTM" (in its data as
+// yieldToWorst), embedded as JSON. `ishares` in meta.json is the page's path, id and slug: the id
+// alone is refused. Undocumented and behind bot protection that admits a browser's headers — the
+// same risk class as the LSE, and it fails the same way: the last figure is kept, dated.
+async function fetchIsharesYtm(path) {
+    const url = `https://www.ishares.com/uk/individual/en/products/${path}?switchLocale=y&siteEntryPassthrough=true`;
+    const res = await fetch(url, { headers: { 'User-Agent': UA + ' (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+        Accept: 'text/html,*/*', 'Accept-Language': 'en-GB,en;q=0.9' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return isharesYtm(await res.text());
+}
+
+// The page carries the figure twice (header and characteristics table); both must agree.
+function isharesYtm(html) {
+    const d = String(html).replace(/&quot;/g, '"');
+    const re = /"asOfDate":(\d{8}),"formattedAsOfDate":"[^"]*","formattedValue":"(-?\d+(?:\.\d+)?)%","label":"([^"]*)","asOfLabel":"([^"]*)"/g;
+    const hits = [...d.matchAll(re)].filter(m => m[3] === 'Weighted Average YTM' || m[4] === 'Weighted Average YTM');
+    if (!hits.length || hits.some(m => m[2] !== hits[0][2] || m[1] !== hits[0][1])) return null;
+    const value = Math.round(Number(hits[0][2]) * 100) / 1e4, day = hits[0][1];
+    return value > -0.05 && value < 0.25
+        ? { value, asOf: `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6)}` } : null;
+}
+
 // "0 1/8% TREASURY GILT 31/01/28" -> 0.125 (% of par a year). Null for an index-linked gilt, whose
 // price is real and whose nominal yield would mean nothing, and for any name that does not parse.
 function couponOf(name) {
@@ -2378,6 +2402,25 @@ async function main() {
     console.log(`ok   fund facts for ${tickers.filter(t => quotes[t]?.fund?.expense).length}`
         + `/${tickers.filter(t => nonEquity.has(t)).length} fund(s) with a fee on file`);
 
+    // A bond fund's weighted average yield to maturity, from its issuer (fetchIsharesYtm). Once a
+    // day: the figure moves daily at most and the page is ~3MB. Carried, dated, between fetches; a
+    // failure keeps the last figure and is retried on the next run.
+    const isharesOf = Object.fromEntries([...holdings, ...watchlist].filter(x => x.ishares).map(x => [x.yahoo, x.ishares]));
+    for (const [t, path] of Object.entries(isharesOf)) {
+        if (!quotes[t]) continue;
+        const prev = prevQuotes[t]?.fundYtm;
+        if (prev) quotes[t].fundYtm = prev;
+        if (prev?.checked === today) continue;
+        try {
+            const y = await fetchIsharesYtm(path);
+            if (!y) throw new Error('no Weighted Average YTM on the page');
+            quotes[t].fundYtm = { ...y, checked: today };
+            console.log(`ok   ${t} weighted average YTM ${(y.value * 100).toFixed(2)}% as of ${y.asOf}`);
+        } catch (e) {
+            console.error(`     fund YTM ${t}: ${e.message} — keeping ${prev ? prev.asOf : 'none'}`);
+        }
+    }
+
     // Most-recent-quarter end (the through-quarter of the reported trailing EPS), for equities
     // only and only when the cached one has aged out — same trickle discipline as ex-div.
     if (auth) {
@@ -3698,6 +3741,15 @@ function selftest() {
     assert.strictEqual(halfSplit(-0.93, tk15, sNow), true, 'price restated, closes not');
     assert.strictEqual(halfSplit(null, tk15, sNow), false);
     assert.strictEqual(halfSplit(14.25, [], sNow), false);
+
+    // A bond fund's YTM, as iShares embeds it: both copies must agree, and a percentage is a fraction.
+    const ytmRec = (label, asOfLabel, v = '5.14', d = '20261006') =>
+        `{&quot;asOfDate&quot;:${d},&quot;formattedAsOfDate&quot;:&quot;06/Oct/2026&quot;,&quot;formattedValue&quot;:&quot;${v}%&quot;,&quot;label&quot;:&quot;${label}&quot;,&quot;asOfLabel&quot;:&quot;${asOfLabel}&quot;}`;
+    assert.deepStrictEqual(isharesYtm(ytmRec('', 'Weighted Average YTM') + ytmRec('Weighted Average YTM', '')),
+        { value: 0.0514, asOf: '2026-10-06' });
+    assert.strictEqual(isharesYtm(ytmRec('', 'Weighted Average YTM') + ytmRec('Weighted Average YTM', '', '5.20')), null, 'copies disagree');
+    assert.strictEqual(isharesYtm(ytmRec('Distribution Yield', '')), null, 'another figure is not the YTM');
+    assert.strictEqual(isharesYtm('<html>Access Denied</html>'), null);
 
     // Gilts: the coupon from the LSE's name, the DMO's yield, and closes that accrete run to run.
     assert.strictEqual(couponOf('0 1/8% TREASURY GILT 31/01/28'), 0.125);
