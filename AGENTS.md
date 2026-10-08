@@ -473,6 +473,18 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 
 `holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, `'sector'`, or `'instrument'`. Sector reads `quote.sector` (Yahoo `assetProfile`); a fund has no single sector and sits under **Funds**. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
 
+## Gilts: priced from the London Stock Exchange, not Yahoo
+
+Yahoo lists no individual gilts (no `.L` code resolves, and its search finds none), and the DMO's site blocks scripts. A `meta.json` entry with **`lse`** (the exchange code, e.g. `TN28`) marks a gilt; `yahoo` is then only its key, by convention `TN28.L`. `lse` is a public field (`vault.js` `PUBLIC_FIELDS`): an identifier, like `yahoo`.
+
+**In the Tradelog:** Qty = **nominal ÷ 100**, Price = the **clean price per £100** from the contract note, currency GBP. Every gilt price is quoted per £100 nominal, so Qty × Price is what was paid. Accrued interest goes in the comment, never in Price or Commission: it is not cost, and the next coupon repays it.
+
+- `fetchLse` reads the exchange's instrument endpoint (undocumented, the same risk class as HKEXnews). `price` is the mid of its order book. `quote.bond` carries the coupon (parsed from the name; null for an index-linked gilt, whose price is real), maturity, ISIN, bid, offer and **`ytm`**, the gross redemption yield the DMO quotes. `divYield` is the running yield, coupon ÷ clean price. `type: 'BOND'` keeps it out of every Yahoo-only lookup, and the Sector view files it under Bonds.
+- **Its price history exists only in `prices.json`.** The exchange has no history endpoint, so each run stores the official close it reports in `quote.lseCloses`, and the daily and weekly series are built from that. Never drop the field or rebuild `prices.json` without it. A failed fetch keeps the last quote and its closes (stale, and `at` says so) rather than losing the history.
+- A period longer than the stored history shows "–" (`sinceStored`), never a move from the first close. Weekly bars are bucketed with the same `weekEnd` as Yahoo's (`weeklyFromDaily`).
+- `extract-portfolio.js` verifies a new gilt against the exchange instead of Yahoo.
+- Ceilings: the yield ignores the ex-dividend window (the 7 business days before a coupon) and settlement ignores bank holidays, a basis point or so.
+
 ## Funds: what the deep panel shows instead of financials
 
 A tracker has no earnings, so the Financials box used to dead-end on "not an operating company".

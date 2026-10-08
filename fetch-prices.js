@@ -139,6 +139,134 @@ const halfSplit = (move, splits, now = Date.now()) => move != null && splits.som
     now - Date.parse(sp.date) < 7 * DAY * 1000
     && [sp.ratio, 1 / sp.ratio].some(x => Math.abs(Math.log((1 + move) / x)) < 0.15));
 
+// UK gilts. Yahoo carries none, so a holding with an `lse` code (meta.json) is priced from the
+// London Stock Exchange's own instrument data: the mid of its order book, per £100 nominal, the
+// unit every gilt price is quoted in. Undocumented, like HKEXnews; a changed shape throws, and the
+// caller keeps the last price and the stored closes rather than losing them.
+//
+// The exchange has no history endpoint, so the closes accrete: each run stores the official close
+// it reports (`lastclose` on `lastclosedate`), carried in prices.json as `lseCloses`. The series
+// starts the day a gilt is added — fine for one bought from then on.
+async function fetchLse(tidm, prevCloses, attempts = 3) {
+    const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
+    let lastErr;
+    for (let a = 0; a < attempts; a++) {
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': UA, Origin: 'https://www.londonstockexchange.com' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return shapeLse(await res.json(), prevCloses);
+        } catch (e) {
+            lastErr = e;
+            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
+        }
+    }
+    throw lastErr;
+}
+
+const lseSeries = closes => {
+    const days = Object.keys(closes || {}).sort();
+    return { timestamps: days.map(d => Date.parse(d + 'T16:30:00Z') / 1000), closes: days.map(d => closes[d]) };
+};
+
+function shapeLse(j, prevCloses = {}, now = new Date()) {
+    // The book's mid is the live value; the last trade can be hours old on a gilt.
+    const price = j.midPrice > 0 ? j.midPrice : j.lastprice;
+    if (!(price > 0) || j.currency !== 'GBP') throw new Error('no GBP price in the LSE response');
+    const closes = { ...prevCloses };
+    if (j.lastclose > 0 && /^\d{4}-\d\d-\d\d/.test(j.lastclosedate || '')) closes[j.lastclosedate.slice(0, 10)] = j.lastclose;
+    const series = lseSeries(closes);
+    const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const prev = Object.keys(closes).sort().filter(d => d < today).map(d => closes[d]).pop();
+    const coupon = couponOf(j.name);
+    return {
+        price, currency: 'GBP', at: Math.floor(now / 1000),
+        // Running yield, a bond's answer to a dividend yield: the coupon over the clean price.
+        divYield: coupon != null ? Number((coupon / price).toPrecision(6)) : null,
+        '1d': prev > 0 ? Math.round((price / prev - 1) * 1e4) / 1e4 : null,
+        ...sinceStored(movements(series.timestamps, series.closes, price, now / 1000), series.timestamps[0], now / 1000),
+        bond: {
+            name: j.name, isin: j.isin, maturity: j.maturitydate, coupon, bid: j.bid, offer: j.offer,
+            ytm: coupon != null && j.maturitydate ? grossRedemptionYield(price, coupon, j.maturitydate, settleDay(now)) : null,
+        },
+        lseCloses: closes,                              // the accreting store, carried run to run
+        series,
+    };
+}
+
+// A period longer than the stored history has no base: pctFrom would measure "1Y" from the first
+// close ever stored, a day old. "–" until the history reaches back that far, with four days' slack
+// for the longest UK market closure (Easter), as pctFrom takes the first close on or after the cutoff.
+function sinceStored(moves, first, now) {
+    const back = { '7d': 7, '1m': 30, '3m': 91, '6m': 182, '1y': 365 };
+    const jan1 = Date.UTC(new Date(now * 1000).getUTCFullYear(), 0, 1) / 1000;
+    const out = { ...moves };
+    for (const k of Object.keys(out)) {
+        const cutoff = k === 'ytd' ? jan1 : now - back[k] * DAY;
+        if (!(first <= cutoff + 4 * DAY)) out[k] = null;
+    }
+    return out;
+}
+
+// "0 1/8% TREASURY GILT 31/01/28" -> 0.125 (% of par a year). Null for an index-linked gilt, whose
+// price is real and whose nominal yield would mean nothing, and for any name that does not parse.
+function couponOf(name) {
+    const m = /^(\d+)(?:\s+(\d+)\/(\d+))?%/.exec(String(name || '').trim());
+    if (!m || /INDEX/i.test(name)) return null;
+    return Number(m[1]) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+}
+
+// Gilts settle the next business day.
+// ponytail: weekends only, not bank holidays — a day's accrued interest at most.
+const settleDay = now => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    while (d.getUTCDay() % 6 === 0) d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+};
+
+// Gross redemption yield, as the DMO quotes it: semi-annual coupons and compounding, solved on the
+// dirty price (clean plus accrued, actual/actual within the coupon period), as a fraction.
+// ponytail: no ex-dividend window (the 7 business days before a coupon, when accrued turns
+// negative) — a basis point or so, only in those days.
+function grossRedemptionYield(clean, coupon, maturity, settle) {
+    const m = new Date(maturity + 'T00:00:00Z');
+    const at = k => {                                   // the coupon date k half-years before maturity
+        const d = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() - 6 * k, 1));
+        const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+        d.setUTCDate(Math.min(m.getUTCDate(), last));
+        return d;
+    };
+    const s = new Date(settle + 'T00:00:00Z');
+    if (!(m > s)) return null;
+    let n = 0;
+    while (at(n + 1) > s) n++;                          // n + 1 coupons left, the next on at(n)
+    const f = (at(n) - s) / (at(n) - at(n + 1));        // share of this period still to run
+    const c = coupon / 2, dirty = clean + c * (1 - f);
+    const pv = y => {
+        const v = 1 / (1 + y / 2);
+        let p = 100 * v ** (n + f);
+        for (let k = 0; k <= n; k++) p += c * v ** (k + f);
+        return p;
+    };
+    let lo = -0.5, hi = 1;
+    for (let i = 0; i < 80; i++) { const y = (lo + hi) / 2; if (pv(y) > dirty) lo = y; else hi = y; }
+    return Math.round(((lo + hi) / 2) * 1e5) / 1e5;
+}
+
+// A gilt's weekly bars from its own daily closes, stamped by the same weekEnd every Yahoo weekly
+// bar is: each week's bar is its last close, and on a weekday the current week tracks the live
+// price, as Yahoo's in-progress bar does. (On a weekend weekEnd points at NEXT Friday, and the
+// week just ended already has its close.)
+function weeklyFromDaily(quote, now = Date.now() / 1000) {
+    const byWeek = new Map();                          // keyed by the Friday's date: weekEnd keeps the time of day
+    const week = ts => isoDay(weekEnd(ts));
+    quote.series.timestamps.forEach((ts, k) => { if (quote.series.closes[k] != null) byWeek.set(week(ts), quote.series.closes[k]); });
+    const dow = new Date(now * 1000).getUTCDay();
+    if (byWeek.size && dow >= 1 && dow <= 5) byWeek.set(week(now), quote.price);
+    const days = [...byWeek.keys()].sort();
+    return { currency: quote.currency,
+        series: { timestamps: days.map(d => Date.parse(d + 'T12:00:00Z') / 1000), closes: days.map(d => byWeek.get(d)) } };
+}
+
 // Weekly full-history closes for the long chart ranges (2Y/5Y/All). Weekly keeps the
 // file bounded — daily over 10y × 57 tickers would be several MB. Same {currency,series}
 // shape as the daily quotes, so alignedCloses/navHistory work on it unchanged.
@@ -2068,12 +2196,21 @@ async function main() {
     const fundTickers = [...tickers, ...primaries];
     const quotes = {};
     const failed = [];
+    // Gilts, priced from the LSE rather than Yahoo (fetchLse). A failed fetch keeps the last price
+    // and, above all, the stored closes: dropping the quote for one run would drop its history.
+    const lseOf = Object.fromEntries([...holdings, ...watchlist].filter(x => x.lse).map(x => [x.yahoo, x.lse]));
+    const prevLse = Object.keys(lseOf).length ? previousQuotes() : {};
 
     for (const t of tickers) {
         try {
-            quotes[t] = await fetchTicker(t);
+            quotes[t] = lseOf[t] ? await fetchLse(lseOf[t], prevLse[t]?.lseCloses) : await fetchTicker(t);
             console.log(`ok   ${t} ${quotes[t].price} ${quotes[t].currency}`);
         } catch (e) {
+            if (lseOf[t] && prevLse[t]?.lseCloses) {
+                quotes[t] = { ...prevLse[t], '1d': null, series: lseSeries(prevLse[t].lseCloses) };
+                console.error(`stale ${t}: ${e.message} — kept the last LSE price and its closes`);
+                continue;
+            }
             failed.push(t);
             console.error(`FAIL ${t}: ${e.message}`);
         }
@@ -2104,6 +2241,7 @@ async function main() {
     // — an unknown type (Yahoo omitted it, or the handshake failed) falls through to normal
     // handling, so a real company is never silently denied its earnings. This is what keeps the
     // 14 funds/indices out of the annual-EPS sweep and the ETF payers out of the ex-div lookups.
+    for (const t of Object.keys(lseOf)) quoteTypes[t] = 'BOND';    // Yahoo has no type for what it does not list
     const nonEquity = new Set(fundTickers.filter(t => quoteTypes[t] && quoteTypes[t] !== 'EQUITY'));
     // Optional by design: the file is written by a separate, much slower job and the price run must
     // work identically without it (a fresh clone, or the day the HKEXnews shape changes).
@@ -2220,7 +2358,7 @@ async function main() {
     // sweep above, which covers only the operating companies. Cached for FUND_STALE_DAYS because
     // none of it moves; a failure keeps whatever was cached rather than blanking the panel.
     if (auth) {
-        const funds = tickers.filter(t => quotes[t] && nonEquity.has(t));
+        const funds = tickers.filter(t => quotes[t] && nonEquity.has(t) && !lseOf[t]);
         const due = fundsToFetch(prevQuotes, funds, today);
         if (due.length) console.log(`     fund profile lookup for ${due.length}/${funds.length} fund(s)`);
         for (const t of due) {
@@ -2472,6 +2610,7 @@ async function main() {
     const hist = alignedCloses(histTickers, dailyHistory);
     const weeklyQuotes = {};
     for (const t of histTickers) {
+        if (lseOf[t]) continue;                         // built from its own closes, below
         try {
             weeklyQuotes[t] = await fetchWeekly(t);
             console.log(`ok   ${t} weekly`);
@@ -2481,6 +2620,7 @@ async function main() {
         }
         await sleep();
     }
+    for (const t of histTickers) if (lseOf[t]) weeklyQuotes[t] = weeklyFromDaily(dailyHistory[t]);
     const weeklyTickers = Object.keys(weeklyQuotes);
     const longHist = alignedCloses(weeklyTickers, weeklyQuotes);
     const longNav = navHistory(priced.filter(h => weeklyQuotes[h.yahoo]), weeklyQuotes, rates);
@@ -2521,7 +2661,7 @@ async function main() {
         const bars = {};
         let ok = 0, empty = 0, failed = 0;
         for (const t of tickers) {
-            if (!quotes[t]) continue;
+            if (!quotes[t] || lseOf[t]) continue;      // no intraday feed for a gilt; the page falls back to daily
             try {
                 const bar = await fetchIntraday(t);
                 if (bar) { bars[t] = bar; ok++; } else empty++;
@@ -3554,6 +3694,45 @@ function selftest() {
     assert.strictEqual(halfSplit(-0.93, tk15, sNow), true, 'price restated, closes not');
     assert.strictEqual(halfSplit(null, tk15, sNow), false);
     assert.strictEqual(halfSplit(14.25, [], sNow), false);
+
+    // Gilts: the coupon from the LSE's name, the DMO's yield, and closes that accrete run to run.
+    assert.strictEqual(couponOf('0 1/8% TREASURY GILT 31/01/28'), 0.125);
+    assert.strictEqual(couponOf('4% TREASURY GILT 2027'), 4);
+    assert.strictEqual(couponOf('4 1/4% TREASURY GILT 07/12/27'), 4.25);
+    assert.strictEqual(couponOf('0 1/8% INDEX-LINKED TREASURY GILT 22/03/29'), null, 'index-linked: a real price');
+    assert.strictEqual(couponOf(undefined), null);
+    assert.strictEqual(grossRedemptionYield(100, 4, '2030-06-07', '2026-06-07'), 0.04, 'at par on a coupon date, the coupon');
+    assert(Math.abs(grossRedemptionYield(96, 0, '2027-06-07', '2026-06-07') - 2 * (1 / Math.sqrt(0.96) - 1)) < 1e-5, 'zero coupon');
+    // Mid-period at a clean 100 the yield is still ~the coupon — only if accrued is added (without it, ~3.7%).
+    assert(Math.abs(grossRedemptionYield(100, 4, '2030-06-07', '2026-09-07') - 0.04) < 1e-4);
+    assert.strictEqual(grossRedemptionYield(99, 4, '2026-06-07', '2026-06-08'), null, 'matured');
+    assert.strictEqual(settleDay(new Date('2026-10-09T10:00:00Z')), '2026-10-12', 'Friday settles Monday');
+    assert.strictEqual(settleDay(new Date('2026-10-08T10:00:00Z')), '2026-10-09');
+    const lseJ = { name: '0 1/8% TREASURY GILT 31/01/28', isin: 'GB00BMBL1G81', currency: 'GBP', midPrice: 94.8,
+        bid: 94.67, offer: 94.87, lastclose: 94.77, lastclosedate: '2026-10-07T15:35:29.000', maturitydate: '2028-01-31' };
+    const gilt = shapeLse(lseJ, { '2026-10-06': 94.6 }, new Date('2026-10-08T09:00:00Z'));
+    assert.deepStrictEqual(gilt.lseCloses, { '2026-10-06': 94.6, '2026-10-07': 94.77 });
+    assert.strictEqual(gilt['1d'], Math.round((94.8 / 94.77 - 1) * 1e4) / 1e4, '1D against the last close before today');
+    assert(gilt.bond.ytm > 0.04 && gilt.bond.ytm < 0.043, `TN28 at 94.80 yields ~4.15%, got ${gilt.bond.ytm}`);
+    assert.strictEqual(gilt.divYield, Number((0.125 / 94.8).toPrecision(6)), 'running yield');
+    assert.throws(() => shapeLse({ ...lseJ, midPrice: null, lastprice: null }), /no GBP price/);
+    assert.throws(() => shapeLse({ ...lseJ, currency: 'GBX' }), /no GBP price/);
+    // After the close the day's own close is stored, and 1D still compares with the day before.
+    const gilt2 = shapeLse({ ...lseJ, lastclose: 94.9, lastclosedate: '2026-10-08T15:35:00.000' }, gilt.lseCloses,
+        new Date('2026-10-08T18:00:00Z'));
+    assert.strictEqual(gilt2['1d'], gilt['1d']);
+    assert.strictEqual(Object.keys(gilt2.lseCloses).length, 3);
+    assert.strictEqual(gilt['7d'], null, 'one day of history: no 7D, let alone 1Y');
+    assert.strictEqual(gilt.ytd, null);
+    const aged = sinceStored({ '7d': 0.01, '1m': 0.02, '3m': 0.03, '6m': 0.04, '1y': 0.05, ytd: 0.06 },
+        Date.parse('2026-08-01') / 1000, Date.parse('2026-10-08') / 1000);
+    assert.deepStrictEqual(aged, { '7d': 0.01, '1m': 0.02, '3m': null, '6m': null, '1y': null, ytd: null });
+    const wq = { price: 95, currency: 'GBP', series: lseSeries({ '2026-09-30': 94, '2026-10-02': 94.5, '2026-10-06': 94.7 }) };
+    const wk = weeklyFromDaily(wq, Date.parse('2026-10-08T12:00:00Z') / 1000).series;
+    assert.deepStrictEqual(wk.timestamps.map(isoDay), ['2026-10-02', '2026-10-09'], 'stamped on Fridays, like weekEnd');
+    assert.deepStrictEqual(wk.closes, [94.5, 95], 'a week is its last close; the current week is live');
+    assert.deepStrictEqual(weeklyFromDaily(wq, Date.parse('2026-10-10T12:00:00Z') / 1000).series.closes, [94.5, 94.7],
+        'Saturday: the week just ended keeps its close');
     // ...and when today's bar IS present, it equals the live price and is still skipped.
     assert.strictEqual(dailyMove({}, [282.57, 267.85, 268.93], 268.93),
         Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);

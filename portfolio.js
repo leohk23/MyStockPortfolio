@@ -374,10 +374,10 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
         // Sector is the one grouping key that does not live on the holding: holdings.json has no
         // sector field, it comes from the quote (fetch-prices reads Yahoo's assetProfile). A fund has
         // no single sector — VOO is 37% technology, not a technology company — so rather than pick a
-        // misleading winner every fund buckets under `Funds`. That is deliberately NOT what
+        // misleading winner every fund buckets under `Funds`, and a gilt under `Bonds`. That is deliberately NOT what
         // signals.js `book.bySector` does: the lanes' view splits a fund across its look-through
         // weights, because it is aggregating exposure rather than listing one row per holding.
-        const key = String(field === 'sector' ? (quote.sector || 'Funds') : h[field]);
+        const key = String(field === 'sector' ? (quote.sector || (quote.bond ? 'Bonds' : 'Funds')) : h[field]);
         if (!groups.has(key)) groups.set(key, { name: key, legs: [] });
         groups.get(key).legs.push(leg);
     }
@@ -631,6 +631,8 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(sec.map(g => g.name).sort(), ['Funds', 'Technology']);
     assert.strictEqual(sec.find(g => g.name === 'Technology').legs.length, 2);   // A and B
     assert.strictEqual(sec.find(g => g.name === 'Funds').legs.length, 1);        // C, no sector
+    const bonds = build(holdings, rates, { ...secQuotes, C: { ...quotes.C, bond: { coupon: 0.125 } } }, 'sector');
+    assert.deepStrictEqual(bonds.map(g => g.name).sort(), ['Bonds', 'Technology'], 'a gilt is not a fund');
 
     // Grouping by instrument gives one row per holding, never merged.
     const inst = build(holdings, rates, quotes, 'instrument');

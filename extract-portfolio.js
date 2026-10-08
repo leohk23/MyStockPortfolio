@@ -158,6 +158,9 @@ function buildHoldings(meta, bySymbol, realized) {
             // Fundamentals and the results date are read from it, so one company has one dataset
             // however many of its lines you happen to hold.
             primary: m.primary,
+            // A gilt's London Stock Exchange code (TN28). Yahoo lists no gilts, so fetch-prices
+            // prices this one from the exchange instead; `yahoo` is then just its key.
+            lse: m.lse,
             // Trough-multiple valuation: the cheapest this traded in living memory, and what
             // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
             lowPrice: m.lowPrice,
@@ -193,6 +196,17 @@ async function yahooPrice(symbol) {
     } catch { return null; }
 }
 
+// A gilt's mid price from the London Stock Exchange — the same call fetch-prices makes for it.
+async function lsePrice(tidm) {
+    const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
+    try {
+        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Origin: 'https://www.londonstockexchange.com' } });
+        if (!res.ok) return null;
+        const j = await res.json();
+        return j.currency === 'GBP' && j.midPrice > 0 ? j.midPrice : null;
+    } catch { return null; }
+}
+
 // Verify only brand-new symbols against Yahoo before we commit them. A typo'd symbol
 // would otherwise pass extraction and then vanish from the site (portfolio.js skips
 // holdings with no quote). Normal runs add nothing new, so this makes zero requests.
@@ -201,11 +215,13 @@ async function verifyNewSymbols(holdings) {
     try { quotes = JSON.parse(fs.readFileSync('prices.json', 'utf8')).quotes || {}; }
     catch { return; } // no baseline yet (first ever run) — nothing to diff against
     for (const h of newSymbols(holdings, new Set(Object.keys(quotes)))) {
-        const price = await yahooPrice(h.yahoo);
+        const price = h.lse ? await lsePrice(h.lse) : await yahooPrice(h.yahoo);
         if (price == null) {
-            throw new Error(`new instrument ${h.ticker}: Yahoo symbol "${h.yahoo}" returned no price. Fix its "yahoo" in ${META} (or check your connection) before publishing.`);
+            throw new Error(h.lse
+                ? `new gilt ${h.ticker}: LSE code "${h.lse}" returned no GBP price. Fix its "lse" in ${META} (or check your connection) before publishing.`
+                : `new instrument ${h.ticker}: Yahoo symbol "${h.yahoo}" returned no price. Fix its "yahoo" in ${META} (or check your connection) before publishing.`);
         }
-        console.log(`  verified new instrument: ${h.ticker} -> ${h.yahoo} (${price})`);
+        console.log(`  verified new instrument: ${h.ticker} -> ${h.lse ? 'LSE ' + h.lse : h.yahoo} (${price})`);
     }
 }
 

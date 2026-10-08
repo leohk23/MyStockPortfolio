@@ -1646,6 +1646,33 @@
             wrapper \u2014 what it charges, what it holds and what it does with the income it receives.</span>`;
         }
 
+        // A gilt: what it yields if held to the end, what it pays, and when it repays. Priced from the
+        // London Stock Exchange (fetch-prices.js fetchLse), since Yahoo lists no gilts.
+        function bondFacts(leg) {
+            const q = leg.quote, b = q.bond;
+            const pc = n => n == null || !Number.isFinite(n) ? '<span class="muted">–</span>' : `<b>${(n * 100).toFixed(2)}%</b>`;
+            const m = new Date(b.maturity + 'T00:00:00Z');
+            const payDay = k => {                       // the maturity's day in month k, clamped (31 Apr is 30 Apr)
+                const last = new Date(Date.UTC(2001, k + 1, 0)).getUTCDate();
+                return `${Math.min(m.getUTCDate(), last)} ${new Date(Date.UTC(2001, k, 1)).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+            };
+            const months = [m.getUTCMonth() % 6, m.getUTCMonth() % 6 + 6];
+            const years = (m - Date.now()) / (365.25 * 864e5);
+            const row = (label, value, tip) =>
+                `<tr><td>${label}</td><td>${value}</td><td class="muted">${tip}</td></tr>`;
+            return `<table class="fund-facts"><tbody>
+                ${row('Yield to maturity', pc(b.ytm), 'Gross redemption yield, as the DMO quotes it: the coupons plus the pull to par, a year, if bought at today’s mid and held to the end. Before tax.')}
+                ${row('Running yield', pc(q.divYield), 'The coupon over today’s clean price: the income alone, ignoring the gain or loss to par.')}
+                ${row('Coupon', b.coupon == null ? '<span class="muted">–</span>' : `<b>${b.coupon}%</b> of par a year`,
+                    `Paid half-yearly, on ${payDay(months[0])} and ${payDay(months[1])}.`)}
+                ${row('Matures', `<b>${ymd(b.maturity)}</b>`, years > 0 ? `In ${years.toFixed(1)} years, repaid at £100 per £100 nominal.` : 'Matured.')}
+                ${row('Price', `<b>${q.price}</b> <span class="muted">bid ${b.bid ?? '–'}, offer ${b.offer ?? '–'}</span>`, 'Clean, per £100 nominal: the mid of the London Stock Exchange order book. A purchase pays the offer plus accrued interest, which the next coupon repays.')}
+                ${row('ISIN', escapeHTML(b.isin || '–'), escapeHTML(b.name || ''))}
+            </tbody></table>
+            <span class="deep-note">A UK government bond. Its price comes from the London Stock Exchange,
+            because Yahoo lists no gilts, and its price history starts on the day it was added here.</span>`;
+        }
+
         function renderFinancials(leg) {
             const fin = document.getElementById('deep-fin');
             const ccy = document.getElementById('deep-ccy');
@@ -1717,7 +1744,7 @@
                     ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
                         if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
-                    fin.innerHTML = fundFacts(leg);
+                    fin.innerHTML = leg.quote.bond ? bondFacts(leg) : fundFacts(leg);
                     return;
                 }
 
