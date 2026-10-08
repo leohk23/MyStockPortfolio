@@ -124,6 +124,7 @@
            the screen instead of shrinking. Same reason .deep-box needs min-width: 0. */
         #deep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
         @media (max-width: 760px) { #deep-grid { grid-template-columns: minmax(0, 1fr); } }
+        #deep-grid.solo { grid-template-columns: minmax(0, 1fr); }   /* Valuation hidden: a gilt or bond fund */
         .deep-box { background: var(--surface-1); border: 1px solid var(--line); border-radius: 6px;
             padding: 10px 12px; min-width: 0; }
         .deep-box h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
@@ -1378,6 +1379,12 @@
             ].filter(Boolean);
             document.getElementById('deep-val').innerHTML = rows
                 .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+            // A gilt or a bond fund has no earnings, so every row above would be "–"; what it is
+            // bought on, its yield to maturity, is in the facts box beside it. Leo, 8 Oct 2026.
+            const fixedIncome = !!q.bond || q.fundYtm != null
+                || /\b(bond|gilt|treasur|fixed income)/i.test(`${q.fund?.category || ''} ${q.fund?.name || ''}`);
+            document.getElementById('deep-val').closest('.deep-box').hidden = fixedIncome;
+            document.getElementById('deep-grid').classList.toggle('solo', fixedIncome);
 
             renderFinancials(leg);
         }
@@ -1634,7 +1641,12 @@
                         ? ` <span class="ticker">${escapeHTML(h.symbol)}</span>` : ''}</td>`
                         + `<td>${(h.pct * 100).toFixed(2)}%</td></tr>`).join('')}
                 </tbody></table>` : '';
+            const ytm = q.fundYtm?.value != null
+                ? row('Yield to maturity', `<b>${(q.fundYtm.value * 100).toFixed(2)}%</b> <span class="muted">weighted average, as of ${ymd(q.fundYtm.asOf)}</span>`,
+                    'The holdings’ yields to maturity, weighted by size, as iShares publishes it for the fund: what the portfolio earns a year if every bond is held to the end at today’s prices. Before the fee and before tax. The distribution yield below looks backwards; this looks forwards.')
+                : '';
             return `<table class="fund-facts"><tbody>
+                ${ytm}
                 ${row('Fee', fee, escapeHTML(feeTip))}
                 ${row('Income', `<b>${pol.label}</b>`, escapeHTML(pol.why))}
                 ${row('Paid', paid, 'Counted from the distributions Yahoo reports over the trailing twelve months \u2014 what the fund did, not what it schedules.')}
@@ -1644,6 +1656,33 @@
             <span class="deep-note">No reported financials: this is a fund, trust or commodity, not an
             operating company, so there is no revenue, EPS or P/E to show. The figures above describe the
             wrapper \u2014 what it charges, what it holds and what it does with the income it receives.</span>`;
+        }
+
+        // A gilt: what it yields if held to the end, what it pays, and when it repays. Priced from the
+        // London Stock Exchange (fetch-prices.js fetchLse), since Yahoo lists no gilts.
+        function bondFacts(leg) {
+            const q = leg.quote, b = q.bond;
+            const pc = n => n == null || !Number.isFinite(n) ? '<span class="muted">–</span>' : `<b>${(n * 100).toFixed(2)}%</b>`;
+            const m = new Date(b.maturity + 'T00:00:00Z');
+            const payDay = k => {                       // the maturity's day in month k, clamped (31 Apr is 30 Apr)
+                const last = new Date(Date.UTC(2001, k + 1, 0)).getUTCDate();
+                return `${Math.min(m.getUTCDate(), last)} ${new Date(Date.UTC(2001, k, 1)).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+            };
+            const months = [m.getUTCMonth() % 6, m.getUTCMonth() % 6 + 6];
+            const years = (m - Date.now()) / (365.25 * 864e5);
+            const row = (label, value, tip) =>
+                `<tr><td>${label}</td><td>${value}</td><td class="muted">${tip}</td></tr>`;
+            return `<table class="fund-facts"><tbody>
+                ${row('Yield to maturity', pc(b.ytm), 'Gross redemption yield, as the DMO quotes it: the coupons plus the pull to par, a year, if bought at today’s mid and held to the end. Before tax.')}
+                ${row('Running yield', pc(q.divYield), 'The coupon over today’s clean price: the income alone, ignoring the gain or loss to par.')}
+                ${row('Coupon', b.coupon == null ? '<span class="muted">–</span>' : `<b>${b.coupon}%</b> of par a year`,
+                    `Paid half-yearly, on ${payDay(months[0])} and ${payDay(months[1])}.`)}
+                ${row('Matures', `<b>${ymd(b.maturity)}</b>`, years > 0 ? `In ${years.toFixed(1)} years, repaid at £100 per £100 nominal.` : 'Matured.')}
+                ${row('Price', `<b>${q.price}</b> <span class="muted">bid ${b.bid ?? '–'}, offer ${b.offer ?? '–'}</span>`, 'Clean, per £100 nominal: the mid of the London Stock Exchange order book. A purchase pays the offer plus accrued interest, which the next coupon repays.')}
+                ${row('ISIN', escapeHTML(b.isin || '–'), escapeHTML(b.name || ''))}
+            </tbody></table>
+            <span class="deep-note">A UK government bond. Its price comes from the London Stock Exchange,
+            because Yahoo lists no gilts, and its price history starts on the day it was added here.</span>`;
         }
 
         function renderFinancials(leg) {
@@ -1717,7 +1756,7 @@
                     ['deep-rec-eps', 'deep-rec-pe'].forEach(id => { const el = document.getElementById(id);
                         if (el) { el.className = 'muted'; el.textContent = '–'; } });
                     dates.innerHTML = exChip;                 // a fund has no fiscal year, but may pay
-                    fin.innerHTML = fundFacts(leg);
+                    fin.innerHTML = leg.quote.bond ? bondFacts(leg) : fundFacts(leg);
                     return;
                 }
 
