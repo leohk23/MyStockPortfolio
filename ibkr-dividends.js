@@ -48,6 +48,16 @@ function parseRows(xml) {
 
 const tag = (x, t) => (x.match(new RegExp(`<${t}>([^<]*)</${t}>`)) || [])[1];
 
+// The accounts in .ibkr-flex: { accounts: [{ name, token, query }] }, one per IBKR account (each
+// account's Flex token and query are its own), or the original single { token, query }. An entry
+// with a blank token or query is a template not yet filled in, and is skipped.
+function readAccounts(text) {
+    const cfg = JSON.parse(text);
+    const list = Array.isArray(cfg.accounts) ? cfg.accounts : [{ name: 'main', token: cfg.token, query: cfg.query }];
+    return list.filter(a => a && String(a.token || '').trim() && String(a.query || '').trim())
+        .map((a, i) => ({ name: a.name || `account${i + 1}`, token: String(a.token).trim(), query: String(a.query).trim() }));
+}
+
 async function fetchWindow({ token, query }, w) {
     const H = { 'User-Agent': 'MyStockPortfolio/1.0' };
     const send = await (await fetch(`${BASE}/SendRequest?t=${token}&q=${query}&v=3&fd=${compact(w.from)}&td=${compact(w.to)}`, { headers: H })).text();
@@ -65,29 +75,42 @@ async function fetchWindow({ token, query }, w) {
     throw new Error('IBKR statement not ready after a minute');
 }
 
+// Every payment row in a .ibkr-dividends.json, across accounts (or the original single-account file).
+const allRows = d => (d.accounts ? Object.values(d.accounts).flatMap(a => Object.values(a.windows)) : Object.values(d.windows || {}))
+    .flatMap(w => w.rows || []);
+
 async function main() {
     if (!fs.existsSync(FLEX)) { console.log('no .ibkr-flex — IBKR dividends not fetched'); return; }
-    const flex = JSON.parse(fs.readFileSync(FLEX, 'utf8'));
+    const accounts = readAccounts(fs.readFileSync(FLEX, 'utf8'));
+    if (!accounts.length) { console.log('no IBKR account in .ibkr-flex has a token and query id yet'); return; }
     const { holdings, full } = require('./vault').readHoldings();
     if (!full) throw new Error('holdings are sealed and no passphrase is set — cannot find the first IBKR trade');
     const first = holdings.flatMap(h => h.trades || []).filter(t => t.platform === 'IB').map(t => t.date).sort()[0];
     if (!first) { console.log('no IBKR trades — nothing to fetch'); return; }
     // Flex serves completed days only: a window ending today is refused like one before the account.
     const today = ymd(new Date(Date.now() - DAY));
-    const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { windows: {} };
-    const ws = windows(first, today), cached = {};
-    for (const [i, w] of ws.entries()) {
-        const key = `${w.from}/${w.to}`;
-        // Finished windows come from the file; the last two are asked again (late postings, reversals).
-        if (i < ws.length - 2 && prev.windows?.[key]) { cached[key] = prev.windows[key]; continue; }
-        cached[key] = (await fetchWindow(flex, w)) || { unavailable: true };
-        console.log(`ok   IBKR ${key}: ${cached[key].unavailable ? 'not available' : cached[key].rows.length + ' payment row(s)'}`);
-        await new Promise(r => setTimeout(r, 2000));                 // IBKR throttles rapid requests
+    const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};
+    const ws = windows(first, today), out = {};
+    // Each account over the whole span of the Tradelog's IBKR trades: Flex answers 1003 for the
+    // windows outside an account's life, so the same windows serve an old account and a new one.
+    for (const acct of accounts) {
+        const cached = {}, was = prev.accounts?.[acct.name]?.windows || {};
+        for (const [i, w] of ws.entries()) {
+            const key = `${w.from}/${w.to}`;
+            // Finished windows come from the file; the last two are asked again (late postings, reversals).
+            if (i < ws.length - 2 && was[key]) { cached[key] = was[key]; continue; }
+            cached[key] = (await fetchWindow(acct, w)) || { unavailable: true };
+            console.log(`ok   IBKR ${acct.name} ${key}: ${cached[key].unavailable ? 'not available' : cached[key].rows.length + ' payment row(s)'}`);
+            await new Promise(r => setTimeout(r, 2000));             // IBKR throttles rapid requests
+        }
+        out[acct.name] = { coverageFrom: Object.values(cached).map(w => w.earliest).filter(Boolean).sort()[0] || null, windows: cached };
     }
-    const coverageFrom = Object.values(cached).map(w => w.earliest).filter(Boolean).sort()[0] || null;
-    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), from: first, coverageFrom, windows: cached }, null, 1));
-    const rows = Object.values(cached).flatMap(w => w.rows || []);
-    console.log(`wrote ${OUT}: ${rows.length} rows, IBKR's record from ${coverageFrom}`);
+    // The record starts where the earliest account's does: an older account carried the shares
+    // until they moved to the newer one.
+    const coverageFrom = Object.values(out).map(a => a.coverageFrom).filter(Boolean).sort()[0] || null;
+    fs.writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), from: first, coverageFrom, accounts: out }, null, 1));
+    const rows = allRows({ accounts: out });
+    console.log(`wrote ${OUT}: ${rows.length} rows from ${accounts.length} account(s), IBKR's record from ${coverageFrom}`);
 }
 
 function selftest() {
@@ -102,6 +125,12 @@ function selftest() {
         { date: '2025-12-04', exDate: '2025-12-02', symbol: 'MC', isin: 'FR0000121014', currency: 'EUR', amount: 38.5, type: 'Dividends' },
         { date: '2025-12-04', exDate: '2025-12-02', symbol: 'MC', isin: 'FR0000121014', currency: 'EUR', amount: -9.62, type: 'Withholding Tax' },
     ], 'deposits are not income');
+    // .ibkr-flex: the original single account, or a list where a blank entry is a template to fill in.
+    assert.deepStrictEqual(readAccounts('{ "token": "t1", "query": "q1" }'), [{ name: 'main', token: 't1', query: 'q1' }]);
+    assert.deepStrictEqual(readAccounts(JSON.stringify({ accounts: [{ name: 'current', token: 't1', query: 'q1' },
+        { name: 'previous', token: '', query: '', note: 'fill in' }] })), [{ name: 'current', token: 't1', query: 'q1' }]);
+    assert.deepStrictEqual(allRows({ accounts: { a: { windows: { w1: { rows: [1, 2] }, w2: { unavailable: true } } }, b: { windows: { w1: { rows: [3] } } } } }), [1, 2, 3]);
+    assert.deepStrictEqual(allRows({ windows: { w1: { rows: [1] } } }), [1], 'the single-account file still reads');
     console.log('selftest ok');
 }
 
@@ -109,4 +138,4 @@ if (require.main === module) {
     if (process.argv.includes('--selftest')) selftest();
     else main().catch(e => { console.error(`IBKR dividends: ${e.message}`); process.exit(1); });
 }
-module.exports = { windows, parseRows };
+module.exports = { windows, parseRows, readAccounts, allRows };
