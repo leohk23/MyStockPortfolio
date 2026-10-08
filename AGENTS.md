@@ -504,7 +504,7 @@ Yahoo lists no individual gilts (no `.L` code resolves, and its search finds non
 - A period longer than the stored history shows "–" (`sinceStored`), never a move from the first close. Weekly bars are bucketed with the same `weekEnd` as Yahoo's (`weeklyFromDaily`).
 - `extract-portfolio.js` verifies a new gilt against the exchange instead of Yahoo.
 - **A bond fund's yield to maturity** is its issuer's figure, never computed here: `ishares` in `meta.json` (the fund page's `id/slug`; the id alone is refused) makes `fetchIsharesYtm` read the "Weighted Average YTM" iShares embeds in the page, into `quote.fundYtm` with its as-of date. Once a day, carried between, the last figure kept on failure. iShares sits behind bot protection that admits a browser's headers; a script's are refused.
-- **The Valuation box is hidden for a gilt or a bond fund** (Leo, 8 Oct): with no earnings every row is "–", and the yield that matters is in the facts box.
+- **The Valuation box is hidden for anything that is not a single company** (Leo, 8 Oct): a gilt, a fund, a trust or an index (`quote.bond`, or `quote.type` not EQUITY). Every row there is a company's (EPS, five-year low, normalized basis), so for these it would be all "–". What does apply sits in the facts box: a gilt's yield, and for an equity fund the **P/E of its holdings**, Yahoo's trailing figure, shown only when positive and the fund holds companies (Yahoo gives the gold trust a negative EPS and SPOL -200).
 - Ceilings: the yield ignores the ex-dividend window (the 7 business days before a coupon) and settlement ignores bank holidays, a basis point or so.
 
 ## Funds: what the deep panel shows instead of financials
