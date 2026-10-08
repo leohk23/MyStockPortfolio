@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-08T05:06:02.176Z",
- "cashGBP": 331.48,
+ "generated": "2026-10-08T11:54:21.717Z",
+ "cashGBP": 308.95,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -122,6 +122,20 @@
      "pot": "2026-10-04-1816-CME"
     }
    ]
+  },
+  "BVI.PA": {
+   "qty": 1,
+   "cost": 26.01,
+   "currency": "EUR",
+   "trades": [
+    {
+     "date": "2026-10-08",
+     "side": "BUY",
+     "qty": 1,
+     "price": 26.01,
+     "pot": "2026-10-07-1755-BVI.PA"
+    }
+   ]
   }
  },
  "proposals": [
@@ -143,7 +157,7 @@
   {
    "file": "2026-10-07-1755-BVI.PA.md",
    "id": "2026-10-07-1755-BVI.PA",
-   "state": "open",
+   "state": "accepted",
    "ticker": "BVI.PA",
    "written": "2026-10-07",
    "side": "BUY",
@@ -151,9 +165,14 @@
    "warning": "(re-read, not a sale), first at the **21 October 2026** Q3 revenue release, then at any release before FY results: - management cuts its 2026 organic-growth guidance below \"mid-to-high single-digit\", or drops \"strong cash flow generation\"; **or** - it announces new exit, restructuring or disposal-loss provisions, or acquisitions whose stated price exceeds **€500m** in aggregate since 29 July (about half of FY2025 operating cash of €1,006.7m, from prices.json `capital`). The Q3 release is revenue-only, so silence on cash does not clear the warning.",
    "break": "(sell under §5.1), checked at FY2026 results, by **1 March 2027**, if **any**: 1. FY2026 reported (IFRS) operating profit does not exceed FY2025's **€992.4m**. Management's own explanation of H1's fall was the prior-year Food Testing disposal gain; a full year with no such gain in the comparator should be higher if that explanation is true. 2. The gap between adjusted and reported operating profit is **more than 15% of adjusted operating profit** for the full year. In H1 it was €506.5m − €430.8m = €75.7m, **14.9%**. A full year above 15% means the \"one-offs\" are a recurring cost of the strategy. 3. Operating cash flow, less capex, lease payments, and acquisitions net of cash acquired, is zero or negative for FY2026.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "executed": {
+    "date": "2026-10-08",
+    "qty": 1,
+    "price": 26.01
+   },
+   "supersededBy": null,
    "phase": "live",
-   "counts": false
+   "counts": true
   },
   {
    "file": "2026-10-07-1711-MWA.md",
@@ -880,7 +899,7 @@
   {
    "file": "2026-09-16-2049-AZN.L.md",
    "id": "2026-09-16-2049-AZN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "AZN.L",
    "written": "2026-09-16",
    "side": "BUY",
@@ -925,7 +944,7 @@
   {
    "file": "2026-09-14-2247-AZN.L.md",
    "id": "2026-09-14-2247-AZN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "AZN.L",
    "written": "2026-09-14",
    "side": "BUY",
@@ -2154,6 +2173,7 @@
   }
  ],
  "open": [
+  "2026-10-07-1755-BVI.PA",
   "2026-10-06-0558-MWA",
   "2026-10-04-1816-CME",
   "2026-09-23-1918-EXPN.L",
