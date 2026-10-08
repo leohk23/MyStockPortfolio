@@ -2279,6 +2279,30 @@
             };
         }
 
+        // Dividends per share net of withholding, for total return: fetch-prices.js publishes the
+        // gross amounts with the rate it used (history.json divs). Every performance line on this
+        // page counts them, reinvested on the ex-date; value lines do not, as the cash left.
+        let netDivsMemo = null;
+        const netDivs = () => HISTORY?.divs ? (netDivsMemo ??= Object.fromEntries(Object.entries(HISTORY.divs)
+            .map(([t, v]) => [t, v.ex.map(([d, a]) => [d, a * (1 - (v.wht || 0))])]))) : null;
+        // A price series with its dividends reinvested on the ex-date: the benchmarks' total return.
+        const totalReturnIndex = (days, closes, divs) => {
+            const out = new Array(days.length).fill(null);
+            let idx = null, prev = null, j = 0;
+            const ev = divs || [];
+            for (let i = 0; i < days.length; i++) {
+                let paid = 0;
+                while (j < ev.length && ev[j][0] <= days[i]) { if (prev != null) paid += ev[j][1]; j++; }
+                const c = closes[i];
+                if (c == null) { out[i] = idx; continue; }
+                idx = prev == null ? 1 : idx * (c + paid) / prev;
+                prev = c;
+                out[i] = idx;
+            }
+            return out;
+        };
+        const INCOME_NOTE = 'Total return: dividends counted net of withholding tax, reinvested on the ex-date.';
+
         // Normalise holdings (or a group's legs) into what cohortMV needs.
         const twrHoldings = list => list.map(h => ({
             yahoo: h.yahoo, trades: h.trades || [],
@@ -2297,7 +2321,7 @@
             // on the slice, because twr() chains daily returns. Whole portfolio only: a group's line
             // would need its own. Without published lines, say so rather than draw a flat 0%.
             const published = !hold.some(h => h.trades.length) && label === 'Portfolio'
-                && (longRange ? HISTORY.long?.twr : HISTORY.twr);
+                && (longRange ? HISTORY.long?.twrIncome ?? HISTORY.long?.twr : HISTORY.twrIncome ?? HISTORY.twr);
             if (published) {
                 const hist = longRange ? HISTORY.long : HISTORY;
                 const keys = ['total', 'existing', 'new'].filter(k => cohortOn.has(k) && published[k]);
@@ -2315,9 +2339,9 @@
                     days, series, percent: true, zero: true, markers: [], markersByIndex: new Map(),
                     fmtY: v => pct(v),
                     headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagr(v)}`; }).join(' <span class="muted">·</span> '),
-                    sub: `Time-weighted return, indexed to ${ymd(days[0])} = 0%`,
+                    sub: `Time-weighted total return, indexed to ${ymd(days[0])} = 0%`,
                     title: `${label} performance`,
-                    note: 'Holdings locked: this line was computed by the price bot, which has the passphrase, and published as percentages only. '
+                    note: INCOME_NOTE + ' Holdings locked: this line was computed by the price bot, which has the passphrase, and published as percentages only. '
                         + 'Trade markers need the trades, so they are not shown.',
                     tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
                 };
@@ -2337,12 +2361,12 @@
             };
             const active = ['total', 'existing', 'new'].filter(k => cohortOn.has(k));
             if (!active.length) active.push('total');
-            const raw = active.map(k => portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, DEFS[k].filter));
-            const { days, arrays } = sliceRange(history.days, raw.flatMap(r => [r.mv, r.flow]),
+            const raw = active.map(k => portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, DEFS[k].filter, netDivs()));
+            const { days, arrays } = sliceRange(history.days, raw.flatMap(r => [r.mv, r.flow, r.income]),
                 longRange ? STATE.firstTrade : '');
             const series = active.map((k, idx) => ({
                 label: DEFS[k].label, color: DEFS[k].color,
-                values: portfolioLib.twr(arrays[idx * 2], arrays[idx * 2 + 1]),
+                values: portfolioLib.twr(arrays[idx * 3], arrays[idx * 3 + 1], arrays[idx * 3 + 2]),
             }));
             // Trades sit on the first line drawn (Total unless it is switched off).
             const { markers, byIndex } = valueMarkers(hold, days, series[0]?.values || []);
@@ -2358,9 +2382,9 @@
                 markers, markersByIndex: byIndex,
                 fmtY: v => pct(v),
                 headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagrTag(v)}`; }).join(' <span class="muted">·</span> '),
-                sub: `Time-weighted return · indexed to ${ymd(days[0])} = 0%`,
+                sub: `Time-weighted total return · indexed to ${ymd(days[0])} = 0%`,
                 title: `${label} performance`,
-                note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. Today\'s FX; dividends and realized gains excluded. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases. ▲ buy, ▼ sell.',
+                note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. ' + INCOME_NOTE + ' Today\'s FX. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases. ▲ buy, ▼ sell.',
                 tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join('') + tradeRows(byIndex.get(i)),
             };
         }
@@ -2427,9 +2451,9 @@
                 }
                 const history = longRange ? HISTORY.long : HISTORY;
                 if (!history?.days) return null;
-                const { mv, flow } = portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, null);
-                const { arrays } = sliceRange(history.days, [mv, flow], longRange ? STATE.firstTrade : '');
-                return lastNonNull(portfolioLib.twr(arrays[0], arrays[1]));
+                const { mv, flow, income } = portfolioLib.cohortMV(history.days, hold, history.closes, STATE.rates, null, netDivs());
+                const { arrays } = sliceRange(history.days, [mv, flow, income], longRange ? STATE.firstTrade : '');
+                return lastNonNull(portfolioLib.twr(arrays[0], arrays[1], arrays[2]));
             } catch { return null; }
         };
         // Value first, because that is what the chart draws; the return beside it, labelled, so
@@ -2520,16 +2544,25 @@
         // comparable to. Sliced before twr() so it reads 0% at the left edge like the others.
         function benchmarkSpec() {
             const history = longRange ? HISTORY.long : HISTORY;
-            const { mv, flow } = portfolioLib.cohortMV(
-                history.days, twrHoldings(STATE.holdings), history.closes, STATE.rates);
+            const { mv, flow, income } = portfolioLib.cohortMV(
+                history.days, twrHoldings(STATE.holdings), history.closes, STATE.rates, null, netDivs());
             const benches = ['^GSPC', '^HSI'].filter(s => benchOn.has(s) && history.closes[s]);
-            const sliced = sliceRange(history.days, [mv, flow, ...benches.map(s => history.closes[s])],
+            // Each benchmark on the portfolio's footing: its total-return stand-in (VOO, the Tracker
+            // Fund) with distributions net of withholding. A price index against a total-return
+            // portfolio would hand the portfolio the index's own yield. The price index stays the
+            // fallback only while the stand-in is missing, and the label then says so.
+            const proxyOf = s => HISTORY.benchIncome?.[s];
+            const benchLine = s => {
+                const p = proxyOf(s), nd = netDivs();
+                return p && history.closes[p] && nd ? totalReturnIndex(history.days, history.closes[p], nd[p]) : history.closes[s];
+            };
+            const sliced = sliceRange(history.days, [mv, flow, income, ...benches.map(benchLine)],
                 longRange ? STATE.firstTrade : '');
             const series = [
-                { label: 'Portfolio', color: PORT_COLOR, values: portfolioLib.twr(sliced.arrays[0], sliced.arrays[1]) },
+                { label: 'Portfolio', color: PORT_COLOR, values: portfolioLib.twr(sliced.arrays[0], sliced.arrays[1], sliced.arrays[2]) },
                 ...benches.map((s, k) => ({
-                    label: HISTORY.benchmarks[s].name, color: BENCH_COLOR[s],
-                    values: rebase(sliced.arrays[2 + k]),
+                    label: HISTORY.benchmarks[s].name + (proxyOf(s) && history.closes[proxyOf(s)] ? '' : ' (price only)'), color: BENCH_COLOR[s],
+                    values: rebase(sliced.arrays[3 + k]),
                 })),
             ];
             const days = sliced.days;
@@ -2537,9 +2570,10 @@
                 days, series, percent: true, zero: true,
                 fmtY: v => pct(v),
                 headline: series.map(s => `<span style="color:${s.color}">${pct(lastNonNull(s.values))}</span>`).join(' <span class="muted">·</span> '),
-                sub: `Time-weighted return vs price indices · indexed to ${ymd(days[0])} = 0%`,
+                sub: `Time-weighted total return vs total-return benchmarks · indexed to ${ymd(days[0])} = 0%`,
                 title: 'Portfolio vs benchmarks',
-                note: 'Portfolio is time-weighted (cash in/out removed) so it is comparable to an index. Benchmarks are price indices (no dividends).',
+                note: 'Portfolio is time-weighted (cash in/out removed) so it is comparable to an index. ' + INCOME_NOTE
+                    + ' Benchmarks are counted the same way: the S&P 500 through VOO and the Hang Seng through the Tracker Fund (2800.HK), each with its distributions net of withholding, about 0.1% a year of fund fees below the index.',
                 tip: i => series.map(s => `<div class="row"><i style="background:${s.color}"></i>${s.label} <span class="${cls(s.values[i])}">${pct(s.values[i])}</span></div>`).join(''),
             };
         }
@@ -3395,8 +3429,10 @@
         function renderTotals() {
             const cost = STATE.rows.reduce((a, r) => a + r.cost, 0);
             const value = STATE.total, gain = value - cost;
-            const perf = STATE.performance || {};
-            const perfTile = (label, v) => `<div><div class="label">${label}</div><div class="value ${v == null ? '' : cls(v)}">${v == null ? '–' : pct(v)}</div></div>`;
+            // Total return where the price bot published it (dividends net of withholding), the
+            // price-only figure otherwise.
+            const perf = STATE.performance?.income || STATE.performance || {};
+            const perfTile = (label, v) => `<div title="Time-weighted. ${STATE.performance?.income ? INCOME_NOTE : 'Price only.'}"><div class="label">${label}</div><div class="value ${v == null ? '' : cls(v)}">${v == null ? '–' : pct(v)}</div></div>`;
             document.getElementById('totals').innerHTML = `
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>

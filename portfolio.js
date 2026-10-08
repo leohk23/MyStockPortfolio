@@ -64,9 +64,15 @@ function tradeFlow(t, rates) {
 // the first day fold into the opening balance — their cash is a starting value, not an
 // in-window flow. Days where no holding has a close are null so twr() can gap them.
 // holdings items need { yahoo, trades, quoteCurrency }; closesBySym maps yahoo -> closes[].
-function cohortMV(days, holdings, closesBySym, rates, tradeFilter) {
+//
+// `divsBySym` (yahoo -> [[exDate, net amount per share]], quote currency) adds `income`: each
+// dividend lands on the first day on or after its ex-date, on the shares held the day BEFORE it
+// (a trade on the ex-date itself misses the payment). twr() counts it as return: total return,
+// with the dividend reinvested on the ex-date. Without it, income is all zeros, as before.
+function cohortMV(days, holdings, closesBySym, rates, tradeFilter, divsBySym = null) {
     const mv = new Array(days.length).fill(0);
     const flow = new Array(days.length).fill(0);
+    const income = new Array(days.length).fill(0);
     const priced = new Array(days.length).fill(false);
     for (const h of holdings) {
         const closes = closesBySym[h.yahoo];
@@ -91,22 +97,29 @@ function cohortMV(days, holdings, closesBySym, rates, tradeFilter) {
             mv[i] += qty * (lastClose != null ? lastClose : seed) * qc;
             priced[i] = true;
         }
+        for (const [ex, amt] of divsBySym?.[h.yahoo] || []) {
+            if (!(ex > days[0]) || ex > days[days.length - 1]) continue;   // on day 0 it is opening value
+            const i = days.findIndex(d => d >= ex);
+            const held = trades.reduce((q, t) => (t.date < ex ? q + tradeFlow(t, rates).dq : q), 0);
+            if (held > 0) income[i] += held * amt * qc;
+        }
     }
     for (let i = 0; i < days.length; i++) if (!priced[i]) mv[i] = null;
-    return { mv, flow };
+    return { mv, flow, income };
 }
 
 // Cumulative time-weighted return from a daily market-value series (nulls = no data) and
 // daily external cash flows. Removing the flow from each day's change strips out the
 // effect of investing/withdrawing money, leaving pure investment performance. Fractional
-// (0.1 = +10%); 0 on the first valid day, chained after, carried across gaps.
-function twr(mv, flow) {
+// (0.1 = +10%); 0 on the first valid day, chained after, carried across gaps. `income` (cash
+// paid out that day, from cohortMV) is return like a price gain: total return when given.
+function twr(mv, flow, income = null) {
     const out = new Array(mv.length).fill(null);
     let cum = 1, prev = null;
     for (let i = 0; i < mv.length; i++) {
         const v = mv[i];
         if (v == null) { prev = null; continue; }        // gap: break the daily linkage
-        if (prev != null && prev > 0) cum *= 1 + (v - prev - (flow[i] || 0)) / prev;
+        if (prev != null && prev > 0) cum *= 1 + (v - prev - (flow[i] || 0) + (income?.[i] || 0)) / prev;
         out[i] = cum - 1;                                 // 0 at first valid day; carries otherwise
         prev = v;
     }
@@ -502,6 +515,24 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
         [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' }] }],
         { A: [null, 20, null, 22] }, rates, null);
     assert.deepStrictEqual(gap.mv, [200, 200, 200, 220]);
+
+    // Total return: a dividend lands on its ex-date, on the shares held the day before. 10 held,
+    // a $1 dividend going ex on day 3 while the price drops by it: price-only reads -10%, total 0%.
+    const tr = cohortMV(['2026-01-01', '2026-01-02', '2026-01-03'],
+        [{ yahoo: 'A', quoteCurrency: 'USD', trades: [
+            { date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' },
+            { date: '2026-01-03', side: 'BUY', qty: 5, price: 9, currency: 'USD' },   // on the ex-date: no dividend
+        ] }],
+        { A: [10, 10, 9] }, rates, null, { A: [['2026-01-03', 1], ['2025-12-01', 7], ['2026-02-01', 7]] });
+    assert.deepStrictEqual(tr.income, [0, 0, 10], 'only the 10 shares held before the ex-date; out-of-range events ignored');
+    assert.strictEqual(twr(tr.mv, tr.flow, tr.income)[2], 0);
+    assert.ok(Math.abs(twr(tr.mv, tr.flow)[2] - -0.1) < 1e-12, 'price only');
+    assert.deepStrictEqual(cohortMV(['2026-01-01', '2026-01-03'], [{ yahoo: 'A', quoteCurrency: 'USD', trades: [] }],
+        { A: [10, 9] }, rates, null, { A: [['2026-01-03', 1]] }).income, [0, 0], 'nothing held, nothing paid');
+    // A weekly calendar: an ex-date between two bars lands on the next one.
+    assert.deepStrictEqual(cohortMV(['2026-01-02', '2026-01-09'],
+        [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2025-12-01', side: 'BUY', qty: 4, price: 10, currency: 'USD' }] }],
+        { A: [10, 10] }, rates, null, { A: [['2026-01-06', 0.5]] }).income, [0, 2]);
 
     // Weighted by value: a $300 leg at +10% and a $100 leg at -10% => +5%.
     const legs = [{ value: 300, quote: { '1y': 0.10 } }, { value: 100, quote: { '1y': -0.10 } }];

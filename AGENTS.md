@@ -233,7 +233,7 @@ New UI and content work goes to `preview/index.html` and is pushed to `main`, wh
 3. **Movements are fractions**, not whole percents (0.25 = +25%) everywhere in the JSON. The page multiplies by 100 for display. (A past bug shipped -59% as -5900%.)
 4. **One y-axis per chart, ever.** Two different scales → index both to % (see the benchmark overlay) or use separate charts. Never dual-axis.
 5. **Chart colors are validated.** Series use `--series-port/spx/hsi`, validated against the dark surface with the dataviz skill's `validate_palette.js`. Re-validate if you change them.
-6. **Every series replays the Tradelog. Nothing back-projects today's shares.** All of them still use *today's* FX for every past day, and exclude dividends/realized gains.
+6. **Every series replays the Tradelog. Nothing back-projects today's shares.** All of them still use *today's* FX for every past day. **Performance and benchmark lines are total return** (Leo, 8 Oct 2026): dividends net of withholding tax, reinvested on the ex-date, the benchmarks counted the same way (see "Dividends and total return"). **Value lines exclude dividends**: the cash left the asset.
 
    - **Value** (portfolio and group) = `cohortMV` market value: what you actually held, priced
      at past closes. The line starts at your first purchase and steps up when you buy, and its
@@ -474,6 +474,17 @@ Re-run `npm run backfill` after adding a holding; it is incremental and skips ti
 ## Grouping (the "one line per company" feature)
 
 `holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, `'sector'`, or `'instrument'`. Sector reads `quote.sector` (Yahoo `assetProfile`); a fund has no single sector and sits under **Funds**. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
+
+## Dividends and total return
+
+The performance lines count income (Leo, 8 Oct 2026). A price-only return understates exactly the holdings bought for income, and a gilt's coupon is most of its return.
+
+- **What counts:** each dividend, **net of withholding tax**, reinvested on its **ex-date**, on the shares held the day before (a buy on the ex-date misses it). `cohortMV` returns the day's `income` and `twr` counts it as return. Accumulating funds pay nothing out, so they are excluded by construction: their income is already in the price.
+- **Where it comes from:** Yahoo's dividend events, on the weekly full-history call the job already makes (`events=div,split`), put on today's share basis exactly as the closes are (`perShareOnBasis`). Gilt coupons come from their schedule (`giltCoupons`: ex 7 business days before the coupon, paid gross). `history.json divs` holds `{ wht, ex: [[date, gross per share]] }` per series, **unioned with the previous run's**, so a failed fetch cannot drop history.
+- **Withholding** (`whtOf`): by market, then issuer exceptions. Leo approved the rates, and they were checked against a year of what IBKR actually deducted: US 15.0%, Japan and its ADRs 15.32%, France 25.0% (statutory; the 12.8% treaty rate needs forms 5000/5001), Korea 22.0%, BYD's ADR 10.0%, Hong Kong and Irish funds 0%, Garmin 0% (paid from Swiss capital reserves). A market not in the table has no rate: its dividends count gross, `wht` is null and the job logs it. Not UK tax: that depends on the wrapper.
+- **Benchmarks on the same footing** (`BENCH_INCOME`): the S&P 500 through VOO and the Hang Seng through the Tracker Fund (2800.HK), each with its distributions net. A price index against a total-return portfolio would hand the portfolio the index's own yield every year. Checked on 8 Oct: VOO net read +14.8% YTD, between the S&P price index (+14.0%) and Yahoo's gross total-return index (+15.0%).
+- **Published both ways for now:** `history.json twr` / `long.twr` and `prices.json performance` stay price-only while the live page reads them; `twrIncome` and `performance.income` are the total-return versions the preview reads.
+- **Known gap:** Yahoo's dividend record is incomplete for the over-the-counter Japanese receipts (NTDOY, CCOEY, TKOMY: the last one to two years missing). It matched IBKR's actual payments for the other 23 IBKR holdings. Stage 2 (actual receipts from IBKR's Flex Web Service, `.ibkr-flex`, gitignored and denied to lanes) is to fill these.
 
 ## Gilts: priced from the London Stock Exchange, not Yahoo
 

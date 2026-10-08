@@ -104,7 +104,8 @@ function shape(r, declared = DECLARED_SPLITS[r.meta.symbol], now = Date.now()) {
     const price = r.meta.regularMarketPrice;
     const timestamps = r.timestamp || [];
     const splits = mergeSplits(yahooSplits(r.events?.splits), declared);
-    const closes = unsplit(timestamps, r.indicators?.quote?.[0]?.close || [], splits);
+    const applied = [];
+    const closes = unsplit(timestamps, r.indicators?.quote?.[0]?.close || [], splits, applied);
     const divTTM = Object.values(r.events?.dividends || {}).reduce((sum, d) => sum + (d.amount || 0), 0);
     // Yahoo's previousClose lags a split the same way: for a day or two the live price is per new
     // share and previousClose per old, and 1D reads the ratio as a move (TKOMY: -93%, 8 Oct 2026).
@@ -133,7 +134,9 @@ function shape(r, declared = DECLARED_SPLITS[r.meta.symbol], now = Date.now()) {
         // Working field, removed in main(): what splitsSinceFiled checks the share count against.
         splits,
         ...(halfSplit(moves['1d'], splits, now) ? Object.fromEntries(Object.keys(moves).map(k => [k, null])) : moves),
-        series: { timestamps, closes }, // stripped before writing; only used to build NAV history
+        // Stripped before writing; only used to build NAV history, and the year's dividends for
+        // total return when the weekly call fails.
+        series: { timestamps, closes, divs: perShareOnBasis(r.events?.dividends, applied) },
     };
 }
 
@@ -152,7 +155,9 @@ const mergeSplits = (fromYahoo, declared) => [...fromYahoo, ...(declared || []).
 // still shows its jump: a close just before the date over the one just after is the ratio (within
 // 30%). A series Yahoo has already restated shows no jump and is left alone, so nothing is ever
 // divided twice; nor is a split that never happened, whose jump is not there either.
-function unsplit(timestamps, closes, splits) {
+// `applied`, when given, collects the splits that were applied, so the dividends paid before
+// them can be put on the same basis (perShareOnBasis).
+function unsplit(timestamps, closes, splits, applied = []) {
     let out = closes;
     for (const sp of splits || []) {
         const d = Date.parse(sp.date) / 1000;
@@ -162,6 +167,7 @@ function unsplit(timestamps, closes, splits) {
             if (prev >= 0 && timestamps[i] >= d - 10 * DAY && timestamps[prev] <= d + 7 * DAY
                 && Math.abs(Math.log(out[prev] / out[i] / sp.ratio)) < Math.log(1.3)) {
                 out = out.map((c, k) => (k < i && c != null ? c / sp.ratio : c));
+                applied.push(sp);
                 break;
             }
             prev = i;
@@ -169,6 +175,14 @@ function unsplit(timestamps, closes, splits) {
     }
     return out;
 }
+
+// Dividend events as [[exDate, amount per share]], oldest first, on the same share basis as the
+// closes beside them: a dividend paid before a split this run applied is divided by its ratio.
+const perShareOnBasis = (events, applied) => Object.values(events || {})
+    .filter(e => e.amount > 0 && e.date)
+    .map(e => { const d = isoDay(e.date);
+        return [d, e.amount / applied.filter(sp => sp.date > d).reduce((f, sp) => f * sp.ratio, 1)]; })
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
 
 // A split half applied: Yahoo restates the closes before the live price. TKOMY on 6 Oct 2026 read
 // +1,425% (its 15:1 times a real +1.7%) and sent a phone alert. Every move compares that price with
@@ -273,6 +287,46 @@ function isharesYtm(html) {
         ? { value, asOf: `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6)}` } : null;
 }
 
+// Withholding tax a UK-resident holder suffers on a listing's dividends, as a fraction: by the
+// listing's market, then the exceptions whose issuer is based elsewhere. Leo approved the table on
+// 8 Oct 2026, and it was checked the same day against what IBKR actually deducted over the previous
+// year: US 15.0%, Japan and its ADRs 15.32%, Netherlands (ASML) 15.0%, Korea 22.0%, France 25.0%
+// (statutory; the 12.8% treaty rate needs forms 5000/5001), BYD's ADR 10.0%, Hong Kong and Irish
+// funds 0%, Garmin 0% (paid from Swiss capital reserves). A market not listed here has no rate:
+// its dividends count gross and divs[t].wht is null, so the page can say so.
+const WHT_BY_MARKET = { '': 0.15, L: 0, HK: 0, T: 0.15315, PA: 0.25, DE: 0.26375, F: 0.26375, KS: 0.22, SW: 0, AS: 0.15 };
+const WHT_EXCEPTIONS = { GRMN: 0, BABA: 0, HKXCY: 0, XIACY: 0, BYDDY: 0.10, '1211.HK': 0.10, TSM: 0.21,
+    TKOMY: 0.15315, NTDOY: 0.15315, CCOEY: 0.15315, KWHIY: 0.15315, 'NTO.F': 0.15315 };
+const whtOf = t => WHT_EXCEPTIONS[t] ?? WHT_BY_MARKET[t.includes('.') ? t.split('.').pop() : ''] ?? null;
+
+// The coupon date k half-years before a gilt's maturity, with the day clamped to the month
+// (31 Apr is 30 Apr).
+const couponDay = (maturity, k) => {
+    const m = new Date(maturity + 'T00:00:00Z');
+    const d = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() - 6 * k, 1));
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(Math.min(m.getUTCDate(), last));
+    return d;
+};
+
+// A gilt's coupons as dividend events, [[exDate, amount per £100 nominal]], from `from` to today.
+// A gilt goes ex-dividend 7 business days before its coupon date; the holder that day is paid the
+// half-year's coupon in full, gross (gilt interest carries no withholding).
+// ponytail: business days skip weekends only, not bank holidays — the ex-date lands a day late at worst.
+function giltCoupons(bond, from, today = new Date().toISOString().slice(0, 10)) {
+    if (bond?.coupon == null || !bond.maturity) return [];
+    const out = [];
+    for (let k = 0; ; k++) {
+        const pay = couponDay(bond.maturity, k);
+        const ex = new Date(pay);
+        for (let n = 0; n < 7;) { ex.setUTCDate(ex.getUTCDate() - 1); if (ex.getUTCDay() % 6) n++; }
+        const exDay = ex.toISOString().slice(0, 10);
+        if (exDay < from) break;
+        if (exDay <= today) out.push([exDay, bond.coupon / 2]);
+    }
+    return out.reverse();
+}
+
 // "0 1/8% TREASURY GILT 31/01/28" -> 0.125 (% of par a year). Null for an index-linked gilt, whose
 // price is real and whose nominal yield would mean nothing, and for any name that does not parse.
 function couponOf(name) {
@@ -295,12 +349,7 @@ const settleDay = now => {
 // negative) — a basis point or so, only in those days.
 function grossRedemptionYield(clean, coupon, maturity, settle) {
     const m = new Date(maturity + 'T00:00:00Z');
-    const at = k => {                                   // the coupon date k half-years before maturity
-        const d = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() - 6 * k, 1));
-        const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-        d.setUTCDate(Math.min(m.getUTCDate(), last));
-        return d;
-    };
+    const at = k => couponDay(maturity, k);
     const s = new Date(settle + 'T00:00:00Z');
     if (!(m > s)) return null;
     let n = 0;
@@ -337,7 +386,7 @@ function weeklyFromDaily(quote, now = Date.now() / 1000) {
 // file bounded — daily over 10y × 57 tickers would be several MB. Same {currency,series}
 // shape as the daily quotes, so alignedCloses/navHistory work on it unchanged.
 async function fetchWeekly(ticker, attempts = 3) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk&events=split`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk&events=div,split`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
@@ -346,9 +395,12 @@ async function fetchWeekly(ticker, attempts = 3) {
             const r = (await res.json()).chart?.result?.[0];
             if (!r?.timestamp) throw new Error('no history in response');
             if (r.meta?.dataGranularity !== '1wk') throw new Error(`Yahoo returned ${r.meta?.dataGranularity || 'unknown'} history`);
+            const applied = [];
             const closes = unsplit(r.timestamp, r.indicators?.quote?.[0]?.close || [],
-                mergeSplits(yahooSplits(r.events?.splits), DECLARED_SPLITS[ticker]));
-            return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes } };
+                mergeSplits(yahooSplits(r.events?.splits), DECLARED_SPLITS[ticker]), applied);
+            // Every dividend since listing, for total return; stripped with the series.
+            const divs = perShareOnBasis(r.events?.dividends, applied);
+            return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes, divs } };
         } catch (e) {
             lastErr = e;
             if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
@@ -2093,6 +2145,12 @@ const sleep = () => new Promise(r => setTimeout(r, 300)); // ponytail: fixed del
 
 // Chart benchmarks: Yahoo symbol -> display name. Rebased to % on the client.
 const BENCHMARKS = { '^GSPC': 'S&P 500', '^HSI': 'HSI' };
+// Each benchmark's total-return stand-in: a fund tracking it, with its distributions net of the
+// same withholding a holder of the index's shares would suffer (VOO 15%, the Tracker Fund 0%). A
+// price index against a portfolio counted with income would hand the portfolio the index's own
+// yield every year. Yahoo has the S&P 500 total-return index but no Hang Seng one, and the funds
+// put both on the same footing: net, not gross. Fetched like a benchmark when not held.
+const BENCH_INCOME = { '^GSPC': 'VOO', '^HSI': '2800.HK' };
 
 // Macro state, for the Macro view and for the Sweep to be handed rather than have to fetch.
 // All of these come off the same free chart endpoint the rest of the file uses — no crumb, no key
@@ -2602,10 +2660,10 @@ async function main() {
     // Benchmark indices for the chart overlay. Best-effort: a failed benchmark just
     // means that toggle has no data, never a broken price file.
     const benchQuotes = {};
-    for (const sym of Object.keys(BENCHMARKS)) {
+    for (const sym of [...Object.keys(BENCHMARKS), ...Object.values(BENCH_INCOME).filter(p => !quotes[p])]) {
         try {
             benchQuotes[sym] = await fetchTicker(sym);
-            console.log(`ok   ${sym} ${benchQuotes[sym].price} (${BENCHMARKS[sym]})`);
+            console.log(`ok   ${sym} ${benchQuotes[sym].price} (${BENCHMARKS[sym] || 'total-return benchmark'})`);
         } catch (e) {
             console.error(`skip ${sym}: ${e.message}`);
         }
@@ -2708,6 +2766,27 @@ async function main() {
         await sleep();
     }
     for (const t of histTickers) if (lseOf[t]) weeklyQuotes[t] = weeklyFromDaily(dailyHistory[t]);
+
+    // Dividends per share, gross, in the quote's currency, for total return: every event the weekly
+    // call has since listing, the year the daily call has, and the previous run's, so a failed
+    // fetch cannot drop history (a dividend, once paid, does not change). A gilt's coupons come
+    // from its schedule. `wht` is the withholding rate the net figure uses (whtOf); public, like
+    // the closes: nothing here sizes a position.
+    // ponytail: a dividend Yahoo later deletes as an error stays in the union; prune by hand if one ever does.
+    let prevDivs = {};
+    try { prevDivs = JSON.parse(fs.readFileSync('history.json', 'utf8')).divs || {}; } catch { /* first run */ }
+    const divs = {};
+    for (const t of histTickers) {
+        const byDate = new Map(prevDivs[t]?.ex || []);
+        for (const [d, a] of [...(dailyHistory[t]?.series?.divs || []), ...(weeklyQuotes[t]?.series?.divs || [])]) byDate.set(d, a);
+        if (lseOf[t]) for (const [d, a] of giltCoupons(quotes[t]?.bond, Object.keys(quotes[t]?.lseCloses || {}).sort()[0] || '9999')) byDate.set(d, a);
+        if (!byDate.size) continue;
+        const wht = lseOf[t] ? 0 : whtOf(t);
+        if (wht == null && priced.some(h => h.yahoo === t)) console.log(`note ${t}: no withholding rate for its market — its dividends count gross`);
+        divs[t] = { wht, ex: [...byDate].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([d, a]) => [d, Number(a.toPrecision(6))]) };
+    }
+    const netDivs = Object.fromEntries(Object.entries(divs).map(([t, v]) => [t, v.ex.map(([d, a]) => [d, a * (1 - (v.wht || 0))])]));
+    console.log(`ok   dividends for ${Object.keys(divs).length} series, ${Object.values(divs).reduce((n, v) => n + v.ex.length, 0)} payments`);
     const weeklyTickers = Object.keys(weeklyQuotes);
     const longHist = alignedCloses(weeklyTickers, weeklyQuotes);
     const longNav = navHistory(priced.filter(h => weeklyQuotes[h.yahoo]), weeklyQuotes, rates);
@@ -2729,9 +2808,11 @@ async function main() {
     const perfCohorts = { total: null, existing: t => t.date < perfYear,
         new: t => t.date >= perfYear && t.side !== 'SELL' };
     const perfHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
-    const perfLines = (days, cl) => HOLDINGS_FULL ? Object.fromEntries(Object.entries(perfCohorts).map(([k, f]) => {
-        const { mv, flow } = cohortMV(days, perfHold, cl, rates, f);
-        return [k, twr(mv, flow).map(v => v == null ? null : Number(v.toFixed(5)))];
+    // With `dv` (netDivs), the same lines as total return: dividends net of withholding, reinvested on
+    // the ex-date. Both are published while the live page still draws the price-only ones.
+    const perfLines = (days, cl, dv = null) => HOLDINGS_FULL ? Object.fromEntries(Object.entries(perfCohorts).map(([k, f]) => {
+        const { mv, flow, income } = cohortMV(days, perfHold, cl, rates, f, dv);
+        return [k, twr(mv, flow, dv ? income : null).map(v => v == null ? null : Number(v.toFixed(5)))];
     })) : null;
     fs.writeFileSync('history.json', JSON.stringify({
         updated: new Date().toISOString(),
@@ -2739,7 +2820,11 @@ async function main() {
         closes,
         benchmarks,
         twr: perfLines(hist.days, closes),
-        long: { days: longHist.days, closes: longCloses, nav: publishable(longNav), twr: perfLines(longHist.days, longCloses) },
+        twrIncome: perfLines(hist.days, closes, netDivs),
+        divs,
+        benchIncome: BENCH_INCOME,
+        long: { days: longHist.days, closes: longCloses, nav: publishable(longNav), twr: perfLines(longHist.days, longCloses),
+            twrIncome: perfLines(longHist.days, longCloses, netDivs) },
     }, null, 1));
 
     // Today's session for the 1D range. Written whole each run — intraday is only ever about
@@ -3040,9 +3125,9 @@ async function main() {
     const twrHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
     let ytdStart = 0;
     for (let i = 0; i < hist.days.length; i++) if (hist.days[i] < YEAR_START) ytdStart = i; // last close of last year
-    const ytdTwr = filter => {
-        const { mv, flow } = cohortMV(hist.days, twrHold, hist.closes, rates, filter);
-        const t = twr(mv.slice(ytdStart), flow.slice(ytdStart));
+    const ytdTwr = (filter, dv = null) => {
+        const { mv, flow, income } = cohortMV(hist.days, twrHold, hist.closes, rates, filter, dv);
+        const t = twr(mv.slice(ytdStart), flow.slice(ytdStart), dv ? income.slice(ytdStart) : null);
         for (let i = t.length - 1; i >= 0; i--) if (t[i] != null) return Number(t[i].toPrecision(4));
         return null;
     };
@@ -3050,6 +3135,11 @@ async function main() {
     const performance = HOLDINGS_FULL ? {
         ytdTotal: ytdTwr(null),
         ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL'),
+        // Total return: dividends net of withholding, reinvested on the ex-date.
+        income: {
+            ytdTotal: ytdTwr(null, netDivs),
+            ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL', netDivs),
+        },
     } : null;
 
     // Each holding's share of the book by value, a fraction (D67 keeps weights public), for the Mix
@@ -3790,6 +3880,24 @@ function selftest() {
     assert.strictEqual(isharesYtm(ytmRec('', 'Weighted Average YTM') + ytmRec('Weighted Average YTM', '', '5.20')), null, 'copies disagree');
     assert.strictEqual(isharesYtm(ytmRec('Distribution Yield', '')), null, 'another figure is not the YTM');
     assert.strictEqual(isharesYtm('<html>Access Denied</html>'), null);
+
+    // Withholding by market, then by issuer; an unknown market has no rate rather than a guessed one.
+    assert.strictEqual(whtOf('AAPL'), 0.15);
+    assert.strictEqual(whtOf('VUSA.L'), 0);
+    assert.strictEqual(whtOf('8001.T'), 0.15315);
+    assert.strictEqual(whtOf('GRMN'), 0, 'Swiss capital reserves, as IBKR deducted');
+    assert.strictEqual(whtOf('NTO.F'), 0.15315, 'Nintendo on Frankfurt is taxed as Japanese');
+    assert.strictEqual(whtOf('EUZ.DE'), 0.26375);
+    assert.strictEqual(whtOf('X.ZZ'), null);
+    // T31's 22 Oct 2026 coupon goes ex seven business days before, on Tuesday 13 Oct; not before it happens.
+    assert.deepStrictEqual(giltCoupons({ coupon: 4, maturity: '2031-10-22' }, '2026-10-01', '2026-10-20'), [['2026-10-13', 2]]);
+    assert.deepStrictEqual(giltCoupons({ coupon: 4, maturity: '2031-10-22' }, '2026-10-01', '2026-10-10'), []);
+    assert.deepStrictEqual(giltCoupons({ coupon: 4, maturity: '2031-10-22' }, '2026-04-01', '2026-10-20').map(e => e[0]), ['2026-04-13', '2026-10-13']);
+    assert.deepStrictEqual(giltCoupons({ coupon: null, maturity: '2031-10-22' }, '2026-01-01'), []);
+    // A dividend paid before a split this run applied is put on the new share basis; after it, as paid.
+    const ev = d => Date.parse(d + 'T12:00:00Z') / 1000;
+    assert.deepStrictEqual(perShareOnBasis({ a: { date: ev('2026-09-29'), amount: 1.5 }, b: { date: ev('2026-11-30'), amount: 0.1 } },
+        [{ date: '2026-10-07', ratio: 15 }]), [['2026-09-29', 0.1], ['2026-11-30', 0.1]]);
 
     // Gilts: the coupon from the LSE's name, the DMO's yield, and closes that accrete run to run.
     assert.strictEqual(couponOf('0 1/8% TREASURY GILT 31/01/28'), 0.125);
