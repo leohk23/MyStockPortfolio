@@ -145,7 +145,7 @@ const halfSplit = (move, splits, now = Date.now()) => move != null && splits.som
 // caller keeps the last price and the stored closes rather than losing them.
 //
 // The exchange has no history endpoint, so the closes accrete: each run stores the official close
-// it reports (`lastclose` on `lastclosedate`), carried in prices.json as `lseCloses`. The series
+// as each weekday's last mid, carried in prices.json as `lseCloses`. The series
 // starts the day a gilt is added — fine for one bought from then on.
 async function fetchLse(tidm, prevCloses, attempts = 3) {
     const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
@@ -172,10 +172,14 @@ function shapeLse(j, prevCloses = {}, now = new Date()) {
     // The book's mid is the live value; the last trade can be hours old on a gilt.
     const price = j.midPrice > 0 ? j.midPrice : j.lastprice;
     if (!(price > 0) || j.currency !== 'GBP') throw new Error('no GBP price in the LSE response');
+    // A day's close is the book's mid at that day's last run: the same basis as the live price.
+    // The exchange's own `lastclose` is the last TRADE, often at the bid or offer — T31 closed on
+    // 7 Oct 2026 at its 95.62 offer with the mid at 95.47, so 1D showed the spread as a -0.2% move.
+    // Weekdays only: a weekend run (a pot push) would add a Saturday to every series' calendar.
     const closes = { ...prevCloses };
-    if (j.lastclose > 0 && /^\d{4}-\d\d-\d\d/.test(j.lastclosedate || '')) closes[j.lastclosedate.slice(0, 10)] = j.lastclose;
-    const series = lseSeries(closes);
     const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    if (new Date(today + 'T12:00:00Z').getUTCDay() % 6 !== 0) closes[today] = price;
+    const series = lseSeries(closes);
     const prev = Object.keys(closes).sort().filter(d => d < today).map(d => closes[d]).pop();
     const coupon = couponOf(j.name);
     return {
@@ -3710,18 +3714,20 @@ function selftest() {
     assert.strictEqual(settleDay(new Date('2026-10-08T10:00:00Z')), '2026-10-09');
     const lseJ = { name: '0 1/8% TREASURY GILT 31/01/28', isin: 'GB00BMBL1G81', currency: 'GBP', midPrice: 94.8,
         bid: 94.67, offer: 94.87, lastclose: 94.77, lastclosedate: '2026-10-07T15:35:29.000', maturitydate: '2028-01-31' };
-    const gilt = shapeLse(lseJ, { '2026-10-06': 94.6 }, new Date('2026-10-08T09:00:00Z'));
-    assert.deepStrictEqual(gilt.lseCloses, { '2026-10-06': 94.6, '2026-10-07': 94.77 });
-    assert.strictEqual(gilt['1d'], Math.round((94.8 / 94.77 - 1) * 1e4) / 1e4, '1D against the last close before today');
+    const gilt = shapeLse(lseJ, { '2026-10-06': 94.6, '2026-10-07': 94.75 }, new Date('2026-10-08T09:00:00Z'));
+    assert.deepStrictEqual(gilt.lseCloses, { '2026-10-06': 94.6, '2026-10-07': 94.75, '2026-10-08': 94.8 },
+        'today stored at the mid, never at the last trade (94.77)');
+    assert.strictEqual(gilt['1d'], Math.round((94.8 / 94.75 - 1) * 1e4) / 1e4, '1D against the last close before today');
+    assert.deepStrictEqual(Object.keys(shapeLse(lseJ, gilt.lseCloses, new Date('2026-10-10T09:00:00Z')).lseCloses),
+        ['2026-10-06', '2026-10-07', '2026-10-08'], 'a Saturday run stores nothing');
     assert(gilt.bond.ytm > 0.04 && gilt.bond.ytm < 0.043, `TN28 at 94.80 yields ~4.15%, got ${gilt.bond.ytm}`);
     assert.strictEqual(gilt.divYield, Number((0.125 / 94.8).toPrecision(6)), 'running yield');
     assert.throws(() => shapeLse({ ...lseJ, midPrice: null, lastprice: null }), /no GBP price/);
     assert.throws(() => shapeLse({ ...lseJ, currency: 'GBX' }), /no GBP price/);
-    // After the close the day's own close is stored, and 1D still compares with the day before.
-    const gilt2 = shapeLse({ ...lseJ, lastclose: 94.9, lastclosedate: '2026-10-08T15:35:00.000' }, gilt.lseCloses,
-        new Date('2026-10-08T18:00:00Z'));
-    assert.strictEqual(gilt2['1d'], gilt['1d']);
-    assert.strictEqual(Object.keys(gilt2.lseCloses).length, 3);
+    // A later run the same day overwrites the day's close; 1D still compares with the day before.
+    const gilt2 = shapeLse({ ...lseJ, midPrice: 94.9 }, gilt.lseCloses, new Date('2026-10-08T18:00:00Z'));
+    assert.strictEqual(gilt2.lseCloses['2026-10-08'], 94.9);
+    assert.strictEqual(gilt2['1d'], Math.round((94.9 / 94.75 - 1) * 1e4) / 1e4);
     assert.strictEqual(gilt['7d'], null, 'one day of history: no 7D, let alone 1Y');
     assert.strictEqual(gilt.ytd, null);
     const aged = sinceStored({ '7d': 0.01, '1m': 0.02, '3m': 0.03, '6m': 0.04, '1y': 0.05, ytd: 0.06 },
