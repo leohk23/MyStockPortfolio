@@ -164,6 +164,9 @@ function buildHoldings(meta, bySymbol, realized) {
             // An iShares bond fund's page path (id/slug), where its weighted average yield to
             // maturity is published — see fetchIsharesYtm.
             ishares: m.ishares,
+            // Splits as facts, [{ date, ratio }], because Yahoo's own list cannot be relied on
+            // (it withdrew TKOMY's real 15:1 a day after publishing it). See unsplit in fetch-prices.
+            splits: m.splits,
             // Trough-multiple valuation: the cheapest this traded in living memory, and what
             // it was earning then. Manually recorded — a 5y low is a judgement, not a lookup.
             lowPrice: m.lowPrice,

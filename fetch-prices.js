@@ -12,6 +12,8 @@ const publishable = v => !HOLDINGS_FULL ? null : HOLDINGS_SEALED ? sealValue(v) 
 // PE, annual financials) — no second fetch path — but they are deliberately absent from
 // navHistory() and from every portfolio total. See buildWatchlist() in portfolio.js.
 const watchlist = require('./watchlist.json');
+// Splits declared in meta.json, by Yahoo symbol — see mergeSplits.
+const DECLARED_SPLITS = Object.fromEntries([...holdings, ...watchlist].filter(x => x.splits).map(x => [x.yahoo, x.splits]));
 const { cohortMV, twr } = require('./portfolio.js'); // local, dependency-free — CI stays clean
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -97,21 +99,21 @@ async function fetchTicker(ticker, attempts = 3) {
     throw lastErr;
 }
 
-// Did this ticker split inside the window the chart covers (~1y)? Yahoo restates the PRICE for a
-// split immediately but leaves the analyst consensus on the old share count for weeks, so
-// epsForward silently reads N× too high — 7012.T after its 5-for-1 showed a forward EPS of 570
-// against a trailing 129, a "forward P/E" of 4.7x when the honest figure is ~23x. A split in the
-// window is the one condition under which that number is not to be believed.
-const hasSplit = splits => Object.keys(splits || {}).length > 0;
 
-function shape(r) {
+function shape(r, declared = DECLARED_SPLITS[r.meta.symbol], now = Date.now()) {
     const price = r.meta.regularMarketPrice;
     const timestamps = r.timestamp || [];
-    const closes = r.indicators?.quote?.[0]?.close || [];
+    const splits = mergeSplits(yahooSplits(r.events?.splits), declared);
+    const closes = unsplit(timestamps, r.indicators?.quote?.[0]?.close || [], splits);
     const divTTM = Object.values(r.events?.dividends || {}).reduce((sum, d) => sum + (d.amount || 0), 0);
-    const splits = Object.values(r.events?.splits || {}).filter(e => e.numerator > 0 && e.denominator > 0)
-        .map(e => ({ date: new Date(e.date * 1000).toISOString().slice(0, 10), ratio: e.numerator / e.denominator }));
-    const moves = { '1d': dailyMove(r.meta, closes, price), ...movements(timestamps, closes, price) };
+    // Yahoo's previousClose lags a split the same way: for a day or two the live price is per new
+    // share and previousClose per old, and 1D reads the ratio as a move (TKOMY: -93%, 8 Oct 2026).
+    let previousClose = r.meta.previousClose;
+    for (const sp of splits) {
+        if (now - Date.parse(sp.date) < 7 * DAY * 1000 && previousClose > 0 && price > 0
+            && Math.abs(Math.log(previousClose / price / sp.ratio)) < Math.log(1.3)) previousClose /= sp.ratio;
+    }
+    const moves = { '1d': dailyMove({ ...r.meta, previousClose }, closes, price), ...movements(timestamps, closes, price, now / 1000) };
     return {
         price,
         // Trust Yahoo over the workbook: .L tickers quote in pence ("GBp"), .T in JPY.
@@ -124,12 +126,48 @@ function shape(r) {
         // fund that changed cadence, or paid a special, should read as what it actually did.
         divCount: Object.keys(r.events?.dividends || {}).length,
         divYield: price ? Number((divTTM / price).toPrecision(6)) : null,
-        splitRecently: hasSplit(r.events?.splits),
+        // A split within the year: Yahoo restates the price at once but leaves the analyst consensus
+        // on the old share count for weeks — 7012.T after its 5-for-1 showed a forward P/E of 4.7x
+        // when the honest figure was ~23x — so the forward EPS is not believed.
+        splitRecently: splits.some(sp => now - Date.parse(sp.date) < 365 * DAY * 1000),
         // Working field, removed in main(): what splitsSinceFiled checks the share count against.
         splits,
-        ...(halfSplit(moves['1d'], splits) ? Object.fromEntries(Object.keys(moves).map(k => [k, null])) : moves),
+        ...(halfSplit(moves['1d'], splits, now) ? Object.fromEntries(Object.keys(moves).map(k => [k, null])) : moves),
         series: { timestamps, closes }, // stripped before writing; only used to build NAV history
     };
+}
+
+// Splits as [{ date, ratio }]: Yahoo's own events, plus any declared in meta.json (`splits`). A
+// declaration exists because Yahoo's list cannot be relied on in either direction: it carries a
+// 6:1 for BYD that never happened, and it published TKOMY's real 15:1 on 7 Oct 2026 only to
+// withdraw it a day later. A declared split Yahoo also lists is kept once.
+const yahooSplits = ev => Object.values(ev || {}).filter(e => e.numerator > 0 && e.denominator > 0)
+    .map(e => ({ date: isoDay(e.date), ratio: e.numerator / e.denominator }));
+const mergeSplits = (fromYahoo, declared) => [...fromYahoo, ...(declared || []).filter(x => !fromYahoo.some(y =>
+    Math.abs(Date.parse(x.date) - Date.parse(y.date)) < 10 * DAY * 1000 && Math.abs(x.ratio / y.ratio - 1) < 0.01))];
+
+// Closes on today's share basis, whatever state Yahoo is in. With TKOMY's split withdrawn, Yahoo
+// served the raw series again — $49.93 on 2 Oct, $3.33 on 7 Oct — and the New-buys line, replaying
+// 105 post-split receipts against it, read a 93% loss. So a split is applied only where the series
+// still shows its jump: a close just before the date over the one just after is the ratio (within
+// 30%). A series Yahoo has already restated shows no jump and is left alone, so nothing is ever
+// divided twice; nor is a split that never happened, whose jump is not there either.
+function unsplit(timestamps, closes, splits) {
+    let out = closes;
+    for (const sp of splits || []) {
+        const d = Date.parse(sp.date) / 1000;
+        let prev = -1;
+        for (let i = 0; i < out.length; i++) {
+            if (out[i] == null) continue;
+            if (prev >= 0 && timestamps[i] >= d - 10 * DAY && timestamps[prev] <= d + 7 * DAY
+                && Math.abs(Math.log(out[prev] / out[i] / sp.ratio)) < Math.log(1.3)) {
+                out = out.map((c, k) => (k < i && c != null ? c / sp.ratio : c));
+                break;
+            }
+            prev = i;
+        }
+    }
+    return out;
 }
 
 // A split half applied: Yahoo restates the closes before the live price. TKOMY on 6 Oct 2026 read
@@ -299,7 +337,7 @@ function weeklyFromDaily(quote, now = Date.now() / 1000) {
 // file bounded — daily over 10y × 57 tickers would be several MB. Same {currency,series}
 // shape as the daily quotes, so alignedCloses/navHistory work on it unchanged.
 async function fetchWeekly(ticker, attempts = 3) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker.replace('^', '%5E')}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1wk&events=split`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
@@ -308,7 +346,9 @@ async function fetchWeekly(ticker, attempts = 3) {
             const r = (await res.json()).chart?.result?.[0];
             if (!r?.timestamp) throw new Error('no history in response');
             if (r.meta?.dataGranularity !== '1wk') throw new Error(`Yahoo returned ${r.meta?.dataGranularity || 'unknown'} history`);
-            return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes: r.indicators?.quote?.[0]?.close || [] } };
+            const closes = unsplit(r.timestamp, r.indicators?.quote?.[0]?.close || [],
+                mergeSplits(yahooSplits(r.events?.splits), DECLARED_SPLITS[ticker]));
+            return { currency: r.meta?.currency || 'USD', series: { timestamps: r.timestamp.map(weekEnd), closes } };
         } catch (e) {
             lastErr = e;
             if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
@@ -3859,11 +3899,29 @@ function selftest() {
             { symbol: 'X', epsForward: -1.2 },        // consensus loss
         ] } }, QNOW).epsFwd,
         { GOOG: 14.78 });
-    // hasSplit: any split event inside the chart window disqualifies the consensus figure, because
-    // Yahoo restates the price for a split long before the analyst estimates catch up.
-    assert.strictEqual(hasSplit(undefined), false);
-    assert.strictEqual(hasSplit({}), false);
-    assert.strictEqual(hasSplit({ '1774403200': { splitRatio: '5:1' } }), true);
+    // A split, Yahoo's or declared, is applied where the series still shows its jump, and never twice.
+    const sp15 = [{ date: '2026-10-07', ratio: 15 }];
+    const dayTs = ['2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']
+        .map(d => Date.parse(d + 'T13:30:00Z') / 1000);
+    const raw = [53.05, 50.5, 49.93, null, null, 3.33, 3.34];
+    const restated = unsplit(dayTs, raw, sp15);
+    assert.deepStrictEqual(restated.map(v => v == null ? null : Math.round(v * 1e4) / 1e4), [3.5367, 3.3667, 3.3287, null, null, 3.33, 3.34]);
+    assert.deepStrictEqual(unsplit(dayTs, restated, sp15), restated, 'already restated: no jump, nothing divided twice');
+    assert.deepStrictEqual(unsplit(dayTs, [10, 10, 10, null, null, 10, 10], [{ date: '2026-10-07', ratio: 6 }]),
+        [10, 10, 10, null, null, 10, 10], 'a split that never happened (BYD) has no jump');
+    assert.deepStrictEqual(unsplit(dayTs, [10, 10, 10, null, null, 5, 5], [{ date: '2025-01-07', ratio: 2 }]),
+        [10, 10, 10, null, null, 5, 5], 'a fall far from any split is a fall');
+    assert.strictEqual(mergeSplits([{ date: '2026-10-07', ratio: 15 }], sp15).length, 1, 'declared and listed: kept once');
+    assert.strictEqual(mergeSplits([], sp15).length, 1);
+    // TKOMY on 8 Oct 2026: Yahoo's split withdrawn, the raw history back, previousClose per old share.
+    const tkNow = Date.parse('2026-10-08T20:00:00Z');
+    const tkq = shape({ meta: { symbol: 'TKOMY', regularMarketPrice: 3.33, previousClose: 49.93, currency: 'USD' },
+        timestamp: dayTs, indicators: { quote: [{ close: raw }] }, events: {} }, sp15, tkNow);
+    assert.strictEqual(tkq['1d'], Math.round((3.33 / (49.93 / 15) - 1) * 1e4) / 1e4, '1D on one basis, not -93%');
+    assert.strictEqual(tkq.series.closes[0], 53.05 / 15);
+    assert.strictEqual(tkq.splitRecently, true, 'no consensus forward EPS within a year of a split');
+    assert.strictEqual(shape({ meta: { symbol: 'X', regularMarketPrice: 10, previousClose: 10 }, timestamp: dayTs,
+        indicators: { quote: [{ close: [10, 10, 10, null, null, 10, 10] }] }, events: {} }, undefined, tkNow).splitRecently, false);
 
     // A future date is the next results date...
     assert.deepStrictEqual(
