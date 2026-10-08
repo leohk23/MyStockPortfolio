@@ -1380,12 +1380,13 @@
             ].filter(Boolean);
             document.getElementById('deep-val').innerHTML = rows
                 .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
-            // A gilt or a bond fund has no earnings, so every row above would be "–"; what it is
-            // bought on, its yield to maturity, is in the facts box beside it. Leo, 8 Oct 2026.
-            const fixedIncome = !!q.bond || q.fundYtm != null
-                || /\b(bond|gilt|treasur|fixed income)/i.test(`${q.fund?.category || ''} ${q.fund?.name || ''}`);
-            document.getElementById('deep-val').closest('.deep-box').hidden = fixedIncome;
-            document.getElementById('deep-grid').classList.toggle('solo', fixedIncome);
+            // The Valuation box is a single company's: EPS, its five-year low, the normalized basis.
+            // A gilt, a fund, a trust or an index has none of it, so every row would be "–"; what
+            // applies instead (a gilt's yield, a fund's fee, income and the P/E of its holdings) is
+            // in the facts box beside it. Leo, 8 Oct 2026. `type` is written for non-equities only.
+            const notACompany = !!q.bond || (q.type && q.type !== 'EQUITY');
+            document.getElementById('deep-val').closest('.deep-box').hidden = notACompany;
+            document.getElementById('deep-grid').classList.toggle('solo', notACompany);
 
             renderFinancials(leg);
         }
@@ -1646,8 +1647,16 @@
                 ? row('Yield to maturity', `<b>${(q.fundYtm.value * 100).toFixed(2)}%</b> <span class="muted">weighted average, as of ${ymd(q.fundYtm.asOf)}</span>`,
                     'The holdings’ yields to maturity, weighted by size, as iShares publishes it for the fund: what the portfolio earns a year if every bond is held to the end at today’s prices. Before the fee and before tax. The distribution yield below looks backwards; this looks forwards.')
                 : '';
+            // The one valuation figure that applies to an equity fund. Yahoo's, and not always sane:
+            // a gold trust gets a negative "EPS" from its expenses and SPOL a -200, so only a positive
+            // figure on a fund that holds companies is shown.
+            const holdingsPe = q.eps > 0 && q.price > 0 && pol.label !== 'No income' && q.fundYtm == null
+                ? row('P/E of holdings', `<b>${(q.price / q.eps).toFixed(1)}×</b>`,
+                    'Yahoo’s trailing figure for the fund: its price over the earnings Yahoo attributes to one unit, in effect the weighted P/E of what it holds. Yahoo’s number, not derived here, and with no history behind it, so there is no five-year low or percentile.')
+                : '';
             return `<table class="fund-facts"><tbody>
                 ${ytm}
+                ${holdingsPe}
                 ${row('Fee', fee, escapeHTML(feeTip))}
                 ${row('Income', `<b>${pol.label}</b>`, escapeHTML(pol.why))}
                 ${row('Paid', paid, 'Counted from the distributions Yahoo reports over the trailing twelve months \u2014 what the fund did, not what it schedules.')}
