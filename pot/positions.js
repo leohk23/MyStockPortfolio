@@ -31,7 +31,18 @@ const read = (f, d = null) => { try { return JSON.parse(fs.readFileSync(p(f), 'u
 // Parsed out of the markdown rather than duplicated into JSON, so the file a human reads and the
 // record a machine checks cannot disagree. Anything absent comes back null and is reported as a
 // gap; guessing a falsifier would be worse than admitting the proposal did not carry one.
-const CCY = /(?:£|GBP|\$|USD|CHF|HK\$|HKD|€|EUR)/;
+const CCY = /(?:US\$|HK\$|£|GBP|\$|USD|CHF|HKD|€|EUR|¥|JPY)/;
+
+// A day limit is the only part of an order that can go stale on its own. Proposals phrase it
+// "day limit @ $220.00", "limit $102.40" or "limit €26.03 per share"; requiring "day limit" read
+// none of the last two, so 13 of 20 scored rows could never expire (Review, 8 Oct 2026). The
+// decimals are matched explicitly so a sentence's full stop is not swallowed: "@ $220.00."
+// captured as "220.00." and Number() turned it into NaN.
+function limitOf(order) {
+    const m = String(order || '').match(new RegExp('\\blimit(?:\\s+price)?(?:\\s+of)?\\s*@?\\s*\\**\\s*'
+        + CCY.source + '?\\s*(\\d[\\d,]*(?:\\.\\d+)?)', 'i'));
+    return m ? Number(m[1].replace(/,/g, '')) : null;
+}
 
 function parseProposal(file) {
     let md;
@@ -48,10 +59,7 @@ function parseProposal(file) {
         const m = body.match(new RegExp('\\*\\*' + label + ':?\\*\\*[:\\s]*([\\s\\S]*?)(?=\\n\\*\\*|$)', 'i'));
         return m ? m[1].replace(/\s+/g, ' ').trim() : null;
     };
-    // A day limit is the only part of an order that can go stale on its own. The decimals are
-    // matched explicitly so the full stop ending the sentence is not swallowed: "@ $220.00."
-    // captured as "220.00." and Number() turned it into NaN.
-    const limit = (order.match(new RegExp('day\\s+limit\\s*@?\\s*' + CCY.source + '?\\s*([\\d,]+(?:\\.\\d+)?)', 'i')) || [])[1];
+    const limit = limitOf(order);
     // Proposals write the review date either way round, so normalise to ISO — a date the Review
     // lane cannot compare is the same as no date at all.
     const s4 = section(4);
@@ -63,7 +71,7 @@ function parseProposal(file) {
         ticker: file.replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}(-\d{4})?-/, ''),
         written: file.slice(0, 10),
         side: /\bSELL\b/.test(order) ? 'SELL' : 'BUY',
-        limit: limit ? Number(limit.replace(/,/g, '')) : null,
+        limit,
         // Two tiers since 30 Aug. Older proposals carry one unlabelled paragraph; keep it as the
         // break, because that is what a single-threshold falsifier always meant.
         warning: line(falsifier, 'Warning'),
@@ -292,6 +300,12 @@ if (process.argv.includes('--selftest')) {
     assert.strictEqual(parsed.side, 'BUY');
     // The sentence's full stop must not be swallowed into the number.
     assert.strictEqual(parsed.limit, 220, `limit parsed as ${parsed.limit}`);
+    assert.strictEqual(limitOf('**BUY 7 whole ordinary shares of Bureau Veritas, limit €26.03 per share.**'), 26.03);
+    assert.strictEqual(limitOf('**BUY 1 share of TW on Nasdaq, limit $102.40.**'), 102.4);
+    assert.strictEqual(limitOf('30 shares at today\'s FX), limit @ US$18.40.'), 18.4);
+    assert.strictEqual(limitOf('BUY 100 shares, limit price of ¥5,315 on Tokyo.'), 5315);
+    assert.strictEqual(limitOf('under the 0.5% fee limit, then limit HK$12.5'), 12.5, 'a limit with no price is not the limit');
+    assert.strictEqual(limitOf('BUY at market'), null);
     assert.strictEqual(parsed.reviewBy, '2026-11-20', `reviewBy parsed as ${parsed.reviewBy}`);
     assert.ok(/73\.5/.test(parsed.warning), 'warning tier not read');
     assert.ok(/70\.0/.test(parsed.break), 'break tier not read');
