@@ -131,15 +131,18 @@ function twr(mv, flow, income = null) {
 // tax taken from it, and a gilt's interest. `estimated`: every other lot, from `divs` (net per share,
 // [[exDate, amount]], quote currency) on the shares held the day before each ex-date. IBKR-held
 // shares are estimated only before IBKR's record begins, and never for a payment it already holds.
-function incomeReceived(h, divs, rates, quoteCurrency) {
+// `since` (an ISO date) keeps only what was paid from then: IBKR's rows by payment date, the
+// calculated rest by ex-date. Without it, everything since the position was bought.
+function incomeReceived(h, divs, rates, quoteCurrency, since = null) {
     const rows = h.received?.rows || [], from = h.received?.from || null;
-    const actual = rows.reduce((a, [, , amt, ccy]) => a + amt * rateFor(ccy, rates), 0);
+    const actual = rows.reduce((a, [paid, , amt, ccy]) => (since && paid < since ? a : a + amt * rateFor(ccy, rates)), 0);
     const qc = rateFor(quoteCurrency, rates);
     const near = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) <= 5 * 864e5;
     const held = (ex, ib) => (h.trades || []).reduce((q, t) =>
         (t.date < ex && (t.platform === 'IB') === ib ? q + (t.side === 'SELL' ? -t.qty : t.qty) : q), 0);
     let estimated = 0;
     for (const [ex, amt] of divs || []) {
+        if (since && ex < since) continue;
         let q = held(ex, false);
         if ((!from || ex < from) && !rows.some(r => r[1] && near(r[1], ex))) q += held(ex, true);
         if (q > 0) estimated += q * amt * qc;
@@ -563,6 +566,11 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     // 2023: 14 shares, all estimated; 2024 and 2025: IBKR's record holds the 2024 payment, so only the
     // 4 TD shares are estimated (and the missing 2025 IBKR payment is not); 2026: TD sold out.
     assert.deepStrictEqual(ir, { actual: 7, estimated: 14 + 4 + 4 });
+    // The last twelve months only: IBKR rows by payment date, the rest by ex-date.
+    const irRecent = incomeReceived({ trades: [{ date: '2023-01-10', side: 'BUY', qty: 4, platform: 'TD' }, { date: '2023-01-10', side: 'BUY', qty: 10, platform: 'IB' }],
+        received: { from: '2024-03-29', rows: [['2024-05-20', '2024-05-10', 7, 'USD', 'Dividends'], ['2025-11-20', '2025-11-10', 5, 'USD', 'Dividends']] } },
+        [['2024-05-10', 1], ['2025-11-10', 1]], rates, 'USD', '2025-10-08');
+    assert.deepStrictEqual(irRecent, { actual: 5, estimated: 4 });
     assert.deepStrictEqual(incomeReceived({ trades: [{ date: '2023-01-10', side: 'BUY', qty: 2, platform: 'IB' }] },
         [['2024-05-10', 3]], rates, 'USD'), { actual: 0, estimated: 6 }, 'no IBKR record at all: estimated');
     // A weekly calendar: an ex-date between two bars lands on the next one.

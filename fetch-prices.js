@@ -3125,20 +3125,27 @@ async function main() {
     const twrHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
     let ytdStart = 0;
     for (let i = 0; i < hist.days.length; i++) if (hist.days[i] < YEAR_START) ytdStart = i; // last close of last year
-    const ytdTwr = (filter, dv = null) => {
+    // The trailing twelve months the same way, from the last close at least a year back.
+    const yearAgo = new Date(Date.parse(hist.days[hist.days.length - 1]) - 365 * 864e5).toISOString().slice(0, 10);
+    let ttmStart = 0;
+    for (let i = 0; i < hist.days.length; i++) if (hist.days[i] <= yearAgo) ttmStart = i;
+    const twrFrom = (start, filter, dv = null) => {
         const { mv, flow, income } = cohortMV(hist.days, twrHold, hist.closes, rates, filter, dv);
-        const t = twr(mv.slice(ytdStart), flow.slice(ytdStart), dv ? income.slice(ytdStart) : null);
+        const t = twr(mv.slice(start), flow.slice(start), dv ? income.slice(start) : null);
         for (let i = t.length - 1; i >= 0; i--) if (t[i] != null) return Number(t[i].toPrecision(4));
         return null;
     };
+    const ytdTwr = (filter, dv = null) => twrFrom(ytdStart, filter, dv);
     // Percentages, so public (D67) — but only meaningful when the trades could be read.
     const performance = HOLDINGS_FULL ? {
         ytdTotal: ytdTwr(null),
         ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL'),
+        ttmTotal: twrFrom(ttmStart, null),
         // Total return: dividends net of withholding, reinvested on the ex-date.
         income: {
             ytdTotal: ytdTwr(null, netDivs),
             ytdNew: ytdTwr(t => t.date >= YEAR_START && t.side !== 'SELL', netDivs),
+            ttmTotal: twrFrom(ttmStart, null, netDivs),
         },
     } : null;
 
@@ -3171,9 +3178,13 @@ async function main() {
     if (HOLDINGS_FULL) {
         const { incomeReceived } = require('./portfolio.js');
         const cents = v => Math.round(v * 100) / 100;
+        // Since bought, and the last twelve months (`ttm`) for the headline tile.
+        const ttmSince = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
         received = Object.fromEntries(priced.map(h => {
             const r = incomeReceived(h, netDivs[h.yahoo], rates, quotes[h.yahoo].currency);
-            return [h.yahoo, { actual: cents(r.actual), estimated: cents(r.estimated) }];
+            const t = incomeReceived(h, netDivs[h.yahoo], rates, quotes[h.yahoo].currency, ttmSince);
+            return [h.yahoo, { actual: cents(r.actual), estimated: cents(r.estimated),
+                ttm: { actual: cents(t.actual), estimated: cents(t.estimated) } }];
         }).filter(([, r]) => r.actual || r.estimated));
         const sum = k => Object.values(received).reduce((a, r) => a + r[k], 0);
         console.log(`ok   income received for ${Object.keys(received).length} holding(s): ${sum('actual').toFixed(0)} actual (IBKR), ${sum('estimated').toFixed(0)} estimated`);

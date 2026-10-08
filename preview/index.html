@@ -3449,10 +3449,15 @@
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
                 <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cost > 0 ? cls(gain) : ''}">${cost > 0 ? pct(gain / cost) : '–'}</div></div>
                 ${perfTile('YTD Performance', perf.ytdTotal)}
+                ${perfTile('12M Return', perf.ttmTotal)}
                 ${perfTile('New Buys YTD', perf.ytdNew)}
                 ${STATE.received ? (() => {
-                    const p = STATE.rows.reduce((a, r) => (r.receivedParts ? { actual: a.actual + r.receivedParts.actual, estimated: a.estimated + r.receivedParts.estimated } : a), { actual: 0, estimated: 0 });
-                    return `<div title="What the positions you hold have paid you since you bought them, net of withholding tax: ${money(p.actual)} from IBKR's own record, ${money(p.estimated)} calculated for other brokers and for IBKR shares before 29 Mar 2024. Closed positions are not included."><div class="label">Income received</div><div class="value">${money(p.actual + p.estimated)}</div></div>`;
+                    // Last twelve months, with what it yields on today's value; since bought in the tooltip.
+                    const sum = pick => Object.values(STATE.received).reduce((a, r) => { const x = pick(r); return x
+                        ? { actual: a.actual + x.actual, estimated: a.estimated + x.estimated } : a; }, { actual: 0, estimated: 0 });
+                    const y = sum(r => r.ttm), all = sum(r => r);
+                    const ttm = y.actual + y.estimated, yld = value ? ttm / value : null;
+                    return `<div title="What the positions you hold paid you in the last 12 months, net of withholding tax: ${money(y.actual)} from IBKR's own record, ${money(y.estimated)} calculated for other brokers. As a yield, ${yld == null ? '–' : plain(yld)} of today's value. Since you bought them: ${money(all.actual + all.estimated)}. Closed positions are not included."><div class="label">Income 12M</div><div class="value">${money(ttm)} <span class="muted" style="font-size:.6em">${yld == null ? '' : plain(yld)}</span></div></div>`;
                 })() : ''}
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>`;
             // Rendered here, not in the markup, because it is re-pressed on every currency change
