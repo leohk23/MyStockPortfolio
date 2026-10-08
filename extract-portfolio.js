@@ -231,6 +231,26 @@ async function verifyNewSymbols(holdings) {
     }
 }
 
+// IBKR's payment rows onto holdings. IBKR's symbols are its own (1 for 0001.HK, 5332.T, MC for
+// MC.PA, and MOHd for an LVMH interim line), so: the exact ticker or Yahoo symbol, then the same
+// symbol without its exchange suffix or leading zeros, then any row sharing the ISIN of one already
+// matched. Rows for a position no longer held are reported, never forced onto a holding.
+// Each row becomes [payDate, exDate, amount, currency, type].
+function matchReceipts(rows, holdings) {
+    const base = s => String(s).split('.')[0].replace(/^0+(?=\d)/, '').toUpperCase();
+    const find = sym => holdings.find(h => h.ticker === sym || h.yahoo === sym)
+        || (c => (c.length === 1 ? c[0] : null))(holdings.filter(h => base(h.ticker) === base(sym) || base(h.yahoo) === base(sym)));
+    const byIsin = {};
+    for (const r of rows) { const h = find(r.symbol); if (h && r.isin) byIsin[r.isin] = h; }
+    const byYahoo = {}, unmatched = new Set();
+    for (const r of rows) {
+        const h = find(r.symbol) || byIsin[r.isin];
+        if (!h) { unmatched.add(r.symbol); continue; }
+        (byYahoo[h.yahoo] = byYahoo[h.yahoo] || []).push([r.date, r.exDate, r.amount, r.currency, r.type]);
+    }
+    return { byYahoo, unmatched: [...unmatched].sort() };
+}
+
 async function main() {
     if (!fs.existsSync(WORKBOOK)) {
         throw new Error(`${WORKBOOK} not found. It is gitignored, so this only runs on your machine.`);
@@ -259,6 +279,19 @@ async function main() {
     if (dupes.length) throw new Error(`duplicate Yahoo symbols: ${dupes.join(', ')}`);
 
     await verifyNewSymbols(holdings); // network only for symbols not already in prices.json
+
+    // What IBKR actually paid each holding (`npm run dividends`, ibkr-dividends.js), sealed with
+    // the rest below: amounts. Optional — without the file nothing is attached.
+    if (fs.existsSync('.ibkr-dividends.json')) {
+        const ib = JSON.parse(fs.readFileSync('.ibkr-dividends.json', 'utf8'));
+        const { byYahoo, unmatched } = matchReceipts(Object.values(ib.windows).flatMap(w => w.rows || []), holdings);
+        // Every holding with IBKR shares gets the record's start, paid or not: no rows inside the
+        // record means nothing was paid there, not that it is unknown.
+        for (const h of holdings) if (byYahoo[h.yahoo] || h.trades.some(t => t.platform === 'IB'))
+            h.received = { from: ib.coverageFrom, rows: byYahoo[h.yahoo] || [] };
+        console.log(`  IBKR receipts: ${Object.keys(byYahoo).length} holding(s), record from ${ib.coverageFrom}`
+            + (unmatched.length ? `; not held now or unmatched: ${unmatched.join(', ')}` : ''));
+    }
 
     // Public half + sealed half (vault.js, D67). seal() throws without a passphrase, so a missing
     // key refuses the write instead of publishing quantities in the clear.
@@ -361,6 +394,13 @@ function selftest() {
     assert.deepStrictEqual(newSymbols(hs, new Set(['GOOG', 'NTO.F'])).map(x => x.yahoo), ['AVGO']);
     assert.strictEqual(newSymbols(hs, new Set(['GOOG', 'AVGO', 'NTO.F'])).length, 0); // all known -> no checks
 
+    // IBKR's symbols onto holdings: exact, then without suffix or leading zeros, then by ISIN.
+    const held = [{ ticker: '1', yahoo: '0001.HK' }, { ticker: '5332', yahoo: '5332.T' }, { ticker: 'MC', yahoo: 'MC.PA' }];
+    const r = (symbol, isin, amount) => ({ date: '2025-12-04', exDate: '2025-12-02', symbol, isin, amount, currency: 'EUR', type: 'Dividends' });
+    const m = matchReceipts([r('1', 'KY1', 1), r('5332.T', 'JP1', 2), r('MC', 'FR1', 3), r('MOHd', 'FR1', 4), r('SOLD', 'XX1', 5)], held);
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(m.byYahoo).map(([k, v]) => [k, v.map(x => x[2])])),
+        { '0001.HK': [1], '5332.T': [2], 'MC.PA': [3, 4] }, 'MOHd joins MC by ISIN');
+    assert.deepStrictEqual(m.unmatched, ['SOLD'], 'a position no longer held is reported, not forced onto one');
     console.log('selftest ok');
 }
 

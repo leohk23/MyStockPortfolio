@@ -6,6 +6,10 @@ const { execSync } = require('child_process');
 const run = c => execSync(c, { stdio: 'inherit' });
 const quiet = c => { try { execSync(c, { stdio: 'ignore' }); return true; } catch { return false; } };
 
+// What IBKR actually paid (dividends net of its withholding), sealed into holdings.json by the
+// extract below. Best-effort: IBKR being down must not stop a Tradelog publish, and the last
+// fetched record stays in place.
+if (!quiet('node ibkr-dividends.js')) console.log('IBKR dividends not refreshed — publishing with the last record.');
 run('node extract-portfolio.js');       // Tradelog + meta.json -> holdings.json (throws if workbook missing)
 // meta.json too, in case you added an instrument; watchlist.json in case you added a name to watch
 run('git add holdings.json meta.json watchlist.json');

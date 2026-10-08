@@ -126,6 +126,27 @@ function twr(mv, flow, income = null) {
     return out;
 }
 
+// What a holding has paid out since it was bought, in USD at today's FX (invariant 2), net of
+// withholding. `actual`: IBKR's own record (h.received, extract-portfolio.js), every dividend and the
+// tax taken from it, and a gilt's interest. `estimated`: every other lot, from `divs` (net per share,
+// [[exDate, amount]], quote currency) on the shares held the day before each ex-date. IBKR-held
+// shares are estimated only before IBKR's record begins, and never for a payment it already holds.
+function incomeReceived(h, divs, rates, quoteCurrency) {
+    const rows = h.received?.rows || [], from = h.received?.from || null;
+    const actual = rows.reduce((a, [, , amt, ccy]) => a + amt * rateFor(ccy, rates), 0);
+    const qc = rateFor(quoteCurrency, rates);
+    const near = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) <= 5 * 864e5;
+    const held = (ex, ib) => (h.trades || []).reduce((q, t) =>
+        (t.date < ex && (t.platform === 'IB') === ib ? q + (t.side === 'SELL' ? -t.qty : t.qty) : q), 0);
+    let estimated = 0;
+    for (const [ex, amt] of divs || []) {
+        let q = held(ex, false);
+        if ((!from || ex < from) && !rows.some(r => r[1] && near(r[1], ex))) q += held(ex, true);
+        if (q > 0) estimated += q * amt * qc;
+    }
+    return { actual, estimated };
+}
+
 // Everything the "is it cheap?" question needs, from the quote alone.
 //
 // Deliberately takes no position, cost or trade: valuation is a property of the STOCK, not of
@@ -452,7 +473,7 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -529,6 +550,21 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.ok(Math.abs(twr(tr.mv, tr.flow)[2] - -0.1) < 1e-12, 'price only');
     assert.deepStrictEqual(cohortMV(['2026-01-01', '2026-01-03'], [{ yahoo: 'A', quoteCurrency: 'USD', trades: [] }],
         { A: [10, 9] }, rates, null, { A: [['2026-01-03', 1]] }).income, [0, 0], 'nothing held, nothing paid');
+    // Income received: IBKR's record is actual; other lots, and IBKR shares before the record, are
+    // estimated; a payment the record holds is never estimated again.
+    const ir = incomeReceived({
+        trades: [
+            { date: '2023-01-10', side: 'BUY', qty: 10, platform: 'IB' },
+            { date: '2023-01-10', side: 'BUY', qty: 4, platform: 'TD' },
+            { date: '2025-06-01', side: 'SELL', qty: 4, platform: 'TD' },
+        ],
+        received: { from: '2024-03-29', rows: [['2024-05-20', '2024-05-10', 8.5, 'USD', 'Dividends'], ['2024-05-20', '2024-05-10', -1.5, 'USD', 'Withholding Tax']] },
+    }, [['2023-05-10', 1], ['2024-05-10', 1], ['2025-05-10', 1], ['2026-05-10', 1]], rates, 'USD');
+    // 2023: 14 shares, all estimated; 2024 and 2025: IBKR's record holds the 2024 payment, so only the
+    // 4 TD shares are estimated (and the missing 2025 IBKR payment is not); 2026: TD sold out.
+    assert.deepStrictEqual(ir, { actual: 7, estimated: 14 + 4 + 4 });
+    assert.deepStrictEqual(incomeReceived({ trades: [{ date: '2023-01-10', side: 'BUY', qty: 2, platform: 'IB' }] },
+        [['2024-05-10', 3]], rates, 'USD'), { actual: 0, estimated: 6 }, 'no IBKR record at all: estimated');
     // A weekly calendar: an ex-date between two bars lands on the next one.
     assert.deepStrictEqual(cohortMV(['2026-01-02', '2026-01-09'],
         [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2025-12-01', side: 'BUY', qty: 4, price: 10, currency: 'USD' }] }],

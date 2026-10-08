@@ -821,6 +821,7 @@
                     <th data-sort="value" title="Share of the whole portfolio by value. The bar under each position name shows the same thing relative to the largest row on screen — a full bar is the biggest holding, not 100%.">Mix</th>
                     <th data-sort="yield" title="Yahoo trailing 12-month dividends divided by current price">Yield TTM</th>
                     <th data-sort="income" title="Current shares multiplied by Yahoo trailing 12-month dividends per share">Income TTM</th>
+                    <th data-sort="received" title="What this position has paid you since you bought it, net of withholding tax. IBKR shares: IBKR's own record of every dividend and the tax it took, from 29 Mar 2024, when this IBKR account's record begins. Everything else, and IBKR shares before that date: calculated, each ex-date's dividend net of withholding on the shares held the day before. Hover a figure for the split, and for the gain including it.">Received</th>
                     <th data-sort="avgPrice" title="Your average cost per share, converted into the quote's currency so it compares directly with Price. Single instruments only — two legs of one company can trade in different currencies.">Avg cost</th>
                     <th data-sort="pe" title="Current price ÷ trailing 12-month EPS (Yahoo, or a manual meta.json override). Single instruments only.">PE</th>
                     <th data-sort="specialPe" title="Current price ÷ normalized EPS. Priority: a direct, source-backed company-adjusted TTM series; then a manual stock-specific figure; then Yahoo normalized earnings; finally reported EPS. The displayed basis is named in the deep panel.">Normalized PE</th>
@@ -3117,6 +3118,15 @@
         // A holding that pays nothing gets a dash, matching the Yield column. /usr/bin/bash reads like a
         // real zero payout; the dash says 'this one doesn't pay', which is what you want to see.
         const incomeCell = usd => usd ? money(usd) : '<span class="muted">–</span>';
+        // Income received, with its split and the gain it adds to, on hover. o: a row or a leg.
+        const receivedCell = o => {
+            const p = o.receivedParts;
+            if (!p || !(p.actual || p.estimated)) return '<span class="muted">–</span>';
+            const withIncome = o.cost ? (o.gain ?? o.value - o.cost) + p.actual + p.estimated : null;
+            const tip = `${money(p.actual)} paid by IBKR, ${money(p.estimated)} calculated.`
+                + (withIncome != null ? ` Gain including it: ${money(withIncome)}, ${pct(withIncome / o.cost)} of cost.` : '');
+            return `<span title="${tip}">${money(p.actual + p.estimated)}${p.estimated && !p.actual ? ' <span class="tag">calc</span>' : ''}</span>`;
+        };
         // Is the price shown already out of date? Every figure in this app is the REGULAR-session
         // price, deliberately: value, gain, P/E, 1D and the whole NAV history are built on regular
         // closes, so swapping in an after-hours print would move every derived number against a
@@ -3440,6 +3450,10 @@
                 <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cost > 0 ? cls(gain) : ''}">${cost > 0 ? pct(gain / cost) : '–'}</div></div>
                 ${perfTile('YTD Performance', perf.ytdTotal)}
                 ${perfTile('New Buys YTD', perf.ytdNew)}
+                ${STATE.received ? (() => {
+                    const p = STATE.rows.reduce((a, r) => (r.receivedParts ? { actual: a.actual + r.receivedParts.actual, estimated: a.estimated + r.receivedParts.estimated } : a), { actual: 0, estimated: 0 });
+                    return `<div title="What the positions you hold have paid you since you bought them, net of withholding tax: ${money(p.actual)} from IBKR's own record, ${money(p.estimated)} calculated for other brokers and for IBKR shares before 29 Mar 2024. Closed positions are not included."><div class="label">Income received</div><div class="value">${money(p.actual + p.estimated)}</div></div>`;
+                })() : ''}
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>`;
             // Rendered here, not in the markup, because it is re-pressed on every currency change
             // — and rendered separately from the tiles because it is not one (see #updated-row).
@@ -3511,6 +3525,7 @@
                     <td>${plain(r.value / total)}</td>
                     <td class="muted">${r.yield ? plain(r.yield) : '–'}</td>
                     <td>${incomeCell(r.income)}</td>
+                    <td>${receivedCell(r)}</td>
                     <td>${priceCell(r.avgPrice, r.priceCurrency)}</td>
                     <td>${peCell(r.pe)}</td>
                     <td>${peCell(recurring.pe, recurring.label)}${basisTag(recurring.basis, recurring.q)}</td>
@@ -3554,6 +3569,7 @@
                         <td>${plain(leg.value / total)}</td>
                         <td class="muted">${leg.quote.divYield ? plain(leg.quote.divYield) : '–'}</td>
                         <td>${incomeCell(leg.income)}</td>
+                        <td>${receivedCell({ ...leg, gain: leg.value - leg.cost })}</td>
                         <td>${priceCell(leg.avgQuote, leg.quote.currency)}</td>
                         <td>${peCell(leg.pe)}</td>
                         <td>${peCell(legRecurring.pe, legRecurring.label)}${basisTag(legRecurring.basis, legRecurring.q)}</td>
@@ -3630,6 +3646,8 @@
             if (mix >= 0) cells[mix] = `<td>${total ? plain(shownValue / total) : '–'}</td>`;
             put('yield', `<td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>`);
             put('income', `<td>${money(income)}</td>`);
+            const recv = shown.reduce((a, r) => a + (r.received || 0), 0);
+            put('received', `<td>${STATE.received ? money(recv) : ''}</td>`);
             for (const p of portfolioLib.PERIODS) {
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
@@ -3717,6 +3735,13 @@
                 r.cost = r.legs.every(l => l.cost != null) ? r.legs.reduce((a, l) => a + l.cost, 0) : null;
                 r.gain = r.cost != null ? r.value - r.cost : null;
                 r.gainPct = r.cost ? r.gain / r.cost : null;
+            }
+            // Income received (sealed, so only once unlocked): IBKR's record plus the calculated rest.
+            for (const r of STATE.rows) {
+                for (const leg of r.legs) { const x = STATE.received?.[leg.yahoo]; leg.receivedParts = x || null; leg.received = x ? x.actual + x.estimated : null; }
+                const parts = r.legs.map(l => l.receivedParts).filter(Boolean);
+                r.receivedParts = parts.length ? { actual: parts.reduce((a, p) => a + p.actual, 0), estimated: parts.reduce((a, p) => a + p.estimated, 0) } : null;
+                r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
             }
             STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
         }
@@ -4528,7 +4553,7 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, performance, weights, gains }, watchlist, signals, pot]) => {
+        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, received, performance, weights, gains }, watchlist, signals, pot]) => {
             // Sealed since D67. Skipping keeps the PUBLIC half of holdings.json: which stocks are held
             // (ticker, group, geography, currency), with prices, moves and valuation, and no amounts.
             // It used to fall back to an empty list, blanking the table, although D67 kept the
@@ -4541,6 +4566,7 @@ function renderPot() {
             }
             if (locked) priv = true;
             nav = await vaultOpen(nav);
+            received = await vaultOpen(received);   // sealed like the NAV: amounts (D67)
             RATES = rates;
             POT = pot;
             // Held names are dropped: once you own it, the holdings table is the truth. This
@@ -4557,7 +4583,7 @@ function renderPot() {
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
             const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, performance, weights, gains, locked, firstTrade, dim, updated };
+            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, received, performance, weights, gains, locked, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.

@@ -3165,6 +3165,19 @@ async function main() {
         gains = Object.fromEntries(build(priced, rates, quotes, 'instrument')
             .filter(r => Number.isFinite(r.gainPct)).map(r => [r.legs[0].yahoo, Number(r.gainPct.toFixed(5))]));
     }
+    // What each holding has paid since it was bought, USD, net of withholding: IBKR's own record
+    // where it has one, estimated elsewhere (incomeReceived). Amounts, so sealed like the NAV (D67).
+    let received = null;
+    if (HOLDINGS_FULL) {
+        const { incomeReceived } = require('./portfolio.js');
+        const cents = v => Math.round(v * 100) / 100;
+        received = Object.fromEntries(priced.map(h => {
+            const r = incomeReceived(h, netDivs[h.yahoo], rates, quotes[h.yahoo].currency);
+            return [h.yahoo, { actual: cents(r.actual), estimated: cents(r.estimated) }];
+        }).filter(([, r]) => r.actual || r.estimated));
+        const sum = k => Object.values(received).reduce((a, r) => a + r[k], 0);
+        console.log(`ok   income received for ${Object.keys(received).length} holding(s): ${sum('actual').toFixed(0)} actual (IBKR), ${sum('estimated').toFixed(0)} estimated`);
+    }
     for (const q of Object.values(quotes)) delete q.series; // raw closes would 10x the file
 
     fs.writeFileSync('prices.json', JSON.stringify({
@@ -3186,6 +3199,7 @@ async function main() {
         // intends to own individually would swamp every table that walks the holdings.
         countries,
         nav: publishable(nav),
+        received: publishable(received),
         performance,
         weights,
         gains,
