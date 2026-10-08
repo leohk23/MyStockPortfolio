@@ -48,14 +48,16 @@ function parseRows(xml) {
 
 const tag = (x, t) => (x.match(new RegExp(`<${t}>([^<]*)</${t}>`)) || [])[1];
 
-// The accounts in .ibkr-flex: { accounts: [{ name, token, query }] }, one per IBKR account (each
-// account's Flex token and query are its own), or the original single { token, query }. An entry
-// with a blank token or query is a template not yet filled in, and is skipped.
+// The accounts in .ibkr-flex: { token, accounts: [{ name, query }] }. A Flex token belongs to the
+// login, not the account, so one token serves every account that login can see, each with its own
+// query; an account may still carry its own `token` if it ever needs another login. The original
+// single { token, query } still reads. An entry with no query yet is a template, and is skipped.
 function readAccounts(text) {
     const cfg = JSON.parse(text);
-    const list = Array.isArray(cfg.accounts) ? cfg.accounts : [{ name: 'main', token: cfg.token, query: cfg.query }];
-    return list.filter(a => a && String(a.token || '').trim() && String(a.query || '').trim())
-        .map((a, i) => ({ name: a.name || `account${i + 1}`, token: String(a.token).trim(), query: String(a.query).trim() }));
+    const list = Array.isArray(cfg.accounts) ? cfg.accounts : [{ name: 'main', query: cfg.query }];
+    return list.map((a, i) => ({ name: a?.name || `account${i + 1}`,
+        token: String(a?.token || cfg.token || '').trim(), query: String(a?.query || '').trim() }))
+        .filter(a => a.token && a.query);
 }
 
 async function fetchWindow({ token, query }, w) {
@@ -127,8 +129,11 @@ function selftest() {
     ], 'deposits are not income');
     // .ibkr-flex: the original single account, or a list where a blank entry is a template to fill in.
     assert.deepStrictEqual(readAccounts('{ "token": "t1", "query": "q1" }'), [{ name: 'main', token: 't1', query: 'q1' }]);
-    assert.deepStrictEqual(readAccounts(JSON.stringify({ accounts: [{ name: 'current', token: 't1', query: 'q1' },
-        { name: 'previous', token: '', query: '', note: 'fill in' }] })), [{ name: 'current', token: 't1', query: 'q1' }]);
+    assert.deepStrictEqual(readAccounts(JSON.stringify({ token: 't1', accounts: [{ name: 'current', query: 'q1' },
+        { name: 'previous', query: 'q2' }, { name: 'later', query: '' }] })),
+        [{ name: 'current', token: 't1', query: 'q1' }, { name: 'previous', token: 't1', query: 'q2' }], 'one token, a query each; a blank query is a template');
+    assert.deepStrictEqual(readAccounts(JSON.stringify({ token: 't1', accounts: [{ name: 'other', token: 't9', query: 'q3' }] })),
+        [{ name: 'other', token: 't9', query: 'q3' }], 'an account may carry its own token');
     assert.deepStrictEqual(allRows({ accounts: { a: { windows: { w1: { rows: [1, 2] }, w2: { unavailable: true } } }, b: { windows: { w1: { rows: [3] } } } } }), [1, 2, 3]);
     assert.deepStrictEqual(allRows({ windows: { w1: { rows: [1] } } }), [1], 'the single-account file still reads');
     console.log('selftest ok');
