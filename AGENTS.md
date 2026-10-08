@@ -492,7 +492,6 @@ The performance lines count income (Leo, 8 Oct 2026). A price-only return unders
 - **IBKR's record starts on 29 Mar 2024**, the first activity of the account behind the token. The 2022-23 IBKR trades were on an earlier account, and Flex answers 1003 "Statement is not available" before it, and for today, since it serves completed days only. A holding with IBKR shares but no rows was paid nothing inside the record.
 - **Calculated, for everything else:** shares at T212, TD and SC, and IBKR shares before 29 Mar 2024. Each ex-date's dividend net of withholding (`history.json divs`) on the shares held the day before; never for a payment IBKR's record already holds.
 - `fetch-prices.js` computes it per holding and publishes it **sealed** as `prices.json received` (`{ actual, estimated, ttm: { actual, estimated } }`, USD; `ttm` is the last 12 months, by IBKR payment date and by ex-date for the rest), like the NAV. The page opens it with the passphrase; locked, the column is "–". The Income 12M tile shows `ttm` and what it yields on today's value; the table's Received column stays since bought.
-- **12M Return** (`performance.ttmTotal`, and `performance.income.ttmTotal` with dividends) is the time-weighted return from the last close at least a year back, beside YTD.
 
 ## Gilts: priced from the London Stock Exchange, not Yahoo
 
