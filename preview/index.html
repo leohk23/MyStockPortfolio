@@ -1802,8 +1802,13 @@
                 const quarterRecEps = y => researchFor(researchPeriods, y.date)?.eps ?? recEps(y);
                 const researchTag = r => !r ? '' :
                     ` <a class="tag" href="${escapeHTML(String(r.source))}" target="_blank" rel="noopener" title="${escapeHTML(leg.quote.researchEpsBasis || 'Source-backed adjusted EPS')}">research</a>`;
-                const opMargin = y => y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
-                const netMargin = y => y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
+                // A negative "revenue" is never revenue: Yahoo's line for some IFRS property companies
+                // nets in fair-value movements. SUPR.L reads -£150m in FY2023, and even its positive
+                // years miss the rent (FY2026 £99.2m, against £122.3m net rental income in the annual
+                // report), so one negative year condemns the whole series, and the margins built on it.
+                const revBroken = years.some(y => y.rev < 0);
+                const opMargin = y => !revBroken && y.opinc != null && y.rev > 0 ? y.opinc / y.rev : null;
+                const netMargin = y => !revBroken && y.nic != null && y.rev > 0 ? y.nic / y.rev : null;
 
                 // What the market actually PAID for these earnings, year by year: the cheapest and
                 // dearest multiple struck inside each fiscal year, with the year's average beneath.
@@ -1879,7 +1884,8 @@
                     const p = before && fy(y) - fy(before) === 1 ? before : null;
                     return { fy: fy(y), html: `<tr>
                         <td title="Fiscal year ended ${ymd(y.date)}">${fy(y)}</td>
-                        ${cell(y.rev, yoy(y.rev, p?.rev))}
+                        ${revBroken ? `<td title="Yahoo reports ${escapeHTML(big(y.rev))}, but its revenue line for this company nets in fair-value movements, so it is not revenue in any year."><span class="muted">–</span></td>`
+                            : cell(y.rev, yoy(y.rev, p?.rev))}
                         ${cell(y.opinc, yoy(y.opinc, p?.opinc))}
                         ${marginCell(opMargin(y), p ? opMargin(p) : null)}
                         ${cell(y.nic, yoy(y.nic, p?.nic))}
@@ -2137,6 +2143,14 @@
                         note = `Source-backed adjusted EPS: Yahoo's broad normalized figure less `
                             + `a directly stated per-share one-off. ${adjustmentSummary(leg.quote)}`;
                         tag = 'research';
+                    } else if (leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' && leg.specialEps > 0) {
+                        // A stock-specific measure recorded by hand (meta.json / watchlist.json), such
+                        // as a REIT's EPRA EPS. The rank recurringNow gives it, so the table's
+                        // Normalized P/E and this panel cannot show two multiples for one stock.
+                        recEps = leg.specialEps;
+                        recPe = leg.quote.price / recEps;
+                        note = leg.specialEpsLabel;
+                        tag = 'manual';
                     } else if (tRec.v != null && fx != null) {
                         recEps = tRec.v * fx;
                         // A loss-making recurring year has no meaningful multiple — same rule
@@ -2207,6 +2221,8 @@
                     ...(cadenceNote ? [cadenceNote] : []),
                     ...(fromPrimary ? [`Source: these statements — and the next results date above — are read from ${leg.primary}, this company's home listing, not from ${leg.yahoo}. Yahoo keeps a separate dataset per listing, and they disagree: different year windows, per-share figures on different bases, and often a results date on one side only. Reading the home listing means every line of this company shows the same numbers, on the basis it actually files.`] : []),
                     ...(!fromPrimary && leg.adrShares > 0 && leg.adrShares !== 1 ? [`Per-share basis: this is an ADR, and one receipt is ${leg.adrShares} of an ordinary share. Yahoo scales per-share figures to the receipt while reporting revenue and income at company level, so EPS, recurring EPS and the share count here are converted back to the company's own basis — they match the filed statements and the guidance row, not the ADR. The Valuation panel above stays per receipt, because it divides by the ADR's market price.`] : []),
+                    ...(revBroken ? [`Revenue hidden: Yahoo's revenue line for this company is negative in FY${years.filter(y => y.rev < 0).map(fy).join(' and FY')}, which no revenue can be. It nets in fair-value movements, so it is not revenue in any year, and the margins built on it are blank too.`] : []),
+                    ...(/^REIT/.test(leg.quote.industry || '') ? [`A REIT: net income and EPS here are as filed, and under IFRS they include property revaluations, so they swing with valuers' marks rather than with the rent. The recurring figure is EPRA earnings per share${leg.specialEps != null ? `, ${leg.specialEps} in the quote's units (${escapeHTML(leg.specialEpsLabel || 'recorded by hand')}), which the Normalized P/E uses` : ', which the company reports and the Normalized P/E uses once it is recorded'}.`] : []),
                     'Currency: reported figures are never FX-converted.',
                     ...(guidance?.notes || []),
                 ])}`;

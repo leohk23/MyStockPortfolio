@@ -437,6 +437,8 @@ So **never filter fiscal years on one field's presence.** `fetchAnnualEps` used 
 
 `mergeEarnings` merges **field by field** for the same reason. A fresh value wins wherever Yahoo sent one (so restatements propagate), but a field Yahoo *omitted* is kept from the store. That is the only thing protecting backfilled data: Yahoo will return a year carrying EPS alone, and replacing the year wholesale would silently delete the revenue the backfill put there.
 
+**An IFRS property company's "revenue" can net in its revaluations.** Yahoo has Supermarket Income REIT (SUPR.L) at -£150m revenue in FY2023, and even its positive years miss the rent: FY2026 £99.2m, against £122.3m net rental income in the annual report. A negative revenue in any year therefore blanks the whole revenue series and its margins in the financials panel (`revBroken`), with the reason. Net income and EPS stay as filed, but under IFRS they include revaluations, so for a REIT the recurring figure is **EPRA EPS**, recorded as `specialEps` with its source in `specialEpsLabel` (SUPR: 5.7p for FY2026, against IFRS 6.9p). The panel's normalized EPS now ranks a hand-recorded figure exactly as the table's Normalized P/E does: research, then own adjustments, then `specialEps`, then Yahoo's normalized. It has to be updated by hand when the next annual results land.
+
 **A fund is not an operating company, and Yahoo will hand back "revenue" for one anyway** — SPOL.L (an iShares ETF) reports 22.9M of fund income. The test that separates them is *no EPS in **any** year*: a real company has EPS somewhere, even a loss-making one, while a Korean ticker missing only the TRAILING figure still has annual EPS. Do not use "has revenue".
 
 ## Deeper financial history (`backfill-earnings.js`)
