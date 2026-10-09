@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-08T11:54:21.717Z",
- "cashGBP": 308.95,
+ "generated": "2026-10-09T23:22:02.992Z",
+ "cashGBP": 178.1,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -124,8 +124,8 @@
    ]
   },
   "BVI.PA": {
-   "qty": 1,
-   "cost": 26.01,
+   "qty": 7,
+   "cost": 182.19,
    "currency": "EUR",
    "trades": [
     {
@@ -134,15 +134,52 @@
      "qty": 1,
      "price": 26.01,
      "pot": "2026-10-07-1755-BVI.PA"
+    },
+    {
+     "date": "2026-10-08",
+     "side": "BUY",
+     "qty": 6,
+     "price": 26.03,
+     "pot": "2026-10-08-0459-BVI.PA"
     }
    ]
   }
  },
  "proposals": [
   {
+   "file": "2026-10-09-1359-PDD.md",
+   "id": "2026-10-09-1359-PDD",
+   "state": "expired",
+   "ticker": "PDD",
+   "written": "2026-10-09",
+   "side": "BUY",
+   "limit": 81,
+   "warning": "in the **Q3 2026 release (expected about 18 November 2026)**, re-read if either: - online marketing services revenue is **below its Q3 2025 comparative** in that release, which would mean the domestic advertising take is shrinking, not just growing slowly; or - that revenue's year-on-year growth trails the growth of China's online retail sales of physical goods by more than **5 percentage points**. Use the NBS figure for January to September ([National Bureau of Statistics](https://www.stats.gov.cn/english/), monthly, published in mid October). Also warn if Q3 GAAP operating profit is below Q3 2025's **RMB25.03bn**.",
+   "break": "sell under §5.1 if either: - **FY2026 GAAP operating profit is below FY2025's RMB94.62bn** in the Q4 2026 release, about March 2027. That would mean the growth that resumed in H1 did not hold for the year; or - online marketing services revenue falls year on year in **two consecutive quarters (Q3 and Q4 2026)** while operating profit also falls year on year in both.",
+   "reviewBy": "2026-11-20",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-09-1359-NVO.md",
+   "id": "2026-10-09-1359-NVO",
+   "state": "expired",
+   "ticker": "NVO",
+   "written": "2026-10-09",
+   "side": "BUY",
+   "limit": 38.6,
+   "warning": "on **4 November 2026** (Q3 report), re-read if either: - the 2026 outlook for adjusted sales or adjusted operating profit growth at CER is changed so its midpoint is below **−3%**, the current midpoint; or - combined US Wegovy sales (injectable plus pill), +4% at CER in Q2, turn negative at CER. Also warn if Eli Lilly's US tirzepatide revenue growth in its Q3 10-Q (about 30 October, Lilly's filing, quarterly) accelerates while Novo's US GLP-1 sales fall in the same quarter. That is share moving, seen from the rival's side.",
+   "break": "sell under §5.1 if either: - the **2027 outlook** in the Q4 2026 report (early February 2027) puts adjusted sales growth at CER with a midpoint **below 0%**, meaning growth has not resumed; or - FY2026 adjusted operating profit growth at CER comes in **below −6%**, under the bottom of the range management has committed to.",
+   "reviewBy": "2026-11-06",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-08-0459-BVI.PA.md",
    "id": "2026-10-08-0459-BVI.PA",
-   "state": "open",
+   "state": "accepted",
    "ticker": "BVI.PA",
    "written": "2026-10-08",
    "side": "BUY",
@@ -150,6 +187,11 @@
    "warning": "at the **25 February 2027 FY2026 results**, re-read immediately if core cash is below **€562.0m** (15% below FY2025's €661.2m), or if net debt/EBITDA exceeds **2.0×**, the upper end of the revised issuer leverage range. Also warn at the **21 October 2026 Q3 update** if management cuts its FY organic-growth or margin outlook specifically because acquisitions or the Government Services exit require further spending; the absence of a quarterly cash statement does not count as a pass. A warning triggers review, not a sale.",
    "break": "at the **25 February 2027 accounts**, the thesis fails if core cash is non-positive; or if cash after also deducting business acquisitions net of acquired cash, financial-asset purchases, loans advanced and acquisition-related debt/shareholder settlements is negative **and** net debt/EBITDA exceeds 2.0×. Include those settlements even when classified as financing, without double-counting them in acquisition cash. Test reported-profit recovery at the same filing: H2 2026 reported operating profit must exceed **€479.3m**, the issuer's H2 2025 comparator (€992.4m annual less €513.1m H1); a result at or below that amount breaks this recovery case even if adjusted EPS grows. A break calls for sale under §5.1, subject to Leo's execution. Retain each line's definition and reconcile any changed presentation. If the relevant disclosures disappear, record the test as unobservable and keep the position under warning; do not infer a pass or invent a zero. The cash test detects spending even when adjusted margin remains attractive, and the acquisition-inclusive test detects debt-funded expansion that a capex-only measure would miss.",
    "reviewBy": "2026-10-21",
+   "executed": {
+    "date": "2026-10-08",
+    "qty": 6,
+    "price": 26.03
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -177,7 +219,7 @@
   {
    "file": "2026-10-07-1711-MWA.md",
    "id": "2026-10-07-1711-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-10-07",
    "side": "BUY",
@@ -192,7 +234,7 @@
   {
    "file": "2026-10-07-1711-BVI.PA.md",
    "id": "2026-10-07-1711-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-10-07",
    "side": "BUY",
@@ -200,9 +242,9 @@
    "warning": "Active at entry: H1 operating cash / adjusted attributable profit is **79.4%**, below my **90%** warning threshold. This is my ratio, **not** the company's differently defined cash-conversion KPI. At the **21 October 2026** revenue update, re-read immediately if management cuts its organic-growth or cash outlook, announces further material exit provisions, or attributes growth principally to acquisitions. The update need not contain cash statements; an absent cash figure does not clear the warning.",
    "break": "At FY2026 results, checked by **1 March 2027**, recommend sale under §5.1 if **any** of these occurs: reported operating profit does not exceed **€992.4m**; operating cash / positive adjusted attributable profit remains below **80%**; or cash after gross tangible/intangible purchases, business acquisitions net of acquired cash, financial investments/advances, lease cash and interest, and acquisition-related settlements is non-positive. Deduct each cash category once; exclude ordinary debt refinancing, dividends and buybacks. Separately, a disclosed acquisition-related impairment that eliminates the year's reported profit breaks the capital-allocation case immediately. These are analyst thresholds, not management guidance. If scope changes, use the issuer's restated prior-year operating-profit comparator where provided and show the original €992.4m bridge. Missing comparable data requires immediate review; it is not a pass. Both tiers respond to the financial risk even if organic sales remain healthy.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": null,
    "phase": "live",
-   "counts": false
+   "counts": true
   },
   {
    "file": "2026-10-06-0558-MWA.md",
@@ -227,7 +269,7 @@
   {
    "file": "2026-10-06-0558-BVI.PA.md",
    "id": "2026-10-06-0558-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-10-06",
    "side": "BUY",
@@ -235,7 +277,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -257,7 +299,7 @@
   {
    "file": "2026-10-05-1040-BVI.PA.md",
    "id": "2026-10-05-1040-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-10-05",
    "side": "BUY",
@@ -265,7 +307,7 @@
    "warning": "**Active at entry.** H1 IFRS operating cash of EUR241.3m divided by company-adjusted net profit of EUR303.8m is **79.4%**, below my **90%** warning line, while reported operating profit is falling. On **21 October 2026**, review any new exit provisions, announced acquisition funding or guidance deterioration. The sales-only release cannot clear the cash warning. At **25 February 2027**, also warn if full-year operating cash/adjusted net profit is below 90%, or disclosed exit/restructuring cash charges exceed their comparable-year amount.",
    "break": "At **25 February 2027 FY2026 results**, propose sale under §5.1 if any of the following holds: - Reported operating profit is **at or below EUR992.4m**, so the specified recovery has not occurred. - IFRS operating cash divided by positive adjusted net profit is **below 80%**; non-positive adjusted net profit also breaks. - Cash after **all PP&E purchases, intangible purchases and principal lease payments** is zero or negative. Also break if a disclosed exit liability or impairment makes the intended portfolio transformation dependent on a dilutive emergency equity raise. Ordinary planned acquisition borrowing is not silently reclassified as emergency funding. These are analyst ownership thresholds, not company guidance. Use the same consolidated scope and restated comparatives supplied by the issuer; if disposals change scope, show both reported total and issuer-provided comparable continuing operations. Do not waive a reported-total breach merely because organic growth was positive. Missing inputs trigger immediate re-read, not a pass. The warning is already observable; the break gives one full-year opportunity to recover. Definitions and figures: [issuer H1 statements and reconciliations](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -292,7 +334,7 @@
   {
    "file": "2026-10-04-1816-BVI.PA.md",
    "id": "2026-10-04-1816-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-10-04",
    "side": "BUY",
@@ -300,7 +342,7 @@
    "warning": null,
    "break": "Recommend exit under §5.1 if FY2026 operating cash remains below **0.80× positive adjusted attributable profit**, or if issuer free cash flow less lease principal/interest, net acquisition cash and the separately disclosed acquisition-related debt/shareholder payments is **zero or negative**. For H1 the explicitly defined subtotal is EUR157.7m − EUR68.4m − EUR13.8m − EUR40.3m = **EUR35.2m**; it excludes disposal proceeds and is not a claim to have deducted every investing cash flow. Include all equivalent line items next time even if renamed. Also break the recovery thesis if FY2026 reported operating profit fails to return to positive growth against **EUR992.4m FY2025**, using the issuer's disclosed like-for-like perimeter bridge. If no comparable bridge is supplied, mark the recovery unverified and withhold additions pending a dated re-read; do not silently substitute adjusted growth or a smaller local base. These are analyst tests, not management guidance. The primary cash test catches acquisitions consuming the very returns the thesis is buying. A revenue-only or adjusted-margin-only test would miss it.",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -315,9 +357,9 @@
    "warning": "At the **4 November 2026** nine-month report, re-read if Q3 **US adjusted sales growth at CER is below 0%**, down from +4% in Q2; or if either full-year adjusted sales or operating-profit guidance is lowered below its current −6% lower bound. Also warn if Lilly's combined Mounjaro plus Zepbound revenue grows **more than 30%** year on year while Novo's US adjusted obesity-care sales are flat or falling. These are analyst thresholds except for the issuer's guidance bound. Compare the same periods and document geographic differences; rival revenue is an adoption proxy, not market share.",
    "break": "Propose an exit under §5.1 if Novo's **US adjusted sales decline at CER in both Q3 and Q4 2026**, while Lilly's combined Mounjaro and Zepbound sales grow more than 30% in each corresponding quarter; or if Novo's FY2026 adjusted operating margin falls below **40%** while US adjusted sales decline for the year. Check FY2026 by **28 February 2027**, a review deadline pending the announced results date. The first-quarter warning precedes either annual/persistent break. [Lilly's own quarterly release](https://investor.lilly.com/news-releases/news-release-details/lilly-reports-second-quarter-2026-financial-results-raises-full) is the external source, on a quarterly cadence: Q2 Mounjaro was USD9.943bn, up 91%, and Zepbound USD4.928bn, up 46%. It also reports US company-wide volume and price bridges; those help distinguish category pricing pressure from Novo-specific weakness but must not be relabelled as drug-specific shares. Missing comparable adjusted disclosure triggers investigation, not a pass.",
    "reviewBy": "2026-11-05",
-   "supersededBy": null,
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-04-0827-CME.md",
@@ -337,7 +379,7 @@
   {
    "file": "2026-10-04-0827-BVI.PA.md",
    "id": "2026-10-04-0827-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-10-04",
    "side": "BUY",
@@ -345,7 +387,7 @@
    "warning": "Re-read at the **21 October 2026** revenue update if continuing-business organic growth is below **4%**, or management withdraws its organic-growth outlook. For the dominant acquisition-funding risk, the first full cash check is **25 February 2027**: warn if cash after reinvestment, lease payments and net acquisition/shareholder-settlement cash is non-positive, or adjusted net debt/EBITDA exceeds **2.0x**. Those are my thresholds; 2.0x is also the upper end of the issuer's September leverage ambition.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if that cash measure is non-positive **and** leverage exceeds 2.0x, or if a material acquisition impairment accompanies withdrawal of the organic-growth outlook. A disclosed acquisition requiring financing that takes leverage beyond 2.0x triggers the warning immediately; an ordinary planned deal is not automatically a break. Cash definition: start with issuer FCF, subtract the separately presented lease-and-interest line and net acquisitions/amounts owed to shareholders, reconciling classifications so each outflow is counted once. H1 reference is **EUR157.7m − 68.4m − 52.5m = EUR36.8m**, before dividends and buybacks ([H1 cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html)). This deliberately sees acquisition spending that an ordinary capex-only FCF test misses. The first financial warning and break can print on the same annual date; the warning is the weaker either-condition test, the break requires both. October sales are an earlier operating warning, not a substitute for the cash test.",
    "reviewBy": "2026-10-22",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
@@ -360,7 +402,7 @@
    "warning": "at the **Q3 report on 4 November 2026**, re-read if any of these happens: - 2026 adjusted sales or operating profit guidance is **cut below the 0% to −6% range**, meaning its lower bound falls under −6%; - US Operations sales growth at CER is **worse than −5%** for Q3 (Q2 was −2%); - Lilly's Q3 release (late October) shows Mounjaro plus Zepbound still growing **above 40%** while Novo's Wegovy grows below 0% at CER. Q2 was +91% and +46% against Wegovy's +1%. The third leg is the external read Rule 3 asks for. Any one trips a re-read, not a sale.",
    "break": "propose a sale under §5.1 if either: - **US Operations sales growth at CER is negative in both Q3 and Q4 2026**, and Lilly's tirzepatide revenue grows above 30% in both of the same quarters. That is share loss to a rival, not a shrinking market. The Q4 report is expected in early February 2027. - **FY2026 adjusted sales growth comes in below −6% at CER**, outside the guidance raised in August.",
    "reviewBy": "2026-11-05",
-   "supersededBy": "2026-10-04-0827-NVO",
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
    "counts": false
   },
@@ -390,7 +432,7 @@
    "warning": "— read at the **10 November 2026** review, after Novo's nine-month report on",
    "break": "— propose a sale under §5.1 if any one of these happens: - US Operations sales growth at CER is negative in **both Q3 and Q4 2026**. That is price falling faster than volume in the market that is over half of sales. - At FY2026 results (early February 2027), the **adjusted operating margin is below 40%**, against 44.6% in H1 2026. - **The 2027 outlook guides adjusted sales growth at CER below zero at its midpoint.** That is the first year carrying the January 2027 US list-price cut (P6), so a second year of decline would contradict the \"in line with peers\" premise of the price.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-10-04-0827-NVO",
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
    "counts": false
   },
@@ -442,7 +484,7 @@
   {
    "file": "2026-09-30-0722-BVI.PA.md",
    "id": "2026-09-30-0722-BVI.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BVI.PA",
    "written": "2026-09-30",
    "side": "BUY",
@@ -450,14 +492,14 @@
    "warning": "Check the **21 October 2026** revenue release for continuing-business organic growth below **4%**, or withdrawal of the upgraded organic-growth outlook. At **25 February 2027**, re-read if annual operating cash less capital expenditure, lease payments and net acquisition/shareholder-settlement cash is negative, or if company net debt/EBITDA exceeds **2.0x**. These are analyst tests; a scope change requires a like-for-like bridge, not a mechanical comparison of differently defined divisions.",
    "break": "At FY2026 results on **25 February 2027**, propose an exit under §5.1 if the same cash-after-reinvestment-and-acquisitions measure is negative **and** leverage exceeds **2.0x**, or if a material acquisition impairment is accompanied by a withdrawal of the organic-growth outlook. That combination would show that reported growth is being bought with a weakening balance sheet, the dominant risk below. An isolated planned acquisition does not automatically break the thesis. Cash definition: start with the issuer's FCF, subtract the separate lease-and-interest payment line and the net-acquisition/amounts-owed-to-shareholders line, using consistent classifications and counting each cash flow once. H1 reference: **€157.7m − €68.4m − €52.5m = €36.8m**, before dividends and buybacks. Reconcile any reclassification explicitly. This includes acquisition cash that an ordinary capex-only FCF test misses. [Issuer cash bridge](https://www.globenewswire.com/news-release/2026/07/29/3334968/0/en/bureau-veritas-delivering-on-our-commitments-with-higher-sequential-organic-growth-in-q2-and-continuous-margin-improvements.html).",
    "reviewBy": "2026-10-21",
-   "supersededBy": "2026-10-08-0459-BVI.PA",
+   "supersededBy": "2026-10-07-1711-BVI.PA",
    "phase": "live",
    "counts": false
   },
   {
    "file": "2026-09-29-2346-NVO.md",
    "id": "2026-09-29-2346-NVO",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVO",
    "written": "2026-09-29",
    "side": "BUY",
@@ -465,7 +507,7 @@
    "warning": "— read by the **10 November 2026** review, after Novo's Q3 on 4 November. Any one of these trips a re-read, not a sale: - US Operations sales growth at CER is **negative again in Q3 2026**, after +4% in Q2 and −4% for H1, with Novo again citing lower realised prices. - **Wegovy pill sales in Q3 2026 fall below Q2's DKK 3,141m.** - The 2026 outlook is **cut below its 0% to −6% range** for adjusted sales or adjusted operating profit growth at CER. - External, per Rule 3: Eli Lilly's own Q3 release shows its US tirzepatide revenue growth pulling further ahead of Novo's US GLP-1 growth than it did in Q2. The review records both companies' quarterly US figures side by side. This leg is recorded, not fired on a threshold, because I did not pull Lilly's Q2 base in this run.",
    "break": "— propose a sale under §5.1 if any one of these happens: - US Operations sales growth at CER is negative in **both Q3 and Q4 2026**, the two post-entry quarters. That would be price falling faster than volume in the market that is over half of sales. - At FY2026 results (early February 2027), the **adjusted operating margin is below 40%**, against 44.6% in H1 2026 and 41.3% reported for FY2025. - **The 2027 outlook guides adjusted sales growth at CER below zero at its midpoint.** A second year of decline contradicts the \"in line with peers\" ambition that this thesis relies on.",
    "reviewBy": "2026-11-10",
-   "supersededBy": "2026-10-04-0827-NVO",
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
    "counts": false
   },
@@ -659,7 +701,7 @@
   {
    "file": "2026-09-23-0557-EXPN.L.md",
    "id": "2026-09-23-0557-EXPN.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "EXPN.L",
    "written": "2026-09-23",
    "side": "BUY",
@@ -693,7 +735,7 @@
   {
    "file": "2026-09-22-0852-EUZ.DE.md",
    "id": "2026-09-22-0852-EUZ.DE",
-   "state": "open",
+   "state": "expired",
    "ticker": "EUZ.DE",
    "written": "2026-09-22",
    "side": "BUY",
@@ -929,7 +971,7 @@
   {
    "file": "2026-09-14-2247-EUZ.DE.md",
    "id": "2026-09-14-2247-EUZ.DE",
-   "state": "open",
+   "state": "expired",
    "ticker": "EUZ.DE",
    "written": "2026-09-14",
    "side": "BUY",
@@ -979,7 +1021,7 @@
   {
    "file": "2026-09-14-0906-AZN.L.md",
    "id": "2026-09-14-0906-AZN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "AZN.L",
    "written": "2026-09-14",
    "side": "BUY",
@@ -1127,7 +1169,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-10-04-0827-NVO",
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
    "counts": false
   },
@@ -1142,7 +1184,7 @@
    "warning": null,
    "break": null,
    "reviewBy": "2026-11-06",
-   "supersededBy": "2026-10-04-0827-NVO",
+   "supersededBy": "2026-10-09-1359-NVO",
    "phase": "live",
    "counts": false
   },
@@ -1859,7 +1901,7 @@
   {
    "file": "2026-09-01-1759-TW.md",
    "id": "2026-09-01-1759-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-09-01",
    "side": "BUY",
@@ -1889,7 +1931,7 @@
   {
    "file": "2026-08-31-2024-TW.md",
    "id": "2026-08-31-2024-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-08-31",
    "side": "BUY",
@@ -1919,7 +1961,7 @@
   {
    "file": "2026-08-31-1526-TW.md",
    "id": "2026-08-31-1526-TW",
-   "state": "open",
+   "state": "expired",
    "ticker": "TW",
    "written": "2026-08-31",
    "side": "BUY",
@@ -2173,6 +2215,7 @@
   }
  ],
  "open": [
+  "2026-10-08-0459-BVI.PA",
   "2026-10-07-1755-BVI.PA",
   "2026-10-06-0558-MWA",
   "2026-10-04-1816-CME",
@@ -2183,5 +2226,5 @@
   "2026-09-13-0830-MWA",
   "2026-09-08-2133-MWA"
  ],
- "today": "2026-10-08"
+ "today": "2026-10-09"
 }

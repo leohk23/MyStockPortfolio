@@ -30,7 +30,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 48 | **earns a feed** |
+| margin | 49 | **earns a feed** |
 | cash conversion | 37 | **earns a feed** |
 | volume / units | 37 | **earns a feed** |
 | leverage / net debt | 22 | **earns a feed** |
@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 4 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-280 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+285 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,11 +52,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-10-09 | Trading 212 availability for `PDD`, and PDD's ADS depositary service fee. | Deep dive 13:59 UTC proposed 2 PDD ADSs on the assumption Trading 212 lists it; not confirmed from the lane. On IBKR the USD1 commission is 0.62% of a £122 ticket and fails §4.1a. The deposit agreement's annual fee was budgeted at USD0.05 per ADS, unsourced. Wanted once, by hand: Leo can check the app in seconds, and the fee is in the 20-F's description of ADSs. |
-| 2026-10-09 | `PDD` merchant payables and the bridge from operating profit to net income. | Attributable net income fell 15% and 12% in Q1 and Q2 2026 while operating profit rose 22% and 8%. The cause, plausibly lower interest income, is not sourced, and gross cash of RMB456.4bn cannot be netted without the payables line. Wanted at each quarterly release while PDD is proposed or held. |
-| 2026-10-09 | US Treasury 30-year yield. | The macro block holds `^FVX` and `^TNX` only; the 30-year (5.60% on 8 Oct) came from the [US Treasury daily par yield table](https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202610). Wanted every run: free, official, one row a day, and the discount rate a long-duration book is priced on. |
-| 2026-10-09 | Asian and NW European diesel refining margins. | Only an LSEG figure via trade press ([Hydrocarbon Processing, 16 Sep](https://www.hydrocarbonprocessing.com/news/2026/09/asia-diesel-refining-margins-at-record-high-of-more-than-87-a-barrel/)) was available. Wanted monthly from the IEA Oil Market Report while the product squeeze lasts; third reach after 29 Aug and 8 Oct. It decides whether a refiner's low P/E is on peak-cycle earnings. |
 | 2026-10-09 | `CSL.AX` and `DGE.L` local quote and valuation history. | Fetched provisionally from Yahoo's chart endpoint. Retired by adding both to `watchlist.json`. |
+| 2026-10-09 | `PDD` merchant payables and the bridge from operating profit to net income. | Attributable net income fell 15% and 12% in Q1 and Q2 2026 while operating profit rose 22% and 8%. The cause, plausibly lower interest income, is not sourced, and gross cash of RMB456.4bn cannot be netted without the payables line. Wanted at each quarterly release while PDD is proposed or held. |
+| 2026-10-09 | Asian and NW European diesel refining margins. | Only an LSEG figure via trade press ([Hydrocarbon Processing, 16 Sep](https://www.hydrocarbonprocessing.com/news/2026/09/asia-diesel-refining-margins-at-record-high-of-more-than-87-a-barrel/)) was available. Wanted monthly from the IEA Oil Market Report while the product squeeze lasts; third reach after 29 Aug and 8 Oct. It decides whether a refiner's low P/E is on peak-cycle earnings. |
+| 2026-10-09 | Trading 212 availability for `PDD`, and PDD's ADS depositary service fee. | Deep dive 13:59 UTC proposed 2 PDD ADSs on the assumption Trading 212 lists it; not confirmed from the lane. On IBKR the USD1 commission is 0.62% of a £122 ticket and fails §4.1a. The deposit agreement's annual fee was budgeted at USD0.05 per ADS, unsourced. Wanted once, by hand: Leo can check the app in seconds, and the fee is in the 20-F's description of ADSs. |
+| 2026-10-09 | US Treasury 30-year yield. | The macro block holds `^FVX` and `^TNX` only; the 30-year (5.60% on 8 Oct) came from the [US Treasury daily par yield table](https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202610). Wanted every run: free, official, one row a day, and the discount rate a long-duration book is priced on. |
 | 2026-10-08 | `FRE.DE` local quote, valuation history, reported-versus-core earnings, segment cash conversion and acquisition returns. | Fresenius is outside the local universe, so the candidate was assessed from [Q2 results](https://www.fresenius.com/q2-2026) and the [mAbxience acquisition release](https://www.fresenius.com/acquisitionmAbxience), not from a local multiple. Added to `watchlist.json`, so the normal fetch should establish price, reported earnings and history. While it is tracked, results-date evidence should separate Kabi and Helios cash generation, reconcile reported and core profit, and test whether the up-to-EUR750m purchase improves ROIC after the disclosed roughly 20bp leverage increase. Wanted at results, not weekly. |
 | 2026-10-08 | Actual start dates for operating-cash valuation windows. | prices.json supplies pocfWeeks but no first usable date. The 8 October deep dive reports counts and explicitly leaves starts unavailable rather than calling each distribution five years long. Wanted alongside each exported cash percentile, using the same actual eligible weekly observations as the calculation. No reconstruction from observation count where gaps can exist. |
 | 2026-10-08 | Bureau Veritas issuer/local operating-profit reconciliation and gross cash after investment. | FY2025 issuer operating profit is EUR992.4m versus EUR938.7m locally; FY2024 EUR933.4m versus EUR912.1m. Revenue, attributable income, OCF and assets agree for FY2025. Source: https://group.bureauveritas.com/sites/g/files/zypfnx196/files/media/document/BV_Press_Release_FY_2025_Results.pdf . Needed at each annual/interim release: keep reported and adjusted definitions separate, reconcile ROIC inputs, and track gross capex, leases, interest, acquisitions, financial investments and leverage. This mismatch limited the 8 October deep-dive order to half allocation; it did not silently alter the filed store. |
