@@ -1,7 +1,21 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-06",
+  "updated": "2026-10-09",
   "normalizedEps": {
+    "PDD": {
+      "basis": "company-adjusted (non-GAAP) diluted EPS per ADS",
+      "ccy": "CNY",
+      "note": "Added by the 9 October 2026 deep dive. Issuer's non-GAAP diluted earnings per ADS (1 ADS = 4 Class A ordinary shares), RMB, from each quarterly 6-K exhibit 99.1; non-GAAP is the issuer's own definition, set out in the reconciliation table of each release (share-based compensation is the main item). Four contiguous quarters, Q3 2025 to Q2 2026. Not independently reconstructed owner earnings. GAAP diluted EPS per ADS for the same quarters: 19.70, 16.51, 8.48, 18.45. FY2025 non-GAAP diluted EPS per ADS was RMB72.38 against GAAP RMB67.03.",
+      "annual": [
+        { "end": "2025-12-31", "eps": 72.38, "source": "https://www.sec.gov/Archives/edgar/data/1737806/000110465926034813/tm269789d1_ex99-1.htm" }
+      ],
+      "quarters": [
+        { "end": "2025-09-30", "eps": 21.08, "source": "https://www.sec.gov/Archives/edgar/data/1737806/000110465925113490/tm2531580d1_ex99-1.htm" },
+        { "end": "2025-12-31", "eps": 17.69, "source": "https://www.sec.gov/Archives/edgar/data/1737806/000110465926034813/tm269789d1_ex99-1.htm" },
+        { "end": "2026-03-31", "eps": 9.51, "source": "https://www.sec.gov/Archives/edgar/data/1737806/000110465926067186/tm2615739d1_ex99-1.htm" },
+        { "end": "2026-06-30", "eps": 19.33, "source": "https://www.sec.gov/Archives/edgar/data/0001737806/000110465926100534/tm2623874d1_ex99-1.htm" }
+      ]
+    },
     "STVN": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "EUR",
@@ -58,9 +72,12 @@
     "NVO": {
       "basis": "company-adjusted diluted EPS per share/ADR",
       "ccy": "DKK",
-      "note": "Issuer Q2 2026 report, page 3 and Appendix 7. Adjusted EPS excludes specified intangible charges, major impairments/legal/restructuring items and 340B provision reversals with their related tax effects. H1 and Q2 overlap; never sum them. Only six months are covered, so these entries do not establish research TTM EPS or adjusted historical percentiles. DKK per ADR is explicitly the issuer unit, not USD. Added by the 25 September 2026 deep dive.",
-      "annual": [],
+      "note": "Issuer Q2 2026 report, page 3 and Appendix 7. Adjusted EPS excludes specified intangible charges, major impairments/legal/restructuring items and 340B provision reversals with their related tax effects. H1 and Q2 overlap; never sum them. Only six months are covered, so these entries do not establish research TTM EPS or adjusted historical percentiles. DKK per ADR is explicitly the issuer unit, not USD. Added by the 25 September 2026 deep dive. 9 October 2026 deep dive: added FY2025 adjusted DKK26.17 from the Q4 2025 report and a derived H2 2025, so H2 2025 plus H1 2026 now covers twelve contiguous months. The derivation uses the H1 2025 comparative stored above (12.71, from the Q2 2026 report); a scout read H1 2025 as 12.68 in the same report's highlights, so the derived half carries about DKK0.03 of definitional uncertainty.",
+      "annual": [
+        { "end": "2025-12-31", "eps": 26.17, "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000006/caq42025.htm" }
+      ],
       "quarters": [
+        { "end": "2025-12-31", "months": 6, "eps": 13.46, "derived": "FY2025 DKK26.17 less H1 2025 DKK12.71", "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000006/caq42025.htm and https://www.sec.gov/Archives/edgar/data/0000353278/000035327826000023/caq22026.htm" },
         { "end": "2026-06-30", "months": 6, "eps": 12.81, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
         { "end": "2026-06-30", "eps": 6.18, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
         { "end": "2025-06-30", "months": 6, "eps": 12.71, "source": "https://attachment.news.eu.nasdaq.com/a0078e15b379bff5e3b0ffdbddb3d5075" },
