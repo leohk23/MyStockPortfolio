@@ -361,7 +361,7 @@ Two consequences fall out of that guarantee and must not be "simplified" away:
 
 ### After the owner edits `watchlist.json`
 
-Hand-maintained, not derived — so **`npm run extract` has nothing to do with it** (that reads the Tradelog only). Entries are `{ yahoo, name, geography }`.
+Hand-maintained, not derived — so **`npm run extract` has nothing to do with it** (that reads the Tradelog only). Entries are `{ yahoo, name, geography, added }`. **`added`** is the date the name joined, for the table's Added column (sorted newest first): nobody types it. `watchlist-added.js` stamps any entry without one with today's date, and runs before a lane's commit (`run-lane.ps1`) and in `npm run publish`; the entries from before 10 Oct 2026 were dated from git, the first commit each name appears in.
 
 ```sh
 npm run fetch    # only when ADDING a name — it needs a quote before it can render

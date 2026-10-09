@@ -182,6 +182,10 @@ if ($stray) {
     if ($LASTEXITCODE -ne 0) { Note "revert failed - refusing to commit files this lane may not have written"; exit 2 }
 }
 
+# A name the Sweep added is dated here, not by the agent: the watchlist table sorts on `added`,
+# newest first, and an agent that forgot the field would sink the newest name to the bottom.
+if (git status --porcelain -- watchlist.json) { node watchlist-added.js 2>&1 | ForEach-Object { Note "  $_" } | Out-Null }
+
 git add -- pot watchlist.json 2>&1 | Out-Null
 $staged = git diff --cached --name-only
 if (-not $staged) { Note 'no changes — nothing to commit'; exit 0 }
