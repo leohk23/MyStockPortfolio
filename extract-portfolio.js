@@ -286,7 +286,7 @@ async function main() {
     // the rest below: amounts. Optional — without the file nothing is attached.
     if (fs.existsSync('.ibkr-dividends.json')) {
         const ib = JSON.parse(fs.readFileSync('.ibkr-dividends.json', 'utf8'));
-        const isinTo = Object.fromEntries(Object.entries(meta).filter(([k]) => /^[A-Z]{2}[A-Z0-9]{9}d$/.test(k)).map(([k, m]) => [k, m.yahoo]));
+        const isinTo = Object.fromEntries(Object.entries(meta).filter(([k]) => /^[A-Z]{2}[A-Z0-9]{9}\d$/.test(k)).map(([k, m]) => [k, m.yahoo]));
         const { byYahoo, unmatched } = matchReceipts(require('./ibkr-dividends.js').allRows(ib), holdings, isinTo);
         // Every holding with IBKR shares gets the record's start, paid or not: no rows inside the
         // record means nothing was paid there, not that it is unknown.
