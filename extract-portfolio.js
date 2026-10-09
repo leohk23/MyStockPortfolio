@@ -235,8 +235,10 @@ async function verifyNewSymbols(holdings) {
 // MC.PA, and MOHd for an LVMH interim line), so: the exact ticker or Yahoo symbol, then the same
 // symbol without its exchange suffix or leading zeros, then any row sharing the ISIN of one already
 // matched. Rows for a position no longer held are reported, never forced onto a holding.
+// `isinTo` maps a Tradelog symbol that IS an ISIN to its Yahoo symbol: IBKR names a bond by its
+// description ("UKT 4 10/22/31"), so a gilt recorded under its ISIN is found by that alone.
 // Each row becomes [payDate, exDate, amount, currency, type].
-function matchReceipts(rows, holdings) {
+function matchReceipts(rows, holdings, isinTo = {}) {
     const base = s => String(s).split('.')[0].replace(/^0+(?=\d)/, '').toUpperCase();
     const find = sym => holdings.find(h => h.ticker === sym || h.yahoo === sym)
         || (c => (c.length === 1 ? c[0] : null))(holdings.filter(h => base(h.ticker) === base(sym) || base(h.yahoo) === base(sym)));
@@ -244,7 +246,7 @@ function matchReceipts(rows, holdings) {
     for (const r of rows) { const h = find(r.symbol); if (h && r.isin) byIsin[r.isin] = h; }
     const byYahoo = {}, unmatched = new Set();
     for (const r of rows) {
-        const h = find(r.symbol) || byIsin[r.isin];
+        const h = find(r.symbol) || byIsin[r.isin] || holdings.find(x => x.yahoo === isinTo[r.isin]);
         if (!h) { unmatched.add(r.symbol); continue; }
         (byYahoo[h.yahoo] = byYahoo[h.yahoo] || []).push([r.date, r.exDate, r.amount, r.currency, r.type]);
     }
@@ -284,7 +286,8 @@ async function main() {
     // the rest below: amounts. Optional — without the file nothing is attached.
     if (fs.existsSync('.ibkr-dividends.json')) {
         const ib = JSON.parse(fs.readFileSync('.ibkr-dividends.json', 'utf8'));
-        const { byYahoo, unmatched } = matchReceipts(require('./ibkr-dividends.js').allRows(ib), holdings);
+        const isinTo = Object.fromEntries(Object.entries(meta).filter(([k]) => /^[A-Z]{2}[A-Z0-9]{9}d$/.test(k)).map(([k, m]) => [k, m.yahoo]));
+        const { byYahoo, unmatched } = matchReceipts(require('./ibkr-dividends.js').allRows(ib), holdings, isinTo);
         // Every holding with IBKR shares gets the record's start, paid or not: no rows inside the
         // record means nothing was paid there, not that it is unknown.
         for (const h of holdings) if (byYahoo[h.yahoo] || h.trades.some(t => t.platform === 'IB'))
@@ -401,6 +404,8 @@ function selftest() {
     assert.deepStrictEqual(Object.fromEntries(Object.entries(m.byYahoo).map(([k, v]) => [k, v.map(x => x[2])])),
         { '0001.HK': [1], '5332.T': [2], 'MC.PA': [3, 4] }, 'MOHd joins MC by ISIN');
     assert.deepStrictEqual(m.unmatched, ['SOLD'], 'a position no longer held is reported, not forced onto one');
+    const gilt = matchReceipts([r('UKT 4 10/22/31', 'GB00BPSNBF73', -18.58)], [...held, { ticker: 'T31', yahoo: 'T31.L' }], { GB00BPSNBF73: 'T31.L' });
+    assert.deepStrictEqual(Object.keys(gilt.byYahoo), ['T31.L'], 'a bond IBKR names by description is found by the ISIN it was recorded under');
     console.log('selftest ok');
 }
 
