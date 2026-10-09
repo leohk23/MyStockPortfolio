@@ -75,9 +75,9 @@ later is a thesis you cannot learn from. A dead link is an unauditable thesis.
   one is a reason for suspicion rather than comfort. Worth deciding whether §2.4 and the deep-dive
   brief should ask for return on capital and turnover alongside margin, rather than margin alone.
 
-- 2026-08-21, Ray Dalio, "How Countries Go Broke: The Dynamic Behind What is Happening Now".
-  No public URL found, so the saved text is the record:
-  [`reading/2026-08-21-How Countries Go Broke-Ray-Dalio.md`](reading/2026-08-21-How%20Countries%20Go%20Broke-Ray-Dalio.md)
+- 2026-08-21, Ray Dalio, "How Countries Go Broke: The Dynamic Behind What is Happening Now",
+  <https://raydalio.substack.com/p/how-countries-go-broke-the-dynamic>,
+  saved: [`reading/2026-08-21-How Countries Go Broke-Ray-Dalio.md`](reading/2026-08-21-How%20Countries%20Go%20Broke-Ray-Dalio.md)
   **Kind:** idea
   **Why:** _to come from Leo._
 
