@@ -1,7 +1,21 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-09",
+  "updated": "2026-10-10",
   "normalizedEps": {
+    "HLN.L": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "GBP",
+      "note": "Added 10 October 2026. Issuer pence are stored as GBP per ordinary share. Adjusted earnings exclude restructuring and other items; they are not independently reconstructed owner earnings. The derived H2 uses rounded annual less H1 EPS and may differ from a separately calculated half-year weighted-share result. Only one rolling twelve-month observation is established; no adjusted historical percentile is certified.",
+      "annual": [
+        { "end": "2024-12-31", "eps": 0.179, "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf" },
+        { "end": "2025-12-31", "eps": 0.188, "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf" }
+      ],
+      "quarters": [
+        { "end": "2025-06-30", "months": 6, "eps": 0.092, "source": "https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm" },
+        { "end": "2025-12-31", "months": 6, "eps": 0.096, "derived": "FY2025 GBP0.188 less H1 2025 GBP0.092; both issuer figures rounded to 0.1p", "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf and https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm" },
+        { "end": "2026-06-30", "months": 6, "eps": 0.103, "source": "https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm" }
+      ]
+    },
     "PDD": {
       "basis": "company-adjusted (non-GAAP) diluted EPS per ADS",
       "ccy": "CNY",
@@ -358,6 +372,12 @@
     }
   },
   "adjustments": {
+    "HLN.L": [
+      { "fy": "2024-12-31", "amount": 104000000, "basis": "after-tax attributable", "ccy": "GBP", "what": "Net disposals and others benefit removed in the issuer reconciliation of IFRS profit attributable to shareholders to adjusted profit; aggregate category, not a pure operating disposal gain.", "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf", "found": "2026-10-10" },
+      { "fy": "2025-12-31", "amount": 87000000, "basis": "after-tax attributable", "ccy": "GBP", "what": "Net disposals and others benefit removed in the issuer reconciliation of IFRS profit attributable to shareholders to adjusted profit; aggregate category including tax effects. FY2025 EPS is absent locally, so no historical per-share adjustment is claimed in this run.", "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf", "found": "2026-10-10" },
+      { "fy": "2026-12-31", "amount": 21000000, "arithmetic": false, "ccy": "GBP", "what": "H1 2026 Maidenhead site-disposal gain netted within restructuring costs. Gross gain, not separately certified after-tax attributable income; evidence only. The cash-flow statement also records GBP21m property-sale proceeds, a separate cash measure, not an additional earnings adjustment.", "source": "https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm", "found": "2026-10-10" },
+      { "fy": "2026-12-31", "amount": 1000000, "basis": "after-tax attributable", "ccy": "GBP", "what": "H1 2026 net disposals and others benefit removed in the issuer attributable-profit reconciliation. This is the aggregate net after-tax benefit, not the separate GBP21m gross Maidenhead gain within restructuring; do not subtract the gross gain as well.", "source": "https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm", "found": "2026-10-10" }
+    ],
     "STVN": [
       {
         "fy": "2026-12-31",
