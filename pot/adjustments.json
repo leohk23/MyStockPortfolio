@@ -1,7 +1,45 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-10",
+  "updated": "2026-10-11",
   "normalizedEps": {
+    "BN.PA": {
+      "basis": "company-recurring diluted EPS",
+      "ccy": "EUR",
+      "note": "Added 11 October 2026 from issuer results releases. Recurring EPS is Danone's alternative performance measure, not independently reconstructed owner earnings. H2 2025 is derived from rounded full-year less H1 per-share figures and may differ from a separately calculated half-year weighted-share result. Two annual observations and one rolling twelve-month observation do not certify an adjusted historical percentile. Local FY2025 operating profit disagrees with the issuer; this record does not overwrite filed/local accounts.",
+      "annual": [
+        {
+          "end": "2024-12-31",
+          "eps": 3.63,
+          "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 3.8,
+          "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 1.91,
+          "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf"
+        },
+        {
+          "end": "2025-12-31",
+          "months": 6,
+          "eps": 1.89,
+          "derived": "FY2025 EUR3.80 less H1 2025 EUR1.91; rounded issuer diluted EPS",
+          "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf and https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 1.92,
+          "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf"
+        }
+      ]
+    },
     "HLN.L": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "GBP",
@@ -372,6 +410,17 @@
     }
   },
   "adjustments": {
+    "BN.PA": [
+      {
+        "fy": "2026-12-31",
+        "amount": 110000000,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "H1 2026 non-recurring share of profit of equity-accounted companies, shown in the issuer recurring/non-recurring reconciliation. Group-attributable after-tax benefit is not separately isolated, so evidence only; do not subtract from attributable earnings or from recurring EPS. FY2026 is unfiled locally; this is the current-year bucket, not a fabricated annual result.",
+        "source": "https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf",
+        "found": "2026-10-11"
+      }
+    ],
     "HLN.L": [
       { "fy": "2024-12-31", "amount": 104000000, "basis": "after-tax attributable", "ccy": "GBP", "what": "Net disposals and others benefit removed in the issuer reconciliation of IFRS profit attributable to shareholders to adjusted profit; aggregate category, not a pure operating disposal gain.", "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf", "found": "2026-10-10" },
       { "fy": "2025-12-31", "amount": 87000000, "basis": "after-tax attributable", "ccy": "GBP", "what": "Net disposals and others benefit removed in the issuer reconciliation of IFRS profit attributable to shareholders to adjusted profit; aggregate category including tax effects. FY2025 EPS is absent locally, so no historical per-share adjustment is claimed in this run.", "source": "https://www.haleon.com/content/dam/haleon/corporate/documents/investors/results/full-year-results-2025/fy25-statement.pdf", "found": "2026-10-10" },
