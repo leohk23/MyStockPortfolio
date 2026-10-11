@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 49 | **earns a feed** |
-| cash conversion | 37 | **earns a feed** |
-| volume / units | 37 | **earns a feed** |
-| leverage / net debt | 22 | **earns a feed** |
+| margin | 51 | **earns a feed** |
+| cash conversion | 38 | **earns a feed** |
+| volume / units | 38 | **earns a feed** |
+| leverage / net debt | 23 | **earns a feed** |
 | return on capital | 20 | **earns a feed** |
 | inventory | 18 | **earns a feed** |
 | backlog / order intake | 17 | **earns a feed** |
 | capital returns | 10 | **earns a feed** |
-| same-store / comparable sales | 4 | **earns a feed** |
+| same-store / comparable sales | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-285 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+294 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -53,8 +53,13 @@ every report run. Do not hand-edit between the markers.
 | date | wanted | detail |
 |---|---|---|
 | 2026-10-10 | `HLN.L` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Haleon to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
-| 2026-10-10 | Haleon volume/mix, reported-to-adjusted profit bridge, cash conversion and leverage. | Fetched from Haleon's H1 2026 release. Wanted on results dates while `HLN.L` is tracked; the set tests whether brand growth is led by real volume, whether restructuring costs actually end, and whether cash generation remains strong without leverage rising above the company's roughly 2.5x target. |
+| 2026-10-10 | Actual start dates for P/OCF percentile windows. | Deep dive: prices.json exports pocfWeeks but not the cash distribution's from date. P/E and cash windows can begin in different years; do not substitute peFrom. Export the producer's actual cash-window start when this pipeline next changes. Haleon has 221 P/E weeks but 185 cash weeks. |
 | 2026-10-10 | AI-enabling goods trade and its contribution to total merchandise-trade growth. | Fetched from the WTO's October 2026 Global Trade Outlook. Wanted quarterly with WTO updates, not weekly. AI-enabling goods rose 67% year on year and supplied 47% of first-half global merchandise-trade growth, showing that the resilient headline is unusually concentrated and directly relevant to the book's technology exposure. |
+| 2026-10-10 | Executable alternate venues and complete first-year costs for RSGN.SW, 4543.T, BBCA.JK and HKEX/HKXCY. | Screening identified no locally covered primary-linked alternative for the first three; HKXCY maps to 0388.HK. Before an order, verify live T212 availability or the actual IBKR venue schedule, lot size, FX method and depositary charge. No unsourced lot or fee was used to reject these businesses in this run, and none is proposed on assumed costs. |
+| 2026-10-10 | Haleon cash after all investment, lease principal and asset-sale proceeds; provisions and restructuring cash payments. | Deep dive: [H1 issuer filing](https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm) yields GBP715m after removing GBP21m property proceeds and GBP33m lease principal from company FCF, versus GBP705m a year earlier. Net pension/other provision growth is GBP141m; that is cash timing, not recurring profit. Needed on half/full-year reports to test the proposed accounting-risk position. FY2025 local EPS is absent despite issuer reported 18.5p; added direct adjusted periods to the research store without changing filed data. |
+| 2026-10-10 | Haleon volume/mix, reported-to-adjusted profit bridge, cash conversion and leverage. | Fetched from Haleon's H1 2026 release. Wanted on results dates while `HLN.L` is tracked; the set tests whether brand growth is led by real volume, whether restructuring costs actually end, and whether cash generation remains strong without leverage rising above the company's roughly 2.5x target. |
+| 2026-10-10 | Mueller reported operating profit including restructuring. | Local Q3 FY2026 opinc is USD91.8m, against [issuer reported USD80.6m](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748). The USD11.2m difference matches strategic reorganisation/other charges; neither is adjusted operating profit USD94.9m. Needed quarterly so margin falsifiers do not read an expense-excluding local field as GAAP. No pipeline data was overwritten by this research run. |
+| 2026-10-10 | PDD reported operating-profit basis reconciliation. | Local FY2025 operating profit RMB93.102131bn and Q4 RMB26.197745bn differ from [issuer FY2025](https://www.sec.gov/Archives/edgar/data/1737806/000110465926034813/tm269789d1_ex99-1.htm), RMB94.624061bn and RMB27.719675bn. Use issuer reported values for the recovery test. Track the definitions at each results release rather than silently merging unlike measures. Q2 2026 local diluted EPS RMB18.44 is also slightly different from issuer RMB18.45. |
 | 2026-10-10 | Port-operator like-for-like throughput, revenue yield, cost and margin. | Fetched from ICTSI's H1 2026 release while testing the WTO trade-resilience theme. Wanted on results dates only if the name is reconsidered: reported throughput grew 16%, but only 1% after new and discontinued terminals, while cash costs rose 17% and revenue 18% on that same basis. Those bridges are needed before acquisition-led growth can be called compounding. |
 | 2026-10-09 | `CSL.AX` and `DGE.L` local quote and valuation history. | Fetched provisionally from Yahoo's chart endpoint. Retired by adding both to `watchlist.json`. |
 | 2026-10-09 | `PDD` merchant payables and the bridge from operating profit to net income. | Attributable net income fell 15% and 12% in Q1 and Q2 2026 while operating profit rose 22% and 8%. The cause, plausibly lower interest income, is not sourced, and gross cash of RMB456.4bn cannot be netted without the payables line. Wanted at each quarterly release while PDD is proposed or held. |
@@ -341,12 +346,7 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
+| 2026-10-11 | China PMI breadth by enterprise size, new orders and employment. | Fetched from the [National Bureau of Statistics September release](https://www.stats.gov.cn/english/PressRelease/202610/t20261008_1965466.html). Wanted monthly, not weekly. The headline returned to expansion at 50.1, but medium and small enterprises remained below 50 and employment weakened, which argues against treating the recovery as broad. |
+| 2026-10-11 | `BN.PA` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Danone to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
+| 2026-10-11 | Danone volume/mix, price, recurring operating margin, free cash flow and post-acquisition return on capital. | Fetched from [Danone's H1 2026 results](https://www.danone.com/fr/newsroom/communiques-de-presse/h1-results-2026.html). Wanted on results dates while `BN.PA` is tracked. The set tests whether health-led growth remains volume-backed and whether the Huel acquisition adds growth without weakening cash generation or capital returns. |
 <!-- entries:end -->
-
-| date | wanted | detail |
-|---|---|---|
-| 2026-10-10 | Haleon cash after all investment, lease principal and asset-sale proceeds; provisions and restructuring cash payments. | Deep dive: [H1 issuer filing](https://www.sec.gov/Archives/edgar/data/1900304/000110465926088450/hln-20260630xex99d1.htm) yields GBP715m after removing GBP21m property proceeds and GBP33m lease principal from company FCF, versus GBP705m a year earlier. Net pension/other provision growth is GBP141m; that is cash timing, not recurring profit. Needed on half/full-year reports to test the proposed accounting-risk position. FY2025 local EPS is absent despite issuer reported 18.5p; added direct adjusted periods to the research store without changing filed data. |
-| 2026-10-10 | Actual start dates for P/OCF percentile windows. | Deep dive: prices.json exports pocfWeeks but not the cash distribution's from date. P/E and cash windows can begin in different years; do not substitute peFrom. Export the producer's actual cash-window start when this pipeline next changes. Haleon has 221 P/E weeks but 185 cash weeks. |
-| 2026-10-10 | PDD reported operating-profit basis reconciliation. | Local FY2025 operating profit RMB93.102131bn and Q4 RMB26.197745bn differ from [issuer FY2025](https://www.sec.gov/Archives/edgar/data/1737806/000110465926034813/tm269789d1_ex99-1.htm), RMB94.624061bn and RMB27.719675bn. Use issuer reported values for the recovery test. Track the definitions at each results release rather than silently merging unlike measures. Q2 2026 local diluted EPS RMB18.44 is also slightly different from issuer RMB18.45. |
-| 2026-10-10 | Mueller reported operating profit including restructuring. | Local Q3 FY2026 opinc is USD91.8m, against [issuer reported USD80.6m](https://ir.muellerwaterproducts.com/press-releases/2026/08-05-2026-211118748). The USD11.2m difference matches strategic reorganisation/other charges; neither is adjusted operating profit USD94.9m. Needed quarterly so margin falsifiers do not read an expense-excluding local field as GAAP. No pipeline data was overwritten by this research run. |
-| 2026-10-10 | Executable alternate venues and complete first-year costs for RSGN.SW, 4543.T, BBCA.JK and HKEX/HKXCY. | Screening identified no locally covered primary-linked alternative for the first three; HKXCY maps to 0388.HK. Before an order, verify live T212 availability or the actual IBKR venue schedule, lot size, FX method and depositary charge. No unsourced lot or fee was used to reject these businesses in this run, and none is proposed on assumed costs. |
