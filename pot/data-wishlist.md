@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 51 | **earns a feed** |
+| margin | 52 | **earns a feed** |
+| volume / units | 39 | **earns a feed** |
 | cash conversion | 38 | **earns a feed** |
-| volume / units | 38 | **earns a feed** |
 | leverage / net debt | 23 | **earns a feed** |
-| return on capital | 20 | **earns a feed** |
+| return on capital | 22 | **earns a feed** |
 | inventory | 18 | **earns a feed** |
 | backlog / order intake | 17 | **earns a feed** |
-| capital returns | 10 | **earns a feed** |
+| capital returns | 12 | **earns a feed** |
 | same-store / comparable sales | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-294 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+300 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,12 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-11 | `BN.PA` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Danone to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
+| 2026-10-11 | China PMI breadth by enterprise size, new orders and employment. | Fetched from the [National Bureau of Statistics September release](https://www.stats.gov.cn/english/PressRelease/202610/t20261008_1965466.html). Wanted monthly, not weekly. The headline returned to expansion at 50.1, but medium and small enterprises remained below 50 and employment weakened, which argues against treating the recovery as broad. |
+| 2026-10-11 | Danone annual operating-profit mapping and capital return. | [Issuer FY2025 release](https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf) reports operating profit EUR2,940m (2024: EUR3,379m), versus local earnings EUR3,717m (2024: EUR3,466m). The local ROIC must not certify the investment until its numerator is reconciled. Revenue, assets and operating cash agree. H1 local quarterly revenue also sums to EUR13,923m against issuer EUR13,936m. Wanted at results refreshes; logged by the 12:12 deep dive, without changing generated data. |
+| 2026-10-11 | Danone cash after acquisitions and recurring EPS history. | Added two annual and three half-year recurring EPS observations to adjustments.json; the next normal fetch can publish researchEps, but this does not certify adjusted historical percentiles. FY2026 must disclose cash after capex, leases, acquisitions, equity stakes and contingent consideration so the Huel integration can be tested. [H1 source](https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf); review by 31 March 2027. |
+| 2026-10-11 | Danone volume/mix, price, recurring operating margin, free cash flow and post-acquisition return on capital. | Fetched from [Danone's H1 2026 results](https://www.danone.com/fr/newsroom/communiques-de-presse/h1-results-2026.html). Wanted on results dates while `BN.PA` is tracked. The set tests whether health-led growth remains volume-backed and whether the Huel acquisition adds growth without weakening cash generation or capital returns. |
+| 2026-10-11 | R&S executable alternate listing and broker route. | The attempted Trading 212 RSGN.CH Invest page was inaccessible, which does not establish absence. No alternate primary mapping is present locally. [IBKR](https://www.interactivebrokers.es/en/pricing/commissions-stocks-europe.php) has a CHF1.50 tiered minimum, already about 0.77% of all GBP178.15 available before FX or exchange charges. Confirm an actual lower-cost equity route before proposing; this run also waits on transformer deliveries, not fees alone. |
 | 2026-10-10 | `HLN.L` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Haleon to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
 | 2026-10-10 | Actual start dates for P/OCF percentile windows. | Deep dive: prices.json exports pocfWeeks but not the cash distribution's from date. P/E and cash windows can begin in different years; do not substitute peFrom. Export the producer's actual cash-window start when this pipeline next changes. Haleon has 221 P/E weeks but 185 cash weeks. |
 | 2026-10-10 | AI-enabling goods trade and its contribution to total merchandise-trade growth. | Fetched from the WTO's October 2026 Global Trade Outlook. Wanted quarterly with WTO updates, not weekly. AI-enabling goods rose 67% year on year and supplied 47% of first-half global merchandise-trade growth, showing that the resilient headline is unusually concentrated and directly relevant to the book's technology exposure. |
@@ -346,10 +352,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-10-11 | China PMI breadth by enterprise size, new orders and employment. | Fetched from the [National Bureau of Statistics September release](https://www.stats.gov.cn/english/PressRelease/202610/t20261008_1965466.html). Wanted monthly, not weekly. The headline returned to expansion at 50.1, but medium and small enterprises remained below 50 and employment weakened, which argues against treating the recovery as broad. |
-| 2026-10-11 | `BN.PA` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Danone to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
-| 2026-10-11 | Danone volume/mix, price, recurring operating margin, free cash flow and post-acquisition return on capital. | Fetched from [Danone's H1 2026 results](https://www.danone.com/fr/newsroom/communiques-de-presse/h1-results-2026.html). Wanted on results dates while `BN.PA` is tracked. The set tests whether health-led growth remains volume-backed and whether the Huel acquisition adds growth without weakening cash generation or capital returns. |
-| 2026-10-11 | Danone annual operating-profit mapping and capital return. | [Issuer FY2025 release](https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf) reports operating profit EUR2,940m (2024: EUR3,379m), versus local earnings EUR3,717m (2024: EUR3,466m). The local ROIC must not certify the investment until its numerator is reconciled. Revenue, assets and operating cash agree. H1 local quarterly revenue also sums to EUR13,923m against issuer EUR13,936m. Wanted at results refreshes; logged by the 12:12 deep dive, without changing generated data. |
-| 2026-10-11 | Danone cash after acquisitions and recurring EPS history. | Added two annual and three half-year recurring EPS observations to adjustments.json; the next normal fetch can publish researchEps, but this does not certify adjusted historical percentiles. FY2026 must disclose cash after capex, leases, acquisitions, equity stakes and contingent consideration so the Huel integration can be tested. [H1 source](https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf); review by 31 March 2027. |
-| 2026-10-11 | R&S executable alternate listing and broker route. | The attempted Trading 212 RSGN.CH Invest page was inaccessible, which does not establish absence. No alternate primary mapping is present locally. [IBKR](https://www.interactivebrokers.es/en/pricing/commissions-stocks-europe.php) has a CHF1.50 tiered minimum, already about 0.77% of all GBP178.15 available before FX or exchange charges. Confirm an actual lower-cost equity route before proposing; this run also waits on transformer deliveries, not fees alone. |
 <!-- entries:end -->
