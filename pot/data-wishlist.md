@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-300 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+301 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,8 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-13 | `COLO-B.CO` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Coloplast to `watchlist.json`, so the normal pipeline can establish its quote, filed earnings and comparable valuation history independently. |
+| 2026-10-13 | Coloplast category growth, Kerecis reimbursement, reported-to-adjusted profit, cash conversion and return on capital. | Fetched from the [9M 2025/26 issuer release](https://view.news.eu.nasdaq.com/view?id=b692d273c02943ec7e61819aa36649bc7&lang=en&src=micro) and [H1 2025/26 issuer release](https://view.news.eu.nasdaq.com/view?id=b816bf22b3e5514e0dce75950eb3197e2&lang=en&src=micro). Wanted on results dates while `COLO-B.CO` is tracked. Chronic Care growth must remain broad, while the set must show whether Biologics recovers after the Kerecis impairment and whether adjusted EBIT becomes shareholder cash without weakening ROIC. |
 | 2026-10-12 | Michael Burry's 11 October paid post in full. | The [official Substack archive](https://michaeljburry.substack.com/archive) exposed only the title, “Trading Post/Short Thoughts Mash-Up”. Wanted if Leo saves the article, not as a recurring feed; no market or company view was inferred through the paywall. |
 | 2026-10-11 | `BN.PA` local quote and valuation history. | No outside price or multiple was adopted. Retired by adding Danone to `watchlist.json`, so the normal pipeline can establish the quote, earnings bases and valuation history independently. |
 | 2026-10-11 | China PMI breadth by enterprise size, new orders and employment. | Fetched from the [National Bureau of Statistics September release](https://www.stats.gov.cn/english/PressRelease/202610/t20261008_1965466.html). Wanted monthly, not weekly. The headline returned to expansion at 50.1, but medium and small enterprises remained below 50 and employment weakened, which argues against treating the recovery as broad. |
