@@ -58,7 +58,7 @@ Use **Ponytail lite** by default for coding work in this repository. It may be t
 ## Data flow
 
 ```
-Tradelog.xlsx          (gitignored, local only — ONLY the Tradelog tab is read)
+Master Cashflow_CC_v0.5.xlsm  (Leo's OneDrive workbook, synced to the laptop; path in the gitignored .tradelog-path — ONLY the Tradelog tab is read)
    meta.json           per-instrument facts: yahoo, group, geography, currency (committed)
    watchlist.json      stocks watched but NOT owned — same pipeline, zero effect on totals
       │  node extract-portfolio.js   (needs the xlsx dev-dep; user runs it)
@@ -215,12 +215,12 @@ npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
 
 `extract-portfolio.js` refuses to write without the passphrase, so a missing `.holdings-key` can never publish positions in the clear. First-time setup: `tools/set-holdings-key.ps1`.
 
-**It now runs itself** (14 Oct 2026). The workbook is Leo's live master on OneDrive, `Master Cashflow_CC_v0.5.xlsm`, kept synced to the laptop; its path is in the gitignored `.tradelog-path`, and the extractor reads that file's Tradelog tab (without `.tradelog-path` it falls back to a `Tradelog.xlsx` in the repo). Task Scheduler's **`MyStockPortfolio tradelog watch`** runs `publish-on-change.js` every 15 minutes while Leo is logged in: when the workbook's modified time or size has moved since the last successful publish (`.tradelog-published`), and the save has been still for two minutes (so a file still syncing down is never read half-written), it runs `npm run publish`. A failure is logged to `publish-on-change.log` and retried on the next run, and it never publishes off `main`. So an edit made in Excel Online or on the phone reaches the site once the laptop has synced it. Running `npm run publish` by hand still works and is harmless. A new instrument still needs its `meta.json` entry first: the extract refuses without one, and the log says so.
+**It now runs itself** (14 Oct 2026). The workbook is Leo's live master on OneDrive, `Master Cashflow_CC_v0.5.xlsm`, kept synced to the laptop; its path is in the gitignored `.tradelog-path`, and the extractor reads that file's Tradelog tab (without `.tradelog-path` it falls back to a `Tradelog.xlsx` in the repo; the old copies were removed on 14 Oct 2026). Task Scheduler's **`MyStockPortfolio tradelog watch`** runs `publish-on-change.js` every 15 minutes while Leo is logged in: when the workbook's modified time or size has moved since the last successful publish (`.tradelog-published`), and the save has been still for two minutes (so a file still syncing down is never read half-written), it runs `npm run publish`. A failure is logged to `publish-on-change.log` and retried on the next run, and it never publishes off `main`. So an edit made in Excel Online or on the phone reaches the site once the laptop has synced it. Running `npm run publish` by hand still works and is harmless. A new instrument still needs its `meta.json` entry first: the extract refuses without one, and the log says so.
 
 Do not hand-edit `holdings.json`, and do not reconstruct trades by hand — the workbook is the source of truth and `extract-portfolio.js` is the only thing that reads it.
 
 - **Check the branch first.** `publish.js` commits to the current branch. Off `main`, the live site never sees it (Pages serves `main`). Fix: `git checkout main && git cherry-pick <sha>`.
-- **`Tradelog.xlsx` is local-only** (gitignored), so this cannot run in a cloud session — there is no workbook there. Everything else can.
+- **The workbook is local-only** (on OneDrive, synced to the laptop), so this cannot run in a cloud session — there is no workbook there. Everything else can.
 - **Writing to the workbook is the owner's job.** It is an Excel Table with ~5k formulas, external links and a data connection; SheetJS round-trips drop all three. If a row must be added, give the owner the input-column values (C,D,E,F,G,H,I,P,X — the rest are formulas) rather than writing the file. Excel COM works but is flaky here (locale/link quirks).
 - Verify after: `wrote holdings.json: N instruments`, then the new trade's date, quantity and average cost, and that `Bal Qty` closed out if it was a full exit. Dates are calendar days read straight off the workbook (`ymdLocal`) — a date one day out is a bug, not rounding.
 
@@ -656,9 +656,11 @@ Tab name `Tradelog` must not be renamed. Per-instrument display facts (yahoo/gro
 - The price bot commits to `main` on every scheduled run, so local pushes need `git pull --rebase` first (`publish.js` does it). On conflict in prices.json/history.json, the bot's/your newer generated file wins — regenerate rather than hand-merge.
 - Windows shell here is PowerShell; a Bash tool exists too. `.xlsx` reads need `xlsx` installed (`npm install`), which is dev-only and absent in CI by design.
 
-## Tradelog.xlsx external link (a live fragility)
+## The old external link (resolved 14 Oct 2026)
 
-`Tradelog.xlsx` is a renamed copy of the Master Cashflow workbook, and the copy left behind an **external link** to the original on OneDrive:
+**Resolved:** the live master, `Master Cashflow_CC_v0.5.xlsm`, has no external-link formulas in the columns the extractor reads (0 cells checked), so an edit made in Excel Online computes normally. Kept for the reasoning, and because the `parseTrade` guard below still matters.
+
+The old `Tradelog.xlsx` was a renamed copy of the Master Cashflow workbook, and the copy left behind an **external link** to the original on OneDrive:
 
 ```
 https://d.docs.live.net/.../Master Cashflow_CC_v0.4.xlsx
