@@ -10,7 +10,12 @@
 const fs = require('fs');
 const XLSX = require('xlsx');
 
-const WORKBOOK = 'Tradelog.xlsx';
+// The workbook: the path in the gitignored .tradelog-path, which is Leo's live master on OneDrive,
+// synced to this laptop (publish-on-change.js publishes it when it changes), else a Tradelog.xlsx
+// copy in the repo. Either way only its Tradelog tab is read.
+const WORKBOOK = (() => {
+    try { return fs.readFileSync('.tradelog-path', 'utf8').trim() || 'Tradelog.xlsx'; } catch { return 'Tradelog.xlsx'; }
+})();
 const META = 'meta.json';
 
 // Tradelog columns (0-indexed). "Non US date" is the trade date; "Exec Time" is the
@@ -260,7 +265,7 @@ async function main() {
     const meta = JSON.parse(fs.readFileSync(META, 'utf8'));
     // cellFormula: the Japanese rows hide their real yen price inside the price formula, and the
     // cached value alone is a USD figure that drifts with a live FX rate. See LOCAL_PRICE.
-    const wb = XLSX.readFile(WORKBOOK, { cellDates: true, cellFormula: true });
+    const wb = XLSX.readFile(WORKBOOK, { cellDates: true, cellFormula: true, sheets: ['Tradelog'] });
     if (!wb.Sheets.Tradelog) throw new Error('no "Tradelog" tab in workbook');
 
     const { bySymbol, realized } = readTradelog(wb.Sheets.Tradelog);
