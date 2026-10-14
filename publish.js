@@ -24,6 +24,13 @@ if (quiet('git diff --staged --quiet')) {
 }
 
 // The hourly Action commits prices.json to main, so pull its commits before pushing.
+// Files that are only ever regenerated: by the price bot (CI) or by `npm run pot-report`. The pot's
+// local runs leave copies of them modified, and stashing those across the rebase collided with the
+// bot's newer versions (world-history.json, 14 Oct 2026), leaving a half-merged tree that blocked
+// every later publish. They are rebuilt anyway, so the committed copy wins before syncing.
+const GENERATED = ['prices.json', 'history.json', 'intraday.json', 'world-history.json', 'earnings.json',
+    'alerts-state.json', 'pot.json', 'pot/positions.json', 'pot/origins.json'];
+quiet(`git checkout -- ${GENERATED.join(' ')}`);
 run('git pull --rebase --autostash');
 run('git push');                        // no-op if nothing new; otherwise triggers a fresh price fetch + deploy
 console.log('\nPushed. The site will re-price and redeploy within a minute.');

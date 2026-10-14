@@ -35,6 +35,8 @@ function main() {
     if (fs.existsSync(LOCK) && Date.now() - fs.statSync(LOCK).mtimeMs < LOCK_MS) { log('a publish is still running; skipped'); return; }
     const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
     if (branch !== 'main') { log(`on branch ${branch}, not main; not publishing`); return; }
+    const unmerged = execSync('git diff --name-only --diff-filter=U', { encoding: 'utf8' }).trim();
+    if (unmerged) { log(`the repo has unmerged files (${unmerged.split('\n').join(', ')}); resolve them, then it publishes`); return; }
     fs.writeFileSync(LOCK, String(process.pid));
     try {
         log(`${path.basename(workbook)} changed (saved ${new Date(stat.mtimeMs).toISOString()}); publishing`);

@@ -215,6 +215,8 @@ npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
 
 `extract-portfolio.js` refuses to write without the passphrase, so a missing `.holdings-key` can never publish positions in the clear. First-time setup: `tools/set-holdings-key.ps1`.
 
+**It now runs itself** (14 Oct 2026). The workbook is Leo's live master on OneDrive, `Master Cashflow_CC_v0.5.xlsm`, kept synced to the laptop; its path is in the gitignored `.tradelog-path`, and the extractor reads that file's Tradelog tab (without `.tradelog-path` it falls back to a `Tradelog.xlsx` in the repo). Task Scheduler's **`MyStockPortfolio tradelog watch`** runs `publish-on-change.js` every 15 minutes while Leo is logged in: when the workbook's modified time or size has moved since the last successful publish (`.tradelog-published`), and the save has been still for two minutes (so a file still syncing down is never read half-written), it runs `npm run publish`. A failure is logged to `publish-on-change.log` and retried on the next run, and it never publishes off `main`. So an edit made in Excel Online or on the phone reaches the site once the laptop has synced it. Running `npm run publish` by hand still works and is harmless. A new instrument still needs its `meta.json` entry first: the extract refuses without one, and the log says so.
+
 Do not hand-edit `holdings.json`, and do not reconstruct trades by hand — the workbook is the source of truth and `extract-portfolio.js` is the only thing that reads it.
 
 - **Check the branch first.** `publish.js` commits to the current branch. Off `main`, the live site never sees it (Pages serves `main`). Fix: `git checkout main && git cherry-pick <sha>`.
