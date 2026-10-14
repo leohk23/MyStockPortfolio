@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-11",
+  "updated": "2026-10-14",
   "normalizedEps": {
     "BN.PA": {
       "basis": "company-recurring diluted EPS",
@@ -410,6 +410,17 @@
     }
   },
   "adjustments": {
+    "BBW": [
+      {
+        "fy": "2027-01-30",
+        "amount": 5338000,
+        "ccy": "USD",
+        "basis": "after-tax attributable",
+        "what": "H1 fiscal 2026 refund of tariffs expensed in the previous fiscal year. The issuer explicitly reconciles net income of USD27.059m to adjusted net income of USD21.721m, removing USD5.338m after tax; do not subtract the USD7m gross refund. Fiscal 2026 ends 30 January 2027 per the issuer proxy (https://www.sec.gov/Archives/edgar/data/1113809/000143774926013976/bbw20260427_def14a.htm). This current fiscal year is not yet an annual row in earnings.json; do not attach it to the filed 2026-01-31 row.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm",
+        "found": "2026-10-14"
+      }
+    ],
     "BN.PA": [
       {
         "fy": "2026-12-31",
