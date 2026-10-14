@@ -19,8 +19,11 @@ const LOCK_MS = 15 * 60 * 1000;           // a lock older than this is a crashed
 const log = msg => fs.appendFileSync(LOG, `${new Date().toISOString()} ${msg}\n`);
 
 // 'unchanged' | 'settling' | 'publish', from the file's stat and what was last published.
+// Whole seconds: OneDrive rewrote the timestamp without its fraction (…28.877 became …28.000) and the
+// same save was published twice on 14 Oct 2026.
 function decide(stat, state, now) {
-    if (state && state.mtimeMs === stat.mtimeMs && state.size === stat.size) return 'unchanged';
+    const sec = ms => Math.floor(ms / 1000);
+    if (state && sec(state.mtimeMs) === sec(stat.mtimeMs) && state.size === stat.size) return 'unchanged';
     if (now - stat.mtimeMs < SETTLE_MS) return 'settling';
     return 'publish';
 }
@@ -57,6 +60,8 @@ function selftest() {
     const saved = { mtimeMs: now - 10 * 60 * 1000, size: 100 };
     assert.strictEqual(decide(saved, { mtimeMs: saved.mtimeMs, size: 100 }, now), 'unchanged');
     assert.strictEqual(decide(saved, null, now), 'publish', 'never published: publish');
+    assert.strictEqual(decide({ mtimeMs: 1791952468000, size: 100 }, { mtimeMs: 1791952468876.73, size: 100 }, now), 'unchanged',
+        'the same save with its fraction of a second dropped by OneDrive');
     assert.strictEqual(decide(saved, { mtimeMs: saved.mtimeMs - 1, size: 100 }, now), 'publish');
     assert.strictEqual(decide({ mtimeMs: now - 30 * 1000, size: 101 }, { mtimeMs: 1, size: 100 }, now), 'settling', 'still syncing: wait');
     console.log('selftest ok');

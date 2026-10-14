@@ -303,15 +303,29 @@ async function main() {
 
     // Public half + sealed half (vault.js, D67). seal() throws without a passphrase, so a missing
     // key refuses the write instead of publishing quantities in the clear.
-    const { seal, publicRow } = require('./vault');
+    const { seal, open, publicRow } = require('./vault');
+    const pub = holdings.map(publicRow);
+    const groups = new Set(holdings.map(h => h.group));
+    // Nothing new: leave the file exactly as it is. The seal is re-randomised on every write and
+    // `generated` moves, so rewriting identical holdings made a commit and a CI run out of nothing,
+    // which publish-on-change.js did whenever OneDrive merely touched the workbook (14 Oct 2026).
+    let same = false;
+    try {
+        const prev = JSON.parse(fs.readFileSync('holdings.json', 'utf8'));
+        same = JSON.stringify(prev.holdings) === JSON.stringify(pub)
+            && JSON.stringify(open(prev.sealed)) === JSON.stringify({ holdings });
+    } catch { /* no file, or a sealed half this key cannot open: write it fresh */ }
+    if (same) {
+        console.log(`holdings.json unchanged: ${holdings.length} instruments in ${groups.size} groups`);
+        return;
+    }
     fs.writeFileSync('holdings.json', JSON.stringify({
         generated: new Date().toISOString(),
         note: 'Tickers and groupings only. Quantities, costs and trades are in `sealed` (vault.js).',
-        holdings: holdings.map(publicRow),
+        holdings: pub,
         sealed: seal({ holdings }),
     }, null, 1));
 
-    const groups = new Set(holdings.map(h => h.group));
     console.log(`wrote holdings.json: ${holdings.length} instruments in ${groups.size} groups`);
     for (const g of [...groups].sort()) {
         const rows = holdings.filter(h => h.group === g);
