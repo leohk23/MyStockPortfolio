@@ -46,6 +46,10 @@
         #totals > div { min-width: 104px; }
         #totals .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
         #totals .value { font-size: 20px; font-weight: 600; }
+        #new-note { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--series-hsi); font-size: 13px; color: var(--text-muted); }
+        #new-note strong { color: var(--text-primary); }
+        #new-note button { margin-left: 8px; font: inherit; font-size: 12px; padding: 2px 10px; cursor: pointer;
+            background: transparent; color: var(--text-secondary); border: 1px solid var(--line); border-radius: 5px; }
 
         .btns { display: inline-flex; gap: 4px; flex-wrap: wrap; }
         .btns button {
@@ -793,6 +797,7 @@
         </div>
     </div>
 
+    <div id="new-note" hidden></div>
     <div class="table-responsive" id="holdings-table">
         <table id="portfolio" class="pinned">
             <thead>
@@ -851,7 +856,7 @@
     <div class="table-responsive" id="watch" hidden>
         <table id="watchlist" class="pinned">
             <thead><tr>
-                <th data-sort="name" aria-sort="ascending">Stock</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="price">Price</th>
+                <th data-sort="name">Stock</th><th data-sort="live" title="A dot means this line printed within 35 minutes of the last price fetch, so it is trading now. Inferred from the last trade time rather than from exchange hours, which would need a holiday calendar per market. Sort to group what is open."></th><th data-sort="added" aria-sort="descending" title="The day the name joined the watchlist: the first commit it appears in for names before 10 Oct 2026, and stamped when committed since, whether you or the pot's Sweep added it.">Added</th><th data-sort="price">Price</th>
                 <th data-sort="1d" title="Change since the previous session close">1D</th><th data-sort="7d">7D</th><th data-sort="1m">1M</th><th data-sort="3m">3M</th><th data-sort="6m">6M</th><th data-sort="1y">1Y</th><th data-sort="ytd">YTD</th>
                 <th data-sort="divYield" title="Yahoo trailing 12-month dividends divided by current price. No Income column here: that needs a position, and these are not held.">Yield</th>
                 <th data-sort="pe">P/E</th>
@@ -1035,7 +1040,7 @@
         let sort = { key: 'live', dir: -1 };
         // The watchlist is a separate flat table with no 'value'/grouping, so it keeps its own
         // sort state. Default A–Z by name, matching how buildWatchlist first orders it.
-        let watchSort = { key: 'name', dir: 1 };
+        let watchSort = { key: 'added', dir: -1 };   // newest names first (Leo, 10 Oct 2026)
         // Deliberately not persisted: a filter restored on load would hide rows with no
         // explanation and read as missing data.
         let filterText = '';
@@ -1053,6 +1058,13 @@
         let portfolioMetric = 'twr';          // whole-portfolio chart: 'value' (NAV proxy) or 'twr'
         const benchOn = new Set();
         const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
+        // The table follows the chart: Performance with New on and Existing off cuts it to this
+        // year's buys, Existing on and New off to the shares held before it. Both on is the whole
+        // book again, so that shows everything; Total makes no difference. Not tied to chartSel, so
+        // clicking a stock in the cut table does not undo the cut. Holdings views only; the tiles
+        // above stay whole-portfolio, and Mix stays a share of the whole.
+        const cohortView = () => portfolioMetric !== 'twr' || cohortOn.has('new') === cohortOn.has('existing') ? null
+            : cohortOn.has('new') ? 'new' : 'existing';
         const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
         const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -3108,6 +3120,9 @@
         }
 
         function selectGroup(group) {
+            // From the cut table, chart the whole group: its own Total/Existing/New lines do the
+            // cutting, and a row holding only this year's buys would draw New as "Total".
+            group = STATE.rows.find(r => r.name === group.name) || group;
             const same = chartGroup?.name === group.name;
             chartSel = null;
             chartGroup = same ? null : group;
@@ -3374,9 +3389,10 @@
         const matches = (text, terms) => terms.every(t => text.includes(t));
         const searchTerms = () => filterText.split(/\s+/).filter(Boolean);
         // One definition of "visible" per table, so the count can never disagree with the rows.
+        const baseRows = () => STATE.cohortRows || STATE.rows;
         const visibleRows = () => {
             const t = searchTerms();
-            return t.length ? STATE.rows.filter(r => matches(haystack(r), t)) : STATE.rows;
+            return t.length ? baseRows().filter(r => matches(haystack(r), t)) : baseRows();
         };
         const visibleWatch = () => {
             const t = searchTerms();
@@ -3393,7 +3409,7 @@
             const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
                 : STATE.dim === 'macro' || STATE.dim === 'world' ? [0, 0]
                 : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
-                : [visibleRows().length, STATE.rows.length];
+                : [visibleRows().length, baseRows().length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
         }
 
@@ -3513,6 +3529,44 @@
             if (STATE.locked) pb.title = 'Amounts are sealed: reload and unlock to see them. Percentages are public.';
             pb.onclick = () => { priv = !priv; localStorage.setItem('priv', priv ? '1' : '0');
                 paint(); renderAll(); };
+        }
+
+        // What the cut is, said once over the table rather than in every tooltip.
+        const cohortLabel = k => k === 'new' ? `New buys ${YEAR_START.slice(0, 4)}` : `Existing (pre-${YEAR_START.slice(0, 4)})`;
+        function renderNewNote() {
+            const el = document.getElementById('new-note');
+            el.hidden = !STATE.cohortRows || document.getElementById('holdings-table').hidden;
+            if (el.hidden) return;
+            const k = STATE.cohortView, rows = STATE.cohortRows, year = YEAR_START.slice(0, 4);
+            el.style.borderLeftColor = k === 'new' ? 'var(--series-hsi)' : 'var(--series-spx)';
+            el.innerHTML = `<strong>${cohortLabel(k)} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}</strong>, following the chart's ${k === 'new' ? 'New' : 'Existing'} line. `
+                + (k === 'new'
+                    ? `Shares, cost, value, gain, Held and CAGR are those of the shares bought since 1 Jan ${year}, at what was paid for them. `
+                        + 'A sale this year comes out of the older shares first, as in the line, so trimming an old holding leaves this alone. '
+                    : `The shares held on 31 Dec ${Number(year) - 1} that are still held, at their average cost on that day; realized gains stay here. `
+                        + 'A sale this year comes out of these older shares first. The line holds the 31 Dec shares all year, as if left alone, '
+                        + 'so where an old holding was trimmed this year the table is smaller than the line. '
+                        + 'Gain and % are since the shares were bought, not this year: the line starts on 31 Dec. ')
+                + 'The line is time-weighted, so its % will not equal the % in the total row. '
+                + (k === 'new' ? 'Received is "–": IBKR records dividends per holding, not per purchase. '
+                    : 'Received is shown only where nothing was bought this year: IBKR records dividends per holding, not per purchase. ')
+                + 'The tiles above are still the whole portfolio.'
+                + '<button type="button">Show everything</button>';
+            // Turns the chart's cohort off too: the table follows the chart, never the other way round.
+            el.querySelector('button').onclick = () => {
+                cohortOn.delete(k);
+                if (!cohortOn.size) cohortOn.add('total');
+                document.querySelectorAll('#cohorts button').forEach(o => o.setAttribute('aria-pressed', String(cohortOn.has(o.dataset.cohort))));
+                syncNewRows();
+                updateChart();
+            };
+        }
+        // Rebuild the table only when the cut actually changes: a cohort click that leaves it
+        // where it was (Total on or off) must not re-render a table you may have scrolled.
+        function syncNewRows() {
+            if ((STATE.cohortView || null) === (STATE.locked ? null : cohortView())) return;
+            rebuildRows();
+            renderTable();
         }
 
         function renderTable() {
@@ -3663,7 +3717,7 @@
             const keys = ths.map(th => th.dataset.sort);
             const cells = ths.map(() => '<td></td>');
             const put = (k, html) => { const i = keys.indexOf(k); if (i >= 0) cells[i] = html; };
-            put('name', `<td>${searchTerms().length ? 'Filtered' : 'Total'}</td>`);
+            put('name', `<td>${STATE.cohortRows ? cohortLabel(STATE.cohortView) : searchTerms().length ? 'Filtered' : 'Total'}</td>`);
             put('cost', `<td>${money(cost)}</td>`);
             put('value', `<td>${money(shownValue)}</td>`);
             put('gain', `<td class="${cls(gain)}">${money(gain)}</td>`);
@@ -3676,12 +3730,13 @@
             put('yield', `<td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>`);
             put('income', `<td>${money(income)}</td>`);
             const recv = shown.reduce((a, r) => a + (r.received || 0), 0);
-            put('received', `<td>${STATE.received ? money(recv) : ''}</td>`);
+            put('received', `<td>${STATE.cohortRows ? '<span class="muted">–</span>' : STATE.received ? money(recv) : ''}</td>`);
             for (const p of portfolioLib.PERIODS) {
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
             }
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
+            renderNewNote();
             updateSearchCount();
             markSelectedRow();
             pinColumns();       // before the float clone: it copies the header widths this reads
@@ -3773,6 +3828,27 @@
                 r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
             }
             STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
+            // A cohort: the same build() over each holding cut to the cohort's shares, so every
+            // column means what it means in the full table, only for those shares. Needs the trades,
+            // so locked there is nothing to cut. Received only for a holding left whole (nothing
+            // bought this year): IBKR's record is per holding, not per lot. A row with any leg cut
+            // shows "–" rather than part of its income.
+            STATE.cohortView = STATE.locked ? null : cohortView();
+            const cut = STATE.cohortView === 'new' ? portfolioLib.newBuys : portfolioLib.existingShares;
+            STATE.cohortRows = STATE.cohortView
+                ? portfolioLib.build(cut(STATE.holdings, YEAR_START, STATE.rates), STATE.rates, STATE.quotes, STATE.dim)
+                : null;
+            for (const r of STATE.cohortRows || []) {
+                for (const leg of r.legs) {
+                    const x = leg.bought == null ? STATE.received?.[leg.yahoo] : null;
+                    leg.receivedParts = x || null;
+                    leg.received = x ? x.actual + x.estimated : null;
+                }
+                const whole = r.legs.every(l => l.receivedParts);
+                r.receivedParts = whole ? { actual: r.legs.reduce((a, l) => a + l.receivedParts.actual, 0),
+                    estimated: r.legs.reduce((a, l) => a + l.receivedParts.estimated, 0) } : null;
+                r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
+            }
         }
 
         // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
@@ -3801,6 +3877,7 @@
                 tr.innerHTML = `
                     <td>${w.name} <span class="muted">${w.yahoo}</span>${originTag(w.yahoo)}</td>
                     ${liveCell([w.quote])}
+                    <td class="muted">${w.added ? ymd(w.added) : '–'}</td>
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(w.quote[p])}">${pct(w.quote[p])}</td>`).join('')}
                     <td class="muted">${w.quote.divYield ? plain(w.quote.divYield) : '–'}</td>
@@ -3937,6 +4014,7 @@
         function applyView() {
             const dim = STATE.dim;
             document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot';
+            document.getElementById('new-note').hidden = !STATE.cohortRows || document.getElementById('holdings-table').hidden;
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
             document.getElementById('macro').hidden = dim !== 'macro';
@@ -4504,6 +4582,7 @@ function renderPot() {
             b.addEventListener('click', () => {
                 portfolioMetric = b.dataset.pmetric;
                 document.querySelectorAll('#pmetric button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+                syncNewRows();
                 updateChart();
             }));
 
@@ -4512,6 +4591,7 @@ function renderPot() {
                 const k = b.dataset.cohort;
                 cohortOn.has(k) ? cohortOn.delete(k) : cohortOn.add(k);
                 b.setAttribute('aria-pressed', String(cohortOn.has(k)));
+                syncNewRows();
                 updateChart();
             }));
 
