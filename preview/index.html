@@ -1059,10 +1059,12 @@
         const benchOn = new Set();
         const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
         // The table follows the chart: Performance with New on and Existing off cuts it to this
-        // year's buys. New with Existing is the whole book again, so that shows everything. Not
-        // tied to chartSel, so clicking a stock in the cut table does not undo the cut. Holdings
-        // views only; the tiles above stay whole-portfolio, and Mix stays a share of the whole.
-        const newOnly = () => portfolioMetric === 'twr' && cohortOn.has('new') && !cohortOn.has('existing');
+        // year's buys, Existing on and New off to the shares held before it. Both on is the whole
+        // book again, so that shows everything; Total makes no difference. Not tied to chartSel, so
+        // clicking a stock in the cut table does not undo the cut. Holdings views only; the tiles
+        // above stay whole-portfolio, and Mix stays a share of the whole.
+        const cohortView = () => portfolioMetric !== 'twr' || cohortOn.has('new') === cohortOn.has('existing') ? null
+            : cohortOn.has('new') ? 'new' : 'existing';
         const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
         const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -3387,7 +3389,7 @@
         const matches = (text, terms) => terms.every(t => text.includes(t));
         const searchTerms = () => filterText.split(/\s+/).filter(Boolean);
         // One definition of "visible" per table, so the count can never disagree with the rows.
-        const baseRows = () => STATE.newRows || STATE.rows;
+        const baseRows = () => STATE.cohortRows || STATE.rows;
         const visibleRows = () => {
             const t = searchTerms();
             return t.length ? baseRows().filter(r => matches(haystack(r), t)) : baseRows();
@@ -3529,21 +3531,30 @@
                 paint(); renderAll(); };
         }
 
-        // What the New buys view is, said once over the table rather than in every tooltip.
+        // What the cut is, said once over the table rather than in every tooltip.
+        const cohortLabel = k => k === 'new' ? `New buys ${YEAR_START.slice(0, 4)}` : `Existing (pre-${YEAR_START.slice(0, 4)})`;
         function renderNewNote() {
             const el = document.getElementById('new-note');
-            el.hidden = !STATE.newRows || document.getElementById('holdings-table').hidden;
+            el.hidden = !STATE.cohortRows || document.getElementById('holdings-table').hidden;
             if (el.hidden) return;
-            const rows = STATE.newRows, year = YEAR_START.slice(0, 4);
-            el.innerHTML = `<strong>New buys ${year} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}</strong>, following the chart's New line. `
-                + `Shares, cost, value, gain, Held and CAGR are those of the shares bought since 1 Jan ${year}, at what was paid for them. `
-                + 'A sale this year comes out of the older shares first, as in the line, so trimming an old holding leaves this alone. '
-                + 'The line is time-weighted, so its % will not equal the % in the New buys total row. '
-                + 'Received is "–": IBKR records dividends per holding, not per purchase. The tiles above are still the whole portfolio.'
+            const k = STATE.cohortView, rows = STATE.cohortRows, year = YEAR_START.slice(0, 4);
+            el.style.borderLeftColor = k === 'new' ? 'var(--series-hsi)' : 'var(--series-spx)';
+            el.innerHTML = `<strong>${cohortLabel(k)} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}</strong>, following the chart's ${k === 'new' ? 'New' : 'Existing'} line. `
+                + (k === 'new'
+                    ? `Shares, cost, value, gain, Held and CAGR are those of the shares bought since 1 Jan ${year}, at what was paid for them. `
+                        + 'A sale this year comes out of the older shares first, as in the line, so trimming an old holding leaves this alone. '
+                    : `The shares held on 31 Dec ${Number(year) - 1} that are still held, at their average cost on that day; realized gains stay here. `
+                        + 'A sale this year comes out of these older shares first. The line holds the 31 Dec shares all year, as if left alone, '
+                        + 'so where an old holding was trimmed this year the table is smaller than the line. '
+                        + 'Gain and % are since the shares were bought, not this year: the line starts on 31 Dec. ')
+                + 'The line is time-weighted, so its % will not equal the % in the total row. '
+                + (k === 'new' ? 'Received is "–": IBKR records dividends per holding, not per purchase. '
+                    : 'Received is shown only where nothing was bought this year: IBKR records dividends per holding, not per purchase. ')
+                + 'The tiles above are still the whole portfolio.'
                 + '<button type="button">Show everything</button>';
-            // Turns the chart's New off too: the table follows the chart, never the other way round.
+            // Turns the chart's cohort off too: the table follows the chart, never the other way round.
             el.querySelector('button').onclick = () => {
-                cohortOn.delete('new');
+                cohortOn.delete(k);
                 if (!cohortOn.size) cohortOn.add('total');
                 document.querySelectorAll('#cohorts button').forEach(o => o.setAttribute('aria-pressed', String(cohortOn.has(o.dataset.cohort))));
                 syncNewRows();
@@ -3553,7 +3564,7 @@
         // Rebuild the table only when the cut actually changes: a cohort click that leaves it
         // where it was (Total on or off) must not re-render a table you may have scrolled.
         function syncNewRows() {
-            if (!!STATE.newRows === (newOnly() && !STATE.locked)) return;
+            if ((STATE.cohortView || null) === (STATE.locked ? null : cohortView())) return;
             rebuildRows();
             renderTable();
         }
@@ -3706,7 +3717,7 @@
             const keys = ths.map(th => th.dataset.sort);
             const cells = ths.map(() => '<td></td>');
             const put = (k, html) => { const i = keys.indexOf(k); if (i >= 0) cells[i] = html; };
-            put('name', `<td>${STATE.newRows ? `New buys ${YEAR_START.slice(0, 4)}` : searchTerms().length ? 'Filtered' : 'Total'}</td>`);
+            put('name', `<td>${STATE.cohortRows ? cohortLabel(STATE.cohortView) : searchTerms().length ? 'Filtered' : 'Total'}</td>`);
             put('cost', `<td>${money(cost)}</td>`);
             put('value', `<td>${money(shownValue)}</td>`);
             put('gain', `<td class="${cls(gain)}">${money(gain)}</td>`);
@@ -3719,7 +3730,7 @@
             put('yield', `<td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>`);
             put('income', `<td>${money(income)}</td>`);
             const recv = shown.reduce((a, r) => a + (r.received || 0), 0);
-            put('received', `<td>${STATE.newRows ? '<span class="muted">–</span>' : STATE.received ? money(recv) : ''}</td>`);
+            put('received', `<td>${STATE.cohortRows ? '<span class="muted">–</span>' : STATE.received ? money(recv) : ''}</td>`);
             for (const p of portfolioLib.PERIODS) {
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
@@ -3817,12 +3828,27 @@
                 r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
             }
             STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
-            // New buys: the same build() over each holding cut to this year's buys, so every column
-            // means what it means in the full table, only for those shares. Needs the trades, so
-            // locked there is nothing to cut. Received stays "–": IBKR's record is not per lot.
-            STATE.newRows = newOnly() && !STATE.locked
-                ? portfolioLib.build(portfolioLib.newBuys(STATE.holdings, YEAR_START, STATE.rates), STATE.rates, STATE.quotes, STATE.dim)
+            // A cohort: the same build() over each holding cut to the cohort's shares, so every
+            // column means what it means in the full table, only for those shares. Needs the trades,
+            // so locked there is nothing to cut. Received only for a holding left whole (nothing
+            // bought this year): IBKR's record is per holding, not per lot. A row with any leg cut
+            // shows "–" rather than part of its income.
+            STATE.cohortView = STATE.locked ? null : cohortView();
+            const cut = STATE.cohortView === 'new' ? portfolioLib.newBuys : portfolioLib.existingShares;
+            STATE.cohortRows = STATE.cohortView
+                ? portfolioLib.build(cut(STATE.holdings, YEAR_START, STATE.rates), STATE.rates, STATE.quotes, STATE.dim)
                 : null;
+            for (const r of STATE.cohortRows || []) {
+                for (const leg of r.legs) {
+                    const x = leg.bought == null ? STATE.received?.[leg.yahoo] : null;
+                    leg.receivedParts = x || null;
+                    leg.received = x ? x.actual + x.estimated : null;
+                }
+                const whole = r.legs.every(l => l.receivedParts);
+                r.receivedParts = whole ? { actual: r.legs.reduce((a, l) => a + l.receivedParts.actual, 0),
+                    estimated: r.legs.reduce((a, l) => a + l.receivedParts.estimated, 0) } : null;
+                r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
+            }
         }
 
         // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
@@ -3988,7 +4014,7 @@
         function applyView() {
             const dim = STATE.dim;
             document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot';
-            document.getElementById('new-note').hidden = !STATE.newRows || document.getElementById('holdings-table').hidden;
+            document.getElementById('new-note').hidden = !STATE.cohortRows || document.getElementById('holdings-table').hidden;
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
             document.getElementById('macro').hidden = dim !== 'macro';

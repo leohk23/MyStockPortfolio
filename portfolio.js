@@ -500,7 +500,36 @@ function newBuys(holdings, since, rates) {
     return out;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+// The Existing cohort as holdings: whatever newBuys() does not take, so the two always add up to
+// the shares held. The cost is the average cost on the last trade before `since`: what the shares
+// held on 31 Dec had cost, since a sale does not move an average cost. `trades` are the trades
+// before `since` plus this year's sales, so Held matches sales against the oldest lots, as in
+// holdingAge. All realized gains stay here: the new shares have none unless this year's sales ran
+// past the old ones. A holding with no buys this year is unchanged, its `received` included.
+//
+// The Existing line differs on purpose: it holds the 31 Dec shares flat all year (cohortMV's
+// filter ignores this year's sales), answering "how did last year's book do, left alone". The
+// table shows what is still held, so where an old holding was trimmed this year it is smaller.
+function existingShares(holdings, since, rates) {
+    const out = [];
+    for (const h of holdings) {
+        const before = (h.trades || []).filter(t => t.date < since);
+        if (!before.length) continue;
+        const bought = (h.trades || []).filter(t => t.date >= since && t.side !== 'SELL' && t.qty > 0)
+            .reduce((a, t) => a + t.qty, 0);
+        if (!bought) { out.push(h); continue; }
+        const qty = h.qty - Math.min(bought, h.qty);
+        if (!(qty > 0)) continue;
+        const last = before[before.length - 1];
+        const avgPrice = last.avgPrice * rateFor(last.currency, rates) / rateFor(h.currency, rates);
+        const trades = [...before, ...h.trades.filter(t => t.date >= since && t.side === 'SELL')];
+        out.push({ ...h, qty, avgPrice, costLC: qty * avgPrice, trades, lastTrade: trades[trades.length - 1],
+            received: undefined, bought });
+    }
+    return out;
+}
+
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -968,6 +997,25 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.strictEqual(nbRows[0].value, 1400);
     assert.strictEqual(nbRows[0].cost, 1300);
     assert.strictEqual(nbRows[0].realized, 0);
+
+    // Existing: the rest of the position, at its 31 Dec average cost; the two cohorts add up.
+    const T2 = (date, side, qty, price, avgPrice) => ({ ...T(date, side, qty, price), avgPrice });
+    const mixedEx = { yahoo: 'X', currency: 'USD', qty: 17, realizedLC: 25, trades: [T2('2025-03-01', 'BUY', 10, 50, 50),
+        T2('2026-02-01', 'BUY', 4, 100, 64.29), T2('2026-05-01', 'BUY', 6, 150, 86.25), T2('2026-06-01', 'SELL', 3, 160, 86.25)] };
+    const ex = existingShares([mixedEx], '2026-01-01', rates);
+    assert.strictEqual(ex[0].qty, 7, '10 held on 31 Dec, 3 sold this year');
+    assert.strictEqual(ex[0].avgPrice, 50, 'the 31 Dec average cost, not the pooled one');
+    assert.strictEqual(ex[0].costLC, 350);
+    assert.strictEqual(ex[0].realizedLC, 25, 'realized gains stay with the old shares');
+    assert.deepStrictEqual(ex[0].trades.map(t => t.side), ['BUY', 'SELL'], 'old buys and this year\'s sales');
+    assert.strictEqual(ex[0].qty + newBuys([mixedEx], '2026-01-01', rates)[0].qty, mixedEx.qty, 'the cohorts add up');
+    // Untouched this year: the holding itself, received and all.
+    const old = { yahoo: 'Y', currency: 'USD', qty: 5, received: { rows: [] }, trades: [T2('2024-01-01', 'BUY', 5, 10, 10)] };
+    assert.strictEqual(existingShares([old], '2026-01-01', rates)[0], old);
+    // Bought only this year, or old shares all sold: not in the cohort.
+    assert.strictEqual(existingShares([nb([T('2026-02-01', 'BUY', 4, 100)], 4)], '2026-01-01', rates).length, 0);
+    assert.strictEqual(existingShares([{ yahoo: 'Z', currency: 'USD', qty: 2, trades: [T2('2025-01-01', 'BUY', 2, 10, 10),
+        T2('2026-02-01', 'BUY', 2, 12, 11), T2('2026-03-01', 'SELL', 2, 13, 11)] }], '2026-01-01', rates).length, 0);
 
     console.log('selftest ok');
 }
