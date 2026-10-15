@@ -46,6 +46,13 @@
         #totals > div { min-width: 104px; }
         #totals .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
         #totals .value { font-size: 20px; font-weight: 600; }
+        #totals .tile-btn { cursor: pointer; border-radius: 6px; padding: 2px 6px; margin: -2px -6px; }
+        #totals .tile-btn:hover { background: var(--surface-2, rgba(255,255,255,.05)); }
+        #totals .tile-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--series-hsi); }
+        #new-note { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--series-hsi); font-size: 13px; color: var(--text-muted); }
+        #new-note strong { color: var(--text-primary); }
+        #new-note button { margin-left: 8px; font: inherit; font-size: 12px; padding: 2px 10px; cursor: pointer;
+            background: transparent; color: var(--text-secondary); border: 1px solid var(--line); border-radius: 5px; }
 
         .btns { display: inline-flex; gap: 4px; flex-wrap: wrap; }
         .btns button {
@@ -793,6 +800,7 @@
         </div>
     </div>
 
+    <div id="new-note" hidden></div>
     <div class="table-responsive" id="holdings-table">
         <table id="portfolio" class="pinned">
             <thead>
@@ -1053,6 +1061,9 @@
         let portfolioMetric = 'twr';          // whole-portfolio chart: 'value' (NAV proxy) or 'twr'
         const benchOn = new Set();
         const cohortOn = new Set(['total']);  // TWR cohorts: total / existing / new (multi-select)
+        // The table cut to this year's buys (the New Buys YTD tile toggles it). Holdings views only;
+        // the tiles above stay whole-portfolio, and Mix stays a share of the whole.
+        let newOnly = false;
         const YEAR_START = new Date().getUTCFullYear() + '-01-01'; // "as of 31 Dec last year"
         const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -3374,9 +3385,10 @@
         const matches = (text, terms) => terms.every(t => text.includes(t));
         const searchTerms = () => filterText.split(/\s+/).filter(Boolean);
         // One definition of "visible" per table, so the count can never disagree with the rows.
+        const baseRows = () => STATE.newRows || STATE.rows;
         const visibleRows = () => {
             const t = searchTerms();
-            return t.length ? STATE.rows.filter(r => matches(haystack(r), t)) : STATE.rows;
+            return t.length ? baseRows().filter(r => matches(haystack(r), t)) : baseRows();
         };
         const visibleWatch = () => {
             const t = searchTerms();
@@ -3393,7 +3405,7 @@
             const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
                 : STATE.dim === 'macro' || STATE.dim === 'world' ? [0, 0]
                 : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
-                : [visibleRows().length, STATE.rows.length];
+                : [visibleRows().length, baseRows().length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
         }
 
@@ -3467,14 +3479,16 @@
             // Total return where the price bot published it (dividends net of withholding), the
             // price-only figure otherwise.
             const perf = STATE.performance?.income || STATE.performance || {};
-            const perfTile = (label, v) => `<div title="Time-weighted. ${STATE.performance?.income ? INCOME_NOTE : 'Price only.'}"><div class="label">${label}</div><div class="value ${v == null ? '' : cls(v)}">${v == null ? '–' : pct(v)}</div></div>`;
+            const perfTile = (label, v, attrs = '', tip = '') => `<div ${attrs} title="Time-weighted. ${STATE.performance?.income ? INCOME_NOTE : 'Price only.'}${tip}"><div class="label">${label}</div><div class="value ${v == null ? '' : cls(v)}">${v == null ? '–' : pct(v)}</div></div>`;
+            const newTile = STATE.locked ? ''
+                : `id="new-tile" class="tile-btn" role="button" tabindex="0" aria-pressed="${newOnly}"`;
             document.getElementById('totals').innerHTML = `
                 <div><div class="label">Value</div><div class="value">${money(value)}</div></div>
                 <div><div class="label">Cost</div><div class="value">${money(cost)}</div></div>
                 <div><div class="label">Gain/Loss</div><div class="value ${cls(gain)}">${money(gain)}</div></div>
                 <div title="Unrealized gain over what you actually paid for what you still hold. It is the sum of the column above it and uses the same arithmetic as every row, which is why it is not the time-weighted return: TWR removes the effect of WHEN money went in, so it would not be the total of anything on this page. For that number, the chart’s Performance toggle and the Return figure beside the portfolio value both show it."><div class="label">Return</div><div class="value ${cost > 0 ? cls(gain) : ''}">${cost > 0 ? pct(gain / cost) : '–'}</div></div>
                 ${perfTile('YTD Performance', perf.ytdTotal)}
-                ${perfTile('New Buys YTD', perf.ytdNew)}
+                ${perfTile('New Buys YTD', perf.ytdNew, newTile, STATE.locked ? '' : ` Click to show only this year's buys in the table${newOnly ? ' (on: click again for everything)' : ''}.`)}
                 ${STATE.received ? (() => {
                     // Last twelve months, with what it yields on today's value; since bought in the tooltip.
                     const sum = pick => Object.values(STATE.received).reduce((a, r) => { const x = pick(r); return x
@@ -3486,6 +3500,12 @@
                 <div><div class="label">Positions</div><div class="value">${STATE.holdings.length}</div></div>`;
             // Rendered here, not in the markup, because it is re-pressed on every currency change
             // — and rendered separately from the tiles because it is not one (see #updated-row).
+            const nt = document.getElementById('new-tile');
+            if (nt) {
+                const flip = () => { newOnly = !newOnly; chartGroup = null; rebuildRows(); renderAll(); };
+                nt.onclick = flip;
+                nt.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
+            }
             document.getElementById('ccy-switch').innerHTML = Object.keys(CURRENCIES)
                 .map(c => `<button data-ccy="${c}" aria-pressed="${c === display}">${c}</button>`).join('');
             document.querySelectorAll('[data-ccy]').forEach(b =>
@@ -3513,6 +3533,22 @@
             if (STATE.locked) pb.title = 'Amounts are sealed: reload and unlock to see them. Percentages are public.';
             pb.onclick = () => { priv = !priv; localStorage.setItem('priv', priv ? '1' : '0');
                 paint(); renderAll(); };
+        }
+
+        // What the New buys view is, said once over the table rather than in every tooltip.
+        function renderNewNote() {
+            const el = document.getElementById('new-note');
+            el.hidden = !STATE.newRows || document.getElementById('holdings-table').hidden;
+            if (el.hidden) return;
+            const rows = STATE.newRows, year = YEAR_START.slice(0, 4);
+            const ytd = (STATE.performance?.income || STATE.performance || {}).ytdNew;
+            el.innerHTML = `<strong>New buys ${year} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}.</strong> `
+                + `Shares, cost, value, gain, Held and CAGR are those of the shares bought since 1 Jan ${year}, at what was paid for them. `
+                + 'A sale this year comes out of the older shares first, as in the New buys line, so trimming an old holding leaves this alone. '
+                + `The tile's ${ytd == null ? '' : pct(ytd) + ' '}is time-weighted, so it will not equal the % in the New buys total row. `
+                + 'Received is "–": IBKR records dividends per holding, not per purchase. The tiles above are still the whole portfolio.'
+                + '<button type="button">Show everything</button>';
+            el.querySelector('button').onclick = () => { newOnly = false; chartGroup = null; rebuildRows(); renderAll(); };
         }
 
         function renderTable() {
@@ -3663,7 +3699,7 @@
             const keys = ths.map(th => th.dataset.sort);
             const cells = ths.map(() => '<td></td>');
             const put = (k, html) => { const i = keys.indexOf(k); if (i >= 0) cells[i] = html; };
-            put('name', `<td>${searchTerms().length ? 'Filtered' : 'Total'}</td>`);
+            put('name', `<td>${STATE.newRows ? `New buys ${YEAR_START.slice(0, 4)}` : searchTerms().length ? 'Filtered' : 'Total'}</td>`);
             put('cost', `<td>${money(cost)}</td>`);
             put('value', `<td>${money(shownValue)}</td>`);
             put('gain', `<td class="${cls(gain)}">${money(gain)}</td>`);
@@ -3676,12 +3712,13 @@
             put('yield', `<td class="muted">${shownValue ? plain(income / shownValue) : '–'}</td>`);
             put('income', `<td>${money(income)}</td>`);
             const recv = shown.reduce((a, r) => a + (r.received || 0), 0);
-            put('received', `<td>${STATE.received ? money(recv) : ''}</td>`);
+            put('received', `<td>${STATE.newRows ? '<span class="muted">–</span>' : STATE.received ? money(recv) : ''}</td>`);
             for (const p of portfolioLib.PERIODS) {
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
             }
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
+            renderNewNote();
             updateSearchCount();
             markSelectedRow();
             pinColumns();       // before the float clone: it copies the header widths this reads
@@ -3773,6 +3810,12 @@
                 r.received = r.receivedParts ? r.receivedParts.actual + r.receivedParts.estimated : null;
             }
             STATE.total = STATE.rows.reduce((a, r) => a + (r.value || 0), 0);
+            // New buys: the same build() over each holding cut to this year's buys, so every column
+            // means what it means in the full table, only for those shares. Needs the trades, so
+            // locked there is nothing to cut. Received stays "–": IBKR's record is not per lot.
+            STATE.newRows = newOnly && !STATE.locked
+                ? portfolioLib.build(portfolioLib.newBuys(STATE.holdings, YEAR_START, STATE.rates), STATE.rates, STATE.quotes, STATE.dim)
+                : null;
         }
 
         // Watched, not owned: no cost, no value, no gain — just the columns you'd decide on.
@@ -3938,6 +3981,7 @@
         function applyView() {
             const dim = STATE.dim;
             document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot';
+            document.getElementById('new-note').hidden = !STATE.newRows || document.getElementById('holdings-table').hidden;
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
             document.getElementById('macro').hidden = dim !== 'macro';

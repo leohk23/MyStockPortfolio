@@ -476,7 +476,31 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
     return rows;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+// The New buys cohort as holdings, for the table: each holding cut down to the shares bought on or
+// after `since`, at what was paid for them, so build() gives those shares their own cost, value,
+// gain, Held and CAGR. Same cohort as the New buys performance line (cohortMV's filter): a sale
+// this year comes out of the older shares first, so a 2026 trim of an old position does not touch
+// it. Unlike the line, it never shows more shares than are held: if this year's sales ran past the
+// older shares, the excess comes off the new ones (newQty < bought), and their cost is the average
+// of this year's buy prices. `trades` keeps only the buys, so Held is their age. No `received`:
+// IBKR's record is per holding, not per lot, so the column has nothing true to say here.
+function newBuys(holdings, since, rates) {
+    const out = [];
+    for (const h of holdings) {
+        const buys = (h.trades || []).filter(t => t.date >= since && t.side !== 'SELL' && t.qty > 0);
+        const bought = buys.reduce((a, t) => a + t.qty, 0);
+        const qty = Math.min(bought, h.qty);
+        if (!(qty > 0)) continue;
+        const own = rateFor(h.currency, rates);
+        const paidLC = buys.reduce((a, t) => a + t.qty * t.price * rateFor(t.currency, rates) / own, 0);
+        const avgPrice = paidLC / bought;
+        out.push({ ...h, qty, avgPrice, costLC: qty * avgPrice, realizedLC: 0, trades: buys,
+            lastTrade: buys[buys.length - 1], received: undefined, bought });
+    }
+    return out;
+}
+
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -916,6 +940,34 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     // Nothing to derive from, or a period end off the quarter grid: say nothing.
     assert.strictEqual(fiscalQuarter('2026-06-30', []), null);
     assert.strictEqual(fiscalQuarter('2026-05-31', [{ date: '2025-09-30' }]), null);
+
+    // New buys: only this year's buys, at their own prices; trims of old shares leave them alone.
+    const nb = (trades, qty, currency = 'USD') => ({ yahoo: 'X', currency, qty, trades });
+    const T = (date, side, qty, price, currency = 'USD') => ({ date, side, qty, price, currency });
+    const mixed = newBuys([nb([T('2025-03-01', 'BUY', 10, 50), T('2026-02-01', 'BUY', 4, 100),
+        T('2026-05-01', 'BUY', 6, 150), T('2026-06-01', 'SELL', 3, 160)], 17)], '2026-01-01', rates);
+    assert.strictEqual(mixed.length, 1);
+    assert.strictEqual(mixed[0].qty, 10, 'the trim came out of the 2025 shares');
+    assert.strictEqual(mixed[0].avgPrice, 130, '(4 x 100 + 6 x 150) / 10');
+    assert.strictEqual(mixed[0].costLC, 1300);
+    assert.strictEqual(mixed[0].realizedLC, 0);
+    assert.deepStrictEqual(mixed[0].trades.map(t => t.date), ['2026-02-01', '2026-05-01']);
+    assert.strictEqual(mixed[0].lastTrade.date, '2026-05-01');
+    // Sold past the old shares: never more than is held.
+    const oversold = newBuys([nb([T('2025-03-01', 'BUY', 2, 50), T('2026-02-01', 'BUY', 10, 100),
+        T('2026-06-01', 'SELL', 5, 120)], 7)], '2026-01-01', rates);
+    assert.strictEqual(oversold[0].qty, 7);
+    assert.strictEqual(oversold[0].costLC, 700);
+    // Nothing bought this year: not in the cohort.
+    assert.strictEqual(newBuys([nb([T('2025-03-01', 'BUY', 2, 50)], 2)], '2026-01-01', rates).length, 0);
+    // A buy logged in pence on a holding kept in pounds: cost lands in the holding's currency.
+    const nbPence = newBuys([nb([T('2026-02-01', 'BUY', 10, 500, 'GBp')], 10, 'GBP')], '2026-01-01', { USD: 1, GBP: 2 });
+    assert.strictEqual(nbPence[0].avgPrice, 5);
+    // And build() turns it into an ordinary row: value at today's price, gain on the new cost.
+    const nbRows = build(mixed, rates, { X: { price: 140, priceUSD: 140, currency: 'USD' } }, 'instrument', '2026-10-15');
+    assert.strictEqual(nbRows[0].value, 1400);
+    assert.strictEqual(nbRows[0].cost, 1300);
+    assert.strictEqual(nbRows[0].realized, 0);
 
     console.log('selftest ok');
 }
