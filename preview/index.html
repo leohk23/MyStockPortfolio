@@ -48,6 +48,8 @@
         #totals .value { font-size: 20px; font-weight: 600; }
         #new-note { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--series-hsi); font-size: 13px; color: var(--text-muted); }
         #new-note strong { color: var(--text-primary); }
+        #new-note .deep-notes { margin-top: 4px; }
+        #new-note .deep-notes > div { margin-top: 4px; }
         #new-note button { margin-left: 8px; font: inherit; font-size: 12px; padding: 2px 10px; cursor: pointer;
             background: transparent; color: var(--text-secondary); border: 1px solid var(--line); border-radius: 5px; }
 
@@ -3529,7 +3531,10 @@
                 paint(); renderAll(); };
         }
 
-        // What the cut is, said once over the table rather than in every tooltip.
+        // What the cut is, said once over the table rather than in every tooltip. The headline
+        // and the button stay in view; the explanation folds away, and stays open across
+        // re-renders once opened.
+        let newNoteOpen = false;
         const cohortLabel = k => k === 'new' ? `New buys ${YEAR_START.slice(0, 4)}` : `Existing (pre-${YEAR_START.slice(0, 4)})`;
         function renderNewNote() {
             const el = document.getElementById('new-note');
@@ -3537,7 +3542,10 @@
             if (el.hidden) return;
             const k = STATE.cohortView, rows = STATE.cohortRows, year = YEAR_START.slice(0, 4);
             el.style.borderLeftColor = k === 'new' ? 'var(--series-hsi)' : 'var(--series-spx)';
-            el.innerHTML = `<strong>${cohortLabel(k)} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}</strong>, following the chart's ${k === 'new' ? 'New' : 'Existing'} line. `
+            el.innerHTML = `<strong>${cohortLabel(k)} only: ${rows.length} ${rows.length === 1 ? 'position' : 'positions'}</strong>`
+                + '<button type="button">Show everything</button>'
+                + `<details class="deep-notes"${newNoteOpen ? ' open' : ''}><summary>How this is cut</summary><div>`
+                + `Following the chart's ${k === 'new' ? 'New' : 'Existing'} line. `
                 + (k === 'new'
                     ? `Shares, cost, value, gain, Held and CAGR are those of the shares bought since 1 Jan ${year}, at what was paid for them. `
                         + 'A sale this year comes out of the older shares first, as in the line, so trimming an old holding leaves this alone. '
@@ -3548,8 +3556,8 @@
                 + 'The line is time-weighted, so its % will not equal the % in the total row. '
                 + (k === 'new' ? 'Received is "–": IBKR records dividends per holding, not per purchase. '
                     : 'Received is shown only where nothing was bought this year: IBKR records dividends per holding, not per purchase. ')
-                + 'The tiles above are still the whole portfolio.'
-                + '<button type="button">Show everything</button>';
+                + 'The tiles above are still the whole portfolio.</div></details>';
+            el.querySelector('details').ontoggle = e => { newNoteOpen = e.target.open; };
             // Turns the chart's cohort off too: the table follows the chart, never the other way round.
             el.querySelector('button').onclick = () => {
                 cohortOn.delete(k);
