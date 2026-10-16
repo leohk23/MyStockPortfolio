@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-16T05:30:04.601Z",
- "cashGBP": 179.8,
+ "generated": "2026-10-16T11:45:03.825Z",
+ "cashGBP": 180.91,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -147,6 +147,36 @@
  },
  "proposals": [
   {
+   "file": "2026-10-16-0558-HLMA.L.md",
+   "id": "2026-10-16-0558-HLMA.L",
+   "state": "open",
+   "ticker": "HLMA.L",
+   "written": "2026-10-16",
+   "side": "BUY",
+   "limit": 3398,
+   "warning": "at the **19 November 2026 half-year results**, re-read if net debt/adjusted EBITDA exceeds **1.5×** while acquisition-inclusive cash, defined below, is negative; or core cash is **more than 20% below** the same half-year last year. Also warn if management cuts its full-year organic-growth outlook or the **23.5–24% adjusted EBIT margin** range. The guidance test supplements the cash test; it cannot replace it.",
+   "break": "propose an exit under §5.1 at any subsequent filing if core cash is non-positive, or if acquisition-inclusive cash is negative **and** net debt/adjusted EBITDA exceeds **2.0×**. Independently, at the FY2027 accounts, checked by **30 June 2027**, break if reported annual operating profit divided by average opening and closing total assets is below **10%**. These are analyst thresholds, not lender covenants or company guidance. A missing component is unresolved and requires a review, not a pass.",
+   "reviewBy": "2026-11-20",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-10-16-0558-BN.PA.md",
+   "id": "2026-10-16-0558-BN.PA",
+   "state": "open",
+   "ticker": "BN.PA",
+   "written": "2026-10-16",
+   "side": "BUY",
+   "limit": 61.22,
+   "warning": null,
+   "break": "at the FY2026 accounts, checked no later than **1 March 2027**, propose a sale under §5.1 if **reported IFRS operating profit is at or below €2,940m**; or if **issuer-defined free cash flow is below €2,100m and net debt exceeds €10,000m**. Independently, non-positive free cash flow breaks the case. These are analyst decision thresholds, not company guidance. The cash hurdle is approximately 75% of FY2025 FCF; the debt threshold prevents acquisitions being ignored because they sit outside the company's FCF definition. Check cash acquisitions and lease payments in the annual statements alongside it, and retain the issuer's definitions consistently. The profit test enforces the promised recovery date. The cash-and-debt test answers P6 even if volume and recurring margin rise. Missing disclosures trigger review and an unresolved verdict, never an assumed pass.",
+   "reviewBy": "2026-10-29",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-10-15-0002-BN.PA.md",
    "id": "2026-10-15-0002-BN.PA",
    "state": "expired",
@@ -157,9 +187,9 @@
    "warning": "(trips a re-read, not a sale), any of: - At the **28 October 2026 Q3 sales release**: Q3 volume/mix is **negative**, *or* like-for-like growth is **below +3%**, *or* the FY2026 outlook (\"LFL sales growth expected between +3% and +5%, with recurring operating income growing faster than sales\") is cut below that range or loses the \"faster than sales\" clause. H1's comparison point is volume/mix +1.7% and price +1.8%. - **Outside the filings (Rule 3), monthly:** Kantar's GB grocery market-share release reports own-label growth year on year. Warn if own-label growth beats branded growth by **5 points or more in two consecutive monthly releases**. That is the shopper moving down to private label, which shows in volume before it shows in Danone's margin.",
    "break": "(propose a sale under §5.1), any of: - **Volume/mix negative in both Q3 and Q4 2026** (Q4 in the FY2026 release, February 2027) while full-year like-for-like growth is below +3%. That means growth was bought with price and the shopper has left. - **FY2026 recurring operating margin below FY2025's 13.4%.** That would mean recurring operating income did not grow faster than sales: the guidance missed on the measure the thesis rests on. - **FY2026 IFRS operating income not above FY2025's** as stated in the FY2025 release. This is the §2.4b recovery test; read both figures from the issuer's own tables, not from `earnings.json`.",
    "reviewBy": "2026-10-29",
-   "supersededBy": null,
+   "supersededBy": "2026-10-16-0558-BN.PA",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-14-2334-BN.PA.md",
@@ -172,7 +202,7 @@
    "warning": "the H1 cash deterioration is already an entry warning. At the **28 October 2026 sales update**, re-read if the +3% to +5% like-for-like sales-growth outlook or faster recurring-operating-profit growth commitment is cut because of supply, integration or financing costs. At FY2026 accounts, checked by **31 March 2027**, warn if issuer free cash flow is below **€2.24bn** (approximately 20% below FY2025), or issuer net debt/EBITDA exceeds **2.5×**. The cash warning directly tests P6; a sales beat cannot clear it.",
    "break": "recommend exit under §5.1 at those annual accounts if any condition holds: - Reported operating profit is **€2.940bn or less**: the expected full-year recovery did not occur. - Cash from operations less cash capex, lease principal and cash paid for acquisitions, equity stakes and contingent acquisition consideration is **non-positive**, while issuer net debt exceeds **€10.77bn** (20% above H1's €8.975bn). - Issuer free cash flow falls below **€1.40bn**, about half the FY2025 baseline. Use the cash-flow statement for the acquisition-inclusive bridge. Deduct each item once; do not subtract interest again if already in operating cash, treat purchases of treasury deposits separately, and do not fund the measure with disposal proceeds. Include Huel and other acquired businesses. Missing components trigger a re-read and no top-up, not a zero assumption or a passed test. October is ordinarily a sales update, so the full cash warning and break could first become measurable in the same annual release. The smaller order acknowledges that limitation.",
    "reviewBy": "2026-10-29",
-   "supersededBy": "2026-10-15-0002-BN.PA",
+   "supersededBy": "2026-10-16-0558-BN.PA",
    "phase": "live",
    "counts": false
   },
@@ -187,7 +217,7 @@
    "warning": "at the FY2026 accounts, review by **31 March 2027**, re-read if issuer free cash flow is below **€2.24bn** (about 20% below FY2025's €2.799bn), or issuer net debt/EBITDA exceeds **2.5×** (FY2025: 2.0×). Separately, at **28 October 2026 Q3 sales**, re-read if volume/mix is non-positive or management cuts its current **+3% to +5% LFL sales-growth** outlook because operating or integration costs are worsening. This sales check is an earlier operating warning, not a substitute for the cash test ([FY baseline](https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf), [outlook](https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf), [calendar](https://www.danone.com/investors/publications-and-events/financial-calendar.html)).",
    "break": "at those FY2026 accounts, recommend exit under §5.1 if any of these occurs: - Reported operating profit is **no greater than €2.940bn**, so full-year operating growth has not resumed. - Operating cash less cash capex, lease principal and cash spent on acquisitions, equity stakes and contingent consideration is **zero or negative**, and issuer net debt/EBITDA is **above 3.0×**. - Issuer free cash flow is **below €1.40bn**, roughly half the FY2025 baseline. For the acquisition-inclusive calculation, subtract each cash category once and exclude disposal proceeds from the support for the thesis. Huel and any other purchased businesses count. If the accounts do not separately disclose a component, mark that route unobservable, retain the warning and do not top up; do not insert zero. The direct cash warning and break can first be observable in the **same annual release**. A cash failure need not give advance notice; the smaller position accepts that limitation. H1's known cash decline is an entry weakness, not a newly tripped post-entry warning.",
    "reviewBy": "2026-10-29",
-   "supersededBy": "2026-10-15-0002-BN.PA",
+   "supersededBy": "2026-10-16-0558-BN.PA",
    "phase": "live",
    "counts": false
   },
@@ -217,7 +247,7 @@
    "warning": "At the **28 October 2026** sales update, re-read immediately if management cuts its growth outlook because of supply, recall or integration spending, or announces additional acquisition funding without a cash-return explanation. At FY2026 results, checked **no later than 31 March 2027**, also warn if operating cash flow is below **€3,779m**, or net debt/EBITDA exceeds **2.5×**. The H1 cash decline is a known entry weakness, not a newly triggered warning.",
    "break": "Propose exit under §5.1 if FY2026 **reported operating profit is no higher than €2,940m**, so the promised full-year recovery fails; or if cash remaining after capex, lease principal, acquisitions, equity investments and contingent consideration is non-positive **and** net debt/EBITDA exceeds **3.0×**. Non-positive cash after ordinary reinvestment alone also breaks the case, even without an acquisition. Use the cash-flow statement: do not subtract interest twice or count asset-sale proceeds as recurring cash. These tests include Huel's acquisition cash, not merely management's FCF before acquisitions. October may provide an earlier warning, but a sales-only update cannot test the cash risk. The first complete direct cash observation is the annual report; a warning and break could arrive together. Half sizing reflects that limitation. Missing disclosure is a re-read and a reason for no further buying, not a passed test.",
    "reviewBy": "2026-10-29",
-   "supersededBy": "2026-10-15-0002-BN.PA",
+   "supersededBy": "2026-10-16-0558-BN.PA",
    "phase": "live",
    "counts": false
   },
@@ -247,7 +277,7 @@
    "warning": "already active on cash. H1 issuer free cash flow fell from €1,172m to €852m, exceeding my 20% deterioration threshold. At the **28 October Q3 sales release**, re-read if volume/mix is zero or negative, management reduces the 3–5% sales-growth range, or drops the commitment that recurring operating income grows faster than sales. These sales tests are secondary; they cannot clear the cash warning. At the FY2026 accounts, checked by **31 March 2027**, warn if like-for-like annual operating cash less all industrial capex is more than 10% below FY2025's €2,724m, hence below **€2,451.6m**.",
    "break": "at those FY2026 accounts, recommend exit under §5.1 if **reported operating profit is at or below €2,940m** (the promised recovery failed), or if **operating cash less all industrial capex is below €2,179.2m** (20% below the same €2,724m baseline). Independently break if operating cash less capex, lease principal and cash paid for acquisitions, equity stakes and contingent acquisition consideration is negative **and net debt exceeds €10.77bn**, 20% above H1's €8.975bn. Exclude purchases of treasury deposits from that investment test; do not net asset-sale proceeds against spending. These are my thresholds, not management guidance. They test whether reported growth funds reinvestment or financing is substituting for cash. A missing cash disclosure stays unknown and the warning remains active; it cannot be called a pass. [Cash definitions and baseline](https://www.danone.com/content/dam/corp/global/danonecom/investors/en-all-publications/2026/pressreleases/danonepr200226.pdf), [H1 baseline](https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf).",
    "reviewBy": "2026-10-28",
-   "supersededBy": "2026-10-15-0002-BN.PA",
+   "supersededBy": "2026-10-16-0558-BN.PA",
    "phase": "live",
    "counts": false
   },

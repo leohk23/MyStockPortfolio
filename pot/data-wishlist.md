@@ -31,17 +31,17 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | reached for | sweeps | |
 |---|---:|---|
 | margin | 53 | **earns a feed** |
-| cash conversion | 39 | **earns a feed** |
-| volume / units | 39 | **earns a feed** |
+| cash conversion | 40 | **earns a feed** |
+| volume / units | 40 | **earns a feed** |
 | leverage / net debt | 26 | **earns a feed** |
-| return on capital | 23 | **earns a feed** |
+| return on capital | 24 | **earns a feed** |
 | inventory | 18 | **earns a feed** |
 | backlog / order intake | 17 | **earns a feed** |
 | capital returns | 12 | **earns a feed** |
 | same-store / comparable sales | 5 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-310 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+315 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,15 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-16 | Sulfur and sulphuric-acid prices (Middle East FOB, US Gulf contract, China port). | Reached through Mosaic's SEC-filed Q2 2026 release ($522 per long ton realised in Q2, $705 Q3 contract) because no agency publishes a free series; trade press was used only to find the story. Wanted monthly while Hormuz is shut: estimates of the Gulf's share of seaborne sulfur run from 18% to about 50% depending on the source, none of them an agency, and the price decides phosphate, copper-leach and chemical margins that the oil price alone does not show. First reach. |
+| 2026-10-16 | Strait of Hormuz daily transits and Qatar LNG output. | Narrative only, from news reporting; no primary daily series was found. Wanted daily or weekly while the strait is closed: both new candidates this run (WDS.AX, MOS) hinge on when it reopens, and a falsifier needs an observable. |
+| 2026-10-16 | Woodside realised price by hub-linked versus oil-linked LNG, production and Scarborough ramp. | Fetched from Woodside's SEC 6-K (H1 2026). Wanted on results dates while `WDS.AX` is tracked; the Q3 report is due 21 October. |
+| 2026-10-16 | Mosaic phosphate stripping margin, sulfur cost per tonne and curtailed capacity. | Fetched from Mosaic's SEC-filed Q2 2026 release. Wanted on results dates while `MOS` is tracked; it separates a temporary input-cost squeeze from a structural loss of competitiveness. |
+| 2026-10-16 | `LYC.AX` local price and comparable valuation history. | No outside price or multiple was adopted. Added `LYC.AX` to `watchlist.json` so the normal pipeline can establish the series; no separate feed is needed. |
+| 2026-10-16 | Critical supply-chain node concentration, export concentration and substitution cost. | Fetched from BIS Bulletin 138. Wanted when the BIS or a comparable agency publishes a new network study, not weekly; it identifies which disruptions are hard to substitute and unusually inflationary, but the paper is research output rather than a stable public data feed. |
+| 2026-10-16 | Halma cash after reinvestment, acquisition payments in all cash-flow sections, and reported versus adjusted EPS. | Checked the issuer FY2026 statement and 24 September update. Needed at the 19 November interim: core cash deducts capex, capitalised development, lease principal and financing-classified interest; acquisition-inclusive cash also deducts net acquisitions, acquired debt repaid and associate purchases once only. The licence profit has no separately disclosed after-tax attributable amount. Two annual adjusted-basic EPS observations are now recorded, but no rolling adjusted history is certified. |
+| 2026-10-16 | Lynas production by product, realised prices, unit costs, cash conversion and post-investment return on capital. | Fetched from Lynas' FY26 filing. Wanted on results dates while `LYC.AX` is tracked; it tests whether non-China rare-earth substitution compounds shareholder capital rather than relying on government-backed prices and equity-funded expansion. |
+| 2026-10-16 | P/OCF history start date alongside `pocfWeeks`, and a flag for short cash histories. | The deep dive can read the P/E start from `peFrom`, but cash has its own observations and no published start. Wanted from the existing historical calculation, not another network feed; never assign a P/E start to a cash percentile without checking its actual observations. |
 | 2026-10-14 | `TRN.MI` local quote, filed earnings, valuation history and sector classification. | No outside price or multiple was adopted. Added Terna to `watchlist.json`; the normal pipeline should establish the comparable record and confirm that Yahoo classifies the transmission operator as Utilities. No separate manual feed wanted. |
 | 2026-10-14 | Build-A-Bear fiscal-year alignment when the next annual row lands. | The new sourced USD5.338m after-tax tariff-refund adjustment belongs to issuer fiscal 2026 ending 2027-01-30, not the existing annual row ending 2026-01-31. Confirm the future stored annual end matches the issuer before treating a filed-year replay as reconciled. Direct H1 adjusted EPS is also stored, but the missing H2 prevents an adjusted TTM. Source: https://www.sec.gov/Archives/edgar/data/1113809/000143774926029054/ex_1009466.htm |
 | 2026-10-14 | Danone H1 2026 IAS29 restatement and acquisition cash bridge. | Issuer H1 release restates Q1 sales from EUR6.708bn to EUR6.721bn, explaining the local H1 EUR13.923bn versus issuer EUR13.936bn difference. The annual operating-profit discrepancy remains separate and unresolved. Use issuer figures for the proposal. At FY2026 obtain cash spent on acquisitions, stakes and contingent consideration, OCF, capex, leases and net debt/EBITDA, without double subtraction; these test the dominant risk following Huel consolidation. Source: https://www.danone.com/content/dam/corp/global/danonecom/investors/fr-all-publications/2026/pressreleases/cpdanone290726.pdf.coredownload.pdf |
@@ -362,9 +371,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-10-16 | Critical supply-chain node concentration, export concentration and substitution cost. | Fetched from BIS Bulletin 138. Wanted when the BIS or a comparable agency publishes a new network study, not weekly; it identifies which disruptions are hard to substitute and unusually inflationary, but the paper is research output rather than a stable public data feed. |
-| 2026-10-16 | Lynas production by product, realised prices, unit costs, cash conversion and post-investment return on capital. | Fetched from Lynas' FY26 filing. Wanted on results dates while `LYC.AX` is tracked; it tests whether non-China rare-earth substitution compounds shareholder capital rather than relying on government-backed prices and equity-funded expansion. |
-| 2026-10-16 | `LYC.AX` local price and comparable valuation history. | No outside price or multiple was adopted. Added `LYC.AX` to `watchlist.json` so the normal pipeline can establish the series; no separate feed is needed. |
-| 2026-10-16 | P/OCF history start date alongside `pocfWeeks`, and a flag for short cash histories. | The deep dive can read the P/E start from `peFrom`, but cash has its own observations and no published start. Wanted from the existing historical calculation, not another network feed; never assign a P/E start to a cash percentile without checking its actual observations. |
-| 2026-10-16 | Halma cash after reinvestment, acquisition payments in all cash-flow sections, and reported versus adjusted EPS. | Checked the issuer FY2026 statement and 24 September update. Needed at the 19 November interim: core cash deducts capex, capitalised development, lease principal and financing-classified interest; acquisition-inclusive cash also deducts net acquisitions, acquired debt repaid and associate purchases once only. The licence profit has no separately disclosed after-tax attributable amount. Two annual adjusted-basic EPS observations are now recorded, but no rolling adjusted history is certified. |
 <!-- entries:end -->
