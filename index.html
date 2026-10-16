@@ -2372,11 +2372,11 @@
                         values: a.map((v, i) => v == null || s < 0 || i < s ? null : (1 + v) / (1 + a[s]) - 1) };
                 });
                 const years = days.length ? (Date.parse(days[days.length - 1]) - Date.parse(days[0])) / 864e5 / 365 : 0;
-                const cagr = v => `<span class="muted">CAGR ${v == null || years < 1 ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
+                const cagr = v => years < 1 ? '' : ` <span class="muted">CAGR ${v == null ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
                 return {
                     days, series, percent: true, zero: true, markers: [], markersByIndex: new Map(),
                     fmtY: v => pct(v),
-                    headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagr(v)}`; }).join(' <span class="muted">·</span> '),
+                    headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span>${cagr(v)}`; }).join(' <span class="muted">·</span> '),
                     sub: `Time-weighted total return, indexed to ${ymd(days[0])} = 0%`,
                     title: `${label} performance`,
                     note: INCOME_NOTE + ' Holdings locked: this line was computed by the price bot, which has the passphrase, and published as percentages only. '
@@ -2408,18 +2408,16 @@
             }));
             // Trades sit on the first line drawn (Total unless it is switched off).
             const { markers, byIndex } = valueMarkers(hold, days, series[0]?.values || []);
-            // CAGR over the span on screen. Same rule as the table's CAGR column: blank under a
-            // year, where annualising turns a short move into a meaningless rate.
+            // CAGR over the span on screen. Under a year it is left out altogether, not shown
+            // as a dash: annualising a short move gives a meaningless rate.
             const years = days.length ? (Date.parse(days[days.length - 1]) - Date.parse(days[0])) / 864e5 / 365 : 0;
-            const cagrTag = v => `<span class="muted" title="${years >= 1
-                ? `Compound annual rate over the ${years.toFixed(1)} years charted: (1 + return) ^ (1 ÷ years) − 1.`
-                : 'Under a year is charted, so it is not annualised, the same rule as the CAGR column in the table.'}">`
-                + `CAGR ${v == null || years < 1 ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
+            const cagrTag = v => years < 1 ? '' : ` <span class="muted" title="Compound annual rate over the ${years.toFixed(1)} years charted: (1 + return) ^ (1 ÷ years) − 1.">`
+                + `CAGR ${v == null ? '–' : pct((1 + v) ** (1 / years) - 1)}</span>`;
             return {
                 days, series, percent: true, zero: true,
                 markers, markersByIndex: byIndex,
                 fmtY: v => pct(v),
-                headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span> ${cagrTag(v)}`; }).join(' <span class="muted">·</span> '),
+                headline: series.map(s => { const v = lastNonNull(s.values); return `<span style="color:${s.color}">${pct(v)}</span>${cagrTag(v)}`; }).join(' <span class="muted">·</span> '),
                 sub: `Time-weighted total return · indexed to ${ymd(days[0])} = 0%`,
                 title: `${label} performance`,
                 note: 'Time-weighted return: cash in/out removed, so this is investment performance not money added. ' + INCOME_NOTE + ' Today\'s FX. Existing = holdings from before this year (trims stay here); New buys = this year\'s purchases. ▲ buy, ▼ sell.',
