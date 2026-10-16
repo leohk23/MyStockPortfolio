@@ -1,7 +1,25 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-14",
+  "updated": "2026-10-16",
   "normalizedEps": {
+    "HLMA.L": {
+      "basis": "company-adjusted basic EPS",
+      "ccy": "GBP",
+      "note": "Issuer basic adjusted EPS, not diluted EPS or independently reconstructed owner earnings. The FY2026 measure still includes the Nuvonic/FluidSmile licence profit noted separately below. Annual observations only: no rolling research EPS or adjusted historical percentile is certified.",
+      "annual": [
+        {
+          "end": "2025-03-31",
+          "eps": 0.9423,
+          "source": "https://www.halma.com/~/media/Files/H/Halma/Corp-V2/reports-and-presentations/reports/2026/halma-plc-fy26-rns.pdf"
+        },
+        {
+          "end": "2026-03-31",
+          "eps": 1.1405,
+          "source": "https://www.halma.com/~/media/Files/H/Halma/Corp-V2/reports-and-presentations/reports/2026/halma-plc-fy26-rns.pdf"
+        }
+      ],
+      "quarters": []
+    },
     "BN.PA": {
       "basis": "company-recurring diluted EPS",
       "ccy": "EUR",
@@ -410,6 +428,35 @@
     }
   },
   "adjustments": {
+    "HLMA.L": [
+      {
+        "fy": "2026-03-31",
+        "amount": 9300000,
+        "ccy": "GBP",
+        "arithmetic": false,
+        "what": "One-off Nuvonic/FluidSmile licence profit, included in company-adjusted earnings. The licence proceeds and simultaneous purchase of a 35% associate interest were each GBP9.9m. The issuer does not isolate the after-tax attributable licence benefit; evidence only, not an EPS subtraction.",
+        "source": "https://www.halma.com/news/press-releases/2026/trading-update-september-2026",
+        "found": "2026-10-16"
+      },
+      {
+        "fy": "2026-03-31",
+        "amount": 2800000,
+        "ccy": "GBP",
+        "basis": "after-tax attributable",
+        "what": "Contingent-consideration gain: note 2 reconciles earnings attributable to owners to company-adjusted earnings with a negative GBP2.8m after-tax adjustment. Separate from the licence profit; remove this reported earnings benefit once only.",
+        "source": "https://www.halma.com/~/media/Files/H/Halma/Corp-V2/reports-and-presentations/reports/2026/halma-plc-fy26-rns.pdf",
+        "found": "2026-10-16"
+      },
+      {
+        "fy": "2025-03-31",
+        "amount": 3000000,
+        "ccy": "GBP",
+        "basis": "after-tax attributable",
+        "what": "Prior-year disposal gain: note 2 reconciles earnings attributable to owners to company-adjusted earnings with a negative GBP3.0m after-tax disposal adjustment. Do not confuse this gain with the FY2026 disposal expense.",
+        "source": "https://www.halma.com/~/media/Files/H/Halma/Corp-V2/reports-and-presentations/reports/2026/halma-plc-fy26-rns.pdf",
+        "found": "2026-10-16"
+      }
+    ],
     "BBW": [
       {
         "fy": "2027-01-30",
