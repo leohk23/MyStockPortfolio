@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-16",
+  "updated": "2026-10-17",
   "normalizedEps": {
     "HLMA.L": {
       "basis": "company-adjusted basic EPS",
@@ -636,6 +636,26 @@
       }
     ],
     "MWA": [
+      {
+        "fy": "2026-09-30",
+        "amount": 400000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Nine months ended 30 June 2026: gain on sale of assets, deducted in the operating cash-flow reconciliation. Nine-month evidence, not a full-year total.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm",
+        "found": "2026-10-17",
+        "note": "No separately quantified after-tax attributable effect, so do not subtract from EPS. FY2026 is not yet an annual row in earnings.json; evidence is assigned to the actual fiscal year ending 30 September."
+      },
+      {
+        "fy": "2025-09-30",
+        "amount": 100000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Comparative nine months ended 30 June 2025: gain on sale of assets in the operating cash-flow reconciliation. This is not a full-year total or an incremental amount to add to a later annual disclosure.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1350593/000135059326000036/mwa-20260630.htm",
+        "found": "2026-10-17",
+        "note": "No separately quantified after-tax attributable effect; retained as evidence only."
+      },
       {
         "fy": "2026-09-30",
         "amountPerShare": 0.06,

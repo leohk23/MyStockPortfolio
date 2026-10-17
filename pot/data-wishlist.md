@@ -46,6 +46,15 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 
 ## Entries
 
+### 17 October 2026 deep dive, 08:21 UTC
+
+| Wanted | Evidence and next use |
+|---|---|
+| Human-only exposure for a name also held by the pot | signals.json truncates MWA into its small-name tail, while prices.json weights publishes 0.121% for the combined holding, including pot shares. The proposal discloses that distinction rather than inventing a human-only percentage. A public, amount-free split would make overlap disclosure exact. |
+| R&S executable cheaper venue and delivery evidence | The issuer's [H1 figures](https://ir.the-rsgroup.com/key-financial-figures) show sales down 13.1% with backlog and FCF rising. [IBKR's Swiss schedule](https://www.interactivebrokers.co.uk/en/pricing/commissions-stocks.php) has a CHF1.50 tiered minimum before third-party costs, about GBP1.37 or 0.75% of all GBP182.26 available. No T212 ordinary-share listing or locally mapped primary alternative was found; that is unconfirmed availability, not proof of absence. Recheck actual availability, trading unit and H2 delivery evidence by 23 October before any executable proposal; do not invent a lot size or use a US fee. |
+| Filed capital-return numerators, follow-up to the existing MWA/Danone gaps | MWA FY2025 local opinc USD269.4m versus issuer USD260.6m, and Q3 USD91.8m versus USD80.6m. Danone FY2025 local EUR3.717bn versus issuer IFRS EUR2.940bn. The 17 October proposals use issuer profits, disclose local ROIC as uncertified and halve allocations. Sources are linked in those proposals. This confirms the existing classification gap rather than requesting a new scraper. |
+
+
 Appended by the Sweep in any order and in any shape; sorted and tabulated here by `pot/report.js` on
 every report run. Do not hand-edit between the markers.
 
