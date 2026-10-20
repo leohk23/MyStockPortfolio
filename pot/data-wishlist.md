@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 56 | **earns a feed** |
+| margin | 57 | **earns a feed** |
 | volume / units | 43 | **earns a feed** |
 | cash conversion | 42 | **earns a feed** |
 | leverage / net debt | 26 | **earns a feed** |
-| return on capital | 24 | **earns a feed** |
+| return on capital | 25 | **earns a feed** |
 | inventory | 18 | **earns a feed** |
 | backlog / order intake | 17 | **earns a feed** |
 | capital returns | 14 | **earns a feed** |
 | same-store / comparable sales | 6 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-325 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+326 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,7 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-19 | Mueller annual operating-income mapping, in addition to the quarterly discrepancy already logged. | The FY2025 issuer release reports GAAP operating income USD260.6m versus local USD269.4m; the USD8.8m gap is strategic reorganisation/other charges. FY2024 is USD181.7m versus local USD213.8m, also including impairment-related differences. Annual ROIC therefore needs a reconciled numerator as well as quarterly margin tests. Source: https://ir.muellerwaterproducts.com/press-releases/2025/11-06-2025-211457930 . Wanted at the next earnings refresh; the deep dive uses issuer figures without overwriting generated data. |
 | 2026-10-18 | `TSCO.L` local price, filed earnings, valuation history and sector classification. | No outside price or multiple was adopted. Added to `watchlist.json`; the normal pipeline should establish the quote, earnings record and comparable valuation history independently. No manual feed wanted. |
 | 2026-10-18 | Tesco like-for-like volume and price mix, Booker sales, supplier cost inflation, retail-media profit and underlying cash conversion. | Fetched from [Tesco's H1 2026/27 results](https://www.tescoplc.com/interim-results-202627/). Wanted on results dates while tracked, not weekly; headline free cash flow included about £250m of payroll timing that reverses in H2, and adjusted EPS also benefited from buybacks, so the operating case needs volume, profit and cash on comparable definitions. |
 | 2026-10-18 | UK retail volumes and wholesale energy-price pressure. | Fetched from the [ONS October GDP and real-time indicators](https://www.ons.gov.uk/economy/grossdomesticproductgdp/bulletins/gdpmonthlyestimateuk/latest), which showed September consumer-demand indicators weakening while wholesale electricity and gas prices remained more than twice year-earlier levels. Wanted monthly while the energy shock persists; the official retail-sales release is the cleaner volume test and is due on 23 October. |
@@ -377,5 +378,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-10-19 | Mueller annual operating-income mapping, in addition to the quarterly discrepancy already logged. | The FY2025 issuer release reports GAAP operating income USD260.6m versus local USD269.4m; the USD8.8m gap is strategic reorganisation/other charges. FY2024 is USD181.7m versus local USD213.8m, also including impairment-related differences. Annual ROIC therefore needs a reconciled numerator as well as quarterly margin tests. Source: https://ir.muellerwaterproducts.com/press-releases/2025/11-06-2025-211457930 . Wanted at the next earnings refresh; the deep dive uses issuer figures without overwriting generated data. |
 <!-- entries:end -->
