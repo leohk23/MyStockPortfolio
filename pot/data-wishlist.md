@@ -30,18 +30,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 57 | **earns a feed** |
+| margin | 58 | **earns a feed** |
+| cash conversion | 43 | **earns a feed** |
 | volume / units | 43 | **earns a feed** |
-| cash conversion | 42 | **earns a feed** |
-| leverage / net debt | 26 | **earns a feed** |
+| leverage / net debt | 27 | **earns a feed** |
 | return on capital | 25 | **earns a feed** |
+| backlog / order intake | 18 | **earns a feed** |
 | inventory | 18 | **earns a feed** |
-| backlog / order intake | 17 | **earns a feed** |
 | capital returns | 14 | **earns a feed** |
 | same-store / comparable sales | 6 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-326 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+327 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
