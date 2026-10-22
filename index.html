@@ -3881,7 +3881,7 @@
                 const tr = document.createElement('tr');
                 tr.dataset.yahoo = w.yahoo;
                 tr.innerHTML = `
-                    <td>${w.name} <span class="muted">${w.yahoo}</span>${originTag(w.yahoo)}</td>
+                    <td>${escapeHTML(w.name)} <span class="muted">${escapeHTML(w.yahoo)}</span>${originTag(w.yahoo)}</td>
                     ${liveCell([w.quote])}
                     <td class="muted">${w.added ? ymd(w.added) : '–'}</td>
                     <td>${priceCell(w.quote.price, w.quote.currency, w.quote)}</td>

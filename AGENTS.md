@@ -375,6 +375,7 @@ git add watchlist.json prices.json history.json && git commit -m "watchlist" && 
 - **Adding a name** — it stays invisible until `prices.json` carries its quote. Either run `npm run fetch` first, or push and let the scheduled Action fill it in on its next run.
 - **A wrong `yahoo` symbol fails silently.** `fetch-prices.js` and `buildWatchlist()` both filter on `quotes[w.yahoo]`, so a typo just doesn't appear — no error, no placeholder. Unlike `meta.json`, which `extract-portfolio.js` guards by pinging Yahoo, **there is no guard here**. Always confirm a newly added name actually renders in the Watchlist view.
 - **Keep `geography` filled in** even though the table now shows the ticker beside the name: the search box still matches on `name`, `yahoo` and `geography`.
+- **Treat every field as untrusted.** The Sweep adds names from web pages and its commits are pushed unread, so a name is rendered through `escapeHTML`, never as raw HTML. Unescaped, a page that steered the lane could run script on the site and read the remembered passphrase.
 
 `valuation()` in `portfolio.js` is shared by `build()` and `buildWatchlist()` — valuation is a property of the *stock*, not of owning it, so both paths run one formula and cannot drift. A selftest asserts a holding and a watchlist entry on the same quote agree.
 
