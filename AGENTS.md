@@ -151,7 +151,8 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Failed lane on Claude | skipped; the cycle continues | `Invoke-Lane` | D72 |
 | Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due | `$doDeep` | D73 |
 | Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
-| Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths denied | `run-lane.ps1` `$allow` / `$deny` | D67 |
+| Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |
+| What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
 | **Subagents** | Sweep: `scout` (Haiku). Deep dive: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
 | Scout tools | WebSearch, WebFetch only — no Agent, so a scout cannot spawn another | `pot/agents/*.md` | D76 |
 | Scouts per run | **at most 3, at most 3 at once** — a brief rule; the CLI has no hard count | `brief-sweep.md`, `brief-deepdive.md` | D76 |

@@ -47,17 +47,43 @@ Add-Content -Path $log -Value "`n=== $started  $Agent  $Brief ===" -Encoding utf
 git pull --ff-only --quiet origin main 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) - continuing on local data'; }
 
-# Only these paths may change. Anything else the agent touches is reverted below, not committed.
-$allowed = @('pot/*', 'watchlist.json')
-# ...except Leo's own decisions, which sit under pot/ but are never a lane's to change (D83).
+# Only what a lane writes: its three output folders, the two stores the briefs append to, the book,
+# and the watchlist. Anything else the agent touches is put back below, not committed. Until D91
+# this was `pot/*`, which also matched run-lane.ps1, run-daily.ps1, every pot/*.js, the briefs and
+# the scouts' definitions: a lane steered by a web page could rewrite the scripts that run it, and
+# the next cycle would execute them outside any sandbox.
+$allowed = @('pot/proposals/*', 'pot/reviews/*', 'pot/sweeps/*',
+    'pot/data-wishlist.md', 'pot/adjustments.json', 'pot/positions.json', 'watchlist.json')
+# ...except Leo's own decisions, which are never a lane's to change (D83).
 $protected = @('pot/rejections.json')
+function LaneMay($p) { [bool]($allowed | Where-Object { $p -like $_ }) -and $protected -notcontains $p }
+
+# Every changed path, a rename by its new name. -uall lists a new file by name rather than its
+# folder, so it can be removed by name; git quotes a path with a space in it, and Windows allows no
+# quote inside a name.
+function Changed { git -c core.quotePath=false status --porcelain -uall | ForEach-Object { ($_.Substring(3) -replace '^.* -> ', '').Trim('"') } }
+function ReadBytes($p) { $f = Join-Path $Repo $p; if (Test-Path -LiteralPath $f -PathType Leaf) { ,[IO.File]::ReadAllBytes($f) } }
+function Hooks { Get-ChildItem .git/hooks -File -ErrorAction SilentlyContinue | ForEach-Object { ".git/hooks/$($_.Name)" } }
 
 # Whatever was already modified before the agent started is NOT the agent's doing, and must
 # survive. The revert below exists to stop a stray agent edit reaching a commit; on 30 Aug it
 # instead threw away an hour of uncommitted work in signals.js that a human had in progress,
 # because it could not tell the two apart. Now it can: only files that were clean going in are
 # candidates for reverting.
-$dirtyBefore = @(git status --porcelain | ForEach-Object { $_.Substring(3) })
+$dirtyBefore = @(Changed)
+
+# What the agent may not change but a checkout cannot restore is copied now and put back, byte for
+# byte, after it (D91):
+#   - Leo's uncommitted work outside the allowlist. Exempt from the revert, so a lane could rewrite a
+#     script he had open and the next cycle would run it.
+#   - git's own config and hooks. The config can name programs git runs (core.fsmonitor on every
+#     status, a credential helper on push), a hook is one, and the git commands below, then
+#     run-daily's, would run them outside the agent's sandbox.
+$snapshot = @{}
+foreach ($p in @('.git/config') + @(Hooks) + @($dirtyBefore | Where-Object { -not (LaneMay $_) })) { $snapshot[$p] = ReadBytes $p }
+# And where history stood: an agent that can run git could stage or commit an edit itself.
+$headBefore = git rev-parse HEAD
+$branchBefore = git symbolic-ref -q HEAD
 
 $prompt = if ($Ticker) { "Follow the instructions in $Brief for $Ticker" }
           else { "Follow the instructions in $Brief" }
@@ -94,7 +120,8 @@ if ($Agent -eq 'codex') {
         'Bash(node *) Bash(grep *) Bash(sed -n *) Bash(head *) Bash(tail *) Bash(ls *) Bash(wc *) ' +
         'Bash(cat *) Bash(date *) Bash(git status*) Bash(git log *) Bash(git diff *) Bash(git show *)'
     $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
-        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token) Read(./.vapid-key) Read(./.ibkr-flex) Read(./.ibkr-dividends.json)'
+        'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token) Read(./.vapid-key) Read(./.ibkr-flex) Read(./.ibkr-dividends.json) ' +
+        'Edit(./.git/**)'
     # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
     # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
     $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
@@ -167,26 +194,63 @@ if ($Agent -eq 'codex') {
     }
     $global:LASTEXITCODE = $code
 }
-if ($LASTEXITCODE -ne 0) { Note "agent exited $LASTEXITCODE"; exit 1 }
+$agentExit = $LASTEXITCODE
 
-# Revert anything outside the allowlist before staging, so a stray edit cannot ride along.
-$stray = git status --porcelain | ForEach-Object { $_.Substring(3) } |
-    Where-Object { $p = $_; (-not ($allowed | Where-Object { $p -like $_ }) -or $protected -contains $p) -and $dirtyBefore -notcontains $p }
+# Put the snapshot back before git runs again, a failed agent included, and remove any hook it added.
+foreach ($p in @(Hooks)) { if (-not $snapshot.ContainsKey($p)) { $snapshot[$p] = $null } }
+$putBack = @(foreach ($kv in $snapshot.GetEnumerator()) {
+    $now = ReadBytes $kv.Key
+    if ($null -eq $kv.Value -and $null -eq $now) { continue }
+    if ($null -ne $kv.Value -and $null -ne $now -and [Convert]::ToBase64String($now) -eq [Convert]::ToBase64String($kv.Value)) { continue }
+    $f = Join-Path $Repo $kv.Key
+    if ($null -eq $kv.Value) { Remove-Item -LiteralPath $f -Force } else { [IO.File]::WriteAllBytes($f, $kv.Value) }
+    $kv.Key
+})
+if ($putBack) { Note "put back what the agent may not change: $($putBack -join ', ')" }
+# No lane has a reason to touch git itself, so one that did was steered, and none of its work is kept.
+$discard = [bool]($putBack -like '.git/*')
+if ((git rev-parse HEAD) -ne $headBefore -or (git symbolic-ref -q HEAD) -ne $branchBefore) {
+    Note 'the agent moved HEAD - putting it back'
+    if ($branchBefore) { git symbolic-ref HEAD $branchBefore 2>&1 | Out-Null }
+    $discard = $true
+}
+if ($discard) { Note 'the agent changed git itself - discarding everything this lane wrote' }
+# The index and HEAD back to where the lane began, so the checkout below restores from HEAD, and
+# nothing the agent staged can reach the commit. Leo's own staged work stays, unstaged.
+git reset --quiet $headBefore 2>&1 | Out-Null
+
+# Revert anything outside the allowlist before staging, so a stray edit cannot ride along. A failed
+# agent too: otherwise failing on purpose would leave its edits on disk for the next cycle to run.
+function Strays { Changed | Where-Object { ($discard -or -not (LaneMay $_)) -and $dirtyBefore -notcontains $_ } }
+$stray = @(Strays)
 if ($stray) {
     Note "reverting $($stray.Count) file(s) outside the allowlist: $($stray -join ', ')"
-    git checkout -- $stray 2>&1 | Out-Null
+    # A checkout restores what git tracks; a file the agent created is simply removed.
+    $tracked = @(git -c core.quotePath=false ls-files -- $stray)
+    if ($tracked) { git checkout -- $tracked 2>&1 | Out-Null }
+    $stray | Where-Object { $tracked -notcontains $_ } |
+        ForEach-Object { Remove-Item -LiteralPath (Join-Path $Repo $_) -Force -ErrorAction SilentlyContinue }
     # A revert that fails must not be shrugged off: the point of the allowlist is that nothing
     # outside it reaches a commit, and carrying on regardless commits exactly what it was there to
     # stop. A zero-byte file named U+00B7, committed by accident on 28 Aug from a mangled shell
-    # redirect, was enough to break the checkout and take the whole revert down with it.
-    if ($LASTEXITCODE -ne 0) { Note "revert failed - refusing to commit files this lane may not have written"; exit 2 }
+    # redirect, was enough to break the checkout and take the whole revert down with it. So ask git
+    # again rather than trusting each step: a name Windows PowerShell mangled on the way in matches
+    # no file, fails nothing, and would otherwise pass as reverted.
+    if (@(Strays).Count) { Note "revert failed - refusing to commit files this lane may not have written"; exit 2 }
 }
+if ($agentExit -ne 0) { Note "agent exited $agentExit"; exit 1 }
+if ($discard) { exit 2 }
 
 # A name the Sweep added is dated here, not by the agent: the watchlist table sorts on `added`,
 # newest first, and an agent that forgot the field would sink the newest name to the bottom.
 if (git status --porcelain -- watchlist.json) { node watchlist-added.js 2>&1 | ForEach-Object { Note "  $_" } | Out-Null }
 
-git add -- pot watchlist.json 2>&1 | Out-Null
+# Stage only what a lane may write. Leo's uncommitted work elsewhere stays his to commit: it used to
+# ride along in the lane's commit under the lane's name, run-daily.ps1 twice. By folder rather than
+# by name, so a mangled name cannot drop a file, and one add per path, since git refuses the whole
+# add when any one path in it matches nothing.
+foreach ($p in $allowed) { git add -- ($p -replace '/\*$', '') 2>&1 | Out-Null }
+git reset --quiet -- $protected 2>&1 | Out-Null
 $staged = git diff --cached --name-only
 if (-not $staged) { Note 'no changes — nothing to commit'; exit 0 }
 
