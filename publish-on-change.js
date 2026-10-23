@@ -15,6 +15,7 @@ process.chdir(__dirname);
 const STATE = '.tradelog-published', LOG = 'publish-on-change.log', LOCK = '.publish-on-change.lock';
 const SETTLE_MS = 2 * 60 * 1000;          // a save must be this still before it is read
 const LOCK_MS = 15 * 60 * 1000;           // a lock older than this is a crashed run, not a live one
+const CYCLE_LOCK = 'pot/.daily-lock', CYCLE_MS = 3 * 60 * 60 * 1000;   // the longest cycle took 83 minutes
 
 const log = msg => fs.appendFileSync(LOG, `${new Date().toISOString()} ${msg}\n`);
 
@@ -28,6 +29,20 @@ function decide(stat, state, now) {
     return 'publish';
 }
 
+// Is a pot cycle running? run-daily.ps1 holds pot/.daily-lock ("<pid> started <iso>Z") for its whole
+// run, and a publish must not land inside it: a lane that sees HEAD move and holdings.json change
+// cannot tell that from a lane tampering with git, so D91 discards everything it wrote. That threw
+// away the 23 Oct 12:09 Deep dive on Claude when this published a 12:06 save at 12:15. The save
+// waits for the next run instead, at most one cycle late. A lock whose process has gone, or older
+// than any cycle, is a crashed run and does not hold anything up. PowerShell writes it with a BOM.
+const lockLine = text => String(text || '').trim().replace(/^\D+/, '');   // drops the BOM, or any junk before the pid
+function cycleRunning(lockText, now, alive) {
+    const m = /^(\d+) started (\S+)/.exec(lockLine(lockText));
+    if (!m || !(now - Date.parse(m[2]) < CYCLE_MS)) return false;
+    return alive(Number(m[1]));
+}
+const pidAlive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+
 function main() {
     const workbook = fs.existsSync('.tradelog-path') ? fs.readFileSync('.tradelog-path', 'utf8').trim() : 'Tradelog.xlsx';
     if (!fs.existsSync(workbook)) { log(`workbook not found: ${workbook}`); return; }
@@ -35,6 +50,8 @@ function main() {
     const state = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : null;
     const verdict = decide(stat, state, Date.now());
     if (verdict !== 'publish') return;                       // the common case: silent
+    const cycle = fs.existsSync(CYCLE_LOCK) ? fs.readFileSync(CYCLE_LOCK, 'utf8') : null;
+    if (cycleRunning(cycle, Date.now(), pidAlive)) { log(`a pot cycle is running (${lockLine(cycle)}); publishing after it`); return; }
     if (fs.existsSync(LOCK) && Date.now() - fs.statSync(LOCK).mtimeMs < LOCK_MS) { log('a publish is still running; skipped'); return; }
     const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
     if (branch !== 'main') { log(`on branch ${branch}, not main; not publishing`); return; }
@@ -64,8 +81,18 @@ function selftest() {
         'the same save with its fraction of a second dropped by OneDrive');
     assert.strictEqual(decide(saved, { mtimeMs: saved.mtimeMs - 1, size: 100 }, now), 'publish');
     assert.strictEqual(decide({ mtimeMs: now - 30 * 1000, size: 101 }, { mtimeMs: 1, size: 100 }, now), 'settling', 'still syncing: wait');
+
+    // A running pot cycle holds the publish back; a dead or ancient one does not.
+    const up = () => true, gone = () => false;
+    const lock = String.fromCharCode(0xfeff) + '4242 started 2026-10-14T11:30:00Z\r\n';
+    assert.strictEqual(cycleRunning(lock, now, up), true, 'live cycle, BOM and CRLF as PowerShell writes them');
+    assert.strictEqual(cycleRunning(lock, now, gone), false, 'its process has gone: a crashed cycle');
+    assert.strictEqual(cycleRunning('4242 started 2026-10-14T08:00:00Z', now, up), false, 'older than any cycle');
+    assert.strictEqual(cycleRunning(null, now, up), false, 'no lock');
+    assert.strictEqual(cycleRunning('garbage', now, up), false, 'unreadable lock');
+    assert.strictEqual(pidAlive(process.pid), true);
     console.log('selftest ok');
 }
 
 if (require.main === module) process.argv.includes('--selftest') ? selftest() : main();
-module.exports = { decide };
+module.exports = { decide, cycleRunning };

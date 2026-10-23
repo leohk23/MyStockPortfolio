@@ -464,13 +464,22 @@ try {
         '''[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint e);''; ' +
         '[W.P]::SetThreadExecutionState(0x80000001); while($true){Start-Sleep 60}')
 
-    # ---- 0. The pot book, derived from the Tradelog and the proposals. The Scan reads it for
+    # ---- 0. Catch up with GitHub before anything reads the repo, so a brief, script or watchlist
+    # changed elsewhere (an online session, the price bot) is what this cycle runs. The files every
+    # cycle rebuilds are put back to the committed copy first: the last cycle left its own versions
+    # modified, and a fast-forward will not overwrite them, so 49 cycles to 23 Oct 2026 failed this
+    # pull on world-history.json alone and ran on whatever the laptop last had. They are rebuilt
+    # below either way. The same list as publish.js, which hit the same wall on 14 Oct.
+    $regenerated = $ciOwned + @('alerts-state.json', 'pot.json', 'pot/positions.json', 'pot/origins.json')
+    git checkout --quiet -- @($regenerated) 2>&1 | Out-Null
+    git pull --ff-only --quiet origin main 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { Note "git pull failed - continuing on local data ($(git status -sb 2>&1 | Select-Object -First 1))" }
+
+    # ---- 0b. The pot book, derived from the Tradelog and the proposals. The Scan reads it for
     # §6.3, §6.4 and §6.5, so it has to be current before the Scan runs, not after.
     node pot/positions.js 2>&1 | Select-Object -Last 2 | ForEach-Object { Note "  $_" }
 
     # ---- 1. Scan, so the Sweep has current levels to check its own figures against.
-    git pull --ff-only --quiet origin main 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) - continuing on local data' }
     node signals.js 2>&1 | Select-Object -Last 3 | ForEach-Object { Note "  $_" }
     if ($LASTEXITCODE -ne 0) { Note "signals.js exited $LASTEXITCODE" }
     git add signals.json 2>&1 | Out-Null
