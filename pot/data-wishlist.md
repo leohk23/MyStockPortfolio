@@ -50,6 +50,7 @@ Appended by the Sweep in any order and in any shape; sorted and tabulated here b
 every report run. Do not hand-edit between the markers.
 
 <!-- entries:start -->
+| 2026-10-23 | Roche pharmaceutical and diagnostics growth, patent-expiry drag, pipeline conversion and China diagnostics pricing. | Fetched from Roche's nine-month sales release. Wanted on results dates while Roche is tracked, not weekly; the set must show whether the broad product portfolio and installed diagnostics base keep outrunning biosimilar erosion and Chinese pricing pressure, and whether late-stage assets become profitable sales rather than a pipeline count. |
 | date | wanted | detail |
 |---|---|---|
 | 2026-10-20 | Sartorius recurring-consumables growth, order intake, clean operating margin, cash conversion and leverage. | Fetched from Sartorius' H1 release. Wanted on results dates while SRT3.DE is tracked; the set tests whether bioprocess recovery is recurring and cash-backed rather than a tariff-refund effect, and whether 3.51x net debt/underlying EBITDA keeps falling. |
