@@ -1,9 +1,9 @@
 {
- "generated": "2026-10-23T12:14:04.649Z",
- "pricesAt": "2026-10-23T12:13:57.663Z",
+ "generated": "2026-10-23T20:25:15.070Z",
+ "pricesAt": "2026-10-23T12:06:46.596Z",
  "vix": {
-  "close": 19.55,
-  "day": 0.0273
+  "close": 19.57,
+  "day": 0.0284
  },
  "spxDay": 0,
  "fired": [
@@ -11,7 +11,7 @@
    "rule": "6.1 valuation",
    "ticker": "NW0.DE",
    "where": "HELD",
-   "pe": 13.303921568627452,
+   "pe": 13.382352941176471,
    "pctile": 0.02564,
    "window": "5y",
    "weeks": 39,
@@ -19,50 +19,28 @@
    "floorDate": "2026-06-26",
    "p5": 19.5515,
    "median": 25.5625,
-   "vsFloor": -0.273160678731878,
+   "vsFloor": -0.2688757011562368,
    "cheapOn": "earnings",
    "cash": "no operating cash flow history"
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "NFLX",
-   "where": "HELD",
-   "pe": 19.378612716763005,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 196,
-   "floor": 26.502,
-   "floorDate": "2026-10-23",
-   "p5": 28.3755,
-   "median": 45.8068,
-   "vsFloor": -0.2687867814971321,
-   "cheapOn": "both",
-   "cash": {
-    "pocf": 28.6743,
-    "pctile": 0,
-    "median": 70.0726,
-    "weeks": 261,
-    "window": "5y"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "NVO",
    "where": "watchlist",
-   "pe": 10.050315299011537,
+   "pe": 10.057031505060397,
    "pctile": 0.05882,
    "window": "5y",
    "weeks": 187,
-   "floor": 10.5963,
+   "floor": 10.6034,
    "floorDate": "2026-03-27",
-   "p5": 11.2554,
-   "median": 31.0995,
-   "vsFloor": -0.051525976141526986,
+   "p5": 11.2629,
+   "median": 31.1203,
+   "vsFloor": -0.05152766989263846,
    "cheapOn": "both",
    "cash": {
-    "pocf": 9.82983,
+    "pocf": 9.8364,
     "pctile": 0.05882,
-    "median": 23.8963,
+    "median": 23.9123,
     "weeks": 187,
     "window": "5y"
    }
@@ -98,7 +76,7 @@
    "rule": "6.1 valuation",
    "ticker": "BN.PA",
    "where": "watchlist",
-   "pe": 20.536423841059605,
+   "pe": 20.549668874172188,
    "pctile": 0.08556,
    "window": "5y",
    "weeks": 187,
@@ -106,10 +84,10 @@
    "floorDate": "2026-10-09",
    "p5": 21.7163,
    "median": 36.5759,
-   "vsFloor": -0.013411871814427379,
+   "vsFloor": -0.012775568603730525,
    "cheapOn": "both",
    "cash": {
-    "pocf": 10.6245,
+    "pocf": 10.6211,
     "pctile": 0.04813,
     "median": 12.2169,
     "weeks": 187,
@@ -117,10 +95,32 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 16.278215223097114,
-    "recurringVsFloor": 0.00014839351043338667,
+    "recurringPe": 16.288713910761157,
+    "recurringVsFloor": 0.0007934424581990118,
     "epsBasis": "research",
     "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "BBCA.JK",
+   "where": "watchlist",
+   "pe": 10.646186440677965,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 187,
+   "floor": 10.7602,
+   "floorDate": "2026-10-23",
+   "p5": 12.955,
+   "median": 23.6842,
+   "vsFloor": -0.010595858750026443,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 7.98762,
+    "pctile": 0,
+    "median": 20.4313,
+    "weeks": 187,
+    "window": "5y"
    }
   },
   {
@@ -149,18 +149,18 @@
    "rule": "6.1 valuation",
    "ticker": "RMS.PA",
    "where": "HELD",
-   "pe": 29.209302325581394,
+   "pe": 29.127906976744185,
    "pctile": 0,
    "window": "5y",
    "weeks": 187,
-   "floor": 29.1734,
+   "floor": 29.0573,
    "floorDate": "2026-10-23",
    "p5": 36.5219,
    "median": 52.8481,
-   "vsFloor": 0.0012306527720935545,
+   "vsFloor": 0.0024299221450094777,
    "cheapOn": "both",
    "cash": {
-    "pocf": 24.5591,
+    "pocf": 24.4614,
     "pctile": 0,
     "median": 47.5803,
     "weeks": 187,
@@ -168,8 +168,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 28.402345454833263,
-    "recurringVsFloor": 0.0012318878301593728,
+    "recurringPe": 28.32319879154352,
+    "recurringVsFloor": 0.0024278804705613055,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -205,35 +205,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "BBCA.JK",
-   "where": "watchlist",
-   "pe": 10.851959831551667,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 187,
-   "floor": 10.7602,
-   "floorDate": "2026-10-23",
-   "p5": 12.955,
-   "median": 23.6842,
-   "vsFloor": 0.008527706878279862,
-   "cheapOn": "both",
-   "cash": {
-    "pocf": 7.98762,
-    "pctile": 0,
-    "median": 20.4313,
-    "weeks": 187,
-    "window": "5y"
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 11.019881840550532,
-    "recurringVsFloor": 0.008527903259953229,
-    "epsBasis": "vendor",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "MC.PA",
    "where": "HELD",
    "pe": 17.527347310847766,
@@ -247,7 +218,7 @@
    "vsFloor": 0.011685337915241512,
    "cheapOn": "both",
    "cash": {
-    "pocf": 10.1429,
+    "pocf": 10.1416,
     "pctile": 0.0107,
     "median": 16.8835,
     "weeks": 187,
@@ -257,6 +228,40 @@
     "why": "recurring earnings put it above its floor",
     "recurringPe": 17.403681225928793,
     "recurringVsFloor": 0.01168312101756075,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "SUPR.L",
+   "where": "watchlist",
+   "pe": 11.878571428571428,
+   "pctile": 0.05357,
+   "window": "5y",
+   "weeks": 56,
+   "floor": 11.6884,
+   "floorDate": "2026-10-09",
+   "p5": 12.0217,
+   "median": 16.8799,
+   "vsFloor": 0.01627009929258305,
+   "cheapOn": "earnings",
+   "cash": {
+    "pocf": 11.6331,
+    "pctile": 0.5839,
+    "median": 11.2392,
+    "weeks": 161,
+    "window": "5y"
+   },
+   "denominatorDrift": {
+    "why": "P/E is in the cheapest decile but P/OCF is at the 58th percentile",
+    "pePctile": 0.05357,
+    "pocfPctile": 0.5839
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 11.754627280065481,
+    "recurringVsFloor": 0.016273627063345675,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -292,62 +297,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "SUPR.L",
-   "where": "watchlist",
-   "pe": 11.89285714285714,
-   "pctile": 0.05357,
-   "window": "5y",
-   "weeks": 56,
-   "floor": 11.6884,
-   "floorDate": "2026-10-09",
-   "p5": 12.0217,
-   "median": 16.8799,
-   "vsFloor": 0.01749231228030701,
-   "cheapOn": "earnings",
-   "cash": {
-    "pocf": 11.6401,
-    "pctile": 0.5839,
-    "median": 11.2392,
-    "weeks": 161,
-    "window": "5y"
-   },
-   "denominatorDrift": {
-    "why": "P/E is in the cheapest decile but P/OCF is at the 58th percentile",
-    "pePctile": 0.05357,
-    "pocfPctile": 0.5839
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 11.768763933438981,
-    "recurringVsFloor": 0.017495844293728524,
-    "epsBasis": "vendor",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "FUL",
-   "where": "watchlist",
-   "pe": 14.096952908587259,
-   "pctile": 0.01149,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 13.8436,
-   "floorDate": "2026-10-09",
-   "p5": 17.2798,
-   "median": 24.3322,
-   "vsFloor": 0.018301085598201317,
-   "cheapOn": "earnings",
-   "cash": {
-    "pocf": 10.6728,
-    "pctile": 0.199,
-    "median": 11.6276,
-    "weeks": 196,
-    "window": "5y"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "HKXCY",
    "where": "HELD",
    "pe": 23.565,
@@ -373,6 +322,28 @@
     "recurringVsFloor": 0.006802595205813278,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "FUL",
+   "where": "watchlist",
+   "pe": 14.175487465181059,
+   "pctile": 0.01149,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 13.8436,
+   "floorDate": "2026-10-09",
+   "p5": 17.2798,
+   "median": 24.3322,
+   "vsFloor": 0.023974072147494807,
+   "cheapOn": "earnings",
+   "cash": {
+    "pocf": 10.6728,
+    "pctile": 0.199,
+    "median": 11.6276,
+    "weeks": 196,
+    "window": "5y"
    }
   },
   {
@@ -459,7 +430,7 @@
    "rule": "6.1 valuation",
    "ticker": "EUZ.DE",
    "where": "HELD",
-   "pe": 16.79746835443038,
+   "pe": 16.81012658227848,
    "pctile": 0.04278,
    "window": "5y",
    "weeks": 187,
@@ -467,10 +438,10 @@
    "floorDate": "2026-09-18",
    "p5": 17.0513,
    "median": 28.6937,
-   "vsFloor": 0.0810225153284021,
+   "vsFloor": 0.08183715173784334,
    "cheapOn": "earnings",
    "cash": {
-    "pocf": 14.1825,
+    "pocf": 14.204,
     "pctile": 0.1016,
     "median": 17.7802,
     "weeks": 187,
@@ -478,8 +449,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 16.703821235126107,
-    "recurringVsFloor": 0.08102753304638344,
+    "recurringPe": 16.71640889242462,
+    "recurringVsFloor": 0.08184217323707399,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -511,6 +482,28 @@
     "recurringVsFloor": 0.08515846134947713,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "AZN.L",
+   "where": "HELD",
+   "pe": 25.583166332665332,
+   "pctile": 0.07487,
+   "window": "5y",
+   "weeks": 187,
+   "floor": 23.4229,
+   "floorDate": "2026-08-14",
+   "p5": 25.5485,
+   "median": 41.0885,
+   "vsFloor": 0.09222881593079135,
+   "cheapOn": "earnings",
+   "cash": {
+    "pocf": 18.2991,
+    "pctile": 0.1123,
+    "median": 22.3229,
+    "weeks": 187,
+    "window": "5y"
    }
   },
   {
@@ -624,31 +617,9 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "AZN.L",
-   "where": "HELD",
-   "pe": 26.418219461697724,
-   "pctile": 0.07487,
-   "window": "5y",
-   "weeks": 187,
-   "floor": 23.4247,
-   "floorDate": "2026-08-14",
-   "p5": 25.5505,
-   "median": 41.0916,
-   "vsFloor": 0.1277932892074487,
-   "cheapOn": "earnings",
-   "cash": {
-    "pocf": 18.3033,
-    "pctile": 0.1123,
-    "median": 22.3246,
-    "weeks": 187,
-    "window": "5y"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "UU.L",
    "where": "watchlist",
-   "pe": 17.476744186046513,
+   "pe": 17.46511627906977,
    "pctile": 0.09195,
    "window": "5y",
    "weeks": 174,
@@ -656,10 +627,10 @@
    "floorDate": "2026-09-11",
    "p5": 16.3403,
    "median": 34.5963,
-   "vsFloor": 0.13255898349101258,
+   "vsFloor": 0.13180545123320075,
    "cheapOn": "both",
    "cash": {
-    "pocf": 7.4385,
+    "pocf": 7.4337,
     "pctile": 0.09195,
     "median": 9.12928,
     "weeks": 174,
@@ -667,8 +638,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 16.98207221956701,
-    "recurringVsFloor": 0.13255341755757155,
+    "recurringPe": 16.970773435655122,
+    "recurringVsFloor": 0.1317998890029759,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -677,7 +648,7 @@
    "rule": "6.1 valuation",
    "ticker": "HLMA.L",
    "where": "watchlist",
-   "pe": 33.23265306122449,
+   "pe": 33.244897959183675,
    "pctile": 0.05172,
    "window": "5y",
    "weeks": 174,
@@ -685,10 +656,10 @@
    "floorDate": "2023-10-20",
    "p5": 32.9106,
    "median": 37.7688,
-   "vsFloor": 0.13499885796141675,
+   "vsFloor": 0.13541705945661264,
    "cheapOn": "earnings",
    "cash": {
-    "pocf": 25.693,
+    "pocf": 25.7088,
     "pctile": 0.1724,
     "median": 28.4815,
     "weeks": 174,
@@ -696,8 +667,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 32.81122964536106,
-    "recurringVsFloor": 0.12214275218575565,
+    "recurringPe": 32.823319265716755,
+    "recurringVsFloor": 0.12255621672230177,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -738,35 +709,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "6690.HK",
-   "where": "watchlist",
-   "pe": 9.027906976744186,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 187,
-   "floor": 7.84597,
-   "floorDate": "2026-10-23",
-   "p5": 8.25423,
-   "median": 11.6847,
-   "vsFloor": 0.1506425562096445,
-   "cheapOn": "both",
-   "cash": {
-    "pocf": 5.89974,
-    "pctile": 0,
-    "median": 7.77389,
-    "weeks": 187,
-    "window": "5y"
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 8.5477236896573,
-    "recurringVsFloor": 0.1506413928834136,
-    "epsBasis": "vendor",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "MIR",
    "where": "watchlist",
    "pe": 165.77777777777777,
@@ -790,6 +732,35 @@
     "why": "recurring earnings put it above its floor",
     "recurringPe": 261.86372555558285,
     "recurringVsFloor": 0.26635745124444643,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "6690.HK",
+   "where": "watchlist",
+   "pe": 9.15566037735849,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 187,
+   "floor": 7.84597,
+   "floorDate": "2026-10-23",
+   "p5": 8.25423,
+   "median": 11.6847,
+   "vsFloor": 0.16692523389185654,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 5.89974,
+    "pctile": 0,
+    "median": 7.77389,
+    "weeks": 187,
+    "window": "5y"
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 8.668700230897374,
+    "recurringVsFloor": 0.16692650234327244,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -830,40 +801,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "1211.HK",
-   "where": "HELD",
-   "pe": 19.944289693593316,
-   "pctile": 0,
-   "window": "5y",
-   "weeks": 187,
-   "floor": 16.9774,
-   "floorDate": "2026-10-23",
-   "p5": 17.9258,
-   "median": 23.0759,
-   "vsFloor": 0.17475524483097038,
-   "cheapOn": "earnings",
-   "cash": {
-    "pocf": 9.36467,
-    "pctile": 0.8396,
-    "median": 4.88764,
-    "weeks": 187,
-    "window": "5y"
-   },
-   "denominatorDrift": {
-    "why": "P/E is in the cheapest decile but P/OCF is at the 84th percentile",
-    "pePctile": 0,
-    "pocfPctile": 0.8396
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 18.6637680479419,
-    "recurringVsFloor": 0.20515594436105422,
-    "epsBasis": "vendor",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "GOOG",
    "where": "HELD",
    "pe": 16.094330155544405,
@@ -898,29 +835,63 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "1211.HK",
+   "where": "HELD",
+   "pe": 20.99706744868035,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 187,
+   "floor": 16.9774,
+   "floorDate": "2026-10-23",
+   "p5": 17.9258,
+   "median": 23.0759,
+   "vsFloor": 0.23676578561383677,
+   "cheapOn": "earnings",
+   "cash": {
+    "pocf": 9.36467,
+    "pctile": 0.8396,
+    "median": 4.88764,
+    "weeks": 187,
+    "window": "5y"
+   },
+   "denominatorDrift": {
+    "why": "P/E is in the cheapest decile but P/OCF is at the 84th percentile",
+    "pePctile": 0,
+    "pocfPctile": 0.8396
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 19.64895333648009,
+    "recurringVsFloor": 0.26877128204254586,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "EXPN.L",
    "where": "HELD",
-   "pe": 25.295081967213115,
+   "pe": 25.37694262295082,
    "pctile": 0.0708,
    "window": "5y",
    "weeks": 226,
-   "floor": 20.1562,
+   "floor": 20.1547,
    "floorDate": "2026-10-02",
-   "p5": 23.2818,
-   "median": 36.6468,
-   "vsFloor": 0.254952916086024,
+   "p5": 23.2801,
+   "median": 36.6441,
+   "vsFloor": 0.25910793129894394,
    "cheapOn": "earnings",
    "cash": {
-    "pocf": 16.9798,
+    "pocf": 17.0148,
     "pctile": 0.2069,
-    "median": 22.9572,
+    "median": 22.9555,
     "weeks": 174,
     "window": "5y"
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 25.308150930398487,
-    "recurringVsFloor": 0.2549537815198639,
+    "recurringPe": 25.39005388028244,
+    "recurringVsFloor": 0.25910875127236865,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -956,6 +927,28 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "NFLX",
+   "where": "HELD",
+   "pe": 19.378612716763005,
+   "pctile": 0,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 15.1628,
+   "floorDate": "2026-10-23",
+   "p5": 16.7662,
+   "median": 43.0423,
+   "vsFloor": 0.27803655767819957,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 28.6743,
+    "pctile": 0,
+    "median": 70.0726,
+    "weeks": 261,
+    "window": "5y"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "034230.KS",
    "where": "watchlist",
    "pe": 11.307420494699647,
@@ -987,7 +980,7 @@
    "rule": "6.1 valuation",
    "ticker": "INTU",
    "where": "watchlist",
-   "pe": 21.509090909090908,
+   "pe": 21.561360874848113,
    "pctile": 0.07663,
    "window": "5y",
    "weeks": 261,
@@ -995,7 +988,7 @@
    "floorDate": "2026-06-19",
    "p5": 19.4611,
    "median": 58.536,
-   "vsFloor": 0.3243780153249456,
+   "vsFloor": 0.32759643091504254,
    "cheapOn": "both",
    "cash": {
     "pocf": 11.1393,
@@ -1043,35 +1036,6 @@
   },
   {
    "rule": "6.1 valuation",
-   "ticker": "BBW",
-   "where": "watchlist",
-   "pe": 6.037128712871287,
-   "pctile": 0.09579,
-   "window": "5y",
-   "weeks": 261,
-   "floor": 4.20513,
-   "floorDate": "2022-09-23",
-   "p5": 5.30696,
-   "median": 8.09813,
-   "vsFloor": 0.43565804454827517,
-   "cheapOn": "both",
-   "cash": {
-    "pocf": 4.90539,
-    "pctile": 0,
-    "median": 7.84576,
-    "weeks": 261,
-    "window": "5y"
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 6.733848702374379,
-    "recurringVsFloor": 0.2829677540652129,
-    "epsBasis": "own",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
    "ticker": "9961.HK",
    "where": "HELD",
    "pe": 7.745605574473949,
@@ -1090,6 +1054,35 @@
     "median": 14.9538,
     "weeks": 187,
     "window": "5y"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
+   "ticker": "BBW",
+   "where": "watchlist",
+   "pe": 6.052109181141439,
+   "pctile": 0.09579,
+   "window": "5y",
+   "weeks": 261,
+   "floor": 4.20513,
+   "floorDate": "2022-09-23",
+   "p5": 5.30696,
+   "median": 8.09813,
+   "vsFloor": 0.43922047145782406,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 4.90539,
+    "pctile": 0,
+    "median": 7.84576,
+    "weeks": 261,
+    "window": "5y"
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 6.733848702374379,
+    "recurringVsFloor": 0.2829677540652129,
+    "epsBasis": "own",
+    "floorBasis": "vendor recurring"
    }
   },
   {
@@ -1147,27 +1140,27 @@
    "rule": "6.1 valuation",
    "ticker": "STVN",
    "where": "watchlist",
-   "pe": 36.28528045730618,
+   "pe": 36.298248749106506,
    "pctile": 0.2674,
    "window": "5y",
    "weeks": 187,
-   "floor": 23.6779,
+   "floor": 23.6864,
    "floorDate": "2026-04-10",
-   "p5": 30.3588,
-   "median": 43.7864,
-   "vsFloor": 0.5324534885824408,
+   "p5": 30.3696,
+   "median": 43.802,
+   "vsFloor": 0.5324510583755449,
    "cheapOn": "cash",
    "cash": {
-    "pocf": 16.6935,
+    "pocf": 16.6994,
     "pctile": 0.09091,
-    "median": 44.2274,
+    "median": 44.2432,
     "weeks": 187,
     "window": "5y"
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 33.585772033558214,
-    "recurringVsFloor": 0.44789974364586493,
+    "recurringPe": 33.59775050138181,
+    "recurringVsFloor": 0.4478980586257757,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -1176,7 +1169,7 @@
    "rule": "6.1 valuation",
    "ticker": "2681.T",
    "where": "watchlist",
-   "pe": 8.744723011975532,
+   "pe": 8.520104087971124,
    "pctile": 0.3103,
    "window": "5y",
    "weeks": 174,
@@ -1184,7 +1177,7 @@
    "floorDate": "2024-11-08",
    "p5": 5.6744,
    "median": 13.5328,
-   "vsFloor": 0.6842394896805586,
+   "vsFloor": 0.6409777349720678,
    "cheapOn": "cash",
    "cash": {
     "pocf": 4.15215,
@@ -1195,8 +1188,8 @@
    },
    "oneOff": {
     "why": "recurring earnings put it above its floor",
-    "recurringPe": 7.065883270216084,
-    "recurringVsFloor": 0.4749135869664589,
+    "recurringPe": 6.8843897310679285,
+    "recurringVsFloor": 0.43702911073054485,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -1235,7 +1228,7 @@
    "ticker": "METSO.HE",
    "where": "watchlist",
    "pe": 27.810344827586206,
-   "pctile": 0.7914,
+   "pctile": 0.7861,
    "window": "5y",
    "weeks": 187,
    "floor": 12.3786,
@@ -1245,8 +1238,8 @@
    "vsFloor": 1.2466470220853898,
    "cheapOn": "cash",
    "cash": {
-    "pocf": 17.1738,
-    "pctile": 0.07487,
+    "pocf": 17.1525,
+    "pctile": 0.06952,
     "median": 29.3727,
     "weeks": 187,
     "window": "5y"
@@ -1319,8 +1312,8 @@
    "id": "2026-10-08-0459-BVI.PA",
    "ticker": "BVI.PA",
    "where": "BVI.PA",
-   "since": 0.11294660007683444,
-   "price": 28.97,
+   "since": 0.11371494429504403,
+   "price": 28.99,
    "entry": 26.03,
    "qty": 7,
    "reviewBy": "2026-10-21",
@@ -1335,8 +1328,8 @@
    "id": "2026-10-07-1755-BVI.PA",
    "ticker": "BVI.PA",
    "where": "BVI.PA",
-   "since": 0.11380238369857731,
-   "price": 28.97,
+   "since": 0.11457131872356774,
+   "price": 28.99,
    "entry": 26.01,
    "qty": 7,
    "reviewBy": "2026-10-21",
@@ -1383,8 +1376,8 @@
    "id": "2026-09-23-1918-EXPN.L",
    "ticker": "EXPN.L",
    "where": "EXPN.L",
-   "since": 0.15537251965555976,
-   "price": 3086,
+   "since": 0.15911156870086107,
+   "price": 3095.987,
    "entry": 2671,
    "qty": 1,
    "reviewBy": "2026-10-23",
@@ -1399,8 +1392,8 @@
    "id": "2026-09-21-0930-EUZ.DE",
    "ticker": "EUZ.DE",
    "where": "EUZ.DE",
-   "since": 0.07449392712550607,
-   "price": 13.27,
+   "since": 0.07530364372469633,
+   "price": 13.28,
    "entry": 12.35,
    "qty": 6,
    "reviewBy": "2026-11-12",
@@ -1415,8 +1408,8 @@
    "id": "2026-09-17-0557-AZN.L",
    "ticker": "AZN.L",
    "where": "AZN.L",
-   "since": 0.02210829862223651,
-   "price": 12760,
+   "since": 0.022588913809676425,
+   "price": 12766,
    "entry": 12484,
    "qty": 1,
    "reviewBy": "2026-11-02",
@@ -1764,6 +1757,54 @@
    "currency": "USD"
   },
   {
+   "id": "2026-09-07-2038-REL.L",
+   "ticker": "REL.L",
+   "state": "expired",
+   "written": "2026-09-07",
+   "days": 46,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "entry": 2572,
+   "now": 3047.3,
+   "move": 0.18479782270606537,
+   "basis": "close on the day it was written",
+   "limit": 2575,
+   "currency": "GBp"
+  },
+  {
+   "id": "2026-09-07-1640-REL.L",
+   "ticker": "REL.L",
+   "state": "expired",
+   "written": "2026-09-07",
+   "days": 46,
+   "supersededBy": "2026-09-07-2038-REL.L",
+   "phase": "live",
+   "counts": false,
+   "entry": 2572,
+   "now": 3047.3,
+   "move": 0.18479782270606537,
+   "basis": "close on the day it was written",
+   "limit": 2575,
+   "currency": "GBp"
+  },
+  {
+   "id": "2026-09-07-1413-REL.L",
+   "ticker": "REL.L",
+   "state": "expired",
+   "written": "2026-09-07",
+   "days": 46,
+   "supersededBy": "2026-09-07-2038-REL.L",
+   "phase": "live",
+   "counts": false,
+   "entry": 2572,
+   "now": 3047.3,
+   "move": 0.18479782270606537,
+   "basis": "close on the day it was written",
+   "limit": 2570,
+   "currency": "GBp"
+  },
+  {
    "id": "2026-09-09-2039-TW",
    "ticker": "TW",
    "state": "expired",
@@ -1780,54 +1821,6 @@
    "currency": "USD"
   },
   {
-   "id": "2026-09-07-2038-REL.L",
-   "ticker": "REL.L",
-   "state": "expired",
-   "written": "2026-09-07",
-   "days": 46,
-   "supersededBy": null,
-   "phase": "live",
-   "counts": true,
-   "entry": 2572,
-   "now": 3037,
-   "move": 0.18079315707620536,
-   "basis": "close on the day it was written",
-   "limit": 2575,
-   "currency": "GBp"
-  },
-  {
-   "id": "2026-09-07-1640-REL.L",
-   "ticker": "REL.L",
-   "state": "expired",
-   "written": "2026-09-07",
-   "days": 46,
-   "supersededBy": "2026-09-07-2038-REL.L",
-   "phase": "live",
-   "counts": false,
-   "entry": 2572,
-   "now": 3037,
-   "move": 0.18079315707620536,
-   "basis": "close on the day it was written",
-   "limit": 2575,
-   "currency": "GBp"
-  },
-  {
-   "id": "2026-09-07-1413-REL.L",
-   "ticker": "REL.L",
-   "state": "expired",
-   "written": "2026-09-07",
-   "days": 46,
-   "supersededBy": "2026-09-07-2038-REL.L",
-   "phase": "live",
-   "counts": false,
-   "entry": 2572,
-   "now": 3037,
-   "move": 0.18079315707620536,
-   "basis": "close on the day it was written",
-   "limit": 2570,
-   "currency": "GBp"
-  },
-  {
    "id": "2026-09-24-0554-EXPN.L",
    "ticker": "EXPN.L",
    "state": "expired",
@@ -1837,8 +1830,8 @@
    "phase": "live",
    "counts": true,
    "entry": 2636,
-   "now": 3086,
-   "move": 0.17071320182094074,
+   "now": 3095.987,
+   "move": 0.1745018968133536,
    "basis": "close on the day it was written",
    "limit": 2690,
    "currency": "GBp"
@@ -1965,8 +1958,8 @@
    "phase": "live",
    "counts": true,
    "entry": 2671,
-   "now": 3086,
-   "move": 0.15537251965555976,
+   "now": 3095.987,
+   "move": 0.15911156870086107,
    "basis": "filled",
    "limit": 2690,
    "currency": "GBp"
@@ -1997,8 +1990,8 @@
    "phase": "live",
    "counts": false,
    "entry": 2684,
-   "now": 3086,
-   "move": 0.14977645305514153,
+   "now": 3095.987,
+   "move": 0.15349739195230994,
    "basis": "close on the day it was written",
    "limit": 2675,
    "currency": "GBp"
@@ -2068,6 +2061,22 @@
    "currency": "USD"
   },
   {
+   "id": "2026-09-20-0141-EXPN.L",
+   "ticker": "EXPN.L",
+   "state": "expired",
+   "written": "2026-09-20",
+   "days": 33,
+   "supersededBy": "2026-09-24-0554-EXPN.L",
+   "phase": "live",
+   "counts": false,
+   "entry": 2727,
+   "now": 3095.987,
+   "move": 0.13530876420975435,
+   "basis": "close on the day it was written",
+   "limit": 2727,
+   "currency": "GBp"
+  },
+  {
    "id": "2026-10-05-1040-CME",
    "ticker": "CME",
    "state": "expired",
@@ -2116,22 +2125,6 @@
    "currency": "USD"
   },
   {
-   "id": "2026-09-20-0141-EXPN.L",
-   "ticker": "EXPN.L",
-   "state": "expired",
-   "written": "2026-09-20",
-   "days": 33,
-   "supersededBy": "2026-09-24-0554-EXPN.L",
-   "phase": "live",
-   "counts": false,
-   "entry": 2727,
-   "now": 3086,
-   "move": 0.13164649798313155,
-   "basis": "close on the day it was written",
-   "limit": 2727,
-   "currency": "GBp"
-  },
-  {
    "id": "2026-10-07-1755-BVI.PA",
    "ticker": "BVI.PA",
    "state": "accepted",
@@ -2141,8 +2134,8 @@
    "phase": "live",
    "counts": true,
    "entry": 26.01,
-   "now": 28.97,
-   "move": 0.11380238369857731,
+   "now": 28.99,
+   "move": 0.11457131872356774,
    "basis": "filled",
    "limit": 26.03,
    "currency": "EUR"
@@ -2157,8 +2150,8 @@
    "phase": "live",
    "counts": true,
    "entry": 26.03,
-   "now": 28.97,
-   "move": 0.11294660007683444,
+   "now": 28.99,
+   "move": 0.11371494429504403,
    "basis": "filled",
    "limit": 26.03,
    "currency": "EUR"
@@ -2173,8 +2166,8 @@
    "phase": "live",
    "counts": true,
    "entry": 26.03,
-   "now": 28.97,
-   "move": 0.11294660007683444,
+   "now": 28.99,
+   "move": 0.11371494429504403,
    "basis": "close on the day it was written",
    "limit": 26.03,
    "currency": "EUR"
@@ -2189,8 +2182,8 @@
    "phase": "live",
    "counts": false,
    "entry": 2782,
-   "now": 3086,
-   "move": 0.10927390366642697,
+   "now": 3095.987,
+   "move": 0.11286376707404755,
    "basis": "close on the day it was written",
    "limit": 2800,
    "currency": "GBp"
@@ -2205,8 +2198,8 @@
    "phase": "live",
    "counts": false,
    "entry": 2782,
-   "now": 3086,
-   "move": 0.10927390366642697,
+   "now": 3095.987,
+   "move": 0.11286376707404755,
    "basis": "close on the day it was written",
    "limit": 2800,
    "currency": "GBp"
@@ -2221,8 +2214,8 @@
    "phase": "live",
    "counts": false,
    "entry": 26.18,
-   "now": 28.97,
-   "move": 0.10656990068754779,
+   "now": 28.99,
+   "move": 0.1073338426279602,
    "basis": "close on the day it was written",
    "limit": 26.33,
    "currency": "EUR"
@@ -2285,8 +2278,8 @@
    "phase": "live",
    "counts": false,
    "entry": 26.33,
-   "now": 28.97,
-   "move": 0.10026585643752384,
+   "now": 28.99,
+   "move": 0.1010254462590201,
    "basis": "close on the day it was written",
    "limit": 26.36,
    "currency": "EUR"
@@ -2349,8 +2342,8 @@
    "phase": "live",
    "counts": false,
    "entry": 12.12,
-   "now": 13.27,
-   "move": 0.0948844884488449,
+   "now": 13.28,
+   "move": 0.09570957095709565,
    "basis": "close on the day it was written",
    "limit": 12.12,
    "currency": "EUR"
@@ -2365,8 +2358,8 @@
    "phase": "live",
    "counts": false,
    "entry": 12.12,
-   "now": 13.27,
-   "move": 0.0948844884488449,
+   "now": 13.28,
+   "move": 0.09570957095709565,
    "basis": "close on the day it was written",
    "limit": 12.12,
    "currency": "EUR"
@@ -2397,8 +2390,8 @@
    "phase": "live",
    "counts": false,
    "entry": 26.57,
-   "now": 28.97,
-   "move": 0.09032743695897616,
+   "now": 28.99,
+   "move": 0.09108016560030108,
    "basis": "close on the day it was written",
    "limit": 26.57,
    "currency": "EUR"
@@ -2413,8 +2406,8 @@
    "phase": "live",
    "counts": false,
    "entry": 26.57,
-   "now": 28.97,
-   "move": 0.09032743695897616,
+   "now": 28.99,
+   "move": 0.09108016560030108,
    "basis": "close on the day it was written",
    "limit": 26.57,
    "currency": "EUR"
@@ -2461,8 +2454,8 @@
    "phase": "live",
    "counts": false,
    "entry": 349.2,
-   "now": 379.7,
-   "move": 0.08734249713631148,
+   "now": 380,
+   "move": 0.08820160366552132,
    "basis": "close on the day it was written",
    "limit": 349.2,
    "currency": "GBp"
@@ -2477,8 +2470,8 @@
    "phase": "live",
    "counts": false,
    "entry": 349.2,
-   "now": 379.7,
-   "move": 0.08734249713631148,
+   "now": 380,
+   "move": 0.08820160366552132,
    "basis": "close on the day it was written",
    "limit": 349.2,
    "currency": "GBp"
@@ -2493,11 +2486,27 @@
    "phase": "live",
    "counts": false,
    "entry": 12.23,
-   "now": 13.27,
-   "move": 0.08503679476696635,
+   "now": 13.28,
+   "move": 0.08585445625511023,
    "basis": "close on the day it was written",
    "limit": 12.03,
    "currency": "EUR"
+  },
+  {
+   "id": "2026-09-14-0038-EXPN.L",
+   "ticker": "EXPN.L",
+   "state": "expired",
+   "written": "2026-09-14",
+   "days": 39,
+   "supersededBy": "2026-09-24-0554-EXPN.L",
+   "phase": "live",
+   "counts": false,
+   "entry": 2858,
+   "now": 3095.987,
+   "move": 0.0832704688593422,
+   "basis": "close on the day it was written",
+   "limit": 2782,
+   "currency": "GBp"
   },
   {
    "id": "2026-09-17-0557-YUMC",
@@ -2532,22 +2541,6 @@
    "currency": "USD"
   },
   {
-   "id": "2026-09-14-0038-EXPN.L",
-   "ticker": "EXPN.L",
-   "state": "expired",
-   "written": "2026-09-14",
-   "days": 39,
-   "supersededBy": "2026-09-24-0554-EXPN.L",
-   "phase": "live",
-   "counts": false,
-   "entry": 2858,
-   "now": 3086,
-   "move": 0.07977606717984598,
-   "basis": "close on the day it was written",
-   "limit": 2782,
-   "currency": "GBp"
-  },
-  {
    "id": "2026-09-21-0930-YUMC",
    "ticker": "YUMC",
    "state": "rejected",
@@ -2573,8 +2566,8 @@
    "phase": "live",
    "counts": false,
    "entry": 26.86,
-   "now": 28.97,
-   "move": 0.07855547282204012,
+   "now": 28.99,
+   "move": 0.07930007446016374,
    "basis": "close on the day it was written",
    "limit": 27.07,
    "currency": "EUR"
@@ -2605,8 +2598,8 @@
    "phase": "live",
    "counts": true,
    "entry": 12.35,
-   "now": 13.27,
-   "move": 0.07449392712550607,
+   "now": 13.28,
+   "move": 0.07530364372469633,
    "basis": "filled",
    "limit": 12.12,
    "currency": "EUR"
@@ -2621,8 +2614,8 @@
    "phase": "live",
    "counts": false,
    "entry": 12.35,
-   "now": 13.27,
-   "move": 0.07449392712550607,
+   "now": 13.28,
+   "move": 0.07530364372469633,
    "basis": "close on the day it was written",
    "limit": 12.35,
    "currency": "EUR"
@@ -2637,8 +2630,8 @@
    "phase": "live",
    "counts": true,
    "entry": 354.8,
-   "now": 379.7,
-   "move": 0.07018038331454335,
+   "now": 380,
+   "move": 0.07102593010146552,
    "basis": "close on the day it was written",
    "limit": 351.4,
    "currency": "GBp"
@@ -2701,8 +2694,8 @@
    "phase": "live",
    "counts": true,
    "entry": 12.48,
-   "now": 13.27,
-   "move": 0.06330128205128194,
+   "now": 13.28,
+   "move": 0.0641025641025641,
    "basis": "close on the day it was written",
    "limit": 12.21,
    "currency": "EUR"
@@ -2717,8 +2710,8 @@
    "phase": "live",
    "counts": false,
    "entry": 58.7,
-   "now": 62.02,
-   "move": 0.0565587734241908,
+   "now": 62.06,
+   "move": 0.057240204429301444,
    "basis": "close on the day it was written",
    "limit": 58.7,
    "currency": "EUR"
@@ -2781,8 +2774,8 @@
    "phase": "live",
    "counts": true,
    "entry": 12136,
-   "now": 12760,
-   "move": 0.05141727092946602,
+   "now": 12766,
+   "move": 0.05191166776532641,
    "basis": "close on the day it was written",
    "limit": 12136,
    "currency": "GBp"
@@ -2797,8 +2790,8 @@
    "phase": "live",
    "counts": false,
    "entry": 12154,
-   "now": 12760,
-   "move": 0.04986012835280573,
+   "now": 12766,
+   "move": 0.05035379298996223,
    "basis": "close on the day it was written",
    "limit": 12154,
    "currency": "GBp"
@@ -2813,8 +2806,8 @@
    "phase": "live",
    "counts": false,
    "entry": 12154,
-   "now": 12760,
-   "move": 0.04986012835280573,
+   "now": 12766,
+   "move": 0.05035379298996223,
    "basis": "close on the day it was written",
    "limit": 12000,
    "currency": "GBp"
@@ -2829,8 +2822,8 @@
    "phase": "live",
    "counts": false,
    "entry": 59.3,
-   "now": 62.02,
-   "move": 0.04586846543001699,
+   "now": 62.06,
+   "move": 0.046543001686340624,
    "basis": "close on the day it was written",
    "limit": 58.8,
    "currency": "EUR"
@@ -2932,6 +2925,38 @@
    "currency": "USD"
   },
   {
+   "id": "2026-10-14-2334-BN.PA",
+   "ticker": "BN.PA",
+   "state": "expired",
+   "written": "2026-10-14",
+   "days": 9,
+   "supersededBy": "2026-10-22-0724-BN.PA",
+   "phase": "live",
+   "counts": false,
+   "entry": 60.28,
+   "now": 62.06,
+   "move": 0.029528865295288753,
+   "basis": "close on the day it was written",
+   "limit": 60.28,
+   "currency": "EUR"
+  },
+  {
+   "id": "2026-10-14-0346-BN.PA",
+   "ticker": "BN.PA",
+   "state": "expired",
+   "written": "2026-10-14",
+   "days": 9,
+   "supersededBy": "2026-10-22-0724-BN.PA",
+   "phase": "live",
+   "counts": false,
+   "entry": 60.28,
+   "now": 62.06,
+   "move": 0.029528865295288753,
+   "basis": "close on the day it was written",
+   "limit": 59.3,
+   "currency": "EUR"
+  },
+  {
    "id": "2026-09-29-2346-NVO",
    "ticker": "NVO",
    "state": "expired",
@@ -2964,35 +2989,19 @@
    "currency": "USD"
   },
   {
-   "id": "2026-10-14-2334-BN.PA",
+   "id": "2026-10-19-0824-BN.PA",
    "ticker": "BN.PA",
    "state": "expired",
-   "written": "2026-10-14",
-   "days": 9,
+   "written": "2026-10-19",
+   "days": 4,
    "supersededBy": "2026-10-22-0724-BN.PA",
    "phase": "live",
    "counts": false,
-   "entry": 60.28,
-   "now": 62.02,
-   "move": 0.028865295288653003,
+   "entry": 60.6,
+   "now": 62.06,
+   "move": 0.02409240924092404,
    "basis": "close on the day it was written",
-   "limit": 60.28,
-   "currency": "EUR"
-  },
-  {
-   "id": "2026-10-14-0346-BN.PA",
-   "ticker": "BN.PA",
-   "state": "expired",
-   "written": "2026-10-14",
-   "days": 9,
-   "supersededBy": "2026-10-22-0724-BN.PA",
-   "phase": "live",
-   "counts": false,
-   "entry": 60.28,
-   "now": 62.02,
-   "move": 0.028865295288653003,
-   "basis": "close on the day it was written",
-   "limit": 59.3,
+   "limit": 61.1,
    "currency": "EUR"
   },
   {
@@ -3010,22 +3019,6 @@
    "basis": "close on the day it was written",
    "limit": 21.77,
    "currency": "USD"
-  },
-  {
-   "id": "2026-10-19-0824-BN.PA",
-   "ticker": "BN.PA",
-   "state": "expired",
-   "written": "2026-10-19",
-   "days": 4,
-   "supersededBy": "2026-10-22-0724-BN.PA",
-   "phase": "live",
-   "counts": false,
-   "entry": 60.6,
-   "now": 62.02,
-   "move": 0.023432343234323527,
-   "basis": "close on the day it was written",
-   "limit": 61.1,
-   "currency": "EUR"
   },
   {
    "id": "2026-10-18-1423-MWA",
@@ -3069,8 +3062,8 @@
    "phase": "live",
    "counts": true,
    "entry": 12484,
-   "now": 12760,
-   "move": 0.02210829862223651,
+   "now": 12766,
+   "move": 0.022588913809676425,
    "basis": "filled",
    "limit": 12136,
    "currency": "GBp"
@@ -3101,8 +3094,8 @@
    "phase": "live",
    "counts": false,
    "entry": 60.82,
-   "now": 62.02,
-   "move": 0.019730351857941475,
+   "now": 62.06,
+   "move": 0.020388030253206235,
    "basis": "close on the day it was written",
    "limit": 60.82,
    "currency": "EUR"
@@ -3149,8 +3142,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.02,
-   "now": 62.02,
-   "move": 0.016388069485414603,
+   "now": 62.06,
+   "move": 0.017043592264831098,
    "basis": "close on the day it was written",
    "limit": 60.6,
    "currency": "EUR"
@@ -3165,8 +3158,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.22,
-   "now": 62.02,
-   "move": 0.013067624959163693,
+   "now": 62.06,
+   "move": 0.013721006207122022,
    "basis": "close on the day it was written",
    "limit": 60.28,
    "currency": "EUR"
@@ -3197,8 +3190,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.56,
-   "now": 62.02,
-   "move": 0.007472384665367038,
+   "now": 62.06,
+   "move": 0.008122157244964345,
    "basis": "close on the day it was written",
    "limit": 61.56,
    "currency": "EUR"
@@ -3213,8 +3206,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.56,
-   "now": 62.02,
-   "move": 0.007472384665367038,
+   "now": 62.06,
+   "move": 0.008122157244964345,
    "basis": "close on the day it was written",
    "limit": 61.56,
    "currency": "EUR"
@@ -3229,8 +3222,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.56,
-   "now": 62.02,
-   "move": 0.007472384665367038,
+   "now": 62.06,
+   "move": 0.008122157244964345,
    "basis": "close on the day it was written",
    "limit": 61,
    "currency": "EUR"
@@ -3245,8 +3238,8 @@
    "phase": "live",
    "counts": false,
    "entry": 61.56,
-   "now": 62.02,
-   "move": 0.007472384665367038,
+   "now": 62.06,
+   "move": 0.008122157244964345,
    "basis": "close on the day it was written",
    "limit": 61.22,
    "currency": "EUR"
@@ -3260,8 +3253,8 @@
    "supersededBy": null,
    "phase": "live",
    "counts": true,
-   "entry": 3256.8,
-   "now": 3256.8,
+   "entry": 3258,
+   "now": 3258,
    "move": 0,
    "basis": "close on the day it was written",
    "limit": 3276,
@@ -3277,8 +3270,8 @@
    "phase": "live",
    "counts": true,
    "entry": 62.38,
-   "now": 62.02,
-   "move": -0.005771080474511026,
+   "now": 62.06,
+   "move": -0.005129849310676504,
    "basis": "close on the day it was written",
    "limit": 60.82,
    "currency": "EUR"
@@ -3293,8 +3286,8 @@
    "phase": "live",
    "counts": false,
    "entry": 3280,
-   "now": 3256.8,
-   "move": -0.007073170731707212,
+   "now": 3258,
+   "move": -0.006707317073170738,
    "basis": "close on the day it was written",
    "limit": 3374,
    "currency": "GBp"
@@ -3453,8 +3446,8 @@
    "phase": "live",
    "counts": false,
    "entry": 3428,
-   "now": 3256.8,
-   "move": -0.04994165694282371,
+   "now": 3258,
+   "move": -0.049591598599766584,
    "basis": "close on the day it was written",
    "limit": 3410,
    "currency": "GBp"
@@ -3469,8 +3462,8 @@
    "phase": "live",
    "counts": false,
    "entry": 3428,
-   "now": 3256.8,
-   "move": -0.04994165694282371,
+   "now": 3258,
+   "move": -0.049591598599766584,
    "basis": "close on the day it was written",
    "limit": 3398,
    "currency": "GBp"
@@ -4106,83 +4099,83 @@
   "names": [
    {
     "name": "GOOG",
-    "weight": 0.0995
+    "weight": 0.099
    },
    {
     "name": "AAPL",
-    "weight": 0.0923
+    "weight": 0.0918
    },
    {
     "name": "MSFT",
-    "weight": 0.0911
+    "weight": 0.0907
    },
    {
     "name": "NVDA",
-    "weight": 0.0682
+    "weight": 0.0679
    },
    {
     "name": "VOO",
-    "weight": 0.0555
+    "weight": 0.0552
    },
    {
     "name": "1211.HK",
-    "weight": 0.0412
+    "weight": 0.0461
    },
    {
     "name": "AMD",
-    "weight": 0.0372
+    "weight": 0.0371
    },
    {
     "name": "META",
-    "weight": 0.0329
+    "weight": 0.0328
    },
    {
     "name": "1113.HK",
-    "weight": 0.0317
+    "weight": 0.0316
    },
    {
     "name": "ASML",
-    "weight": 0.0264
+    "weight": 0.0263
    },
    {
     "name": "0001.HK",
-    "weight": 0.0231
+    "weight": 0.023
    },
    {
     "name": "000660.KS",
-    "weight": 0.0231
+    "weight": 0.0229
    },
    {
     "name": "VUSA.L",
-    "weight": 0.0204
+    "weight": 0.0203
    },
    {
     "name": "DIS",
-    "weight": 0.0204
+    "weight": 0.0203
    },
    {
     "name": "5332.T",
-    "weight": 0.0202
+    "weight": 0.0201
    },
    {
     "name": "BLK",
-    "weight": 0.0192
+    "weight": 0.0191
    },
    {
     "name": "MC.PA",
-    "weight": 0.017
+    "weight": 0.0169
    },
    {
     "name": "6288.HK",
-    "weight": 0.0164
+    "weight": 0.0163
    },
    {
     "name": "OR.PA",
-    "weight": 0.0164
+    "weight": 0.0163
    },
    {
     "name": "BRK-B",
-    "weight": 0.0154
+    "weight": 0.0153
    },
    {
     "name": "AMZN",
@@ -4202,7 +4195,7 @@
    },
    {
     "name": "IAU",
-    "weight": 0.0111
+    "weight": 0.011
    },
    {
     "name": "EWJ",
@@ -4218,7 +4211,7 @@
    },
    {
     "name": "NOW",
-    "weight": 0.0089
+    "weight": 0.0088
    },
    {
     "name": "NTDOY",
@@ -4238,7 +4231,7 @@
    },
    {
     "name": "NFLX",
-    "weight": 0.0076
+    "weight": 0.0075
    },
    {
     "name": "T31.L",
@@ -4258,86 +4251,86 @@
    },
    {
     "name": "30 smaller",
-    "weight": 0.0641,
+    "weight": 0.0636,
     "tail": true
    }
   ],
   "byCompany": [
    {
     "name": "Google",
-    "weight": 0.0995
+    "weight": 0.099
    },
    {
     "name": "Apple",
-    "weight": 0.0923
+    "weight": 0.0918
    },
    {
     "name": "Microsoft",
-    "weight": 0.0911
+    "weight": 0.0907
    },
    {
     "name": "S&P 500",
-    "weight": 0.0759
+    "weight": 0.0755
    },
    {
     "name": "Nvidia",
-    "weight": 0.0682
+    "weight": 0.0679
    },
    {
     "name": "BYD",
-    "weight": 0.0432
+    "weight": 0.0481
    },
    {
     "name": "AMD",
-    "weight": 0.0372
+    "weight": 0.0371
    },
    {
     "name": "Meta",
-    "weight": 0.0329
+    "weight": 0.0328
    },
    {
     "name": "CKA",
-    "weight": 0.0317
+    "weight": 0.0316
    },
    {
     "name": "ASML",
-    "weight": 0.0264
+    "weight": 0.0263
    },
    {
     "name": "CKH",
-    "weight": 0.0231
+    "weight": 0.023
    },
    {
     "name": "SK Hynix",
-    "weight": 0.0231
+    "weight": 0.0229
    },
    {
     "name": "Disney",
-    "weight": 0.0204
+    "weight": 0.0203
    },
    {
     "name": "Toto",
-    "weight": 0.0202
+    "weight": 0.0201
    },
    {
     "name": "Blackrock",
-    "weight": 0.0192
+    "weight": 0.0191
    },
    {
     "name": "LVMH",
-    "weight": 0.017
+    "weight": 0.0169
    },
    {
     "name": "Uniqlo",
-    "weight": 0.0164
+    "weight": 0.0163
    },
    {
     "name": "L'Oreal",
-    "weight": 0.0164
+    "weight": 0.0163
    },
    {
     "name": "Berkshire Hathaway",
-    "weight": 0.0154
+    "weight": 0.0153
    },
    {
     "name": "Amazon",
@@ -4357,7 +4350,7 @@
    },
    {
     "name": "Gold ETF",
-    "weight": 0.0111
+    "weight": 0.011
    },
    {
     "name": "MSCI Japan",
@@ -4377,11 +4370,11 @@
    },
    {
     "name": "SERVICENOW, INC.",
-    "weight": 0.0089
+    "weight": 0.0088
    },
    {
     "name": "UK Gilts",
-    "weight": 0.0087
+    "weight": 0.0086
    },
    {
     "name": "HSI",
@@ -4397,7 +4390,7 @@
    },
    {
     "name": "Netflix",
-    "weight": 0.0076
+    "weight": 0.0075
    },
    {
     "name": "TESLA, INC.",
@@ -4413,38 +4406,38 @@
    },
    {
     "name": "26 smaller",
-    "weight": 0.0601,
+    "weight": 0.0596,
     "tail": true
    }
   ],
   "byGeography": [
    {
     "name": "US",
-    "weight": 0.6596
+    "weight": 0.6563
    },
    {
     "name": "Japan",
-    "weight": 0.0844
+    "weight": 0.0839
    },
    {
     "name": "Old Hongkong",
-    "weight": 0.0799
+    "weight": 0.0795
    },
    {
     "name": "Europe",
-    "weight": 0.0713
+    "weight": 0.0709
    },
    {
     "name": "China",
-    "weight": 0.063
+    "weight": 0.0678
    },
    {
     "name": "Korea",
-    "weight": 0.0231
+    "weight": 0.0229
    },
    {
     "name": "Alternative",
-    "weight": 0.0164
+    "weight": 0.0163
    },
    {
     "name": "1 smaller",
@@ -4455,43 +4448,43 @@
   "bySector": [
    {
     "name": "Technology",
-    "weight": 0.4035
+    "weight": 0.4015
    },
    {
     "name": "Communication Services",
-    "weight": 0.1841
+    "weight": 0.1831
    },
    {
     "name": "Consumer Cyclical",
-    "weight": 0.1361
+    "weight": 0.1405
    },
    {
     "name": "Financial Services",
-    "weight": 0.0824
+    "weight": 0.082
    },
    {
     "name": "Industrials",
-    "weight": 0.0701
+    "weight": 0.0697
    },
    {
     "name": "Consumer Defensive",
-    "weight": 0.035
+    "weight": 0.0348
    },
    {
     "name": "Real Estate",
-    "weight": 0.0343
+    "weight": 0.0341
    },
    {
     "name": "Unclassified",
-    "weight": 0.0254
+    "weight": 0.0253
    },
    {
     "name": "Utilities",
-    "weight": 0.0117
+    "weight": 0.0116
    },
    {
     "name": "Healthcare",
-    "weight": 0.0101
+    "weight": 0.01
    },
    {
     "name": "2 smaller",
@@ -4590,21 +4583,21 @@
    "name": "Nikkei 225",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.2413
+   "inGBP": 0.2409
   },
   {
    "sym": "^FTSE",
    "name": "FTSE 100",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.1031
+   "inGBP": 0.1033
   },
   {
    "sym": "^STOXX50E",
    "name": "Euro Stoxx 50",
    "group": "Equity",
    "mixed": true,
-   "inGBP": 0.026899999999999997
+   "inGBP": 0.026999999999999993
   },
   {
    "sym": "GBPUSD=X",
@@ -4622,16 +4615,16 @@
    "sym": "CL=F",
    "name": "Crude (WTI)",
    "group": "Commodity",
-   "real": 0.6108,
+   "real": 0.6093999999999999,
    "says": "61% net of the dollar — a real move, not currency"
   },
   {
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.2953,
+   "real": -0.2943,
    "says": "-27% over a year but 27% over three months — cooling",
-   "cooling": 0.2668,
+   "cooling": 0.2685,
    "mixed": true
   }
  ],
