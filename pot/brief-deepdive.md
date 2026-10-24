@@ -34,7 +34,7 @@ file you open is resent on every turn that follows.
 | the newest `pot/reviews/*.md` | what was already judged, so you do not re-litigate it |
 | `watchlist.json` | the full set you must account for — every name, ranked or excluded |
 | `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
-| `pot/positions.json` | cash, holdings, §4.5a's preference for a name not already held, and `cooldown`: names proposed in the last two weeks (D93) |
+| `pot/positions.json` | cash, holdings, §4.5a's preference for a name not already held, `cooldown`: names proposed in the last two weeks (D93), and `earlierRisks`: every risk earlier proposals of a name found (D94) |
 | `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
 | `pot/origins.json` | why each name is on the watchlist at all, in the words of the Sweep that found it |
 | `pot/rejections.json` | companies Leo has turned down: not candidates, under any listing named |
@@ -93,6 +93,30 @@ evidence sets it, the standing proposal's id, and today's price against its limi
 `below`. Leo still sees it, ranked where it belongs; he just is not handed the same proposal again.
 From `cooldown[ticker].until` the name is free. A rejected name is out under §3.2 regardless. The
 report flags any proposal that breaks this, so a repeat cannot pass unnoticed.
+
+## Answer every risk an earlier proposal of the name found — `earlierRisks` (D94)
+
+Leo's rule, 25 Oct. On 16 October a Deep dive found Halma's real risk: one hyperscaler, 20% of
+group revenue, buying optical switches, with a falsifier on photonics growth. The next three runs
+started from scratch, framed the risk as cash against acquisitions, searched only that, and by 23
+October the proposal did not mention the customer at all. He rejected the name over exactly the risk
+the pot had found and then lost.
+
+So when you propose a name that has been proposed before, read `earlierRisks[ticker]` in
+`pot/positions.json`. It lists every distinct dominant risk an earlier proposal named, one per label
+(`financial`, `competitive`, `secular`, `accounting`, `regulatory`), with the proposal that named
+it; that proposal's falsifier is its `warning` and `break` in `proposals`. In P6, under your own
+dominant risk, write an **Earlier risks:** block that takes **every label** in turn:
+
+- **still dominant** — it is your dominant risk, and P3 tests it;
+- **demoted** — it is real but no longer the first thing to break the case, and why, with the
+  evidence;
+- **retired** — what has resolved it, with its source and date.
+
+You may disagree with an earlier run; you may not skip it. Ranking stays blind to earlier drafts
+(D15): this governs what a proposal must argue, not whether a name is proposed. The report flags a
+proposal whose block leaves a label out. Whether your answer is right is for Leo to judge, so make
+it checkable.
 
 ## A company Leo rejected is out — `pot/rejections.json` (§3.2, D83)
 
@@ -675,6 +699,9 @@ Local check: <agree / disagree, and which you used>
  or the single word `none`. Never blank, never omitted — Rule 0.>
 **Dominant risk (`financial|competitive|secular|accounting|regulatory`):** <ONE risk, one line.
  This is the line P3 answers. If P2 argued it away, that argument moves to P3 — Rule 2.>
+<Only if `earlierRisks` lists this name (D94):>
+**Earlier risks:** <every label in `earlierRisks[ticker]`, each: `label` (proposal id): still
+ dominant, demoted because <evidence>, or retired because <source, date>.>
 **Earliest observable:** <the figure, its source, and when it next prints. If it is outside the
  filings, say where; if it is more than two quarters away or undated, P1 sizes at half — Rule 4.>
 <Then the secondary arguments, written to persuade, not to dismiss.>

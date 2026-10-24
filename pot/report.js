@@ -998,6 +998,8 @@ does not look exactly like a healthy one.
     // D93: a name proposed again inside its two weeks with neither a limit 5% lower nor a reason.
     // positions.js does the arithmetic; this only makes a broken rule impossible to miss.
     const reproposals = (pos.proposals || []).filter(p => p.reproposalBreach);
+    // D94: a proposal that did not answer a risk an earlier proposal of the same name named.
+    const unanswered = (pos.proposals || []).filter(p => p.earlierRisksMissing);
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
@@ -1024,6 +1026,11 @@ ${reproposals.length
         ? reproposals.map(p => '- **Re-proposed inside its two weeks** — [' + p.id + '](proposals/' + p.file + ') repeats ['
             + p.reproposalBreach.after + '](proposals/' + p.reproposalBreach.after + '.md) with neither a limit at or below '
             + (p.reproposalBreach.bar ?? '–') + ' nor new results or a changed case (D93)').join(String.fromCharCode(10))
+        : ''}
+${unanswered.length
+        ? unanswered.map(p => '- **Earlier risk not answered** — [' + p.id + '](proposals/' + p.file + ') says nothing about '
+            + p.earlierRisksMissing.map(m => 'the `' + m.category + '` risk in [' + m.id + '](proposals/' + m.id + '.md)').join(', ')
+            + ' (D94)').join(String.fromCharCode(10))
         : ''}
 ${violations.length
         ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))

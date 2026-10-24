@@ -81,7 +81,50 @@ function parseProposal(file) {
         // Why a name is proposed again inside its two weeks (D93): new results or a filing, or a
         // changed case. A cheaper limit needs no line; the arithmetic below checks it.
         reproposed: (md.match(/\*\*Re-proposed:?\*\*[:\s]*([^\n]+)/i) || [])[1]?.trim() || null,
+        // P6's one risk, with its label: written "(`financial`)" or "(financial)" (117 proposals).
+        // To the end of its paragraph, not its line: some proposals wrap it, and BN.PA's read
+        // "...so the +3% to +5%" when cut at the newline.
+        dominantRisk: (m => m ? { category: m[1].toLowerCase(), text: m[2].replace(/\s+/g, ' ').trim() } : null)(
+            md.match(/\*\*Dominant risk \(`?([a-z]+)`?\):?\*\*[:\s]*([\s\S]*?)(?=\n\s*\n|\n\*\*|\n## |\n```|(?![\s\S]))/i)),
+        // D94: how this proposal answers the risks earlier proposals of the same name named.
+        earlierRisks: (md.match(/\*\*Earlier risks:?\*\*[:\s]*([\s\S]*?)(?=\n\*\*|\n## |\n```|(?![\s\S]))/i) || [])[1]
+            ?.replace(/\s+/g, ' ').trim() || null,
     };
+}
+
+// ---------------------------------------------------------------- earlier risks (D94)
+//
+// The Deep dive found Halma's real risk on 16 Oct: one hyperscaler, 20% of group revenue, and a
+// falsifier on photonics growth. Each later run started from scratch (D15 tells it to ignore earlier
+// drafts), framed the risk as cash against acquisitions, searched only that, and by 23 Oct the
+// proposal did not mention the customer at all. A finding one run makes has to bind the next.
+//
+// So a proposal for a name proposed before must answer every DISTINCT dominant risk an earlier
+// proposal named, one per label (financial, competitive, secular, accounting, regulatory): still
+// the dominant one, demoted and why, or retired and on what evidence. Every label, not just the last
+// proposal's, because answering only the last one lets one weak run break the chain: 24 Oct would
+// have answered 23 Oct, which never mentioned photonics. This collects them, newest text per label
+// with the falsifier its proposal wrote, and marks a proposal whose **Earlier risks:** block leaves
+// a label out. The judgement inside the answer is the lane's; only its presence is checked.
+function riskHistory(proposals, rejected = new Set()) {
+    const byTicker = new Map(), missing = new Map();
+    for (const p of [...proposals].sort((a, b) => a.id.localeCompare(b.id))) {
+        const risks = byTicker.get(p.ticker) || new Map();
+        if (p.written >= REPROPOSE_FROM && risks.size) {
+            const said = (p.earlierRisks || '').toLowerCase();
+            const gaps = [...risks].filter(([c]) => !new RegExp('\\b' + c + '\\b').test(said));
+            if (gaps.length) missing.set(p.id, gaps.map(([category, r]) => ({ category, id: r.id })));
+        }
+        // Its falsifier is that proposal's own `warning` and `break`, in `proposals` beside this:
+        // copying the text here added 35KB to a file every Deep dive turn resends.
+        if (p.dominantRisk) risks.set(p.dominantRisk.category, { text: p.dominantRisk.text, id: p.id });
+        byTicker.set(p.ticker, risks);
+    }
+    const history = {};
+    for (const [ticker, risks] of byTicker) {
+        if (risks.size && !rejected.has(ticker)) history[ticker] = [...risks].map(([category, r]) => ({ category, ...r }));
+    }
+    return { history, missing };
 }
 
 // ---------------------------------------------------------------- the re-proposal rule (D93)
@@ -250,6 +293,12 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     }
     const { cooldown, breaches } = reproposalRule(proposals, today, new Set(rejectedBy.keys()));
     for (const p of proposals) if (breaches.has(p.id)) p.reproposalBreach = breaches.get(p.id);
+    const { history: earlierRisks, missing } = riskHistory(proposals, new Set(rejectedBy.keys()));
+    for (const p of proposals) {
+        if (missing.has(p.id)) p.earlierRisksMissing = missing.get(p.id);
+        delete p.dominantRisk;       // carried by `earlierRisks` once per name, not once per proposal
+        delete p.earlierRisks;
+    }
 
     const book = potHoldings(trades);
     const contributions = prev.contributions || [];
@@ -293,6 +342,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         // below `below` (in the listing's own units), or a **Re-proposed:** line naming new
         // results, a filing or a changed case. From `until` it is free again.
         cooldown,
+        // D94: per name, every dominant risk an earlier proposal named, newest text per label; its
+        // falsifier is that proposal's `warning`/`break` above. A new proposal answers each label
+        // in **Earlier risks:**.
+        earlierRisks,
         today,
     };
 }
@@ -429,6 +482,27 @@ if (process.argv.includes('--selftest')) {
         // Pence stay pence: the bar is in the listing's own units.
         assert.strictEqual(reproposalRule([P('2026-10-27-0900-HLMA.L', 3276)], '2026-10-28').cooldown['HLMA.L'].below, 3112.2);
         assert.ok(!reproposalRule([P('2026-10-27-0900-YUMC', 40)], '2026-10-28', new Set(['YUMC'])).cooldown.YUMC, 'rejected: out, not cooling');
+    }
+
+    // D94: every earlier label answered, not just the last proposal's.
+    {
+        const R = (id, category, extra = {}) => ({ id, ticker: id.replace(/^\d{4}-\d{2}-\d{2}-\d{4}-/, ''), written: id.slice(0, 10),
+            dominantRisk: category ? { category, text: category + ' risk' } : null, earlierRisks: null, warning: 'w', break: 'b', ...extra });
+        const { history, missing } = riskHistory([
+            R('2026-10-16-0558-HLMA.L', 'financial'),
+            R('2026-10-16-1208-HLMA.L', 'competitive'),                              // the one that mattered
+            R('2026-10-23-0918-HLMA.L', 'financial'),                                // before the rule: not judged
+            R('2026-10-27-0900-HLMA.L', 'financial', { earlierRisks: 'Financial: still dominant, cash deficit is real.' }),
+            R('2026-10-28-0900-HLMA.L', 'financial', { earlierRisks: 'financial stands; competitive demoted: orders from the customer rose 30%.' }),
+            R('2026-10-27-0900-NEW', 'secular'),                                     // first proposal: nothing to answer
+        ]);
+        assert.deepStrictEqual([...missing.keys()], ['2026-10-27-0900-HLMA.L'], 'competitive was dropped');
+        assert.deepStrictEqual(missing.get('2026-10-27-0900-HLMA.L'), [{ category: 'competitive', id: '2026-10-16-1208-HLMA.L' }]);
+        assert.deepStrictEqual(history['HLMA.L'].map(r => r.category + ' ' + r.id),
+            ['financial 2026-10-28-0900-HLMA.L', 'competitive 2026-10-16-1208-HLMA.L'], 'newest text per label, the old label kept');
+        assert.deepStrictEqual(history['HLMA.L'][1], { category: 'competitive', text: 'competitive risk', id: '2026-10-16-1208-HLMA.L' },
+            'points at its proposal, whose falsifier is in `proposals`');
+        assert.ok(!riskHistory([R('2026-10-27-0900-HLMA.L', 'financial')], new Set(['HLMA.L'])).history['HLMA.L'], 'rejected: no history kept');
     }
 
     console.log('selftest ok');
