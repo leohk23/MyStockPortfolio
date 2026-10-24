@@ -78,7 +78,50 @@ function parseProposal(file) {
         break: line(falsifier, 'Break') || (falsifier && !/\*\*Warning/i.test(falsifier)
             ? falsifier.replace(/\s+/g, ' ').trim() : null),
         reviewBy,
+        // Why a name is proposed again inside its two weeks (D93): new results or a filing, or a
+        // changed case. A cheaper limit needs no line; the arithmetic below checks it.
+        reproposed: (md.match(/\*\*Re-proposed:?\*\*[:\s]*([^\n]+)/i) || [])[1]?.trim() || null,
     };
+}
+
+// ---------------------------------------------------------------- the re-proposal rule (D93)
+//
+// 156 proposals to 23 Oct 2026, 10 acted on: MWA was proposed 34 times, BN.PA 13 (every one
+// expired), YUMC 13 before Leo rejected it, and the last fortnight was 27 proposals on 6 names. Each
+// repeat is a full Deep dive re-arguing a name Leo has already seen. So, Leo's numbers: for TWO WEEKS
+// after a name's last buy proposal, a fresh one needs a limit at least 5% below that one, or new
+// results or a filing since, or a changed case, stated in a `**Re-proposed:**` line. Otherwise the
+// ranking says STANDS and points at the proposal already written. Ranking itself stays blind (D15).
+//
+// Worked out here rather than by the lane, because it is arithmetic on limits in each listing's own
+// units (pence for London) and a lane doing it by hand is how a 100x slips in. The lane reads
+// `cooldown`; the report flags a proposal that broke the rule. Only proposals written from the day
+// the rule began are judged: the history before it was written under D15 and is not a breach.
+const REPROPOSE_DAYS = 14, REPROPOSE_DROP = 0.05, REPROPOSE_FROM = '2026-10-26';
+const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+// A reason that is not price must name what changed; "price" alone is checked against the bar.
+const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
+
+function reproposalRule(proposals, today, rejected = new Set()) {
+    const buys = proposals.filter(p => p.side === 'BUY').sort((a, b) => a.id.localeCompare(b.id));
+    const last = new Map(), breaches = new Map();
+    for (const p of buys) {
+        const q = last.get(p.ticker);
+        if (q && p.written < addDays(q.written, REPROPOSE_DAYS) && p.written >= REPROPOSE_FROM) {
+            const bar = q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null;
+            const cheaper = bar != null && p.limit != null && p.limit <= bar;
+            if (!cheaper && !(p.reproposed && REASON.test(p.reproposed))) breaches.set(p.id, { after: q.id, bar });
+        }
+        last.set(p.ticker, p);
+    }
+    const cooldown = {};
+    for (const [ticker, q] of last) {
+        const until = addDays(q.written, REPROPOSE_DAYS);
+        if (today >= until || rejected.has(ticker)) continue;
+        cooldown[ticker] = { last: q.id, limit: q.limit, until,
+            below: q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null };
+    }
+    return { cooldown, breaches };
 }
 
 // ---------------------------------------------------------------- what the workbook says
@@ -205,6 +248,8 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         // One entry per decision, and only from the phase that is being judged.
         p.counts = !p.supersededBy && p.phase === 'live';
     }
+    const { cooldown, breaches } = reproposalRule(proposals, today, new Set(rejectedBy.keys()));
+    for (const p of proposals) if (breaches.has(p.id)) p.reproposalBreach = breaches.get(p.id);
 
     const book = potHoldings(trades);
     const contributions = prev.contributions || [];
@@ -244,6 +289,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         holdings: book,
         proposals,
         open: proposals.filter(x => x.state === 'accepted').map(x => x.id),
+        // D93: names proposed in the last two weeks. Proposing one again needs a limit at or
+        // below `below` (in the listing's own units), or a **Re-proposed:** line naming new
+        // results, a filing or a changed case. From `until` it is free again.
+        cooldown,
         today,
     };
 }
@@ -352,6 +401,34 @@ if (process.argv.includes('--selftest')) {
         assert.strictEqual(supersededBy(rows[0]), null, "newest proposal was superseded");
         assert.strictEqual(supersededBy(rows[1]), "2026-08-30-2257-NVDA", "older one not superseded");
         assert.strictEqual(supersededBy(rows[2]), null, "an EXECUTED thesis must never be superseded");
+    }
+
+    // D93: two weeks, 5% below the last limit, or a stated reason.
+    {
+        const P = (id, limit, extra = {}) => ({ id, ticker: id.replace(/^\d{4}-\d{2}-\d{2}-\d{4}-/, ''),
+            written: id.slice(0, 10), side: 'BUY', limit, reproposed: null, ...extra });
+        const { cooldown, breaches } = reproposalRule([
+            P('2026-10-27-0900-BN.PA', 61),                      // first: free
+            P('2026-10-28-0900-BN.PA', 60.5),                    // 0.8% lower, no reason: breach
+            P('2026-10-29-0900-BN.PA', 57.4),                    // 5% below 60.5 (57.475): allowed
+            P('2026-10-30-0900-BN.PA', 57.4, { reproposed: 'price moved' }),           // "price" is not a reason
+            P('2026-10-31-0900-BN.PA', 57.4, { reproposed: 'Q3 results on 30 Oct beat the falsifier' }),
+            P('2026-10-27-0900-HLMA.L', 3276), P('2026-11-10-0900-HLMA.L', 3270),     // day 14: free again
+            P('2026-10-12-0900-MWA', 22), P('2026-10-13-0900-MWA', 21.9),             // both before the rule: not judged
+            P('2026-10-27-0900-AZN.L', 12136, { side: 'SELL' }), P('2026-10-28-0900-AZN.L', 12100, { side: 'SELL' }),
+        ], '2026-11-02', new Set(['YUMC']));
+        assert.deepStrictEqual([...breaches.keys()], ['2026-10-28-0900-BN.PA', '2026-10-30-0900-BN.PA']);
+        assert.deepStrictEqual(breaches.get('2026-10-28-0900-BN.PA'), { after: '2026-10-27-0900-BN.PA', bar: 57.95 });
+        assert.deepStrictEqual(cooldown['BN.PA'], { last: '2026-10-31-0900-BN.PA', limit: 57.4, until: '2026-11-14', below: 54.53 });
+        assert.strictEqual(cooldown['HLMA.L'].last, '2026-11-10-0900-HLMA.L', 'a free re-proposal starts a new window');
+        assert.ok(!cooldown['AZN.L'], 'sells are not covered: §5 governs them');
+        assert.ok(!cooldown['MWA'], 'window over by 2 Nov');
+        // A proposal from before the rule still opens a window: the rule bites from its first day.
+        assert.deepStrictEqual([...reproposalRule([P('2026-10-22-0900-BN.PA', 60.82), P('2026-10-26-0900-BN.PA', 60.1)],
+            '2026-10-26').breaches.keys()], ['2026-10-26-0900-BN.PA']);
+        // Pence stay pence: the bar is in the listing's own units.
+        assert.strictEqual(reproposalRule([P('2026-10-27-0900-HLMA.L', 3276)], '2026-10-28').cooldown['HLMA.L'].below, 3112.2);
+        assert.ok(!reproposalRule([P('2026-10-27-0900-YUMC', 40)], '2026-10-28', new Set(['YUMC'])).cooldown.YUMC, 'rejected: out, not cooling');
     }
 
     console.log('selftest ok');

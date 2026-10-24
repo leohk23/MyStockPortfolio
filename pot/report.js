@@ -995,6 +995,9 @@ does not look exactly like a healthy one.
     const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
     const openProposals = proposals.filter(f => !/-(ranking|none)\.md$/.test(f) && !superseded.has(f)
         && (stateOf.get(f) || 'open') === 'open');
+    // D93: a name proposed again inside its two weeks with neither a limit 5% lower nor a reason.
+    // positions.js does the arithmetic; this only makes a broken rule impossible to miss.
+    const reproposals = (pos.proposals || []).filter(p => p.reproposalBreach);
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
@@ -1017,6 +1020,11 @@ ${unannotatedLines(unannotated)}${openProposals.length
             + '| proposal | written |' + String.fromCharCode(10) + '|---|---|' + String.fromCharCode(10)
             + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} |`).join(String.fromCharCode(10))
         : '- No proposal is waiting.'}
+${reproposals.length
+        ? reproposals.map(p => '- **Re-proposed inside its two weeks** — [' + p.id + '](proposals/' + p.file + ') repeats ['
+            + p.reproposalBreach.after + '](proposals/' + p.reproposalBreach.after + '.md) with neither a limit at or below '
+            + (p.reproposalBreach.bar ?? '–') + ' nor new results or a changed case (D93)').join(String.fromCharCode(10))
+        : ''}
 ${violations.length
         ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))
         : ''}

@@ -34,7 +34,7 @@ file you open is resent on every turn that follows.
 | the newest `pot/reviews/*.md` | what was already judged, so you do not re-litigate it |
 | `watchlist.json` | the full set you must account for — every name, ranked or excluded |
 | `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
-| `pot/positions.json` | cash, holdings, and §4.5a's preference for a name not already held |
+| `pot/positions.json` | cash, holdings, §4.5a's preference for a name not already held, and `cooldown`: names proposed in the last two weeks (D93) |
 | `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
 | `pot/origins.json` | why each name is on the watchlist at all, in the words of the Sweep that found it |
 | `pot/rejections.json` | companies Leo has turned down: not candidates, under any listing named |
@@ -56,20 +56,43 @@ other subagent type is available, and on Codex there is none.
 ## A pending proposal is not a position — rank as if it did not exist
 
 Older files in `pot/proposals/` are **drafts awaiting Leo's decision, not commitments**, and they
-must not change what you propose. If NVDA is the best name on today's evidence, propose NVDA —
-even if last week's run said so too, even if an unexecuted NVDA draft is sitting in the same
-directory you are writing to. Two runs reaching the same conclusion from the same rules is the
-system working; **silently declining to write up your own top-ranked name because a file with a
-similar name already exists is the system failing quietly.** A run must be readable on its own.
+must not change how you RANK. If NVDA is the best name on today's evidence, it ranks first — even if
+last week's run said so too, even if an unexecuted NVDA draft is sitting in the same directory you
+are writing to. Two runs reaching the same conclusion from the same rules is the system working.
 
 The 29 August run ranked NVDA first and then refused to write it up, "already covered by the
 pending 28-Aug proposal". Nothing in this brief asked for that. It read the directory, inferred a
-rule, and the output no longer said what the evidence said.
+rule, and the output no longer said what the evidence said. **Never infer a rule from the
+directory.** The one rule about repeats is the next section, and it is stated, not inferred.
 
 **What DOES constrain you is `pot/positions.json`** — the cash and the holdings actually bought.
 That is the pot's book, and §4.2's 50% cap applies to what it holds. An undecided draft is not in
-it. If you want to note that a name has been proposed before, put it in the ranking table as a
-remark; never let it downgrade a rank or suppress a proposal.
+it, and it never downgrades a rank.
+
+## A name proposed in the last two weeks stands — `cooldown` in `pot/positions.json` (D93)
+
+Leo's rule, 25 Oct. Of 156 proposals to 23 October he acted on 10. MWA was proposed 34 times, BN.PA
+13 (every one expired), YUMC 13 before he rejected it, and one fortnight produced 27 proposals on 6
+names. A repeat is a full run re-arguing a name he has already read, and it buries the proposals
+that are new.
+
+So for **two weeks** after a name's last buy proposal, you may write a fresh proposal for it only
+if one of these holds, and the first is checked against the numbers:
+
+1. **Your limit is at or below `cooldown[ticker].below`** — 5% under the last proposal's limit, in
+   the listing's own units (pence for London). Computed for you; do not recompute it.
+2. **New results or a filing** have come out since `cooldown[ticker].last` was written.
+3. **The case has changed**: the thesis, the dominant risk, or the falsifier, and you say how.
+
+For 2 or 3, the proposal carries a `**Re-proposed:**` line under its header naming what changed
+and when — "Q3 results on 30 Oct, operating margin 14.1% against 12.8% a year ago", not "new
+information". "Price" is not a reason under 2 or 3; a cheaper limit is rule 1 and needs no line.
+
+Otherwise the name gets a **STANDS** row in the ranking and no new file: its rank as today's
+evidence sets it, the standing proposal's id, and today's price against its limit and against
+`below`. Leo still sees it, ranked where it belongs; he just is not handed the same proposal again.
+From `cooldown[ticker].until` the name is free. A rejected name is out under §3.2 regardless. The
+report flags any proposal that breaks this, so a repeat cannot pass unnoticed.
 
 ## A company Leo rejected is out — `pot/rejections.json` (§3.2, D83)
 
@@ -311,6 +334,9 @@ Sizing is a **§4 allocation across candidates**, not one ticket:
   A preference, not a veto, exactly as §3.3 treats overlap with Leo's own book. What it prevents is
   the pot arriving at a 50% single position because rank order chose for it.
 
+A **STANDS** row spends nothing: its cash is still free, so the allocation moves on to the next name
+that clears, exactly as if the standing name had not been eligible today.
+
 After the first proposal, **keep going while cash remains and a candidate still clears the rules.**
 If the second-best name does not clear, say so and leave the cash — §4.4 makes holding it a
 position, and it is what the VIX standing order will need. What is not acceptable is stopping at
@@ -330,10 +356,12 @@ individual proposals sit behind them. Open with what the run had to work with (c
 capital, the sweep and review it read), then the ranking, then what it decided and why. A reader
 should be able to follow the whole cycle from this file alone and click through only for detail.
 
-**Every ranked row opens with a verdict, and the verdict is one of three words.** Also arrived at
-unprompted, also kept:
+**Every ranked row opens with a verdict, and the verdict is one of four words.** The first three
+also arrived at unprompted, and were kept:
 
 - **PROPOSE** — and the share count, where a proposal follows
+- **STANDS** — it would be proposed, but it was proposed inside the last two weeks and none of the
+  three exceptions holds (D93); name the standing proposal and give today's price against its limit
 - **WAIT** — it clears the rules but something dated is missing; say what and by when
 - **EXCLUDE** — it does not clear a rule; say which one, in a clause
 
@@ -603,6 +631,10 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
  heard of the company should be able to say what it is. Leo buys what he is familiar enough with
  (§2), and this is what he judges that on; it also forces the business to be described before it is
  argued about, which is where a category-level risk becomes hard to skip.>
+
+<Only for a name in `cooldown` proposed again under exception 2 or 3 (D93):>
+**Re-proposed:** <what changed since <cooldown last id>, with its date: the results or filing, or how
+ the case moved>
 
 ## 1. Order
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
