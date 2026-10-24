@@ -30,7 +30,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 58 | **earns a feed** |
+| margin | 59 | **earns a feed** |
 | cash conversion | 43 | **earns a feed** |
 | volume / units | 43 | **earns a feed** |
 | leverage / net debt | 27 | **earns a feed** |
@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 6 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-329 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+333 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,6 +52,10 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-23 | `NESTE.HE` local price, filed earnings and valuation history. | No outside price or multiple adopted. Added to `watchlist.json` for the normal pipeline; the valuation filter must be read against pre-war (2025) earnings, not 2026's. |
+| 2026-10-23 | Asian thermal coal (Newcastle) and LNG spot prices. | Found only in press reports, no exchange or agency source consulted. Wanted monthly while LNG-to-coal substitution lasts; decides whether coal names are a durable re-rating or a peak-price trap. |
+| 2026-10-23 | Meta Class C non-voting stock dividend, effective January 2027 (an effective 2:1). | From Meta's Q3 2026 release. Wanted once, before the effective date: a `meta.json` `splits` declaration and a decision on how the new Class C line enters the Tradelog, because Yahoo's handling of a new-class stock dividend is unknown and its split list has failed both ways before (TKOMY, BYD). |
+| 2026-10-23 | middle-distillate cracks and renewable diesel/SAF margins, third reach. | Fetched from Neste's half-year report (Renewable Products margin USD 1,223/t against 361). Wanted monthly while Hormuz is disrupted; third sweep to need refined-product data after 29 and 31 August and 20 October, so it meets the bar for a feed if a free series exists. |
 | 2026-10-23 | Roche pharmaceutical and diagnostics growth, patent-expiry drag, pipeline conversion and China diagnostics pricing. | Fetched from Roche's nine-month sales release. Wanted on results dates while Roche is tracked, not weekly; the set must show whether the broad product portfolio and installed diagnostics base keep outrunning biosimilar erosion and Chinese pricing pressure, and whether late-stage assets become profitable sales rather than a pipeline count. |
 | 2026-10-23 | Roche post-Sweep local coverage; cash-valuation window start dates. | Deep dive at the 2026-10-23T09:12:09.758Z price snapshot: ROG.SW is in the 140-name watchlist but has no quote and its earnings years are empty, so the brief's local-coverage gate prevents issuer research/proposal. Check the next ordinary fetch rather than substituting an outside price. P/OCF exports a week count but no explicit start date; report decile membership and count until an auditable span is available. These are data gaps, not requests to weaken the valuation guards. |
 | 2026-10-20 | Sartorius recurring-consumables growth, order intake, clean operating margin, cash conversion and leverage. | Fetched from Sartorius' H1 release. Wanted on results dates while SRT3.DE is tracked; the set tests whether bioprocess recovery is recurring and cash-backed rather than a tariff-refund effect, and whether 3.51x net debt/underlying EBITDA keeps falling. |
@@ -381,8 +385,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-10-23 | Meta Class C non-voting stock dividend, effective January 2027 (an effective 2:1). | From Meta's Q3 2026 release. Wanted once, before the effective date: a `meta.json` `splits` declaration and a decision on how the new Class C line enters the Tradelog, because Yahoo's handling of a new-class stock dividend is unknown and its split list has failed both ways before (TKOMY, BYD). |
-| 2026-10-23 | middle-distillate cracks and renewable diesel/SAF margins, third reach. | Fetched from Neste's half-year report (Renewable Products margin USD 1,223/t against 361). Wanted monthly while Hormuz is disrupted; third sweep to need refined-product data after 29 and 31 August and 20 October, so it meets the bar for a feed if a free series exists. |
-| 2026-10-23 | Asian thermal coal (Newcastle) and LNG spot prices. | Found only in press reports, no exchange or agency source consulted. Wanted monthly while LNG-to-coal substitution lasts; decides whether coal names are a durable re-rating or a peak-price trap. |
-| 2026-10-23 | `NESTE.HE` local price, filed earnings and valuation history. | No outside price or multiple adopted. Added to `watchlist.json` for the normal pipeline; the valuation filter must be read against pre-war (2025) earnings, not 2026's. |
 <!-- entries:end -->
