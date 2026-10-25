@@ -207,11 +207,12 @@ $LANE_MODEL = @{
 
 # Reasoning effort, pinned per model (D96). Unpinned, a lane takes whatever ~/.codex/config.toml says,
 # and that changed underneath the pot: every astra run to 18 Oct 2026 logged "high", every one from
-# 19 Oct "low", with nothing in the repo to show it. Leo, 25 Oct: high for astra and Opus. A model
-# not listed (sol, on Review and Sweep) keeps the config's setting.
+# 19 Oct "low", with nothing in the repo to show it. Leo, 25 Oct: high for astra and Opus, then for
+# sol too (Review and Sweep). A model not listed keeps the config's setting.
 $LANE_EFFORT = @{
     'gpt-6-astra'     = 'high'
     'claude-opus-5-5' = 'high'
+    'gpt-5.6-sol'     = 'high'
 }
 
 # What a lane costs, in points of each window. Measured, per model, from pot/runs.md and the

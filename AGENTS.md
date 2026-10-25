@@ -143,7 +143,7 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Setting | Value | Where | Why |
 |---|---|---|---|
 | Model per lane on Codex | Review, Sweep `gpt-5.6-sol`; Deep dive `gpt-6-astra` | `run-daily.ps1` `$LANE_MODEL` | D51 |
-| Reasoning effort | **high** for `gpt-6-astra` and `claude-opus-5-5`, pinned; sol keeps `~/.codex/config.toml`'s (it read `low` from 19 Oct) | `run-daily.ps1` `$LANE_EFFORT` | D96 |
+| Reasoning effort | **high** for `gpt-6-astra`, `gpt-5.6-sol` and `claude-opus-5-5`, pinned rather than taken from `~/.codex/config.toml` (it read `low` from 19 Oct) | `run-daily.ps1` `$LANE_EFFORT` | D96 |
 | Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
 | Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95 |
