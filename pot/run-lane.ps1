@@ -154,7 +154,8 @@ if ($Agent -eq 'codex') {
     # own config folder, so without .claude-token (lanes on the interactive config) Agent is denied.
     # The per-run COUNT (at most 3, at most 3 at once) is a brief rule: the CLI has no hard cap.
     $laneName = ($Brief -replace '.*brief-', '') -replace '\.md$', ''
-    $scoutFor = @{ sweep = 'scout'; deepdive = 'scout-filings' }
+    # The Deep dive's second reader (D95) completes research from the same filings, so the same scout.
+    $scoutFor = @{ sweep = 'scout'; deepdive = 'scout-filings'; examine = 'scout-filings' }
     $builtinAgents = 'Agent(general-purpose) Agent(claude) Agent(Explore) Agent(Plan) Agent(claude-code-guide) Agent(statusline-setup)'
     $scout = $scoutFor[$laneName]
     if ($scout -and $env:CLAUDE_CONFIG_DIR -and $env:CLAUDE_CONFIG_DIR -like '*.claude-lanes') {

@@ -483,6 +483,15 @@ candidate needs one price fetch, and the daily cycle now runs one between the Sw
 lane for exactly that reason, so a name raised this morning should already be covered.
 fact-checked against independent data is void, and writing one anyway is worse than writing none.
 
+## A second reader follows you (D95)
+
+After you finish, the other model reads this run (`pot/brief-examine.md`), researches whatever it
+judges you left thin, and may amend, resize, re-verdict or withdraw what you wrote. That is not a
+reason to do less: it is a reason to say plainly where you stopped. **End the ranking with a
+`**Not researched:**` list** — the sources you could not open (a PDF that would not parse is the
+usual one), the questions you knew mattered and did not get to, and the figures you took from a
+secondary source rather than the issuer. "Nothing" is an allowed answer only if it is true.
+
 ## Verify before you argue — §7.2, mandatory
 
 Every figure that exists locally must be checked against local data before you use it:

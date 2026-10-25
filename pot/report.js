@@ -208,14 +208,33 @@ function stampProvenance(run, claimed = new Set()) {
         const onDisk = fs.existsSync(rel) ? rel
             : renamedOutput(rel.slice(0, rel.lastIndexOf('/')), run, claimed);
         if (!onDisk) continue;
-        // Runs arrive newest-first, so the first to claim a file is the one that last wrote it.
-        if (claimed.has(onDisk)) continue;
-        claimed.add(onDisk);
         try {
             const body = fs.readFileSync(onDisk, 'utf8');
             const nl = body.indexOf('\n');
-            if (nl < 0 || !/^model:/i.test(body.slice(0, nl))) continue;
-            const next = body.slice(0, nl) === line ? null : line + body.slice(nl);
+            const head = nl < 0 ? '' : body.slice(0, nl);
+            if (nl < 0 || !/^model:/i.test(head)) continue;
+            // D95. The Deep dive's second reader edits files the drafter wrote. Line 1 stays the
+            // drafter's; the examiner is named on line 2, `examined: ...`, claimed under its own key
+            // so the drafter (an older run, so stamped after it) still claims line 1. A proposal the
+            // examiner raised itself is headed `lane: examine`, and line 1 is then the examiner's.
+            const raised = /lane:[ ]*examine/i.test(head);
+            if (run.brief === 'examine' && !raised) {
+                const key = 'examine:' + onDisk;
+                if (claimed.has(key)) continue;
+                claimed.add(key);
+                const examined = 'examined: ' + line.slice('model: '.length);
+                const rest = body.slice(nl + 1), nl2 = rest.indexOf('\n');
+                const next = /^examined:/i.test(rest)
+                    ? head + '\n' + examined + (nl2 < 0 ? '' : rest.slice(nl2))
+                    : head + '\n' + examined + '\n' + rest;
+                if (next !== body) { fs.writeFileSync(onDisk, next); stamped++; }
+                continue;
+            }
+            if (run.brief !== 'examine' && raised) continue;    // the examiner's own: not this run's to stamp
+            // Runs arrive newest-first, so the first to claim a file is the one that last wrote it.
+            if (claimed.has(onDisk)) continue;
+            claimed.add(onDisk);
+            const next = head === line ? null : line + body.slice(nl);
             if (next) { fs.writeFileSync(onDisk, next); stamped++; }
         } catch { /* the file may have been renamed or removed since; not worth failing over */ }
     }
@@ -235,6 +254,7 @@ function stampProvenance(run, claimed = new Set()) {
             const body = fs.readFileSync(rel, 'utf8');
             const nl = body.indexOf(String.fromCharCode(10));
             if (nl < 0 || !/^model:[ ]*pending/i.test(body.slice(0, nl))) continue;
+            if (/lane:[ ]*examine/i.test(body.slice(0, nl))) continue;   // the second reader's own (D95)
             claimed.add(rel);
             fs.writeFileSync(rel, line + body.slice(nl));
             stamped++;
@@ -1000,6 +1020,13 @@ does not look exactly like a healthy one.
     const reproposals = (pos.proposals || []).filter(p => p.reproposalBreach);
     // D94: a proposal that did not answer a risk an earlier proposal of the same name named.
     const unanswered = (pos.proposals || []).filter(p => p.earlierRisksMissing);
+    // D95: whether the second reader examined a proposal. Before 26 Oct there was no second reader.
+    const secondRead = f => {
+        if (f.slice(0, 10) < '2026-10-26') return '–';
+        let md = '';
+        try { md = fs.readFileSync('pot/proposals/' + f, 'utf8'); } catch { /* listed but gone */ }
+        return /^## Second reader/m.test(md) ? 'read' : '**not second-read**';
+    };
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
     // SUMMARY.md stays the stable entry point and points at the newest — a bookmark that never
@@ -1019,8 +1046,8 @@ ${sig?.instructions?.length
 ${unannotatedLines(unannotated)}${openProposals.length
         ? '- **' + openProposals.length + ' proposal' + (openProposals.length === 1 ? '' : 's')
             + ' awaiting your decision**' + String.fromCharCode(10) + String.fromCharCode(10)
-            + '| proposal | written |' + String.fromCharCode(10) + '|---|---|' + String.fromCharCode(10)
-            + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} |`).join(String.fromCharCode(10))
+            + '| proposal | written | second reader |' + String.fromCharCode(10) + '|---|---|---|' + String.fromCharCode(10)
+            + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} | ${secondRead(f)} |`).join(String.fromCharCode(10))
         : '- No proposal is waiting.'}
 ${reproposals.length
         ? reproposals.map(p => '- **Re-proposed inside its two weeks** — [' + p.id + '](proposals/' + p.file + ') repeats ['
@@ -1066,6 +1093,7 @@ ${rejections.length
 | **Review** | ${when(lastOf('review')?.started) || '–'} | ${review ? `[${review.replace(/.md$/, '')}](reviews/${review})` : '–'} | ${lastOf('review') ? `[read](${lastOf('review').log.replace('pot/','')})` : '–'} |
 | **Sweep** | ${when(lastOf('sweep')?.started) || '–'} | ${sweep ? `[${sweep.replace(/\.md$/, '')}](sweeps/${sweep})` : '–'} | ${lastOf('sweep') ? `[read](${lastOf('sweep').log.replace('pot/','')})` : '–'} |
 | **Deep dive** | ${when(lastOf('deepdive')?.started) || '–'} | ${proposals[0] ? `[${proposals[0].replace(/\.md$/, '')}](proposals/${proposals[0]})` : '–'} | ${lastOf('deepdive') ? `[read](${lastOf('deepdive').log.replace('pot/','')})` : '–'} |
+| **Second reader** | ${when(lastOf('examine')?.started) || '–'} | ${lastOf('examine') ? `${lastOf('examine').model}, on the run above` : '–'} | ${lastOf('examine') ? `[read](${lastOf('examine').log.replace('pot/','')})` : '–'} |
 
 ${sig?.blocked?.length ? `**Blocked:** ${sig.blocked.map(b => `${b.rule} (${b.why})`).join('; ')}\n` : ''}
 ## Cost so far
@@ -1161,6 +1189,33 @@ function selftest() {
     assert.deepStrictEqual(a.rows.find(r => r.ticker === 'AZN.L').pots, [], "an untagged 'Y' trade links no proposal");
     delete prices.quotes.TW;
     assert.strictEqual(actual(pos, prices, hist).total, null, 'an unpriced holding leaves the total unknown, not smaller');
+    // D95: a file the second reader amended keeps the drafter on line 1 and names the examiner on
+    // line 2; a proposal the examiner raised is its own. Newest-first, as build() runs it.
+    {
+        const os = require('os'), here = process.cwd();
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stamp-'));
+        try {
+            process.chdir(dir);
+            fs.mkdirSync('pot/proposals', { recursive: true });
+            const X = 'pot/proposals/2026-10-26-0630-X.md', Y = 'pot/proposals/2026-10-26-0630-Y.md';
+            fs.writeFileSync(X, 'model: pending, lane: deep-dive, date: x, tokens: pending\n# X\nbody\n');
+            fs.writeFileSync(Y, 'model: pending, lane: examine, date: x, tokens: pending\n# Y\n');
+            const abs = f => 'C:/repo/MyStockPortfolio/' + f;
+            const run = (brief, model, started, wrote) => ({ brief, lane: brief, model, started, ended: started, seconds: 60,
+                usage: { input_tokens: 10, cached_input_tokens: 4, output_tokens: 1, total_tokens: 11 }, wrote: wrote.map(abs) });
+            const examiner = run('examine', 'claude-opus-5-5', '2026-10-26T06:50:00Z', [X, Y]);
+            const drafter = run('deepdive', 'gpt-6-astra', '2026-10-26T06:30:00Z', [X]);
+            const pass = () => { const claimed = new Set(); return stampProvenance(examiner, claimed) + stampProvenance(drafter, claimed); };
+            assert.strictEqual(pass(), 3, 'two lines on X, one on Y');
+            const x = fs.readFileSync(X, 'utf8').split('\n'), y = fs.readFileSync(Y, 'utf8').split('\n');
+            assert.ok(x[0].startsWith('model: `gpt-6-astra`, lane: deepdive'), x[0]);
+            assert.ok(x[1].startsWith('examined: `claude-opus-5-5`, lane: examine'), x[1]);
+            assert.strictEqual(x[2], '# X', 'the body is untouched');
+            assert.ok(y[0].startsWith('model: `claude-opus-5-5`, lane: examine'), 'a raised proposal is the examiner\'s: ' + y[0]);
+            assert.strictEqual(pass(), 0, 'stamping again changes nothing');
+        } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+
     console.log('report.js selftest ok');
 }
 

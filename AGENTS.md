@@ -107,7 +107,7 @@ new, and the Deep dive reads both (pot-design §2):
 | **Scan** — `npm run signals` | free, no LLM, no network | signals, and standing-order instructions |
 | **Review** — `pot/brief-review.md` | one agent session | a verdict on each open thesis, never a new name |
 | **Sweep** — `pot/brief-sweep.md` | one agent session | watchlist candidates, never orders |
-| **Deep dive** — `pot/brief-deepdive.md` | one agent session | executable proposals, on tickers it picks from the Sweep's candidates and the Scan's signals together (D14) |
+| **Deep dive** — `pot/brief-deepdive.md` | two sessions: one model drafts, the other examines (D95) | executable proposals, on tickers it picks from the Sweep's candidates and the Scan's signals together (D14) |
 
 ### When it runs
 
@@ -115,7 +115,7 @@ new, and the Deep dive reads both (pot-design §2):
 the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
 entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
 Scan, then whichever LLM lanes are DUE, in order, then the report. Review runs every 2 days, Sweep daily, and the Deep dive only if the Sweep ran in the same cycle (D30, D33, D36). **Weekdays 06:30, 12:45 and 21:15;
-weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: Sweep and Deep dive forced, both on Claude Opus 5.5 (D88).
+weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
 
 Two things that constrain any change to it:
 
@@ -145,15 +145,15 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Model per lane on Codex | Review, Sweep `gpt-5.6-sol`; Deep dive `gpt-6-astra` | `run-daily.ps1` `$LANE_MODEL` | D51 |
 | Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
-| Lanes on Claude per cycle | **1** (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. **2** in the Mon/Wed/Fri 12:45 second run | `run-daily.ps1`, the second-run task | D73, D88 |
-| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep,deepdive -MaxClaudeLanes 2`, Mon/Wed/Fri 12:45 | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88 |
+| Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95 |
+| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive`, Mon/Wed/Fri 12:45 | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88 |
 | After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |
 | Failed lane on Claude | skipped; the cycle continues | `Invoke-Lane` | D72 |
-| Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due | `$doDeep` | D73 |
+| Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due; two stages, drafter then examiner on the other model | `$doDeep`, `Invoke-DeepDive` | D73, D95 |
 | Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
 | Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |
 | What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
-| **Subagents** | Sweep: `scout` (Haiku). Deep dive: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
+| **Subagents** | Sweep: `scout` (Haiku). Deep dive and its second reader: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
 | Scout tools | WebSearch, WebFetch only — no Agent, so a scout cannot spawn another | `pot/agents/*.md` | D76 |
 | Scouts per run | **at most 3, at most 3 at once** — a brief rule; the CLI has no hard count | `brief-sweep.md`, `brief-deepdive.md` | D76 |
 | Cost record | each Claude lane logs `total_cost_usd` and the models in it (subagents included) | `run-lane.ps1` | D76 |

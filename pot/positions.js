@@ -15,6 +15,7 @@
 //   accepted  a pot trade names this proposal id
 //   expired   no trade, and the order's day limit is no longer reachable at today's price
 //   open      no trade yet, and the order could still be placed
+//   withdrawn the Deep dive's second reader took it back before Leo saw it (D95)
 //
 // "Rejected" is deliberately absent. Not buying something is not an event, and inventing a
 // ceremony for it would mean a decision to record every time the answer is no.
@@ -43,6 +44,8 @@ function limitOf(order) {
         + CCY.source + '?\\s*(\\d[\\d,]*(?:\\.\\d+)?)', 'i'));
     return m ? Number(m[1].replace(/,/g, '')) : null;
 }
+
+const WITHDRAWN = /\*\*Withdrawn by the second reader:?\*\*[:\s]*([^\n]+)/i;   // D95
 
 function parseProposal(file) {
     let md;
@@ -81,6 +84,8 @@ function parseProposal(file) {
         // Why a name is proposed again inside its two weeks (D93): new results or a filing, or a
         // changed case. A cheaper limit needs no line; the arithmetic below checks it.
         reproposed: (md.match(/\*\*Re-proposed:?\*\*[:\s]*([^\n]+)/i) || [])[1]?.trim() || null,
+        // D95: the examiner took it back before it reached Leo. The file and its text are kept.
+        withdrawn: (md.match(WITHDRAWN) || [])[1]?.trim() || null,
         // P6's one risk, with its label: written "(`financial`)" or "(financial)" (117 proposals).
         // To the end of its paragraph, not its line: some proposals wrap it, and BN.PA's read
         // "...so the +3% to +5%" when cut at the newline.
@@ -146,7 +151,8 @@ const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5)
 const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
 
 function reproposalRule(proposals, today, rejected = new Set()) {
-    const buys = proposals.filter(p => p.side === 'BUY').sort((a, b) => a.id.localeCompare(b.id));
+    // A proposal the second reader withdrew never reached Leo, so it opens no window (D95).
+    const buys = proposals.filter(p => p.side === 'BUY' && p.state !== 'withdrawn').sort((a, b) => a.id.localeCompare(b.id));
     const last = new Map(), breaches = new Map();
     for (const p of buys) {
         const q = last.get(p.ticker);
@@ -252,6 +258,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         const rejected = rejectedBy.get(parsed.ticker);
         let state = 'open';
         if (trade) state = 'accepted';                      // a bought name stays bought, rejected or not
+        else if (parsed.withdrawn) state = 'withdrawn';     // D95: never reached Leo
         else if (rejected) state = 'rejected';
         else if (parsed.limit != null && parsed.side === 'BUY') {
             // A buy limit that today's price has left behind cannot be filled as written. That is
@@ -289,7 +296,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         p.supersededBy = p.state !== 'accepted' && live && live !== p.id ? live : null;
         p.phase = !funded || p.written < funded ? 'pre-live' : 'live';
         // One entry per decision, and only from the phase that is being judged.
-        p.counts = !p.supersededBy && p.phase === 'live';
+        p.counts = !p.supersededBy && p.phase === 'live' && p.state !== 'withdrawn';
     }
     const { cooldown, breaches } = reproposalRule(proposals, today, new Set(rejectedBy.keys()));
     for (const p of proposals) if (breaches.has(p.id)) p.reproposalBreach = breaches.get(p.id);
@@ -482,6 +489,17 @@ if (process.argv.includes('--selftest')) {
         // Pence stay pence: the bar is in the listing's own units.
         assert.strictEqual(reproposalRule([P('2026-10-27-0900-HLMA.L', 3276)], '2026-10-28').cooldown['HLMA.L'].below, 3112.2);
         assert.ok(!reproposalRule([P('2026-10-27-0900-YUMC', 40)], '2026-10-28', new Set(['YUMC'])).cooldown.YUMC, 'rejected: out, not cooling');
+    }
+
+    // D95: a withdrawn proposal is recognised, opens no two-week window, and is not scored.
+    {
+        const md = 'model: x\n**Withdrawn by the second reader:** one customer is 20% of revenue and the draft never weighed it.\n# HLMA.L';
+        assert.strictEqual((md.match(WITHDRAWN) || [])[1], 'one customer is 20% of revenue and the draft never weighed it.');
+        assert.strictEqual(('model: x\n# HLMA.L'.match(WITHDRAWN) || [])[1], undefined);
+        const W = (id, limit, state) => ({ id, ticker: 'BN.PA', written: id.slice(0, 10), side: 'BUY', limit, state });
+        const r = reproposalRule([W('2026-10-27-0900-BN.PA', 61, 'withdrawn'), W('2026-10-28-0900-BN.PA', 60.9, 'open')], '2026-10-29');
+        assert.strictEqual(r.breaches.size, 0, 'a withdrawn proposal opens no window');
+        assert.strictEqual(r.cooldown['BN.PA'].last, '2026-10-28-0900-BN.PA');
     }
 
     // D94: every earlier label answered, not just the last proposal's.

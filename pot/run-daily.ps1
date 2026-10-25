@@ -40,6 +40,10 @@ param(
     # -OnClaude -Force all -MaxClaudeLanes 3 to see what a whole cycle costs Claude's window (D80).
     # The cooldown and the -MaxClaudeLanes cap still apply.
     [switch]$OnClaude,
+    # Never run the Deep dive in this cycle, even if it is due. The Mon/Wed/Fri 12:45 second run
+    # passes it: since D95 the day's one Deep dive is the morning's, drafted and examined by both
+    # models, and the second run keeps only its Sweep.
+    [switch]$NoDeepDive,
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -197,6 +201,8 @@ $LANE_MODEL = @{
     'pot/brief-review.md'   = 'gpt-5.6-sol'
     'pot/brief-sweep.md'    = 'gpt-5.6-sol'
     'pot/brief-deepdive.md' = 'gpt-6-astra'
+    # The Deep dive's second reader (D95), when Codex is the examiner (Tue and Thu).
+    'pot/brief-examine.md'  = 'gpt-6-astra'
 }
 
 # What a lane costs, in points of each window. Measured, per model, from pot/runs.md and the
@@ -410,12 +416,18 @@ function Lane-Due($dir, $everyDays) {
     return $false
 }
 
-function Invoke-Lane($brief) {
+function Invoke-Lane($brief, $agent = $null, [switch]$Soft) {
     Note "--- $brief"
+    # -Soft: a failure on Codex is noted and the cycle carries on, as it already does on Claude. For
+    # the Deep dive's examiner (D95), whose failure must not cost the draft or the report after it.
+    # Whether the lane ran, for a caller that needs to know (the Deep dive's two stages, D95). Set
+    # in script scope rather than returned: Note writes to the pipeline, so a return value from this
+    # function would come back as an array of log lines with the answer on the end.
+    $script:LaneOk = $false
     # The plan decides the agent; the agent decides which model name is meaningful. Passing a
     # gpt-* name to Claude, or the reverse, is the obvious way to get this subtly wrong.
     $lane = ($brief -replace '.*brief-', '') -replace '.md$', ''
-    $laneAgent = if ($PLAN[$lane]) { $PLAN[$lane] } else { 'codex' }
+    $laneAgent = if ($agent) { $agent } elseif ($PLAN[$lane]) { $PLAN[$lane] } else { 'codex' }
     if ($laneAgent -eq 'skip') { Note "    skipped by the Claude budget - not run"; return }
     $laneModel = if ($laneAgent -eq 'claude') { $CLAUDE_MODEL }
         elseif ($Model) { $Model } else { $LANE_MODEL[$brief] }
@@ -426,7 +438,7 @@ function Invoke-Lane($brief) {
     try {
         & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
     } catch {
-        if ($laneAgent -eq 'claude') { Note "$brief threw on Claude: $($_.Exception.Message) - skipping this lane, the cycle continues"; return }
+        if ($laneAgent -eq 'claude' -or $Soft) { Note "$brief threw on ${laneAgent}: $($_.Exception.Message) - skipping this lane, the cycle continues"; return }
         Note "$brief threw: $($_.Exception.Message) - stopping the cycle"
         exit 1
     }
@@ -441,14 +453,69 @@ function Invoke-Lane($brief) {
             Note "$brief exited $LASTEXITCODE on Claude - skipping this lane, the cycle continues"
             return
         }
+        if ($Soft) { Note "$brief exited $LASTEXITCODE on Codex - skipping this lane, the cycle continues"; return }
         Note "$brief exited $LASTEXITCODE - stopping the cycle"; exit 1
     }
     # run-lane.ps1 always writes its own header to the log. If the log did not grow, the lane
     # never started, whatever the exit code says.
     if ((Get-Item (Join-Path $Repo $log)).Length -le $before) {
+        if ($Soft) { Note "$brief wrote nothing to the log - it did not run; the cycle continues"; return }
         Note "$brief wrote nothing to the log - it did not run. Stopping the cycle."
         exit 1
     }
+    $script:LaneOk = $true
+}
+
+# The Deep dive, drafted by one model and examined by the other (D95, Leo 25 Oct). Mon, Wed, Fri
+# and weekends: astra drafts, Opus examines. Tue and Thu: Opus drafts, astra examines. The order
+# alternates so each model takes both roles and the two orders can be compared.
+#
+# Which halves can run comes from the plan, which already priced the Codex half under 'deepdive':
+#   codex   the Codex half runs on astra;
+#   claude  Codex cannot fit it, so Claude does the Deep dive alone;
+#   skip    the Claude budget left no room: no Deep dive this cycle.
+# Claude's half is planned, not a failover, so -MaxClaudeLanes does not count it; it is dropped only
+# while Claude is cooling after its session limit. With one half missing the other drafts alone,
+# and the report marks the run "not second-read" because no Second reader section exists.
+#
+# A drafter that fails on Claude falls through to astra drafting alone; on Codex it stops the cycle,
+# as any planned Codex lane does. An examiner that fails, on either side, leaves the draft standing:
+# losing the second reading is not a reason to lose the proposal.
+function Get-DeepDiveOrder($day) {
+    if ($day -eq 'Tuesday' -or $day -eq 'Thursday') { return @('claude', 'codex') }
+    return @('codex', 'claude')
+}
+
+function Invoke-DeepDive {
+    $planned = $PLAN['deepdive']
+    if ($planned -eq 'skip') { Note 'deep dive skipped by the Claude budget - not run'; return }
+    $codexOk = $planned -ne 'claude'
+    $claudeOk = -not (Claude-Cooling)
+    if ($planned -eq 'claude' -and -not $claudeOk) { Note 'deep dive: Codex cannot fit it and Claude is cooling - not run'; return }
+    $order = @(Get-DeepDiveOrder ((Get-Date).DayOfWeek.ToString()) | Where-Object {
+        ($_ -eq 'codex' -and $codexOk) -or ($_ -eq 'claude' -and $claudeOk) })
+    Note ("deep dive: {0}" -f ($(if ($order.Count -gt 1) { "$($order[0]) drafts, $($order[1]) examines" } else { "$($order[0]) alone, no second reader" })))
+    $began = (Get-Date).ToUniversalTime().AddMinutes(-3)
+    Invoke-Lane 'pot/brief-deepdive.md' $order[0]
+    $drafter = $order[0]
+    if (-not $script:LaneOk -and $order.Count -gt 1) {
+        Note "  the $($order[0]) draft did not finish - $($order[1]) drafts alone, no second reader"
+        Invoke-Lane 'pot/brief-deepdive.md' $order[1]
+        return
+    }
+    if (-not $script:LaneOk -or $order.Count -lt 2) { return }
+    # Only examine a ranking this cycle wrote: its name carries a UTC stamp, which must not predate
+    # the draft. A drafter that wrote nothing leaves yesterday's ranking as the newest file.
+    $ranking = Get-ChildItem (Join-Path $Repo 'pot/proposals') -Filter '*-ranking.md' -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending | Select-Object -First 1
+    $stamp = if ($ranking -and $ranking.Name -match '^(\d{4}-\d{2}-\d{2}-\d{4})') {
+        [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd-HHmm', $null) } else { $null }
+    if (-not $stamp -or $stamp -lt $began) {
+        Note "  no ranking from this draft to examine - the $drafter draft stands unexamined"
+        return
+    }
+    Invoke-Lane 'pot/brief-examine.md' $order[1] -Soft
+    if (-not $script:LaneOk) { Note "  the $($order[1]) examination did not finish - the draft stands, not second-read" }
 }
 
 $completed = $false
@@ -517,7 +584,7 @@ try {
     # session limit — only because that morning's Sweep had failed and was still outstanding.
     # Reading pot/proposals keeps the pairing where it matters (the Sweep still runs first inside a
     # cycle) while letting a FAILED Deep dive retry at the next slot, which pairing would not.
-    $doDeep = (Lane-Due 'pot/proposals' 1) -or $Force -contains 'deepdive' -or $Force -contains 'all'
+    $doDeep = -not $NoDeepDive -and ((Lane-Due 'pot/proposals' 1) -or $Force -contains 'deepdive' -or $Force -contains 'all')
     $planned = @()
     if ($doReview) { $planned += 'review' }
     if ($doSweep) { $planned += 'sweep' }
@@ -604,9 +671,11 @@ try {
     # the sweep that found it. Sweep cadence therefore sets Deep dive cadence - both daily.
     # Forcing the deep dive alone is legitimate: it judges the newest sweep's output, which is what
     # a rerun after a failed cycle needs. The pairing still governs the UNFORCED path.
+    # Two stages since D95: one model drafts, the other examines. See Invoke-DeepDive.
     if ($doDeep) {
-        Invoke-Lane 'pot/brief-deepdive.md'
-    } else { Note 'deep dive skipped - no sweep ran this cycle' }
+        Invoke-DeepDive
+    } elseif ($NoDeepDive) { Note 'deep dive not run - this cycle passes -NoDeepDive' }
+    else { Note 'deep dive not due - it has run today' }
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
