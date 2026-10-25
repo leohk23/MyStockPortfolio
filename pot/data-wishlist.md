@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 6 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-333 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+336 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,9 +52,12 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-25 | Danone and Mueller issuer-to-local operating-account reconciliation, deep-dive 1133. | Rechecked official releases: Danone FY2025 operating income is EUR2,940m versus local EUR3,717m; H1 revenue EUR13,936m versus local quarters EUR13,923m. Mueller Q3 operating income is USD80.6m versus local USD91.8m. The run report links the exact issuer documents and uses their operating figures. Wanted on results dates: basis differences can invert the apparent growth test. No local accounts overwritten. |
+| 2026-10-25 | HKXCY unsponsored ADR first-year depositary charges and foreign execution details, deep-dive 1133. | T212 instrument and its 0.15% FX schedule verified, and Citi confirms a 1:1 unsponsored program. Complete annual custody/dividend charges, HK lot/IBKR minimum and a certified Swiss RSGN ticket remain unverified. No all-in cost or fee-based company rejection inferred; source links and business WAIT reasons are in 2026-10-25-1133-ranking.md. Needed only before an executable order. |
+| 2026-10-25 | United Utilities regulatory-return/funding basis and cash-history window dates, deep-dive 1133. | Company 25 September update targets 10–11% regulatory returns and seeks about GBP1bn additional funding; these are not the local 4.8% accounting ROIC. Ofwat underlying decision not checked. Follow 12 November interim and December final decision. P/OCF series have observation counts but no exported start date, so the report states decile membership and count without inventing a span. |
+| 2026-10-25 | `KMAR.OL` and `LYB` local price, filed earnings and valuation history. | No outside price or multiple adopted. Both added to `watchlist.json`. KMAR.OL listed in April 2026, so its own price history is about six months and any percentile will be thin; confirm the symbol renders. |
 | 2026-10-25 | Brent and Henry Hub in the macro block, second reach. | Fetched from the EIA daily spot series (Brent $115.22 and Henry Hub $3.10 on 20 Oct). First asked for on 11 Sep with TTF. Wanted every week: the oil-to-gas spread decided both of this sweep's candidates, and the block still holds WTI alone. |
 | 2026-10-25 | Japanese utility fuel-cost adjustment lag figures. | Not obtained: Kansai Electric's IR PDFs return 403 to a script, so a scout's figures could not be checked and the name was not carried. Wanted only if a Japanese utility is raised again. |
-| 2026-10-25 | `KMAR.OL` and `LYB` local price, filed earnings and valuation history. | No outside price or multiple adopted. Both added to `watchlist.json`. KMAR.OL listed in April 2026, so its own price history is about six months and any percentile will be thin; confirm the symbol renders. |
 | 2026-10-23 | `NESTE.HE` local price, filed earnings and valuation history. | No outside price or multiple adopted. Added to `watchlist.json` for the normal pipeline; the valuation filter must be read against pre-war (2025) earnings, not 2026's. |
 | 2026-10-23 | Asian thermal coal (Newcastle) and LNG spot prices. | Found only in press reports, no exchange or agency source consulted. Wanted monthly while LNG-to-coal substitution lasts; decides whether coal names are a durable re-rating or a peak-price trap. |
 | 2026-10-23 | Meta Class C non-voting stock dividend, effective January 2027 (an effective 2:1). | From Meta's Q3 2026 release. Wanted once, before the effective date: a `meta.json` `splits` declaration and a decision on how the new Class C line enters the Tradelog, because Yahoo's handling of a new-class stock dividend is unknown and its split list has failed both ways before (TKOMY, BYD). |
@@ -389,7 +392,3 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
-
-### 2026-10-25 — HKEX activity and depositary-specific ADR costs
-
-Fetched [HKEX monthly activity](https://www.hkex.com.hk/Market-Data/Statistics/Consolidated-Reports/HKEX-Monthly-Market-Highlights?sc_lang=en), [Trading 212's HKXCY listing](https://www.trading212.com/trading-instruments/invest/HKXCY.US), and [Citi's March 2026 dividend notice](https://depositaryreceipts.citi.com/adr/guides/viewDocument.aspx?annid=2&divid=036&secid=HKXCY&type=P). September securities and Southbound turnover slowed month on month; this made the next earnings release on 6 November a business checkpoint. Wanted monthly while HKEX is a candidate. The Citi notice confirms a USD0.07 cash fee per ADR for that distribution, not a full annual cost. Still missing: the depositary actually serving a T212 purchase, its September distribution charge and any separate future depositary-service fee. This narrows the existing ADR-cost gap; it does not certify an annual schedule or justify converting a missing fee to zero. See [the run report](proposals/2026-10-25-0119-ranking.md).
