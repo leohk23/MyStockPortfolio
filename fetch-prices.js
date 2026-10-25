@@ -2062,6 +2062,27 @@ function resolveEps(manual, fresh, carried, currency) {
     return typeof carried === 'number' ? carried : undefined;
 }
 
+// USD per unit of a currency, from the pair quoted the precise way round. Yahoo quotes a pair to
+// four decimal places, so a currency worth a fraction of a dollar lost most of its digits:
+// KRWUSD=X read 0.0008 against 1 / 1,325.4 = 0.000754, which valued every Korean holding 6% high
+// (SK hynix in the book, 25 Oct 2026); IDR read 0.0001, 80% high; JPY 0.36%. Found by the Deep
+// dive's second reader. The direct quote is kept where it is 1 or more (EUR, GBP, CHF: four
+// decimals there are five significant figures); otherwise the dollar-first pair is inverted. The
+// two must agree within the direct quote's rounding, or a wrong symbol or a stale quote is being
+// read and nothing is written.
+function fxRate(direct, inverse) {
+    if (direct >= 1 || inverse == null) {
+        if (!(direct > 0)) throw new Error(`no usable rate (direct ${direct})`);
+        return direct;
+    }
+    if (!(inverse > 0)) throw new Error(`no usable inverse rate (${inverse})`);
+    const rate = 1 / inverse;
+    if (direct > 0 && Math.abs(rate - direct) > 0.00005 + rate * 0.01) {
+        throw new Error(`the pair disagrees with its inverse: ${direct} against 1 / ${inverse} = ${rate}`);
+    }
+    return Number(rate.toPrecision(8));
+}
+
 // GBp (pence) is GBP/100. Everything else needs a real FX rate.
 function rateFor(code, rates) {
     if (code === 'GBp' || code === 'Gbpence') return rates.GBP / 100;
@@ -2639,8 +2660,11 @@ async function main() {
     const rates = { USD: 1 };
     for (const c of [...new Set(needed)]) {
         try {
-            rates[c] = (await fetchTicker(`${c}USD=X`)).price;
-            console.log(`ok   ${c}USD=X ${rates[c]}`);
+            const direct = (await fetchTicker(`${c}USD=X`)).price;
+            let inverse = null;
+            if (!(direct >= 1)) { await sleep(); inverse = (await fetchTicker(`USD${c}=X`)).price; }
+            rates[c] = fxRate(direct, inverse);
+            console.log(`ok   ${c} ${rates[c]} (${inverse == null ? `${c}USD=X` : `1 / USD${c}=X ${inverse}`})`);
         } catch (e) {
             throw new Error(`missing FX rate for ${c} (${e.message}); not writing`);
         }
@@ -3217,6 +3241,14 @@ async function main() {
 
 function selftest() {
     const assert = require('assert');
+    // FX from the precise side of the pair: 25 Oct 2026 quotes.
+    assert.strictEqual(fxRate(1.3374, null), 1.3374, 'GBP: the direct quote is precise enough');
+    assert.strictEqual(fxRate(0.0008, 1325.4), Number((1 / 1325.4).toPrecision(8)), 'KRW: inverted, not the rounded 0.0008');
+    assert.ok(Math.abs(fxRate(0.0001, 18050) - 0.0000554017) < 1e-10, 'IDR: inverted');
+    assert.ok(Math.abs(fxRate(0.0064, 156.814) / (1 / 156.814) - 1) < 1e-7, 'JPY: inverted');
+    assert.throws(() => fxRate(0.0064, 1325.4), /disagrees/, 'a wrong inverse symbol is refused');
+    assert.throws(() => fxRate(0.0008, 0), /no usable inverse/);
+    assert.throws(() => fxRate(undefined, null), /no usable rate/);
     const now = 1000 * DAY;
     const ts = [now - 10 * DAY, now - 5 * DAY, now - 1 * DAY];
     const closes = [50, 80, 90];
