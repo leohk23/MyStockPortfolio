@@ -16,6 +16,7 @@
 //   expired   no trade, and the order's day limit is no longer reachable at today's price
 //   open      no trade yet, and the order could still be placed
 //   withdrawn the Deep dive's second reader took it back before Leo saw it (D95)
+//   obsolete  written before the pot was funded and never bought (D97): free to be proposed again
 //
 // "Rejected" is deliberately absent. Not buying something is not an event, and inventing a
 // ceremony for it would mean a decision to record every time the answer is no.
@@ -297,6 +298,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         p.phase = !funded || p.written < funded ? 'pre-live' : 'live';
         // One entry per decision, and only from the phase that is being judged.
         p.counts = !p.supersededBy && p.phase === 'live' && p.state !== 'withdrawn';
+        // D97: written before the pot had money, under rules that have since moved, and never
+        // bought. Not awaiting Leo, and not a rejection either: the name is free to be proposed
+        // again. NVDA and RSGN.SW from 31 Aug had sat "open" for two months on limits still in reach.
+        if (p.state === 'open' && p.phase === 'pre-live') p.state = 'obsolete';
     }
     const { cooldown, breaches } = reproposalRule(proposals, today, new Set(rejectedBy.keys()));
     for (const p of proposals) if (breaches.has(p.id)) p.reproposalBreach = breaches.get(p.id);
@@ -364,7 +369,7 @@ if (require.main === module) {
     const live = out.proposals.filter(x => !x.supersededBy).length;
     const counting = out.proposals.filter(x => x.counts).length;
     console.log(`wrote pot/positions.json: ${Object.keys(out.holdings).length} holding(s), `
-        + `${out.proposals.length} proposal(s) — ${by('accepted')} accepted, ${by('open')} open, ${by('expired')} expired, ${by('rejected')} rejected`);
+        + `${out.proposals.length} proposal(s) — ${by('accepted')} accepted, ${by('open')} open, ${by('expired')} expired, ${by('rejected')} rejected, ${by('withdrawn')} withdrawn, ${by('obsolete')} obsolete`);
     console.log(`  ${live} live decision(s), ${out.proposals.length - live} superseded, `
         + `${counting} scored (the rest are pre-live)`);
     const noFalsifier = out.proposals.filter(x => x.state === 'accepted' && !x.break);

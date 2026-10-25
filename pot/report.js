@@ -195,6 +195,44 @@ function renamedOutput(dir, run, claimed) {
     return best && best.rel;
 }
 
+// D95: what the second reader actually changed, measured rather than taken from its own account.
+// The file as the drafter committed it against the file now, both without the provenance lines and
+// without the Second reader section, so an examination that only appended its section reads as
+// such. Lines compared as a multiset, so an edited line counts once added and once removed.
+const withoutReview = text => {
+    const out = [];
+    let inSection = false;
+    for (const [i, raw] of text.replace(/\r/g, '').split('\n').entries()) {
+        const l = raw.trim();
+        if (i === 0 || /^examined:/i.test(l)) continue;
+        if (/^##+ Second reader/i.test(l)) { inSection = true; continue; }
+        if (inSection && /^#{1,2} /.test(l)) inSection = false;
+        if (!inSection && l) out.push(l);
+    }
+    return out;
+};
+function amendments(draft, now) {
+    const count = a => a.reduce((m, l) => m.set(l, (m.get(l) || 0) + 1), new Map());
+    const A = count(withoutReview(draft)), B = count(withoutReview(now));
+    let added = 0, removed = 0;
+    for (const [l, n] of A) removed += Math.max(0, n - (B.get(l) || 0));
+    for (const [l, n] of B) added += Math.max(0, n - (A.get(l) || 0));
+    const section = /^##+ Second reader/im.test(now);
+    if (!added && !removed) return section ? 'Second reader section only, no amendments' : 'no amendments and no Second reader section';
+    return `+${added} -${removed} lines outside its Second reader section`;
+}
+// The drafter's version is the commit that added the file. Null when git cannot say (not yet
+// committed, or no repository), and the line then simply carries no measure.
+function contribution(rel, now) {
+    try {
+        const cp = require('child_process');
+        const added = cp.execFileSync('git', ['log', '--diff-filter=A', '--format=%H', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+            .trim().split('\n').filter(Boolean).pop();
+        if (!added) return null;
+        return amendments(cp.execFileSync('git', ['show', `${added}:${rel}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }), now);
+    } catch { return null; }
+}
+
 function stampProvenance(run, claimed = new Set()) {
     const fresh = (run.usage?.input_tokens ?? 0) - (run.usage?.cached_input_tokens ?? 0);
     const line = `model: \`${run.model}\`, lane: ${run.lane}, ${when(run.started)}, `
@@ -222,7 +260,8 @@ function stampProvenance(run, claimed = new Set()) {
                 const key = 'examine:' + onDisk;
                 if (claimed.has(key)) continue;
                 claimed.add(key);
-                const examined = 'examined: ' + line.slice('model: '.length);
+                const measured = contribution(onDisk, body);
+                const examined = 'examined: ' + line.slice('model: '.length) + (measured ? '; ' + measured : '');
                 const rest = body.slice(nl + 1), nl2 = rest.indexOf('\n');
                 const next = /^examined:/i.test(rest)
                     ? head + '\n' + examined + (nl2 < 0 ? '' : rest.slice(nl2))
@@ -261,6 +300,48 @@ function stampProvenance(run, claimed = new Set()) {
         } catch { /* renamed or removed since; not worth failing over */ }
     }
     return stamped;
+}
+
+// D95: a Deep dive's documents say when no second reader finished, rather than leaving a missing
+// line to be noticed. On 25 Oct the examiner hit Claude's session limit after one turn and the
+// run's files read exactly like a drafter's alone. Each file of a draft from 25 Oct on that has no
+// `examined:` line gets `examined: not run`, with the reason from the run log. A later examination
+// replaces it, since stampProvenance rewrites any `examined:` line it finds.
+const D95_FROM = '2026-10-25';
+function examinerHitLimit(ex, runLog) {
+    const t = Date.parse(ex.started || '');
+    const re = /^=== (\S+)\s+\S+\s+pot[\\/]brief-examine\.md ===$([\s\S]*?)(?=^===|(?![\s\S]))/gm;
+    for (const m of runLog.matchAll(re)) {
+        if (Math.abs(Date.parse(m[1]) - t) < 3 * 60 * 1000) return /(session|usage) limit/i.test(m[2]);
+    }
+    return false;
+}
+function markUnexamined(runs, runLog) {
+    let names = [];
+    try { names = fs.readdirSync('pot/proposals'); } catch { return 0; }
+    let marked = 0;
+    for (const d of runs.filter(r => r.brief === 'deepdive' && (r.started || '') >= D95_FROM)) {
+        const end = Date.parse(d.ended || d.started);
+        const ex = runs.find(r => r.brief === 'examine' && Date.parse(r.started) >= end - 60 * 1000
+            && Date.parse(r.started) - end < 90 * 60 * 1000);
+        const reason = !ex ? 'no second reader ran in this cycle'
+            : examinerHitLimit(ex, runLog) ? `the second reader (${ex.model}) hit Claude's session limit`
+            : (ex.wrote || []).length ? `the second reader (${ex.model}) ran but left this file untouched`
+            : `the second reader (${ex.model}) did not finish`;
+        for (const name of names) {
+            if (!name.endsWith('.md') || !inWindow(name, d)) continue;
+            const rel = 'pot/proposals/' + name;
+            try {
+                const body = fs.readFileSync(rel, 'utf8'), nl = body.indexOf('\n');
+                const head = nl < 0 ? '' : body.slice(0, nl);
+                if (!/^model:/i.test(head) || /pending/i.test(head) || /lane:[ ]*examine/i.test(head)) continue;
+                if (/^examined:/i.test(body.slice(nl + 1))) continue;
+                fs.writeFileSync(rel, head + '\n' + 'examined: not run, ' + reason + '\n' + body.slice(nl + 1));
+                marked++;
+            } catch { /* renamed or removed since */ }
+        }
+    }
+    return marked;
 }
 
 // The world-breadth block, as its own function rather than inline: it nests a template literal
@@ -743,6 +824,9 @@ function build() {
     // stamped its own model onto it — confidently wrong provenance, worse than `pending`.
     const newestFirst = [...runs].sort((a, b) => Date.parse(b.started || 0) - Date.parse(a.started || 0));
     for (const r of newestFirst) stamped += stampProvenance(r, claimed);
+    let runLog = '';
+    try { runLog = fs.readFileSync('pot/run-log.txt', 'utf8').replace(/\r/g, ''); } catch { /* no log yet */ }
+    stamped += markUnexamined(runs, runLog);
 
     // Readable transcript per run, named so it sorts with the run.
     for (const r of runs) {
@@ -1214,6 +1298,22 @@ function selftest() {
             assert.ok(y[0].startsWith('model: `claude-opus-5-5`, lane: examine'), 'a raised proposal is the examiner\'s: ' + y[0]);
             assert.strictEqual(pass(), 0, 'stamping again changes nothing');
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+
+    // D95: what the second reader changed, outside its own section and the header lines.
+    {
+        const draft = 'model: `gpt-6-astra`, lane: deepdive\n# X\n\nThesis A.\nFalsifier B.\n';
+        const sectionOnly = 'model: `gpt-6-astra`, lane: deepdive\nexamined: `claude-opus-5-5`\n# X\n\nThesis A.\nFalsifier B.\n\n## Second reader\n\nThe draft stands.\n';
+        assert.strictEqual(amendments(draft, sectionOnly), 'Second reader section only, no amendments');
+        const amended = sectionOnly.replace('Falsifier B.', 'Falsifier C: photonics growth below 15%.');
+        assert.strictEqual(amendments(draft, amended), '+1 -1 lines outside its Second reader section');
+        assert.strictEqual(amendments(draft, draft), 'no amendments and no Second reader section');
+        // A section that ends at the next top-level heading: what follows it still counts.
+        const after = sectionOnly + '\n## 6. The case against\nNew risk.\n';
+        assert.strictEqual(amendments(draft, after), '+2 -0 lines outside its Second reader section');
+        const log = '=== 2026-10-25T01:25:22Z  claude  pot/brief-examine.md ===\n01:27:34    You\'ve hit your session limit\n=== 2026-10-25T02:00:00Z  codex  pot/brief-sweep.md ===\nfine\n';
+        assert.strictEqual(examinerHitLimit({ started: '2026-10-25T01:25:25Z' }, log), true);
+        assert.strictEqual(examinerHitLimit({ started: '2026-10-25T03:00:00Z' }, log), false, 'no matching header');
     }
 
     console.log('report.js selftest ok');

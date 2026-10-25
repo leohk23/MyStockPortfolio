@@ -4093,6 +4093,7 @@ function potStateTag(d) {
     if (s.state === 'accepted') return ' <span class="tag gain">bought</span>';
     if (s.state === 'rejected') return ' <span class="tag loss">rejected</span>';   // Leo's no (D83)
     if (s.state === 'withdrawn') return ' <span class="tag muted">withdrawn</span>'; // the second reader's (D95)
+    if (s.state === 'obsolete') return ' <span class="tag muted">obsolete</span>';   // pre-live, never bought (D97)
     if (s.supersededBy) return ' <span class="tag muted">superseded</span>';
     if (s.state === 'expired') return ' <span class="tag muted">expired</span>';
     return ' <span class="tag">open</span>';
