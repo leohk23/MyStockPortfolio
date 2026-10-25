@@ -17,7 +17,7 @@ thorough, it is to stop re-reading the repo to reach the same verdicts.
 |---|---|
 | `strategy.md` §5 and §9 | the only valid reasons to sell, and how a decision is scored |
 | `pot/positions.json` | what the pot holds, its cash, and every paper record you are judging |
-| `pot/proposals/` | the open theses — the subject of the verdicts |
+| `pot/proposals/` | the open theses — the subject of the verdicts. Only what is current sits here; superseded, expired, obsolete, rejected and withdrawn proposals are in `pot/proposals/archive/` (D99), and `pot/positions.json` carries the state of both |
 | `prices.json` | marks and `epsStale`, for the paper record and for checking a thesis's numbers |
 | `pot/theses.md` | Leo's standing views, where one bears on a thesis you are judging |
 

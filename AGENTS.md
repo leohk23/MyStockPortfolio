@@ -170,6 +170,8 @@ loses its quotes on the way from PowerShell 5.1 to a program; use definition fil
 `npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
 would break D3 (no metered API spend), because CI has no subscription auth.
 
+**`pot/proposals/` holds only what is current** (bought, awaiting Leo, a D93 standing proposal, the newest run); `pot/archive.js` files the rest in `pot/proposals/archive/` at the end of every cycle, by state, and moves a file back if its state returns (D99). A proposal's id is its file name in either folder, so read both when looking one up.
+
 `npm run pot-report` regenerates `pot/SUMMARY.md` (the entry point), `pot/summaries/*.md` (one dated
 report per run), `pot/runs.md` (the cost ledger) and `pot/logs/*.md` (transcripts made readable).
 All four are derived and gitignored; every figure in them is read from the Codex session logs, never

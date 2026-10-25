@@ -691,13 +691,18 @@ try {
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
-    git checkout -- prices.json history.json earnings.json intraday.json 2>&1 | Out-Null
+    # All of $ciOwned, world-history.json included: left out, it stayed modified after every cycle
+    # and collided with the bot's copy on the next manual pull (25 Oct 2026).
+    git checkout -- @($ciOwned) 2>&1 | Out-Null
 
     # ---- 7. The report, and the bundle the dashboard Pot tab reads.
     #
     # The comment above used to be a lie: only report.js ran, so pot.json never got rebuilt and
     # the Pot tab served whatever the last manual run left behind.
     node pot/report.js 2>&1 | ForEach-Object { Note "  $_" }
+    # D99: file what is no longer current into pot/proposals/archive/, here because no lane is
+    # running (a file moved under a lane is put back by D91), and before the bundle that lists them.
+    node pot/archive.js 2>&1 | ForEach-Object { Note "  $_" }
     node pot/bundle.js 2>&1 | ForEach-Object { Note "  $_" }
 
     # ---- 8. Commit what the report itself produced.

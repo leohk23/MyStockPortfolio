@@ -31,6 +31,7 @@ file you open is resent on every turn that follows.
 |---|---|
 | `strategy.md` | the rules. Authoritative on what may be bought, sizing and the gates |
 | `pot/theses.md` | Rule 0 requires you to declare which bear on each name |
+| `pot/proposals/archive/` | proposals no longer current: superseded, expired, obsolete, rejected, withdrawn, and older rankings (D99). Open one by its id when `earlierRisks` or a link names it; `pot/positions.json` already carries their states |
 | **every** `pot/sweeps/*.md` **since the last Deep dive** | each file whose name sorts after the newest `pot/proposals/*-ranking.md` that existed when you started; both names carry a UTC `YYYY-MM-DD-HHMM` stamp, so the comparison is a plain string one. Usually this cycle's Sweep, plus the Mon/Wed/Fri 12:45 Sweep on Claude, whose write-up (macro, names it did not add, flags for Leo) reached no Deep dive while only the newest was read. Leo, 25 Oct |
 | the newest `pot/reviews/*.md` | what was already judged, so you do not re-litigate it |
 | `watchlist.json` | the full set you must account for — every name, ranked or excluded |
