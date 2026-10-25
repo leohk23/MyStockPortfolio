@@ -1710,7 +1710,9 @@
                 ${row('ISIN', escapeHTML(b.isin || '–'), escapeHTML(b.name || ''))}
             </tbody></table>
             <span class="deep-note">A UK government bond. Its price comes from the London Stock Exchange,
-            because Yahoo lists no gilts, and its price history starts on the day it was added here.</span>`;
+            because Yahoo lists no gilts. ${q.backfill
+                ? `Its closes from ${ymd(q.backfill.from)} until ${ymd(q.backfill.until)} are each day's last trade, from ${escapeHTML(q.backfill.source)}; from then on, the mid.`
+                : 'Its price history starts on the day it was added here.'}</span>`;
         }
 
         function renderFinancials(leg) {
@@ -2747,7 +2749,12 @@
                     ? `Unrealized gain/loss from Tradelog balance quantity and average cost, using today's FX — realized gains excluded. ▲ buy · ▼ sell.`
                     : `Price per share in ${q.currency}, the listing's own currency — never converted, `
                         + `so it matches any broker screen whatever the display currency is set to. `
-                        + `▲ buy · ▼ sell (split-adjusted).`,
+                        + `▲ buy · ▼ sell (split-adjusted).`
+                        // A gilt's closes before the bot began storing mids are the day's last trade (backfill-gilts.js).
+                        + (q.backfill && days[0] < q.backfill.until
+                            ? ` Before ${ymd(q.backfill.until)}, each close is the day's last trade on the London Stock Exchange, `
+                                + `from ${q.backfill.source}; from then on, the mid of its order book. The last trade usually sits a little below the mid.`
+                            : ''),
                 tip: i => {
                     let s = `${fmt(values[i])}`;
                     if (gainMode) s += ` <span class="${cls(values[i])}">${pct(costsUSD[i] ? values[i] * RATES[display] / costsUSD[i] : null)}</span>`;

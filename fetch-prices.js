@@ -199,14 +199,14 @@ const halfSplit = (move, splits, now = Date.now()) => move != null && splits.som
 // The exchange has no history endpoint, so the closes accrete: each run stores the official close
 // as each weekday's last mid, carried in prices.json as `lseCloses`. The series
 // starts the day a gilt is added — fine for one bought from then on.
-async function fetchLse(tidm, prevCloses, attempts = 3) {
+async function fetchLse(tidm, prevCloses, back, attempts = 3) {
     const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
     let lastErr;
     for (let a = 0; a < attempts; a++) {
         try {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Origin: 'https://www.londonstockexchange.com' } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return shapeLse(await res.json(), prevCloses);
+            return shapeLse(await res.json(), prevCloses, new Date(), back);
         } catch (e) {
             lastErr = e;
             if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
@@ -220,7 +220,23 @@ const lseSeries = closes => {
     return { timestamps: days.map(d => Date.parse(d + 'T16:30:00Z') / 1000), closes: days.map(d => closes[d]) };
 };
 
-function shapeLse(j, prevCloses = {}, now = new Date()) {
+// The closes from before the first stored mid, fetched once by hand (backfill-gilts.js, into
+// gilt-history.json). They are the day's last TRADE, not the mid, so they only fill the days
+// before the bot's own store begins: where both exist, the mid wins.
+function withBackfill(closes, back) {
+    const first = Object.keys(closes || {}).sort()[0] || '9999';
+    return { ...Object.fromEntries(Object.entries(back?.closes || {}).filter(([d]) => d < first)), ...closes };
+}
+
+// The daily series a gilt brings to history.json: the year Yahoo's daily call covers (range=1y).
+// alignedCloses takes the union of every ticker's days, so a gilt reaching back to 2024 would
+// stretch every other series' daily calendar with nulls. The long range comes from the weekly.
+const lastYear = (closes, now) => {
+    const d = new Date(now), cutoff = new Date(Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth(), d.getUTCDate())).toISOString().slice(0, 10);
+    return Object.fromEntries(Object.entries(closes).filter(([day]) => day >= cutoff));
+};
+
+function shapeLse(j, prevCloses = {}, now = new Date(), back = null) {
     // The book's mid is the live value; the last trade can be hours old on a gilt.
     const price = j.midPrice > 0 ? j.midPrice : j.lastprice;
     if (!(price > 0) || j.currency !== 'GBP') throw new Error('no GBP price in the LSE response');
@@ -231,7 +247,10 @@ function shapeLse(j, prevCloses = {}, now = new Date()) {
     const closes = { ...prevCloses };
     const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
     if (new Date(today + 'T12:00:00Z').getUTCDay() % 6 !== 0) closes[today] = price;
-    const series = lseSeries(closes);
+    const all = withBackfill(closes, back);
+    const series = lseSeries(all);
+    const first = Object.keys(closes).sort()[0];
+    // 1D stays mid against mid: against a last trade it would show the spread as a move.
     const prev = Object.keys(closes).sort().filter(d => d < today).map(d => closes[d]).pop();
     const coupon = couponOf(j.name);
     return {
@@ -245,7 +264,10 @@ function shapeLse(j, prevCloses = {}, now = new Date()) {
             ytm: coupon != null && j.maturitydate ? grossRedemptionYield(price, coupon, j.maturitydate, settleDay(now)) : null,
         },
         lseCloses: closes,                              // the accreting store, carried run to run
-        series,
+        // Where the backfilled closes end and the mids begin, so the page can say which is which.
+        ...(series.timestamps.length > Object.keys(closes).length
+            ? { backfill: { source: back.source, basis: back.basis, from: Object.keys(all).sort()[0], until: first } } : {}),
+        series: lseSeries(lastYear(all, now)),
     };
 }
 
@@ -2347,14 +2369,16 @@ async function main() {
     // and, above all, the stored closes: dropping the quote for one run would drop its history.
     const lseOf = Object.fromEntries([...holdings, ...watchlist].filter(x => x.lse).map(x => [x.yahoo, x.lse]));
     const prevLse = Object.keys(lseOf).length ? previousQuotes() : {};
+    let giltBack = {};
+    try { giltBack = JSON.parse(fs.readFileSync('gilt-history.json', 'utf8')); } catch { /* no backfill: the mids alone */ }
 
     for (const t of tickers) {
         try {
-            quotes[t] = lseOf[t] ? await fetchLse(lseOf[t], prevLse[t]?.lseCloses) : await fetchTicker(t);
+            quotes[t] = lseOf[t] ? await fetchLse(lseOf[t], prevLse[t]?.lseCloses, giltBack[t]) : await fetchTicker(t);
             console.log(`ok   ${t} ${quotes[t].price} ${quotes[t].currency}`);
         } catch (e) {
             if (lseOf[t] && prevLse[t]?.lseCloses) {
-                quotes[t] = { ...prevLse[t], '1d': null, series: lseSeries(prevLse[t].lseCloses) };
+                quotes[t] = { ...prevLse[t], '1d': null, series: lseSeries(lastYear(withBackfill(prevLse[t].lseCloses, giltBack[t]), Date.now())) };
                 console.error(`stale ${t}: ${e.message} — kept the last LSE price and its closes`);
                 continue;
             }
@@ -2789,7 +2813,9 @@ async function main() {
         }
         await sleep();
     }
-    for (const t of histTickers) if (lseOf[t]) weeklyQuotes[t] = weeklyFromDaily(dailyHistory[t]);
+    // A gilt's weekly bars from every close it has, the backfill included: the daily is a year.
+    for (const t of histTickers) if (lseOf[t]) weeklyQuotes[t] = weeklyFromDaily({ ...dailyHistory[t],
+        series: lseSeries(withBackfill(quotes[t]?.lseCloses, giltBack[t])) });
 
     // Dividends per share, gross, in the quote's currency, for total return: every event the weekly
     // call has since listing, the year the daily call has, and the previous run's, so a failed
@@ -2803,7 +2829,7 @@ async function main() {
     for (const t of histTickers) {
         const byDate = new Map(prevDivs[t]?.ex || []);
         for (const [d, a] of [...(dailyHistory[t]?.series?.divs || []), ...(weeklyQuotes[t]?.series?.divs || [])]) byDate.set(d, a);
-        if (lseOf[t]) for (const [d, a] of giltCoupons(quotes[t]?.bond, Object.keys(quotes[t]?.lseCloses || {}).sort()[0] || '9999')) byDate.set(d, a);
+        if (lseOf[t]) for (const [d, a] of giltCoupons(quotes[t]?.bond, Object.keys(withBackfill(quotes[t]?.lseCloses, giltBack[t])).sort()[0] || '9999')) byDate.set(d, a);
         if (!byDate.size) continue;
         const wht = lseOf[t] ? 0 : whtOf(t);
         if (wht == null && priced.some(h => h.yahoo === t)) console.log(`note ${t}: no withholding rate for its market — its dividends count gross`);
@@ -3981,6 +4007,22 @@ function selftest() {
     assert.strictEqual(gilt2['1d'], Math.round((94.9 / 94.75 - 1) * 1e4) / 1e4);
     assert.strictEqual(gilt['7d'], null, 'one day of history: no 7D, let alone 1Y');
     assert.strictEqual(gilt.ytd, null);
+    assert.strictEqual(gilt.backfill, undefined, 'no backfill, no label');
+    // A backfill (backfill-gilts.js) fills the days before the first mid, and only those.
+    const backT31 = { source: 'onvista.de', basis: 'last trade', closes: { '2024-10-07': 99, '2025-10-07': 97, '2025-12-31': 96,
+        '2026-10-05': 94.5, '2026-10-06': 94.55, '2026-10-07': 94.7 } };
+    assert.deepStrictEqual(withBackfill({ '2026-10-06': 94.6, '2026-10-07': 94.75 }, backT31),
+        { '2024-10-07': 99, '2025-10-07': 97, '2025-12-31': 96, '2026-10-05': 94.5, '2026-10-06': 94.6, '2026-10-07': 94.75 },
+        'the mids win where both exist');
+    assert.deepStrictEqual(withBackfill({ '2026-10-06': 94.6 }, null), { '2026-10-06': 94.6 });
+    const filled = shapeLse(lseJ, { '2026-10-06': 94.6, '2026-10-07': 94.75 }, new Date('2026-10-08T09:00:00Z'), backT31);
+    assert.deepStrictEqual(filled.lseCloses, gilt.lseCloses, 'the backfill never enters the store of mids');
+    assert.strictEqual(filled['1d'], gilt['1d'], '1D stays mid against mid');
+    assert.strictEqual(filled.ytd, Math.round((94.8 / 94.5 - 1) * 1e4) / 1e4, 'YTD from the year\'s first close, a backfilled one');
+    assert.ok(filled['1y'] != null, '1Y now has a base');
+    assert.deepStrictEqual(filled.backfill, { source: 'onvista.de', basis: 'last trade', from: '2024-10-07', until: '2026-10-06' });
+    assert.deepStrictEqual(filled.series.timestamps.map(isoDay), ['2025-12-31', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08'],
+        'the daily series is the last year only: 2024 and the day a year back are both outside it');
     const aged = sinceStored({ '7d': 0.01, '1m': 0.02, '3m': 0.03, '6m': 0.04, '1y': 0.05, ytd: 0.06 },
         Date.parse('2026-08-01') / 1000, Date.parse('2026-10-08') / 1000);
     assert.deepStrictEqual(aged, { '7d': 0.01, '1m': 0.02, '3m': null, '6m': null, '1y': null, ytd: null });
