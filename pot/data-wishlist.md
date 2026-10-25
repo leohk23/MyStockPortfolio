@@ -52,6 +52,9 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-10-25 | Brent and Henry Hub in the macro block, second reach. | Fetched from the EIA daily spot series (Brent $115.22 and Henry Hub $3.10 on 20 Oct). First asked for on 11 Sep with TTF. Wanted every week: the oil-to-gas spread decided both of this sweep's candidates, and the block still holds WTI alone. |
+| 2026-10-25 | Japanese utility fuel-cost adjustment lag figures. | Not obtained: Kansai Electric's IR PDFs return 403 to a script, so a scout's figures could not be checked and the name was not carried. Wanted only if a Japanese utility is raised again. |
+| 2026-10-25 | `KMAR.OL` and `LYB` local price, filed earnings and valuation history. | No outside price or multiple adopted. Both added to `watchlist.json`. KMAR.OL listed in April 2026, so its own price history is about six months and any percentile will be thin; confirm the symbol renders. |
 | 2026-10-23 | `NESTE.HE` local price, filed earnings and valuation history. | No outside price or multiple adopted. Added to `watchlist.json` for the normal pipeline; the valuation filter must be read against pre-war (2025) earnings, not 2026's. |
 | 2026-10-23 | Asian thermal coal (Newcastle) and LNG spot prices. | Found only in press reports, no exchange or agency source consulted. Wanted monthly while LNG-to-coal substitution lasts; decides whether coal names are a durable re-rating or a peak-price trap. |
 | 2026-10-23 | Meta Class C non-voting stock dividend, effective January 2027 (an effective 2:1). | From Meta's Q3 2026 release. Wanted once, before the effective date: a `meta.json` `splits` declaration and a decision on how the new Class C line enters the Tradelog, because Yahoo's handling of a new-class stock dividend is unknown and its split list has failed both ways before (TKOMY, BYD). |
