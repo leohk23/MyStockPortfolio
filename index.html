@@ -4092,6 +4092,8 @@ function potStateTag(d) {
     if (!s) return '';
     if (s.state === 'accepted') return ' <span class="tag gain">bought</span>';
     if (s.state === 'rejected') return ' <span class="tag loss">rejected</span>';   // Leo's no (D83)
+    if (s.state === 'withdrawn') return ' <span class="tag muted">withdrawn</span>'; // the second reader's (D95)
+    if (s.state === 'obsolete') return ' <span class="tag muted">obsolete</span>';   // pre-live, never bought (D97)
     if (s.supersededBy) return ' <span class="tag muted">superseded</span>';
     if (s.state === 'expired') return ' <span class="tag muted">expired</span>';
     return ' <span class="tag">open</span>';
@@ -4113,9 +4115,17 @@ function buildPotNav(nav, docs) {
     parts.push(`<input type="search" id="pot-filter" placeholder="Filter: ticker or date (MWA, 09-18)" aria-label="Filter pot documents">`);
     parts.push(section('Start here', [...of('summary'), ...of('actual'), ...of('paper')].map(plain).join('')));
 
-    // A rejected company is not a current proposal; it stays findable under By run and By ticker.
-    const open = of('proposal').filter(d => !/-none$/.test(d.title)
-        && potStates?.get(d.id.replace(/^proposals\//, ''))?.state !== 'rejected');
+    // Current = what is awaiting Leo, then what the pot bought. The bundle's own `proposal` kind is
+    // the newest run plus what was bought, so a proposal still awaiting a decision dropped out of
+    // this list as soon as a later run wrote anything; under D93 a name that STANDS gets no new file
+    // at all, so its standing proposal vanished while it was still the live one (Leo, 25 Oct). The
+    // same test as the summary's awaiting table: state open, and not superseded by a newer one.
+    // A rejected, withdrawn, expired or superseded proposal stays findable under By run and By ticker.
+    const stateOf = d => potStates?.get(d.id.replace(/^proposals\//, ''));
+    const awaiting = d => stateOf(d)?.state === 'open' && !stateOf(d)?.supersededBy;
+    const open = [...of('proposal'), ...of('proposalpast').filter(awaiting)]
+        .filter(d => !/-none$/.test(d.title) && !['rejected', 'withdrawn'].includes(stateOf(d)?.state))
+        .sort((a, b) => (awaiting(b) - awaiting(a)) || b.id.localeCompare(a.id));
     if (open.length) parts.push(section('Current proposals',
         open.map(d => potButton(d, `${escapeHTML(potTicker(d.id))} <span class="muted">${escapeHTML(d.title.slice(0, 15))}</span>${potStateTag(d)}`, potTicker(d.id))).join('')));
 
