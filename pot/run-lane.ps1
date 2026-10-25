@@ -99,6 +99,9 @@ if ($Agent -eq 'codex') {
     # -Model defaults to a codex model name, so only pass it on when it is plainly a Claude one.
     # `claude --model gpt-6-astra` is the quiet way to get a confusing failure.
     $claudeArgs = if ($Model -and $Model -notmatch '^(gpt|o[0-9])') { @('--model', $Model) } else { @() }
+    # Same -Effort as Codex gets, as Claude's own flag (low, medium, high, xhigh, max). Leo, 25 Oct:
+    # high for Opus and astra both.
+    if ($Effort) { $claudeArgs += @('--effort', $Effort) }
     # Headless, nobody can approve a prompt, so without an explicit allowlist every shell command is
     # refused — probed 11 Sep: "The command needs your approval to run". The deep dive would have run
     # blind, unable to read prices.json or run node, and spent the allowance producing nothing.

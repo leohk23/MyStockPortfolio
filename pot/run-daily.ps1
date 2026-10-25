@@ -205,6 +205,15 @@ $LANE_MODEL = @{
     'pot/brief-examine.md'  = 'gpt-6-astra'
 }
 
+# Reasoning effort, pinned per model (D96). Unpinned, a lane takes whatever ~/.codex/config.toml says,
+# and that changed underneath the pot: every astra run to 18 Oct 2026 logged "high", every one from
+# 19 Oct "low", with nothing in the repo to show it. Leo, 25 Oct: high for astra and Opus. A model
+# not listed (sol, on Review and Sweep) keeps the config's setting.
+$LANE_EFFORT = @{
+    'gpt-6-astra'     = 'high'
+    'claude-opus-5-5' = 'high'
+}
+
 # What a lane costs, in points of each window. Measured, per model, from pot/runs.md and the
 # rate_limit records in the session logs — see pot-design.md §4.2.
 #
@@ -431,8 +440,10 @@ function Invoke-Lane($brief, $agent = $null, [switch]$Soft) {
     if ($laneAgent -eq 'skip') { Note "    skipped by the Claude budget - not run"; return }
     $laneModel = if ($laneAgent -eq 'claude') { $CLAUDE_MODEL }
         elseif ($Model) { $Model } else { $LANE_MODEL[$brief] }
-    Note "    agent: $laneAgent, model: $laneModel" | Out-Null
+    $laneEffort = $LANE_EFFORT[$laneModel]
+    Note "    agent: $laneAgent, model: $laneModel, effort: $(if ($laneEffort) { $laneEffort } else { 'config default' })" | Out-Null
     $laneArgs = @{ Brief = $brief; Repo = $Repo; Model = $laneModel; Agent = $laneAgent }
+    if ($laneEffort) { $laneArgs.Effort = $laneEffort }
     if (-not $NoPush) { $laneArgs.Push = $true }
     $before = (Get-Item (Join-Path $Repo $log)).Length
     try {

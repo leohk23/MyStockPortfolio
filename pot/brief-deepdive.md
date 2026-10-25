@@ -8,7 +8,8 @@ placed without further thought and audited in two years.
 If the instruction names a ticker ("…for CHRT.L"), research that one. Otherwise **you pick**, and
 you pick from **two sources together**:
 
-1. **`pot/sweeps/`** — the newest Sweep's candidates, and why each was raised.
+1. **`pot/sweeps/`** — **every Sweep written since the last Deep dive**, with its candidates and why
+   each was raised (see the table below for which files that is).
 2. **`signals.json`** — what the free Scan fired on, with any `oneOff` flag.
 
 Reading only one of those is the mistake this brief already made once. An earlier version pointed
@@ -30,7 +31,7 @@ file you open is resent on every turn that follows.
 |---|---|
 | `strategy.md` | the rules. Authoritative on what may be bought, sizing and the gates |
 | `pot/theses.md` | Rule 0 requires you to declare which bear on each name |
-| the newest `pot/sweeps/*.md` | this cycle's candidates — the lane runs because it did |
+| **every** `pot/sweeps/*.md` **since the last Deep dive** | each file whose name sorts after the newest `pot/proposals/*-ranking.md` that existed when you started; both names carry a UTC `YYYY-MM-DD-HHMM` stamp, so the comparison is a plain string one. Usually this cycle's Sweep, plus the Mon/Wed/Fri 12:45 Sweep on Claude, whose write-up (macro, names it did not add, flags for Leo) reached no Deep dive while only the newest was read. Leo, 25 Oct |
 | the newest `pot/reviews/*.md` | what was already judged, so you do not re-litigate it |
 | `watchlist.json` | the full set you must account for — every name, ranked or excluded |
 | `prices.json`, `earnings.json` | valuation and filed years for the names you rank |
@@ -420,7 +421,7 @@ section to the run report, *Agreement with the previous run*:
 
 - One row per name either run PROPOSED, plus any name whose verdict changed. Names both runs
   excluded need no row.
-- **Same inputs?** — yes only if the price snapshot, newest Sweep, newest Review and pot cash are
+- **Same inputs?** — yes only if the price snapshot, the Sweeps read, newest Review and pot cash are
   unchanged. Say which one moved when they are not.
 - **Why they differ** — when the inputs are the same, a difference is not new evidence: it is two
   readings of one rule. **Name the rule and quote the line both readings rest on.** That is the

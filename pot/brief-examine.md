@@ -25,7 +25,7 @@ careful CPA reading it would ask first, and what it could not read. Then go and 
 - **If the newest ranking's stamp is more than three hours old, stop and write nothing.** The
   drafter did not finish this cycle, and examining yesterday's run is not this lane's job.
 - Everything the Deep dive itself reads is yours to read: `strategy.md`, `pot/theses.md`, the
-  newest sweep and review, `watchlist.json`, `prices.json`, `earnings.json`, `pot/positions.json`
+  Sweeps it read (every one since the last Deep dive), the newest review, `watchlist.json`, `prices.json`, `earnings.json`, `pot/positions.json`
   (with `cooldown`, D93, and `earlierRisks`, D94), `pot/adjustments.json`, `pot/origins.json`,
   `pot/rejections.json` and `pot/sources.md`. Open what the gap you are chasing needs, not all of it:
   every file you open is resent on every turn after.
