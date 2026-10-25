@@ -1398,7 +1398,11 @@
             // A gilt, a fund, a trust or an index has none of it, so every row would be "–"; what
             // applies instead (a gilt's yield, a fund's fee, income and the P/E of its holdings) is
             // in the facts box beside it. Leo, 8 Oct 2026. `type` is written for non-equities only.
-            const notACompany = !!q.bond || (q.type && q.type !== 'EQUITY');
+            // A boolean, not merely falsy: `type` is absent on an ordinary stock, and
+            // classList.toggle('solo', undefined) does not switch the class off, it FLIPS it, so the
+            // panel alternated between one column and two on every chart redraw (Leo, 25 Oct: GOOG
+            // changed layout each time he moved between 3M and 6M).
+            const notACompany = !!q.bond || (!!q.type && q.type !== 'EQUITY');
             document.getElementById('deep-val').closest('.deep-box').hidden = notACompany;
             document.getElementById('deep-grid').classList.toggle('solo', notACompany);
 
@@ -2799,12 +2803,21 @@
                 ? series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')
                 : '';
 
-            // y-domain across all series; include 0 in percent mode so the zero line shows, and
-            // the average-cost line so it can't sit off-chart when you're deep in profit.
+            // y-domain across all series; include 0 in percent mode so the zero line shows.
             let vals = series.flatMap(s => s.values).filter(v => v != null);
             if (spec.zero) vals = vals.concat(0);
-            if (spec.hline) vals = vals.concat(spec.hline.value);
             let lo = Math.min(...vals), hi = Math.max(...vals);
+            // The reference line (average cost, or the 1D previous close) joins the domain only while
+            // the series still fills at least half the height. Pulled in at any distance, GOOG's
+            // $77.39 average under a $317-$399 half-year squeezed the price into the top quarter
+            // and the chart read as flat (Leo, 25 Oct). Further out than that it is not drawn as a
+            // line but named at the edge it lies beyond, so it is never silently lost.
+            let hlineOff = null;
+            if (spec.hline) {
+                const v = spec.hline.value, span = hi - lo || Math.abs(hi) * 0.02 || 1;
+                if (Math.max(hi, v) - Math.min(lo, v) <= 2 * span) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+                else hlineOff = v < lo ? 'below' : 'above';
+            }
             const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.02 || 1;
             lo -= pad; hi += pad;
 
@@ -2817,7 +2830,12 @@
             ).join('');
             const zeroEl = spec.zero && lo < 0 && hi > 0 ? `<line class="zero" x1="${L}" y1="${y(0).toFixed(1)}" x2="${W - R}" y2="${y(0).toFixed(1)}"/>` : '';
             // Average cost: a reference line, not a series — it has no per-day value to hover.
-            const hlineEl = !spec.hline ? '' : (() => {
+            const hlineEl = !spec.hline ? '' : hlineOff
+                // Off the scale: say where, with the value, at that edge. ▼ / ▲ point the way. Left
+                // corner, not right: the right end is today's price, which is often at the edge too.
+                ? `<text class="axis-label hlabel" x="${L + 6}" y="${(hlineOff === 'below' ? H - B - 4 : T + 10).toFixed(1)}" text-anchor="start">`
+                    + `${spec.hline.label} ${spec.fmtY(spec.hline.value)} ${hlineOff === 'below' ? '▼' : '▲'} ${hlineOff} the chart</text>`
+                : (() => {
                 const hy = y(spec.hline.value);
                 // The label flips under the line when it would otherwise clip the top edge.
                 const ly = hy - T < 12 ? hy + 12 : hy - 4;
