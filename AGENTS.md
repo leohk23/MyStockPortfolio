@@ -520,6 +520,7 @@ Yahoo lists no individual gilts (no `.L` code resolves, and its search finds non
   - `withBackfill` uses the backfill only for days **before** the first `lseCloses` day; the mids always win, and the backfill never enters `lseCloses`. 1D stays mid against mid.
   - The daily series is cut to the last year (`lastYear`), the window Yahoo's daily call covers: `alignedCloses` takes the union of every ticker's days, so a 2024 start would stretch every daily series with nulls. 2Y/5Y/All read the weekly, built from every close.
   - `quote.backfill = { source, basis, from, until }` tells the page where the last trades end; the price chart's note and the deep panel say so.
+  - `giltSeries` builds the moves, the daily series and that label, for a fresh fetch and for a failed one alike: a run where the exchange refuses keeps the last price, and its moves still reach back through the backfill.
   - Re-run it after buying a new gilt (it needs the gilt's ISIN in `prices.json` and at least 5 stored mids first, so a week after it is added).
 - A period longer than the stored history shows "–" (`sinceStored`), never a move from the first close. Weekly bars are bucketed with the same `weekEnd` as Yahoo's (`weeklyFromDaily`).
 - `extract-portfolio.js` verifies a new gilt against the exchange instead of Yahoo.

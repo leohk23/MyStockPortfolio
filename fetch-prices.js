@@ -236,6 +236,20 @@ const lastYear = (closes, now) => {
     return Object.fromEntries(Object.entries(closes).filter(([day]) => day >= cutoff));
 };
 
+// A gilt's moves, daily series and backfill label, from its stored mids plus any backfill. Shared by
+// a fresh fetch and by a failed one, which keeps the last price: either way the moves reach back
+// through the backfill, and the daily series is the last year.
+function giltSeries(closes, back, price, now) {
+    const all = withBackfill(closes, back), full = lseSeries(all), days = Object.keys(all).sort();
+    return {
+        ...sinceStored(movements(full.timestamps, full.closes, price, now / 1000), full.timestamps[0], now / 1000),
+        // Where the backfilled closes end and the mids begin, so the page can say which is which.
+        backfill: days.length > Object.keys(closes).length
+            ? { source: back.source, basis: back.basis, from: days[0], until: Object.keys(closes).sort()[0] } : undefined,
+        series: lseSeries(lastYear(all, now)),
+    };
+}
+
 function shapeLse(j, prevCloses = {}, now = new Date(), back = null) {
     // The book's mid is the live value; the last trade can be hours old on a gilt.
     const price = j.midPrice > 0 ? j.midPrice : j.lastprice;
@@ -247,9 +261,6 @@ function shapeLse(j, prevCloses = {}, now = new Date(), back = null) {
     const closes = { ...prevCloses };
     const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
     if (new Date(today + 'T12:00:00Z').getUTCDay() % 6 !== 0) closes[today] = price;
-    const all = withBackfill(closes, back);
-    const series = lseSeries(all);
-    const first = Object.keys(closes).sort()[0];
     // 1D stays mid against mid: against a last trade it would show the spread as a move.
     const prev = Object.keys(closes).sort().filter(d => d < today).map(d => closes[d]).pop();
     const coupon = couponOf(j.name);
@@ -258,16 +269,12 @@ function shapeLse(j, prevCloses = {}, now = new Date(), back = null) {
         // Running yield, a bond's answer to a dividend yield: the coupon over the clean price.
         divYield: coupon != null ? Number((coupon / price).toPrecision(6)) : null,
         '1d': prev > 0 ? Math.round((price / prev - 1) * 1e4) / 1e4 : null,
-        ...sinceStored(movements(series.timestamps, series.closes, price, now / 1000), series.timestamps[0], now / 1000),
         bond: {
             name: j.name, isin: j.isin, maturity: j.maturitydate, coupon, bid: j.bid, offer: j.offer,
             ytm: coupon != null && j.maturitydate ? grossRedemptionYield(price, coupon, j.maturitydate, settleDay(now)) : null,
         },
         lseCloses: closes,                              // the accreting store, carried run to run
-        // Where the backfilled closes end and the mids begin, so the page can say which is which.
-        ...(series.timestamps.length > Object.keys(closes).length
-            ? { backfill: { source: back.source, basis: back.basis, from: Object.keys(all).sort()[0], until: first } } : {}),
-        series: lseSeries(lastYear(all, now)),
+        ...giltSeries(closes, back, price, now),
     };
 }
 
@@ -2378,7 +2385,7 @@ async function main() {
             console.log(`ok   ${t} ${quotes[t].price} ${quotes[t].currency}`);
         } catch (e) {
             if (lseOf[t] && prevLse[t]?.lseCloses) {
-                quotes[t] = { ...prevLse[t], '1d': null, series: lseSeries(lastYear(withBackfill(prevLse[t].lseCloses, giltBack[t]), Date.now())) };
+                quotes[t] = { ...prevLse[t], '1d': null, ...giltSeries(prevLse[t].lseCloses, giltBack[t], prevLse[t].price, Date.now()) };
                 console.error(`stale ${t}: ${e.message} — kept the last LSE price and its closes`);
                 continue;
             }
@@ -4023,6 +4030,11 @@ function selftest() {
     assert.deepStrictEqual(filled.backfill, { source: 'onvista.de', basis: 'last trade', from: '2024-10-07', until: '2026-10-06' });
     assert.deepStrictEqual(filled.series.timestamps.map(isoDay), ['2025-12-31', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08'],
         'the daily series is the last year only: 2024 and the day a year back are both outside it');
+    // A failed fetch keeps the last price, and its moves still reach back through the backfill.
+    const stale = giltSeries(filled.lseCloses, backT31, 94.8, Date.parse('2026-10-11T09:00:00Z'));
+    assert.ok(stale['1y'] != null && stale.ytd === filled.ytd, 'stale: moves from the backfill too');
+    assert.deepStrictEqual(stale.backfill, filled.backfill);
+    assert.strictEqual(giltSeries(filled.lseCloses, null, 94.8, Date.parse('2026-10-11T09:00:00Z')).backfill, undefined);
     const aged = sinceStored({ '7d': 0.01, '1m': 0.02, '3m': 0.03, '6m': 0.04, '1y': 0.05, ytd: 0.06 },
         Date.parse('2026-08-01') / 1000, Date.parse('2026-10-08') / 1000);
     assert.deepStrictEqual(aged, { '7d': 0.01, '1m': 0.02, '3m': null, '6m': null, '1y': null, ytd: null });
