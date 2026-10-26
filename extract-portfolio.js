@@ -207,6 +207,90 @@ async function yahooPrice(symbol) {
     } catch { return null; }
 }
 
+// ---------------------------------------------------------------- a new holding's meta.json entry
+//
+// Leo, 26 Oct 2026: SUPR was bought, had no meta.json entry, and every publish for a night was
+// refused. The refusal is right (a position the app cannot price must not vanish silently), but the
+// entry can be found rather than typed, provided a wrong guess cannot slip through. So a missing
+// entry is filled only when exactly one listing passes every check:
+//   - it comes from the watchlist (where most holdings start), or is the Tradelog symbol on the
+//     exchange its trade currency implies: pence -> .L, HKD -> a 4-digit .HK, JPY -> .T, ...;
+//   - Yahoo quotes it in the trade's currency (pence and pounds count as one, scaled);
+//   - its price is within 40% of what Leo last paid, which catches a wrong exchange, wrong units
+//     and a different share class.
+// Anything else is refused as before, saying why. A gilt recorded by ISIN is always refused: the
+// exchange's search answers a script with 403, so its code has to be added by hand.
+const SUFFIXES = { GBp: ['.L'], GBP: ['.L'], HKD: ['.HK'], JPY: ['.T'], USD: [''], KRW: ['.KS', '.KQ'],
+    EUR: ['.PA', '.AS', '.DE', '.MI', '.MC', '.BR', '.HE', '.IR', '.LS', '.F', '.VI'], CHF: ['.SW'], CAD: ['.TO'],
+    AUD: ['.AX'], SGD: ['.SI'], TWD: ['.TW'], IDR: ['.JK'], SEK: ['.ST'], DKK: ['.CO'], NOK: ['.OL'] };
+// Venues that quote almost every large European company in euros as well as its home exchange. A
+// dry run over the book on 26 Oct 2026 refused LVMH, L'Oreal, Hermes and Bureau Veritas because
+// Vienna fitted beside Paris, and resolved Nintendo to Vienna where the holding is Frankfurt's line.
+// Used only when no home-exchange listing fits; two of them fitting is refused, never guessed.
+const SECONDARY = new Set(['.F', '.VI']);
+const GEOGRAPHY = { '.L': 'Europe', '.PA': 'Europe', '.AS': 'Europe', '.DE': 'Europe', '.MI': 'Europe', '.MC': 'Europe',
+    '.BR': 'Europe', '.HE': 'Europe', '.IR': 'Europe', '.LS': 'Europe', '.VI': 'Europe', '.SW': 'Europe', '.ST': 'Europe',
+    '.CO': 'Europe', '.OL': 'Europe', '.HK': 'Old Hongkong', '.T': 'Japan', '.KS': 'Korea', '.KQ': 'Korea',
+    '.SI': 'SEA', '.JK': 'SEA', '': 'US' };
+const tradeCurrency = c => (c === 'Gbpence' ? 'GBp' : c);
+const pence = c => c === 'GBp' || c === 'Gbpence';
+const root = s => String(s).toUpperCase().split('.')[0].replace(/^0+(?=\d)/, '');
+const suffixOf = y => (y.match(/(\.[A-Z]+)$/i) || ['', ''])[1].toUpperCase();
+const cleanName = n => String(n || '').trim()
+    .replace(/[, ]+(plc|p\.l\.c\.|s\.a\.|sa|inc\.?|corporation|corp\.?|limited|ltd\.?|ag|n\.v\.|nv|se|tbk|co\.,? ltd\.?)$/i, '')
+    .replace(/[, ]+(plc|inc\.?|ltd\.?|limited)$/i, '');
+
+// Yahoo's currency, price and name for a symbol, from the chart call fetch-prices makes.
+async function yahooQuote(symbol) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
+    try {
+        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (!res.ok) return null;
+        const m = (await res.json()).chart?.result?.[0]?.meta;
+        return m?.regularMarketPrice ? { currency: m.currency, price: m.regularMarketPrice, name: m.longName || m.shortName } : null;
+    } catch { return null; }
+}
+
+// { entry } or { why }. `quoteOf` is yahooQuote, or a stand-in in the selftest.
+async function resolveMeta(sym, trades, watchlist, quoteOf, today = new Date().toISOString().slice(0, 10)) {
+    if (/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(sym)) return { why: 'an ISIN (a gilt): add its LSE code by hand, the exchange refuses scripted searches' };
+    const buys = trades.filter(t => t.side !== 'SELL');
+    const paid = buys[buys.length - 1] || trades[trades.length - 1];
+    const ccy = tradeCurrency(paid.currency);
+    const fromWatch = watchlist.filter(w => root(w.yahoo) === root(sym));
+    const base = /^\d+$/.test(root(sym)) ? root(sym).padStart(ccy === 'KRW' ? 6 : 4, '0') : String(sym).toUpperCase();
+    const built = sym.includes('.') ? [sym] : (SUFFIXES[ccy] || []).map(s => base + s);
+    const tried = [...new Set([...fromWatch.map(w => w.yahoo), ...built])];
+    const pass = [];
+    for (const y of tried) {
+        const q = await quoteOf(y);
+        if (!q) continue;
+        const same = q.currency === ccy || (pence(q.currency) && pence(ccy)) || (q.currency === 'GBP' && pence(ccy)) || (pence(q.currency) && ccy === 'GBP');
+        if (!same) continue;
+        const scaled = q.price * (q.currency === 'GBP' && pence(ccy) ? 100 : pence(q.currency) && ccy === 'GBP' ? 0.01 : 1);
+        const ratio = scaled / paid.price;
+        if (!(ratio > 0.6 && ratio < 1 / 0.6)) continue;
+        pass.push({ y, q, watch: fromWatch.find(w => w.yahoo === y) });
+        if (pass[pass.length - 1].watch) break;          // the watchlist's own listing settles it
+    }
+    const home = pass.filter(p => !SECONDARY.has(suffixOf(p.y)));
+    const pick = pass.find(p => p.watch) || (home.length === 1 ? home[0] : !home.length && pass.length === 1 ? pass[0] : null);
+    if (!pick) {
+        return { why: pass.length ? `${pass.length} listings fit (${pass.map(p => p.y).join(', ')}), add the right one by hand`
+            : `no listing quoted in ${ccy} near the ${paid.price} paid (tried ${tried.join(', ') || 'nothing'})` };
+    }
+    const w = pick.watch || {};
+    const entry = {
+        ticker: sym, yahoo: pick.y, group: w.name || cleanName(pick.q.name) || sym,
+        geography: w.geography || GEOGRAPHY[suffixOf(pick.y)] || 'Other', currency: ccy,
+    };
+    for (const k of ['eps', 'specialEps', 'specialEpsLabel', 'primary', 'adrShares']) if (w[k] != null) entry[k] = w[k];
+    // meta.json is public: the note says how the entry was found, never what was paid (D67).
+    entry.auto = `${today}: ${pick.watch ? 'from the watchlist' : 'from the Tradelog symbol and its currency'}; `
+        + `Yahoo quotes ${pick.y} in ${pick.q.currency}, within 40% of the trade price`;
+    return { entry, check: `${pick.y} at ${pick.q.currency} ${pick.q.price} against ${paid.price} paid` };
+}
+
 // A gilt's mid price from the London Stock Exchange — the same call fetch-prices makes for it.
 async function lsePrice(tidm) {
     const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
@@ -275,8 +359,25 @@ async function main() {
     const openMissing = [...bySymbol.entries()]
         .filter(([sym, tr]) => tr[tr.length - 1].balanceQty > 0 && !meta[sym])
         .map(([sym]) => sym);
+    // Filled automatically where exactly one listing passes the checks in resolveMeta; refused, as
+    // before, if any cannot be: nothing is written unless every missing entry is found.
     if (openMissing.length) {
-        throw new Error(`open positions missing from ${META}: ${openMissing.join(', ')}. Add an entry (yahoo, group, geography, currency) and verify the yahoo symbol returns a price.`);
+        let watchlist = [];
+        try { const w = JSON.parse(fs.readFileSync('watchlist.json', 'utf8')); watchlist = Array.isArray(w) ? w : w.items || []; } catch { /* none */ }
+        const found = [], refused = [];
+        for (const sym of openMissing) {
+            const r = await resolveMeta(sym, bySymbol.get(sym), watchlist, yahooQuote);
+            if (r.entry) found.push({ ...r.entry, check: r.check }); else refused.push(`${sym} (${r.why})`);
+        }
+        if (refused.length) {
+            throw new Error(`open positions missing from ${META}: ${refused.join('; ')}. Add an entry (yahoo, group, geography, currency) by hand`
+                + (found.length ? `; these were found and will be added once that is done: ${found.map(e => e.ticker + ' -> ' + e.yahoo).join(', ')}` : '') + '.');
+        }
+        for (const { check, ...e } of found) {
+            meta[e.ticker] = e;
+            console.log(`  added to ${META}: ${e.ticker} -> ${e.yahoo}, "${e.group}", ${e.geography}, ${e.currency} (${check})`);
+        }
+        fs.writeFileSync(META, JSON.stringify(meta, null, 2) + '\n');
     }
 
     const holdings = buildHoldings(meta, bySymbol, realized);
@@ -335,7 +436,7 @@ async function main() {
     if (noTrade.length) console.warn(`  no Tradelog match (last-trade column will be blank): ${noTrade.join(', ')}`);
 }
 
-function selftest() {
+async function selftest() {
     const assert = require('assert');
 
     // parseTrade: side/qty/date normalisation, platform + comment optional.
@@ -425,8 +526,42 @@ function selftest() {
     assert.deepStrictEqual(m.unmatched, ['SOLD'], 'a position no longer held is reported, not forced onto one');
     const gilt = matchReceipts([r('UKT 4 10/22/31', 'GB00BPSNBF73', -18.58)], [...held, { ticker: 'T31', yahoo: 'T31.L' }], { GB00BPSNBF73: 'T31.L' });
     assert.deepStrictEqual(Object.keys(gilt.byYahoo), ['T31.L'], 'a bond IBKR names by description is found by the ISIN it was recorded under');
+
+    // resolveMeta: a new holding's entry, found only when one listing passes every check.
+    const quotes = {
+        'SUPR.L': { currency: 'GBp', price: 83.5, name: 'Supermarket Income REIT plc' },
+        '0388.HK': { currency: 'HKD', price: 410, name: 'Hong Kong Exchanges and Clearing Limited' },
+        'BVI.PA': { currency: 'EUR', price: 28.99, name: 'Bureau Veritas SA' },
+        'BVI.DE': { currency: 'EUR', price: 29.1, name: 'Bureau Veritas SA' },
+        'MC.PA': { currency: 'EUR', price: 600, name: 'LVMH Moet Hennessy Louis Vuitton SE' },
+        'MC.VI': { currency: 'EUR', price: 601, name: 'LVMH Moet Hennessy Louis Vuitton SE' },
+        'NTO.F': { currency: 'EUR', price: 60, name: 'Nintendo Co., Ltd.' },
+        'NTO.VI': { currency: 'EUR', price: 60.2, name: 'Nintendo Co., Ltd.' },
+        'XYZ': { currency: 'USD', price: 5, name: 'Something Inc.' },
+    };
+    const quoteOf = async y => quotes[y] || null;
+    const paidAt = (price, currency) => [{ side: 'BUY', price, currency }];
+    const watch = [{ yahoo: 'SUPR.L', name: 'Supermarket Income REIT', geography: 'Europe', specialEps: 5.7, specialEpsLabel: 'EPRA' }];
+    let res = await resolveMeta('SUPR', paidAt(80.65, 'Gbpence'), watch, quoteOf, '2026-10-26');
+    const { auto, ...supr } = res.entry;
+    assert.deepStrictEqual(supr, { ticker: 'SUPR', yahoo: 'SUPR.L', group: 'Supermarket Income REIT', geography: 'Europe',
+        currency: 'GBp', specialEps: 5.7, specialEpsLabel: 'EPRA' }, 'from the watchlist, its recurring EPS carried over');
+    assert.ok(!/80\.65/.test(auto) && /80\.65/.test(res.check), 'the price paid stays in the local log, never in public meta.json');
+    res = await resolveMeta('388', paidAt(400, 'HKD'), [], quoteOf);
+    assert.deepStrictEqual([res.entry.yahoo, res.entry.group, res.entry.geography], ['0388.HK', 'Hong Kong Exchanges and Clearing', 'Old Hongkong'],
+        'padded to four digits, name cleaned');
+    assert.ok(/2 listings fit/.test((await resolveMeta('BVI', paidAt(28, 'EUR'), [], quoteOf)).why), 'two home-exchange euro listings fit: refused');
+    assert.strictEqual((await resolveMeta('MC', paidAt(590, 'EUR'), [], quoteOf)).entry.yahoo, 'MC.PA', 'Vienna beside Paris: Paris');
+    assert.ok(/2 listings fit/.test((await resolveMeta('NTO', paidAt(59, 'EUR'), [], quoteOf)).why), 'only secondary venues, two of them: refused');
+    assert.ok(/no listing/.test((await resolveMeta('XYZ', paidAt(50, 'USD'), [], quoteOf)).why), 'ten times off: wrong listing or units, refused');
+    assert.strictEqual((await resolveMeta('SUPR', paidAt(0.8065, 'GBP'), [], quoteOf)).entry.yahoo, 'SUPR.L', 'pounds against a pence quote');
+    assert.ok(/ISIN/.test((await resolveMeta('GB00BPSNBF73', paidAt(95, 'GBP'), [], quoteOf)).why), 'a gilt by ISIN: by hand');
     console.log('selftest ok');
 }
 
-if (process.argv[2] === '--selftest') selftest();
-else main().catch(e => { console.error(e.message); process.exit(1); });
+// Guarded, so another script can require the helpers without running an extract.
+if (require.main === module) {
+    if (process.argv[2] === '--selftest') selftest().catch(e => { console.error(e); process.exit(1); });
+    else main().catch(e => { console.error(e.message); process.exit(1); });
+}
+module.exports = { resolveMeta, yahooQuote, readTradelog };
