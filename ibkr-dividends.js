@@ -24,6 +24,24 @@ const ymd = d => d.toISOString().slice(0, 10);
 const compact = s => s.replace(/-/g, '');
 const iso = s => (s || '').replace(/^(\d{4})(\d\d)(\d\d).*/, '$1-$2-$3');
 
+// The last day a statement exists for: yesterday, stepped back over a weekend. Flex serves completed
+// days only, and a Saturday or Sunday is not one: on Sunday 25 Oct 2026 the newest window ended on
+// the Saturday, IBKR answered 1003 for it, and six months of the current account's payments were
+// dropped from the record (five holdings lost their dividends in holdings.json).
+function lastServedDay(now) {
+    let d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - DAY);
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d = new Date(d.getTime() - DAY);
+    return ymd(d);
+}
+
+// A window IBKR refuses that the record already holds rows for is a refusal, not an empty period
+// (a bank holiday does the same as a weekend). Keep the stored rows for the window starting on the
+// same day, whatever end it was fetched to, rather than replace months of payments with nothing.
+function keptOnRefusal(was, w) {
+    const prev = Object.entries(was || {}).find(([k, v]) => k.startsWith(w.from + '/') && v && v.rows && v.rows.length);
+    return prev ? prev[1] : null;
+}
+
 // 365-day windows from `start` to `today`, oldest first.
 function windows(start, today) {
     const out = [];
@@ -89,23 +107,37 @@ async function main() {
     if (!full) throw new Error('holdings are sealed and no passphrase is set — cannot find the first IBKR trade');
     const first = holdings.flatMap(h => h.trades || []).filter(t => t.platform === 'IB').map(t => t.date).sort()[0];
     if (!first) { console.log('no IBKR trades — nothing to fetch'); return; }
-    // Flex serves completed days only: a window ending today is refused like one before the account.
-    const today = ymd(new Date(Date.now() - DAY));
+    // Flex serves completed days only: a window ending today, or on a weekend, is refused like one
+    // before the account.
+    const today = lastServedDay(new Date());
     const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};
     const ws = windows(first, today), out = {};
     // Each account over the whole span of the Tradelog's IBKR trades: Flex answers 1003 for the
     // windows outside an account's life, so the same windows serve an old account and a new one.
     for (const acct of accounts) {
         const cached = {}, was = prev.accounts?.[acct.name]?.windows || {};
-        for (const [i, w] of ws.entries()) {
-            const key = `${w.from}/${w.to}`;
-            // Finished windows come from the file; the last two are asked again (late postings, reversals).
-            if (i < ws.length - 2 && was[key]) { cached[key] = was[key]; continue; }
-            cached[key] = (await fetchWindow(acct, w)) || { unavailable: true };
-            console.log(`ok   IBKR ${acct.name} ${key}: ${cached[key].unavailable ? 'not available' : cached[key].rows.length + ' payment row(s)'}`);
-            await new Promise(r => setTimeout(r, 2000));             // IBKR throttles rapid requests
+        try {
+            for (const [i, w] of ws.entries()) {
+                const key = `${w.from}/${w.to}`;
+                // Finished windows come from the file; the last two are asked again (late postings, reversals).
+                if (i < ws.length - 2 && was[key]) { cached[key] = was[key]; continue; }
+                const fetched = await fetchWindow(acct, w);
+                const kept = fetched ? null : keptOnRefusal(was, w);
+                cached[key] = fetched || kept || { unavailable: true };
+                console.log(`ok   IBKR ${acct.name} ${key}: ${kept ? `refused; kept the ${kept.rows.length} row(s) already on record`
+                    : cached[key].unavailable ? 'not available' : cached[key].rows.length + ' payment row(s)'}`);
+                await new Promise(r => setTimeout(r, 2000));             // IBKR throttles rapid requests
+            }
+            out[acct.name] = { coverageFrom: Object.values(cached).map(w => w.earliest).filter(Boolean).sort()[0] || null, windows: cached };
+        } catch (e) {
+            // One account refused outright must not cost the others theirs. On 25 Oct 2026 IBKR
+            // locked the closed account's query ("Too many failed attempts") after a night of
+            // retries, and that one refusal stopped the current account's fresh record being saved.
+            // Keep this account's previous record, and say so.
+            if (!prev.accounts?.[acct.name]) throw e;
+            out[acct.name] = prev.accounts[acct.name];
+            console.log(`skip IBKR ${acct.name}: ${e.message}; kept its previous record`);
         }
-        out[acct.name] = { coverageFrom: Object.values(cached).map(w => w.earliest).filter(Boolean).sort()[0] || null, windows: cached };
     }
     // The record starts where the earliest account's does: an older account carried the shares
     // until they moved to the newer one.
@@ -117,6 +149,15 @@ async function main() {
 
 function selftest() {
     const assert = require('assert');
+    // The newest window ends on a day IBKR has a statement for.
+    assert.strictEqual(lastServedDay(new Date('2026-10-25T23:56:00Z')), '2026-10-23', 'Sunday: back to Friday');
+    assert.strictEqual(lastServedDay(new Date('2026-10-26T08:00:00Z')), '2026-10-23', 'Monday: Friday');
+    assert.strictEqual(lastServedDay(new Date('2026-10-28T08:00:00Z')), '2026-10-27', 'Wednesday: Tuesday');
+    // A refusal keeps what the record already holds for that window; nothing held, nothing kept.
+    const held = { '2026-04-18/2026-10-22': { rows: [{ symbol: 'AVGO' }], earliest: '2026-04-20' } };
+    assert.strictEqual(keptOnRefusal(held, { from: '2026-04-18', to: '2026-10-24' }), held['2026-04-18/2026-10-22']);
+    assert.strictEqual(keptOnRefusal({ '2026-04-18/2026-10-22': { unavailable: true } }, { from: '2026-04-18', to: '2026-10-24' }), null);
+    assert.strictEqual(keptOnRefusal(held, { from: '2025-04-18', to: '2026-04-17' }), null, 'a different window');
     assert.deepStrictEqual(windows('2024-10-10', '2026-10-08').map(w => w.from + '/' + w.to),
         ['2024-10-10/2025-10-09', '2025-10-10/2026-10-08']);
     assert.deepStrictEqual(windows('2026-10-08', '2026-10-08'), [{ from: '2026-10-08', to: '2026-10-08' }]);

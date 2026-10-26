@@ -35,6 +35,15 @@ function decide(stat, state, now) {
 // away the 23 Oct 12:09 Deep dive on Claude when this published a 12:06 save at 12:15. The save
 // waits for the next run instead, at most one cycle late. A lock whose process has gone, or older
 // than any cycle, is a crashed run and does not hold anything up. PowerShell writes it with a BOM.
+// The line of a failed publish's stderr that says what went wrong. The last three lines were logged
+// until 26 Oct 2026, and they are the tail of a stack trace: "} |  | Node.js v22.16.0", four times
+// over, while the actual cause ("open positions missing from meta.json: SUPR") sat at the top.
+function failureLine(stderr) {
+    const lines = stderr.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const said = lines.filter(l => /missing|refus|not found|cannot|could not|error:/i.test(l) && !/^at |^node:|Node\.js v/.test(l));
+    return (said.length ? said.slice(0, 2) : lines.slice(-3)).join(' | ');
+}
+
 const lockLine = text => String(text || '').trim().replace(/^\D+/, '');   // drops the BOM, or any junk before the pid
 function cycleRunning(lockText, now, alive) {
     const m = /^(\d+) started (\S+)/.exec(lockLine(lockText));
@@ -64,7 +73,7 @@ function main() {
         log(out.split('\n').filter(l => /wrote holdings|IBKR|positions:|unchanged|Pushed|verified/.test(l)).map(l => '  ' + l.trim()).join('\n') || '  done');
         fs.writeFileSync(STATE, JSON.stringify({ mtimeMs: stat.mtimeMs, size: stat.size, published: new Date().toISOString() }));
     } catch (e) {
-        log(`publish failed, will retry next run: ${(e.stderr || e.message || '').toString().split('\n').filter(Boolean).slice(-3).join(' | ')}`);
+        log(`publish failed, will retry next run: ${failureLine((e.stderr || e.message || '').toString())}`);
         process.exitCode = 1;
     } finally {
         fs.rmSync(LOCK, { force: true });
@@ -91,6 +100,12 @@ function selftest() {
     assert.strictEqual(cycleRunning(null, now, up), false, 'no lock');
     assert.strictEqual(cycleRunning('garbage', now, up), false, 'unreadable lock');
     assert.strictEqual(pidAlive(process.pid), true);
+
+    // The failure line names the cause, not the stack trace's last brace.
+    const stderr = 'C:\\x\\extract-portfolio.js:340\n    throw new Error(msg);\n    ^\n\nError: open positions missing from meta.json: SUPR. Add an entry.\n'
+        + '    at main (C:\\x\\extract-portfolio.js:340:11)\n}\n\nNode.js v22.16.0\n';
+    assert.strictEqual(failureLine(stderr), 'Error: open positions missing from meta.json: SUPR. Add an entry.');
+    assert.strictEqual(failureLine('a\nb\nc\nd'), 'b | c | d', 'nothing recognisable: the last three lines, as before');
     console.log('selftest ok');
 }
 
