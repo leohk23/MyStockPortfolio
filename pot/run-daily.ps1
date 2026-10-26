@@ -58,14 +58,32 @@ function Note($msg) {
 
 # A scheduled run must never collide with one Leo started by hand: two agents writing the same
 # proposals directory, and two git processes racing to push, is a mess to unpick afterwards.
+#
+# Held as a named mutex, and waited for rather than skipped (D100). It was a file, checked then
+# written: on 26 Oct 2026 the laptop woke at 22:31 with two slots missed, both tasks caught up in
+# the same second, both passed the check before either wrote, and the two cycles ran side by side,
+# failing each other's git pull and breaking the scan push. A file cannot be made safe here: even
+# created atomically, clearing a dead run's file lets a second waiter delete the first's fresh one
+# (three test processes all got it). Windows hands a mutex to exactly one process and frees it when
+# that process dies, so there is no stale lock to clear. The other run waits for the holder to
+# finish (a cycle takes 20-60 minutes) and then runs, so a missed second-run Sweep is not lost to
+# the daily catch-up; after 90 minutes it gives up.
+#
+# pot/.daily-lock is still written, by the holder only: publish-on-change.js reads it to stay out
+# of a running cycle (D92). Whatever is in it when the mutex is acquired is a dead run's.
 $lock = Join-Path $Repo 'pot/.daily-lock'
-if (Test-Path $lock) {
-    $held = Get-Content $lock -ErrorAction SilentlyContinue
-    $alive = $held -and (Get-Process -Id ([int]($held -split ' ')[0]) -ErrorAction SilentlyContinue)
-    if ($alive) { Note "another run is in progress ($held) - skipping this cycle"; exit 3 }
-    Note "clearing a stale lock ($held)"
+$cycleMutex = New-Object System.Threading.Mutex($false, 'Global\MyStockPortfolio-pot-cycle')
+function Get-CycleMutex([int]$ms) {
+    try { return $cycleMutex.WaitOne($ms) }
+    catch [System.Threading.AbandonedMutexException] { return $true }   # its holder died; it is ours now
 }
-"$PID started $((Get-Date).ToUniversalTime().ToString('s'))Z" | Set-Content $lock -Encoding utf8
+if (-not (Get-CycleMutex 0)) {
+    $held = Get-Content $lock -ErrorAction SilentlyContinue | Select-Object -First 1
+    Note "another run is in progress ($held) - waiting for it to finish"
+    if (-not (Get-CycleMutex (90 * 60 * 1000))) { Note "another run still holds the lock after 90 minutes - skipping this cycle"; exit 3 }
+}
+if (Test-Path $lock) { Note "clearing a stale lock ($(Get-Content $lock -ErrorAction SilentlyContinue | Select-Object -First 1))" }
+[IO.File]::WriteAllText($lock, "$PID started $((Get-Date).ToUniversalTime().ToString('s'))Z")
 
 
 # Both helpers are defined BEFORE the try that calls them. PowerShell does not hoist functions:
@@ -537,11 +555,14 @@ try {
 
     # Keep the machine awake for the duration. The 29 Aug deep dive ran 83 minutes of wall clock
     # for ten minutes of work because the laptop slept underneath it; unattended, nobody notices.
+    # It lives only as long as this cycle: the finally below stops it, but a cycle that is killed
+    # never reaches its finally, and on 26 Oct two such helpers outlived their cycles and would have
+    # kept the laptop awake indefinitely (D100).
     $awake = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList @(
         '-NoProfile', '-Command',
         '$s=[void][Console]::In; Add-Type -Name P -Namespace W -MemberDefinition ' +
         '''[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint e);''; ' +
-        '[W.P]::SetThreadExecutionState(0x80000001); while($true){Start-Sleep 60}')
+        '[W.P]::SetThreadExecutionState(0x80000001); while(Get-Process -Id ' + $PID + ' -ErrorAction SilentlyContinue){Start-Sleep 60}')
 
     # ---- 0. Catch up with GitHub before anything reads the repo, so a brief, script or watchlist
     # changed elsewhere (an online session, the price bot) is what this cycle runs. The files every
@@ -733,6 +754,7 @@ catch {
 finally {
     if ($awake -and -not $awake.HasExited) { Stop-Process -Id $awake.Id -Force -ErrorAction SilentlyContinue }
     Remove-Item $lock -Force -ErrorAction SilentlyContinue
+    try { $cycleMutex.ReleaseMutex() } catch { }   # exiting would free it anyway; this frees a waiter now
 }
 # The exit code has to mean something. It was a flat `exit 0`, so Task Scheduler recorded the
 # 1 Sep abort as a success and nothing surfaced it — the lanes' own `exit 1` paths were the only

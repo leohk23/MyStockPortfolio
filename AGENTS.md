@@ -128,6 +128,8 @@ Two things that constrain any change to it:
 - **A slot is chosen so the cycle finishes just before Leo can read it** — before work, at lunch,
   after the US close. He has a full-time job, and a proposal nobody reads is spent allowance.
 
+**Two cycles never overlap** (D100): a cycle holds the named mutex `Global\MyStockPortfolio-pot-cycle`, and a second one, such as both entries catching up when the laptop wakes, waits up to 90 minutes for it rather than running alongside. `pot/.daily-lock` is still written by the holder, for the Tradelog watcher.
+
 Do **not** hand-run `pot/run-daily.ps1` to test a change: it spends a real 5% and takes 20–35
 minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` covers the JS.
 
