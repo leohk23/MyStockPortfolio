@@ -1,7 +1,20 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-17",
+  "updated": "2026-10-26",
   "normalizedEps": {
+    "NVDA": {
+      "basis": "company non-GAAP diluted EPS",
+      "ccy": "USD",
+      "note": "Added by the 26 October 2026 deep dive from the issuer Q2 FY2027 release. GAAP diluted EPS is USD2.46 and company non-GAAP diluted EPS is USD2.22 for the same quarter. Literal issuer period end, not Yahoo's July month-end label. One quarter does not establish research TTM EPS or an adjusted historical percentile; this does not overwrite reported earnings.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2026-07-26",
+          "eps": 2.22,
+          "source": "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/"
+        }
+      ]
+    },
     "HLMA.L": {
       "basis": "company-adjusted basic EPS",
       "ccy": "GBP",
