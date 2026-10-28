@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-26T06:30:06.303Z",
- "cashGBP": 184.75,
+ "generated": "2026-10-28T09:45:22.503Z",
+ "cashGBP": 182.7,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -147,6 +147,33 @@
  },
  "proposals": [
   {
+   "file": "2026-10-26-0650-none.md",
+   "id": "2026-10-26-0650-none",
+   "state": "open",
+   "ticker": "none",
+   "written": "2026-10-26",
+   "side": "BUY",
+   "limit": null,
+   "warning": null,
+   "break": null,
+   "reviewBy": null,
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "reproposalBreach": {
+    "after": "2026-10-25-1133-none",
+    "bar": null
+   },
+   "earlierRisksMissing": [
+    {
+     "category": "accounting",
+     "id": "2026-09-08-1040-none"
+    }
+   ]
+  },
+  {
    "file": "2026-10-25-1133-none.md",
    "id": "2026-10-25-1133-none",
    "state": "open",
@@ -159,9 +186,9 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-10-26-0650-none",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-25-0119-none.md",
@@ -176,7 +203,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-25-1133-none",
+   "supersededBy": "2026-10-26-0650-none",
    "phase": "live",
    "counts": false
   },
@@ -204,7 +231,7 @@
   {
    "file": "2026-10-24-0948-BN.PA.md",
    "id": "2026-10-24-0948-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-24",
    "side": "BUY",
@@ -2100,7 +2127,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-25-1133-none",
+   "supersededBy": "2026-10-26-0650-none",
    "phase": "live",
    "counts": false
   },
@@ -2117,7 +2144,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-25-1133-none",
+   "supersededBy": "2026-10-26-0650-none",
    "phase": "live",
    "counts": false
   },
@@ -2345,7 +2372,7 @@
   {
    "file": "2026-09-04-2033-INTU.md",
    "id": "2026-09-04-2033-INTU",
-   "state": "expired",
+   "state": "open",
    "ticker": "INTU",
    "written": "2026-09-04",
    "side": "BUY",
@@ -3009,9 +3036,9 @@
    "below": 20.7955
   },
   "none": {
-   "last": "2026-10-25-1133-none",
+   "last": "2026-10-26-0650-none",
    "limit": null,
-   "until": "2026-11-08",
+   "until": "2026-11-09",
    "below": null
   },
   "BN.PA": {
@@ -3156,5 +3183,5 @@
    }
   ]
  },
- "today": "2026-10-26"
+ "today": "2026-10-28"
 }
