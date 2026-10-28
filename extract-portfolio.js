@@ -394,15 +394,18 @@ async function main() {
         for (const sym of openMissing) {
             const r = GILT_ISIN.test(sym) ? await resolveGilt(sym, bySymbol.get(sym), taken)
                 : await resolveMeta(sym, bySymbol.get(sym), watchlist, yahooQuote);
-            if (r.entry) { found.push({ ...r.entry, check: r.check }); taken.add(r.entry.ticker); taken.add(r.entry.yahoo); }
+            if (r.entry) { found.push({ sym, ...r.entry, check: r.check }); taken.add(r.entry.ticker); taken.add(r.entry.yahoo); }
             else refused.push(`${sym} (${r.why})`);
         }
         if (refused.length) {
             throw new Error(`open positions missing from ${META}: ${refused.join('; ')}. Add an entry (yahoo, group, geography, currency) by hand`
                 + (found.length ? `; these were found and will be added once that is done: ${found.map(e => e.ticker + ' -> ' + e.yahoo).join(', ')}` : '') + '.');
         }
-        for (const { check, ...e } of found) {
-            meta[e.ticker] = e;
+        for (const { sym, check, ...e } of found) {
+            // Keyed by the Tradelog symbol, which is how buildHoldings finds the trades: for a gilt
+            // that is the ISIN, not the ticker. Keyed by the ticker on 28 Oct, UKT36 had no trades
+            // and was published without the gilt.
+            meta[sym] = e;
             console.log(`  added to ${META}: ${e.ticker} -> ${e.yahoo}, "${e.group}", ${e.geography}, ${e.currency} (${check})`);
         }
         fs.writeFileSync(META, JSON.stringify(meta, null, 2) + '\n');
