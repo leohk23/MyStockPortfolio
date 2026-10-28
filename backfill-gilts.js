@@ -109,7 +109,7 @@ async function main() {
     let store = {};
     try { store = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch { /* first run */ }
 
-    const gilts = [...new Set([...Object.values(meta), ...(Array.isArray(watch) ? watch : [])].filter(x => x?.lse).map(x => x.yahoo))];
+    const gilts = [...new Set([...Object.values(meta), ...(Array.isArray(watch) ? watch : [])].filter(x => x?.isin || x?.lse).map(x => x.yahoo))];
     const today = new Date().toISOString().slice(0, 10);
     for (const t of gilts) {
         const isin = quotes[t]?.bond?.isin;

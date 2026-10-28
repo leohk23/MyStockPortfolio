@@ -60,9 +60,10 @@ function readHoldings(file = path.join(__dirname, 'holdings.json')) {
 }
 
 // The public half of a holding: enough to fetch a quote and group a row, nothing that sizes it.
-// `lse` is a gilt's exchange code and `ishares` a bond fund's page path: where data comes from,
-// identifiers like `yahoo`. `splits` are public facts about the instrument, not the position.
-const PUBLIC_FIELDS = ['ticker', 'yahoo', 'lse', 'ishares', 'splits', 'group', 'geography', 'currency'];
+// `isin` and `lse` are a gilt's ISIN and exchange code and `ishares` a bond fund's page path: where
+// data comes from, identifiers like `yahoo`. `splits` are public facts about the instrument, not
+// the position.
+const PUBLIC_FIELDS = ['ticker', 'yahoo', 'isin', 'lse', 'ishares', 'splits', 'group', 'geography', 'currency'];
 const publicRow = h => Object.fromEntries(PUBLIC_FIELDS.filter(k => k in h).map(k => [k, h[k]]));
 
 module.exports = { seal, open, passphrase, readHoldings, publicRow };

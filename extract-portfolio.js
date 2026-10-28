@@ -9,6 +9,7 @@
 // when you open a position in a new instrument (see README).
 const fs = require('fs');
 const XLSX = require('xlsx');
+const { giltQuote, ISIN: GILT_ISIN } = require('./gilt-quote.js');
 
 // The workbook: the path in the gitignored .tradelog-path, which is Leo's live master on OneDrive,
 // synced to this laptop (publish-on-change.js publishes it when it changes), else a Tradelog.xlsx
@@ -163,8 +164,11 @@ function buildHoldings(meta, bySymbol, realized) {
             // Fundamentals and the results date are read from it, so one company has one dataset
             // however many of its lines you happen to hold.
             primary: m.primary,
-            // A gilt's London Stock Exchange code (TN28). Yahoo lists no gilts, so fetch-prices
-            // prices this one from the exchange instead; `yahoo` is then just its key.
+            // A gilt's ISIN. Yahoo lists no gilts, so fetch-prices prices one from the London
+            // order book by ISIN (gilt-quote.js), and `yahoo` is then just its key. A gilt is
+            // recorded in the Tradelog under its ISIN, so the meta.json key is one.
+            isin: m.isin || (GILT_ISIN.test(sym) ? sym : undefined),
+            // Its exchange code (T31), where known: the bot priced gilts by it until 22 Oct 2026.
             lse: m.lse,
             // An iShares bond fund's page path (id/slug), where its weighted average yield to
             // maturity is published — see fetchIsharesYtm.
@@ -218,8 +222,8 @@ async function yahooPrice(symbol) {
 //   - Yahoo quotes it in the trade's currency (pence and pounds count as one, scaled);
 //   - its price is within 40% of what Leo last paid, which catches a wrong exchange, wrong units
 //     and a different share class.
-// Anything else is refused as before, saying why. A gilt recorded by ISIN is always refused: the
-// exchange's search answers a script with 403, so its code has to be added by hand.
+// Anything else is refused as before, saying why. A symbol that is an ISIN is a gilt, and goes to
+// resolveGilt instead.
 const SUFFIXES = { GBp: ['.L'], GBP: ['.L'], HKD: ['.HK'], JPY: ['.T'], USD: [''], KRW: ['.KS', '.KQ'],
     EUR: ['.PA', '.AS', '.DE', '.MI', '.MC', '.BR', '.HE', '.IR', '.LS', '.F', '.VI'], CHF: ['.SW'], CAD: ['.TO'],
     AUD: ['.AX'], SGD: ['.SI'], TWD: ['.TW'], IDR: ['.JK'], SEK: ['.ST'], DKK: ['.CO'], NOK: ['.OL'] };
@@ -253,7 +257,7 @@ async function yahooQuote(symbol) {
 
 // { entry } or { why }. `quoteOf` is yahooQuote, or a stand-in in the selftest.
 async function resolveMeta(sym, trades, watchlist, quoteOf, today = new Date().toISOString().slice(0, 10)) {
-    if (/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(sym)) return { why: 'an ISIN (a gilt): add its LSE code by hand, the exchange refuses scripted searches' };
+    if (GILT_ISIN.test(sym)) return { why: 'an ISIN: resolveGilt, not a Yahoo listing' };
     const buys = trades.filter(t => t.side !== 'SELL');
     const paid = buys[buys.length - 1] || trades[trades.length - 1];
     const ccy = tradeCurrency(paid.currency);
@@ -291,15 +295,35 @@ async function resolveMeta(sym, trades, watchlist, quoteOf, today = new Date().t
     return { entry, check: `${pick.y} at ${pick.q.currency} ${pick.q.price} against ${paid.price} paid` };
 }
 
-// A gilt's mid price from the London Stock Exchange — the same call fetch-prices makes for it.
-async function lsePrice(tidm) {
-    const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
-    try {
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Origin: 'https://www.londonstockexchange.com' } });
-        if (!res.ok) return null;
-        const j = await res.json();
-        return j.currency === 'GBP' && j.midPrice > 0 ? j.midPrice : null;
-    } catch { return null; }
+// A gilt recorded under its ISIN (28 Oct 2026; until then always refused). onvista's London Stock
+// Exchange quote names it, prices it and says who issued it, so the entry is filled only for a UK
+// government bond, quoted in pounds per £100 within 40% of the price paid: a Qty entered as the
+// nominal rather than nominal ÷ 100 puts the price a hundred times out. The ticker is UKT and the
+// maturity year (UKT36). The exchange's own code (T31) can no longer be looked up, so it is not
+// guessed, and two gilts maturing in the same year are refused. `yahoo` is the ticker plus .L,
+// the key every price and close is stored under: the ticker can be renamed by hand, the key never.
+async function resolveGilt(isin, trades, taken, giltOf = giltQuote, today = new Date().toISOString().slice(0, 10)) {
+    const buys = trades.filter(t => t.side !== 'SELL');
+    const paid = buys[buys.length - 1] || trades[trades.length - 1];
+    if (tradeCurrency(paid.currency) !== 'GBP') return { why: `an ISIN traded in ${paid.currency}, not pounds: add it by hand` };
+    let g;
+    try { g = await giltOf(isin); } catch (e) { return { why: `an ISIN with no London Stock Exchange quote on onvista (${e.message}): add it by hand` }; }
+    if (!g.gilt) return { why: `an ISIN, but not a UK government bond (${g.issuer || 'issuer unknown'}): add it by hand` };
+    const ratio = g.mid / paid.price;
+    if (!(ratio > 0.6 && ratio < 1 / 0.6)) {
+        return { why: `a gilt quoted at ${g.mid} per £100 against ${paid.price} paid: in the Tradelog, Qty is the nominal ÷ 100 and Price is per £100` };
+    }
+    const yy = String(g.maturity || '').slice(2, 4);
+    const ticker = `UKT${yy}`;
+    if (!/^\d\d$/.test(yy)) return { why: 'a gilt with no maturity date on onvista: add it by hand' };
+    if (taken.has(ticker) || taken.has(`${ticker}.L`)) return { why: `${ticker} is taken, a second gilt maturing in 20${yy}: add it by hand` };
+    const entry = {
+        ticker, yahoo: `${ticker}.L`, isin, group: 'UK Gilts', geography: 'Europe', currency: 'GBP',
+        // meta.json is public: how the entry was found, never what was paid (D67).
+        auto: `${today}: ${g.name}, found by its ISIN on onvista.de's London Stock Exchange quote; `
+            + 'a UK government issue, priced in pounds per £100 within 40% of the trade price',
+    };
+    return { entry, check: `${isin} = ${g.name}, ${g.basis} ${g.mid} against ${paid.price} paid` };
 }
 
 // Verify only brand-new symbols against Yahoo before we commit them. A typo'd symbol
@@ -310,13 +334,14 @@ async function verifyNewSymbols(holdings) {
     try { quotes = JSON.parse(fs.readFileSync('prices.json', 'utf8')).quotes || {}; }
     catch { return; } // no baseline yet (first ever run) — nothing to diff against
     for (const h of newSymbols(holdings, new Set(Object.keys(quotes)))) {
-        const price = h.lse ? await lsePrice(h.lse) : await yahooPrice(h.yahoo);
+        // A gilt the same way the bot will price it: the London order book, by ISIN.
+        const price = h.isin ? (await giltQuote(h.isin).catch(() => null))?.mid : await yahooPrice(h.yahoo);
         if (price == null) {
-            throw new Error(h.lse
-                ? `new gilt ${h.ticker}: LSE code "${h.lse}" returned no GBP price. Fix its "lse" in ${META} (or check your connection) before publishing.`
+            throw new Error(h.isin
+                ? `new gilt ${h.ticker}: no London Stock Exchange price for ISIN ${h.isin} on onvista. Check the ISIN (or your connection) before publishing.`
                 : `new instrument ${h.ticker}: Yahoo symbol "${h.yahoo}" returned no price. Fix its "yahoo" in ${META} (or check your connection) before publishing.`);
         }
-        console.log(`  verified new instrument: ${h.ticker} -> ${h.lse ? 'LSE ' + h.lse : h.yahoo} (${price})`);
+        console.log(`  verified new instrument: ${h.ticker} -> ${h.isin ? 'ISIN ' + h.isin : h.yahoo} (${price})`);
     }
 }
 
@@ -365,9 +390,12 @@ async function main() {
         let watchlist = [];
         try { const w = JSON.parse(fs.readFileSync('watchlist.json', 'utf8')); watchlist = Array.isArray(w) ? w : w.items || []; } catch { /* none */ }
         const found = [], refused = [];
+        const taken = new Set(Object.values(meta).flatMap(e => [e.ticker, e.yahoo]));
         for (const sym of openMissing) {
-            const r = await resolveMeta(sym, bySymbol.get(sym), watchlist, yahooQuote);
-            if (r.entry) found.push({ ...r.entry, check: r.check }); else refused.push(`${sym} (${r.why})`);
+            const r = GILT_ISIN.test(sym) ? await resolveGilt(sym, bySymbol.get(sym), taken)
+                : await resolveMeta(sym, bySymbol.get(sym), watchlist, yahooQuote);
+            if (r.entry) { found.push({ ...r.entry, check: r.check }); taken.add(r.entry.ticker); taken.add(r.entry.yahoo); }
+            else refused.push(`${sym} (${r.why})`);
         }
         if (refused.length) {
             throw new Error(`open positions missing from ${META}: ${refused.join('; ')}. Add an entry (yahoo, group, geography, currency) by hand`
@@ -555,7 +583,25 @@ async function selftest() {
     assert.ok(/2 listings fit/.test((await resolveMeta('NTO', paidAt(59, 'EUR'), [], quoteOf)).why), 'only secondary venues, two of them: refused');
     assert.ok(/no listing/.test((await resolveMeta('XYZ', paidAt(50, 'USD'), [], quoteOf)).why), 'ten times off: wrong listing or units, refused');
     assert.strictEqual((await resolveMeta('SUPR', paidAt(0.8065, 'GBP'), [], quoteOf)).entry.yahoo, 'SUPR.L', 'pounds against a pence quote');
-    assert.ok(/ISIN/.test((await resolveMeta('GB00BPSNBF73', paidAt(95, 'GBP'), [], quoteOf)).why), 'a gilt by ISIN: by hand');
+    assert.ok(/ISIN/.test((await resolveMeta('GB00BPSNBF73', paidAt(95, 'GBP'), [], quoteOf)).why), 'an ISIN is not a Yahoo listing');
+    // A gilt by ISIN (resolveGilt), against stand-ins for gilt-quote.js.
+    const gilts = {
+        GB00BWBR1N39: { gilt: true, mid: 96.38, basis: 'mid', maturity: '2036-07-31', name: '4 7/8% TREASURY GILT 31/07/36' },
+        DE0001102580: { gilt: false, mid: 88, maturity: '2032-02-15', issuer: 'Deutschland, Bundesrepublik' },
+        GB00BPSNBF73: { gilt: true, mid: 95.5, maturity: '2031-10-22', name: '4% TREASURY GILT 22/10/31' },
+    };
+    const giltOf = async i => { if (!gilts[i]) throw new Error('no London Stock Exchange GBP venue on onvista'); return gilts[i]; };
+    const taken = new Set(['T31', 'T31.L']);
+    res = await resolveGilt('GB00BWBR1N39', paidAt(96.25, 'GBP'), taken, giltOf, '2026-10-28');
+    const { auto: giltAuto, ...ukt36 } = res.entry;
+    assert.deepStrictEqual(ukt36, { ticker: 'UKT36', yahoo: 'UKT36.L', isin: 'GB00BWBR1N39', group: 'UK Gilts', geography: 'Europe', currency: 'GBP' },
+        'a UK gilt by ISIN: filled, under the UK Gilts group T31 is in');
+    assert.ok(!/96\.25/.test(giltAuto) && /96\.25/.test(res.check), 'the price paid stays out of public meta.json');
+    assert.ok(/nominal/.test((await resolveGilt('GB00BWBR1N39', paidAt(0.9625, 'GBP'), taken, giltOf)).why), 'per £1, not per £100: refused, saying why');
+    assert.ok(/not a UK government/.test((await resolveGilt('DE0001102580', paidAt(88, 'GBP'), taken, giltOf)).why), 'a Bund: refused');
+    assert.ok(/not pounds/.test((await resolveGilt('GB00BWBR1N39', paidAt(96, 'EUR'), taken, giltOf)).why), 'bought in euros: refused');
+    assert.ok(/no London/.test((await resolveGilt('GB0000000009', paidAt(96, 'GBP'), taken, giltOf)).why), 'not quoted: refused');
+    assert.ok(/taken/.test((await resolveGilt('GB00BWBR1N39', paidAt(96, 'GBP'), new Set(['UKT36']), giltOf)).why), 'two maturing in one year: refused');
     console.log('selftest ok');
 }
 
@@ -564,4 +610,4 @@ if (require.main === module) {
     if (process.argv[2] === '--selftest') selftest().catch(e => { console.error(e); process.exit(1); });
     else main().catch(e => { console.error(e.message); process.exit(1); });
 }
-module.exports = { resolveMeta, yahooQuote, readTradelog };
+module.exports = { resolveMeta, resolveGilt, yahooQuote, readTradelog };

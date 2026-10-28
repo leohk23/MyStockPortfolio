@@ -15,6 +15,7 @@ const watchlist = require('./watchlist.json');
 // Splits declared in meta.json, by Yahoo symbol — see mergeSplits.
 const DECLARED_SPLITS = Object.fromEntries([...holdings, ...watchlist].filter(x => x.splits).map(x => [x.yahoo, x.splits]));
 const { cohortMV, twr } = require('./portfolio.js'); // local, dependency-free — CI stays clean
+const { giltQuote } = require('./gilt-quote.js');   // likewise
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 const DAY = 86400;
@@ -191,28 +192,20 @@ const halfSplit = (move, splits, now = Date.now()) => move != null && splits.som
     now - Date.parse(sp.date) < 7 * DAY * 1000
     && [sp.ratio, 1 / sp.ratio].some(x => Math.abs(Math.log((1 + move) / x)) < 0.15));
 
-// UK gilts. Yahoo carries none, so a holding with an `lse` code (meta.json) is priced from the
-// London Stock Exchange's own instrument data: the mid of its order book, per £100 nominal, the
-// unit every gilt price is quoted in. Undocumented, like HKEXnews; a changed shape throws, and the
-// caller keeps the last price and the stored closes rather than losing them.
+// UK gilts. Yahoo carries none, so a holding with an `isin` is priced from the London Stock
+// Exchange's order book by ISIN (gilt-quote.js): the mid of bid and offer, per £100 nominal, the
+// unit every gilt price is quoted in. Until 22 Oct 2026 the bot read the exchange's instrument
+// endpoint by its code (`lse` in meta.json); it now refuses scripts, so the same book is read
+// through onvista.de. A changed shape throws, and the caller keeps the last price and the stored
+// closes rather than losing them.
 //
-// The exchange has no history endpoint, so the closes accrete: each run stores the official close
-// as each weekday's last mid, carried in prices.json as `lseCloses`. The series
-// starts the day a gilt is added — fine for one bought from then on.
-async function fetchLse(tidm, prevCloses, back, attempts = 3) {
-    const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
-    let lastErr;
-    for (let a = 0; a < attempts; a++) {
-        try {
-            const res = await fetch(url, { headers: { 'User-Agent': UA, Origin: 'https://www.londonstockexchange.com' } });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return shapeLse(await res.json(), prevCloses, new Date(), back);
-        } catch (e) {
-            lastErr = e;
-            if (a < attempts - 1) await new Promise(r => setTimeout(r, 600 * (a + 1)));
-        }
-    }
-    throw lastErr;
+// Neither source has a history endpoint the bot uses, so the closes accrete: each run stores the
+// day's mid, the last run of a weekday leaving its close, carried in prices.json as `lseCloses`.
+// The series starts the day a gilt is added; backfill-gilts.js fills the days before, by hand.
+async function fetchGilt(isin, prevCloses, back) {
+    const q = await giltQuote(isin);
+    return shapeLse({ name: q.name, isin, currency: 'GBP', midPrice: q.mid, bid: q.bid, offer: q.offer,
+        maturitydate: q.maturity, coupon: q.coupon, at: q.at }, prevCloses, new Date(), back);
 }
 
 const lseSeries = closes => {
@@ -258,14 +251,18 @@ function shapeLse(j, prevCloses = {}, now = new Date(), back = null) {
     // The exchange's own `lastclose` is the last TRADE, often at the bid or offer — T31 closed on
     // 7 Oct 2026 at its 95.62 offer with the mid at 95.47, so 1D showed the spread as a -0.2% move.
     // Weekdays only: a weekend run (a pot push) would add a Saturday to every series' calendar.
+    // The day is the one the price was struck on, where the source says (`at`, epoch ms): a 06:30
+    // run reads the previous evening's book, and filing that under today would put yesterday's
+    // close on two days.
+    const struck = j.at > 0 && j.at <= now.getTime() + 3600e3 ? new Date(j.at) : now;
     const closes = { ...prevCloses };
-    const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const today = struck.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
     if (new Date(today + 'T12:00:00Z').getUTCDay() % 6 !== 0) closes[today] = price;
     // 1D stays mid against mid: against a last trade it would show the spread as a move.
     const prev = Object.keys(closes).sort().filter(d => d < today).map(d => closes[d]).pop();
-    const coupon = couponOf(j.name);
+    const coupon = 'coupon' in j ? j.coupon : couponOf(j.name);
     return {
-        price, currency: 'GBP', at: Math.floor(now / 1000),
+        price, currency: 'GBP', at: Math.floor(struck / 1000),
         // Running yield, a bond's answer to a dividend yield: the coupon over the clean price.
         divYield: coupon != null ? Number((coupon / price).toPrecision(6)) : null,
         '1d': prev > 0 ? Math.round((price / prev - 1) * 1e4) / 1e4 : null,
@@ -2372,21 +2369,24 @@ async function main() {
     const fundTickers = [...tickers, ...primaries];
     const quotes = {};
     const failed = [];
-    // Gilts, priced from the LSE rather than Yahoo (fetchLse). A failed fetch keeps the last price
-    // and, above all, the stored closes: dropping the quote for one run would drop its history.
-    const lseOf = Object.fromEntries([...holdings, ...watchlist].filter(x => x.lse).map(x => [x.yahoo, x.lse]));
-    const prevLse = Object.keys(lseOf).length ? previousQuotes() : {};
+    // Gilts, priced from the London order book by ISIN rather than from Yahoo (fetchGilt). A failed
+    // fetch keeps the last price and, above all, the stored closes: dropping the quote for one run
+    // would drop its history. A holding published before `isin` was (T31, with only its exchange
+    // code) is found by the ISIN its last quote carries.
+    const prevLse = previousQuotes();
+    const lseOf = Object.fromEntries([...holdings, ...watchlist]
+        .map(x => [x.yahoo, x.isin || (x.lse && prevLse[x.yahoo]?.bond?.isin)]).filter(([, isin]) => isin));
     let giltBack = {};
     try { giltBack = JSON.parse(fs.readFileSync('gilt-history.json', 'utf8')); } catch { /* no backfill: the mids alone */ }
 
     for (const t of tickers) {
         try {
-            quotes[t] = lseOf[t] ? await fetchLse(lseOf[t], prevLse[t]?.lseCloses, giltBack[t]) : await fetchTicker(t);
+            quotes[t] = lseOf[t] ? await fetchGilt(lseOf[t], prevLse[t]?.lseCloses, giltBack[t]) : await fetchTicker(t);
             console.log(`ok   ${t} ${quotes[t].price} ${quotes[t].currency}`);
         } catch (e) {
             if (lseOf[t] && prevLse[t]?.lseCloses) {
                 quotes[t] = { ...prevLse[t], '1d': null, ...giltSeries(prevLse[t].lseCloses, giltBack[t], prevLse[t].price, Date.now()) };
-                console.error(`stale ${t}: ${e.message} — kept the last LSE price and its closes`);
+                console.error(`stale ${t}: ${e.message} — kept the last London price and its closes`);
                 continue;
             }
             failed.push(t);
@@ -4012,6 +4012,16 @@ function selftest() {
     const gilt2 = shapeLse({ ...lseJ, midPrice: 94.9 }, gilt.lseCloses, new Date('2026-10-08T18:00:00Z'));
     assert.strictEqual(gilt2.lseCloses['2026-10-08'], 94.9);
     assert.strictEqual(gilt2['1d'], Math.round((94.9 / 94.75 - 1) * 1e4) / 1e4);
+    // Through onvista (fetchGilt): the coupon arrives as a number, and the close is filed under the
+    // day the book was struck. A Friday 06:30 run reads Thursday evening's book: Thursday's close.
+    const early = shapeLse({ ...lseJ, coupon: 0.125, at: Date.parse('2026-10-07T16:29:00Z') }, { '2026-10-06': 94.6 }, new Date('2026-10-08T05:30:00Z'));
+    assert.deepStrictEqual(early.lseCloses, { '2026-10-06': 94.6, '2026-10-07': 94.8 }, 'filed under the day it was struck, not the run\'s');
+    assert.strictEqual(early.at, Math.floor(Date.parse('2026-10-07T16:29:00Z') / 1000), '`at` is when the price was struck');
+    assert.strictEqual(early['1d'], Math.round((94.8 / 94.6 - 1) * 1e4) / 1e4, '1D against the close before that day');
+    assert.strictEqual(early.divYield, Number((0.125 / 94.8).toPrecision(6)), 'the coupon as given');
+    assert.strictEqual(shapeLse({ ...lseJ, coupon: null }, {}, new Date('2026-10-08T09:00:00Z')).bond.coupon, null, 'a linker: no coupon, even with a parsable name');
+    assert.ok(shapeLse({ ...lseJ, at: Date.parse('2026-10-09T09:00:00Z') }, {}, new Date('2026-10-08T09:00:00Z')).lseCloses['2026-10-08'],
+        'a timestamp in the future is not believed: the run\'s day');
     assert.strictEqual(gilt['7d'], null, 'one day of history: no 7D, let alone 1Y');
     assert.strictEqual(gilt.ytd, null);
     assert.strictEqual(gilt.backfill, undefined, 'no backfill, no label');
