@@ -1,7 +1,40 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-26",
+  "updated": "2026-10-29",
   "normalizedEps": {
+    "SAF.PA": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "EUR",
+      "note": "Added by the 29 October 2026 deep dive. Safran's adjusted EPS excludes the fair-value change of currency-hedging instruments and the Sagem-Snecma purchase-price-allocation amortisation. FY2025 consolidated IFRS EPS is EUR17.17 against adjusted EUR7.60; the release attributes the gap mainly to a EUR5,701m pre-tax favourable change in hedge fair value. Figures read from verbatim republications on webdisclosure.com because safran-group.com refused scripts (HTTP 403); the issuer URLs are given first. H1 2025 was corroborated only from a search excerpt of the issuer page. Three half-years do not establish an adjusted historical percentile.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 7.6,
+          "source": "https://www.safran-group.com/download/press_release/file/2265697 (read via https://www.webdisclosure.com/press-release/safran-epa-saf-safran-reports-excellent-financial-performance-in-2025-and-raises-its-2028-ambitions-suxeZon5jVv)"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 3.8,
+          "source": "https://www.safran-group.com/pressroom/safran-reports-its-first-half-2025-results-2025-07-31"
+        },
+        {
+          "end": "2025-12-31",
+          "months": 6,
+          "eps": 3.8,
+          "derived": "FY2025 EUR7.60 less H1 2025 EUR3.80",
+          "source": "https://www.safran-group.com/download/press_release/file/2265697 and https://www.safran-group.com/pressroom/safran-reports-its-first-half-2025-results-2025-07-31"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 4.63,
+          "source": "https://www.safran-group.com/download/press_release/file/2274730 (read via https://www.webdisclosure.com/press-release/safran-epa-saf-safran-reports-its-first-half-2026-results-tdV8yIrzHCA)"
+        }
+      ]
+    },
     "NVDA": {
       "basis": "company non-GAAP diluted EPS",
       "ccy": "USD",
@@ -441,6 +474,28 @@
     }
   },
   "adjustments": {
+    "NFLX": [
+      {
+        "fy": "2026-12-31",
+        "amount": 2800000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Cash termination fee related to the Warner Bros. Discovery transaction, recognised in Q1 2026 interest and other income (non-operating). Gross amount; the letter as read does not state the tax on it, so not an after-tax attributable figure: evidence only. It lifted Q1 2026 diluted EPS to USD1.23 and sits inside the trailing USD3.46.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1065280/000106528026000137/ex991_q126.htm",
+        "found": "2026-10-29"
+      }
+    ],
+    "SAF.PA": [
+      {
+        "fy": "2025-12-31",
+        "amount": 5701000000,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "Favourable change in the fair value of currency-hedging instruments, pre-tax, included in IFRS net income (FY2024 carried a EUR4,670m unfavourable change). Gross pre-tax, not an after-tax attributable amount: evidence only. Use the company-adjusted EPS under normalizedEps instead.",
+        "source": "https://www.safran-group.com/download/press_release/file/2265697 (read via https://www.webdisclosure.com/press-release/safran-epa-saf-safran-reports-excellent-financial-performance-in-2025-and-raises-its-2028-ambitions-suxeZon5jVv)",
+        "found": "2026-10-29"
+      }
+    ],
     "HLMA.L": [
       {
         "fy": "2026-03-31",
