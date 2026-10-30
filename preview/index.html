@@ -2148,6 +2148,10 @@
                     const fxRep = rateOf(e.currency), fxQuote = rateOf(leg.quote.currency);
                     const fx = !e.currency || e.currency === leg.quote.currency ? 1
                         : (fxRep > 0 && fxQuote > 0 ? fxRep / fxQuote : null);
+                    // `e` is per ORDINARY share (a home listing's own figures, or onUnderlying's),
+                    // and the price is per receipt. Without this TSM's five shares a receipt read
+                    // 136.7x against 27.3x, and Nintendo's quarter-share receipt 5.0x against 19.9x.
+                    const perReceipt = leg.adrShares > 0 ? leg.adrShares : 1;
                     const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
                     const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
                     let recEps = null, recPe = null, note = '', tag = '';
@@ -2172,12 +2176,13 @@
                         note = leg.specialEpsLabel;
                         tag = 'manual';
                     } else if (tRec.v != null && fx != null) {
-                        recEps = tRec.v * fx;
+                        recEps = tRec.v * fx * perReceipt;
                         // A loss-making recurring year has no meaningful multiple — same rule
                         // troughPe uses. Show the negative EPS, withhold the P/E.
                         recPe = recEps > 0 ? leg.quote.price / recEps : null;
                         note = `Sum of the recurring EPS of the four filed quarters ended ${ymd(ttmQ[3].date)}, `
                             + (fx === 1 ? '' : `converted from ${e.currency} into ${leg.quote.currency}, `)
+                            + (perReceipt === 1 ? '' : `times ${perReceipt} ordinary shares to one receipt, `)
                             + `against today's price. Yahoo normalized income is the source; it is not `
                             + `treated as proof that every one-off was removed.`;
                         tag = `filed · ${qShort(ttmQ[3].date)}`;
