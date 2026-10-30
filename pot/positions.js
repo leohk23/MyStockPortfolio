@@ -370,7 +370,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     };
 }
 
-if (require.main === module) {
+if (require.main === module && !process.argv.includes('--selftest')) {   // npm test must not rewrite the book
     const out = build();
     fs.writeFileSync(p('pot/positions.json'), JSON.stringify(out, null, 1) + '\n');
     const by = s => out.proposals.filter(x => x.state === s).length;
