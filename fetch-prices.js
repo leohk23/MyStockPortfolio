@@ -14,7 +14,7 @@ const publishable = v => !HOLDINGS_FULL ? null : HOLDINGS_SEALED ? sealValue(v) 
 const watchlist = require('./watchlist.json');
 // Splits declared in meta.json, by Yahoo symbol — see mergeSplits.
 const DECLARED_SPLITS = Object.fromEntries([...holdings, ...watchlist].filter(x => x.splits).map(x => [x.yahoo, x.splits]));
-const { cohortMV, twr } = require('./portfolio.js'); // local, dependency-free — CI stays clean
+const { cohortMV, twr, shareBasisBreak } = require('./portfolio.js'); // local, dependency-free — CI stays clean
 const { giltQuote } = require('./gilt-quote.js');   // likewise
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -1694,7 +1694,12 @@ function mergeSeries(oldRows, freshRows) {
 // must agree. If there is no overlapping year, or the figures disagree, or the reporting currencies
 // differ, nothing is merged. A wrong `adrShares` would otherwise write a fabricated EPS into the
 // very entry everything else now trusts, which is worse than a missing row.
+//
+// The EPS has to agree as well, once rebased. Income proves the same company, not the same SHARE:
+// after Tokio Marine's 15:1 (Oct 2026) Yahoo restated 8766.T per new share while TKOMY stayed per
+// old, and a seed would write old-share EPS beside new. EPS_TOLERANCE allows for rounding only.
 const SAME_CO_TOLERANCE = 0.005;
+const EPS_TOLERANCE = 0.02;
 function seedFromReceipt(primary, receipt, adrShares = 1) {
     if (!primary?.years?.length || !receipt?.years?.length) return primary;
     if (primary.currency !== receipt.currency) return primary;
@@ -1702,10 +1707,13 @@ function seedFromReceipt(primary, receipt, adrShares = 1) {
     const overlap = primary.years.filter(y => byDate.has(y.date));
     if (!overlap.length) return primary;
     const agrees = (a, b) => a > 0 && b > 0 && Math.abs(a / b - 1) <= SAME_CO_TOLERANCE;
+    const epsAgrees = (a, b) => a == null || b == null
+        || (Math.sign(a) === Math.sign(b) && Math.abs(a / b - 1) <= EPS_TOLERANCE);
     // Every shared year has to line up, not merely one of them.
     for (const y of overlap) {
         const r = byDate.get(y.date);
         if (!agrees(y.rev, r.rev) || !agrees(y.ni ?? y.nic, r.ni ?? r.nic)) return primary;
+        if (!epsAgrees(y.eps, r.eps == null || !(adrShares > 0) ? r.eps : r.eps / adrShares)) return primary;
     }
     const rebase = rows => (rows || []).map(r =>
         r.eps == null || !(adrShares > 0) ? r : { ...r, eps: r.eps / adrShares });
@@ -1849,6 +1857,7 @@ function trailingEpsFromQuarters(entry, currency, rates) {
     const last4 = q.slice(-4);
     const days = (Date.parse(last4[3].date) - Date.parse(last4[0].date)) / 864e5;
     if (days < 250 || days > 290) return null;                 // the four must span ~one year
+    if (shareBasisBreak(last4)) return null;                   // per old shares beside new, say
 
     // Easy path: every quarter carries EPS, just add them up.
     if (last4.every(x => typeof x.eps === 'number'))
@@ -1978,6 +1987,7 @@ function recurringTtmFrom(entry, currency, rates) {
     const last4 = q.slice(-4);
     const days = (Date.parse(last4[3].date) - Date.parse(last4[0].date)) / 864e5;
     if (days < 250 || days > 290) return null;
+    if (shareBasisBreak(last4)) return null;   // the page's TTM row refuses the same four
     const rec = last4.map(x => x.norm != null && x.ni && x.eps != null ? x.norm * x.eps / x.ni : null);
     if (rec.some(v => v == null)) return null;
     const sum = rec.reduce((a, v) => a + v, 0) * fx;
@@ -3372,6 +3382,9 @@ function selftest() {
     const loss = JSON.parse(JSON.stringify(goog));
     loss.quarters.forEach(x => { x.norm = -x.norm; });
     assert.strictEqual(recurringTtmFrom(loss, 'USD'), null);             // loss-making: no multiple
+    const mixed = JSON.parse(JSON.stringify(goog)); mixed.quarters[3].eps *= 15;
+    assert.strictEqual(recurringTtmFrom(mixed, 'USD'), null);            // one quarter per old share -> "–"
+    assert.strictEqual(trailingEpsFromQuarters(mixed, 'USD'), null);
 
     // ---- quarterly fallback (quoteSummary) ----
     // Kawasaki's real numbers: FY2026 net income 108.157B against EPS 129.41 per ordinary share.
@@ -3435,6 +3448,12 @@ function selftest() {
     assert.deepStrictEqual(
         seedFromReceipt(nintendo, { ...ntdoy, years: ntdoy.years.map((y, i) =>
             i === 1 ? { ...y, ni: y.ni * 1.4 } : y) }, 0.25),
+        nintendo);
+    // Same company, different share: the receipt still per old share after a split the home
+    // listing has restated (Tokio Marine, Oct 2026). Income agrees, EPS is 15x out: refused.
+    assert.deepStrictEqual(
+        seedFromReceipt(nintendo, { ...ntdoy, years: ntdoy.years.map((y, i) =>
+            i === 1 ? { ...y, eps: y.eps * 15 } : y) }, 0.25),
         nintendo);
     // No overlapping year at all: nothing to check the basis against, so nothing is merged.
     assert.deepStrictEqual(

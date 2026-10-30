@@ -417,6 +417,8 @@ ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a defin
 
 Validated against an outside figure: the same code reconstructs Apple's missing Dec '24 quarter at **$124.3B revenue**, its actual reported FQ1 2025. Ten tickers currently gain a quarter — for most it predates the four displayed and only deepens the year-ago comparisons.
 
+**Four quarters' EPS are summed only if they are per the same share** (`portfolio.js` `shareBasisBreak`, 30 Oct 2026). After a split Yahoo restates the annual EPS but can leave a quarter per old share, and a stored quarter can keep an EPS derived from net income Yahoo has since changed. The share count each quarter implies (net income ÷ EPS) shows both: it must agree across the four within 1.5x, and income and EPS must have the same sign. Ordinary drift tops out near 1.4x across the store. Two cases were caught on day one. Konecranes' Sep '26 EPS of 1.50 was per old share beside three quarters per new (3:1), so its normalized P/E read 10.2x against about 16x. Tokio Marine's 8766.T held 115.6 and 111.8 per old share beside 9.2 per new, plus a ¥368bn loss quarter carrying EPS of +42.6; that read 2.0x. The page's TTM row and Normalized P/E, and the bot's `recurringTtmFrom` and `trailingEpsFromQuarters`, all refuse such a window. `seedFromReceipt` now also requires the two listings' EPS to agree after `adrShares`, so a receipt still per old share cannot seed its home listing.
+
 ## When annual figures get fetched
 
 The scheduled job does **not** re-ask Yahoo for fundamentals. `earningsToFetch` picks tickers three ways:

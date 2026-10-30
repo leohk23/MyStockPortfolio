@@ -360,6 +360,31 @@ function onUnderlying(entry, perAdr) {
     };
 }
 
+// Four quarters' EPS only add up to a trailing twelve months if they are per the SAME share. The
+// share count a quarter implies, net income ÷ EPS, says whether they are: within a year it drifts
+// a few percent with buybacks, and rounding on a small EPS stretches that to ~1.4x at worst across
+// the store. A split, or an EPS stored against another quarter's income, is well beyond it. Tokio
+// Marine after its 15:1 (Oct 2026): 115.6 and 111.8 per old share beside 9.2 per new, and a
+// quarter with a loss of ¥368bn carrying an EPS of +42.6. Summed, that read a P/E of 2.0x.
+//
+// Returns why the quarters cannot be summed, or null when they can. Quarters missing either figure
+// are not judged, since there is nothing to compare.
+const SHARE_BASIS_SPREAD = 1.5;
+function shareBasisBreak(quarters) {
+    const counts = [];
+    for (const q of quarters || []) {
+        const ni = q?.nic ?? q?.ni;
+        if (q?.eps == null || ni == null || q.eps === 0 || ni === 0) continue;
+        if (Math.sign(ni) !== Math.sign(q.eps)) return `the quarter to ${q.date} has net income and EPS of opposite signs`;
+        counts.push(ni / q.eps);
+    }
+    if (counts.length < 2) return null;
+    const spread = Math.max(...counts) / Math.min(...counts);
+    return spread >= SHARE_BASIS_SPREAD
+        ? `the quarters imply share counts ${spread.toFixed(1)}x apart, so their EPS are not per the same share`
+        : null;
+}
+
 // watchlist[] + prices.json -> leg-shaped rows for stocks NOT held.
 //
 // Kept out of build() and out of holdings.json on purpose. Totals, TWR, cohorts and the NAV
@@ -529,7 +554,7 @@ function existingShares(holdings, since, rates) {
     return out;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -845,6 +870,20 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(onUnderlying({ years: [{ date: '2024-03-31', nic: 5 }] }, 0.4).years[0], { date: '2024-03-31', nic: 5 });
     // The source entry is never mutated — the Valuation panel still needs the per-receipt figures.
     assert.strictEqual(adrEntry.years[0].eps, 51.764);
+
+    // shareBasisBreak, on Tokio Marine's real quarters as stored on 30 Oct 2026 (8766.T).
+    const tokio = [
+        { date: '2025-09-30', eps: 115.608, nic: 220015e6 },
+        { date: '2025-12-31', eps: 111.83, nic: 212437e6 },
+        { date: '2026-03-31', eps: 42.6437, nic: -368017e6 },
+        { date: '2026-06-30', eps: 9.210667, nic: 264300e6 },
+    ];
+    assert.match(shareBasisBreak(tokio), /2026-03-31 has net income and EPS of opposite signs/);
+    assert.match(shareBasisBreak([tokio[1], tokio[3]]), /15\.1x apart/, 'old shares beside new');
+    // Ordinary drift is not a break: a 4% buyback over the year, and a loss quarter (both negative).
+    assert.strictEqual(shareBasisBreak([{ eps: 1.00, nic: 100 }, { eps: 1.04, nic: 100 }, { eps: -0.50, nic: -49 }]), null);
+    // A quarter missing either figure is not judged.
+    assert.strictEqual(shareBasisBreak([{ eps: 1, nic: 100 }, { eps: 50 }, { nic: 9 }]), null);
 
     // quarterEnds walks back in three-month steps and lands on real month-ends: a December
     // year-end must give Sep 30, not an overflowed "Sep 31" (and a March one crosses the year).
