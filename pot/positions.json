@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-29T06:30:04.438Z",
- "cashGBP": 183.21,
+ "generated": "2026-10-30T06:30:05.517Z",
+ "cashGBP": 186.61,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -147,6 +147,33 @@
  },
  "proposals": [
   {
+   "file": "2026-10-29-0652-none.md",
+   "id": "2026-10-29-0652-none",
+   "state": "open",
+   "ticker": "none",
+   "written": "2026-10-29",
+   "side": "BUY",
+   "limit": null,
+   "warning": null,
+   "break": null,
+   "reviewBy": null,
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "reproposalBreach": {
+    "after": "2026-10-26-0650-none",
+    "bar": null
+   },
+   "earlierRisksMissing": [
+    {
+     "category": "accounting",
+     "id": "2026-09-08-1040-none"
+    }
+   ]
+  },
+  {
    "file": "2026-10-28-1017-BN.PA.md",
    "id": "2026-10-28-1017-BN.PA",
    "state": "expired",
@@ -176,9 +203,9 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-10-29-0652-none",
    "phase": "live",
-   "counts": true,
+   "counts": false,
    "reproposalBreach": {
     "after": "2026-10-25-1133-none",
     "bar": null
@@ -203,7 +230,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-26-0650-none",
+   "supersededBy": "2026-10-29-0652-none",
    "phase": "live",
    "counts": false
   },
@@ -220,7 +247,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-26-0650-none",
+   "supersededBy": "2026-10-29-0652-none",
    "phase": "live",
    "counts": false
   },
@@ -621,7 +648,7 @@
   {
    "file": "2026-10-12-1129-HLN.L.md",
    "id": "2026-10-12-1129-HLN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "HLN.L",
    "written": "2026-10-12",
    "side": "BUY",
@@ -655,7 +682,7 @@
   {
    "file": "2026-10-11-1212-HLN.L.md",
    "id": "2026-10-11-1212-HLN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "HLN.L",
    "written": "2026-10-11",
    "side": "BUY",
@@ -689,7 +716,7 @@
   {
    "file": "2026-10-10-1534-HLN.L.md",
    "id": "2026-10-10-1534-HLN.L",
-   "state": "expired",
+   "state": "open",
    "ticker": "HLN.L",
    "written": "2026-10-10",
    "side": "BUY",
@@ -723,7 +750,7 @@
   {
    "file": "2026-10-09-1359-NVO.md",
    "id": "2026-10-09-1359-NVO",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVO",
    "written": "2026-10-09",
    "side": "BUY",
@@ -1100,7 +1127,7 @@
   {
    "file": "2026-09-29-2346-NVO.md",
    "id": "2026-09-29-2346-NVO",
-   "state": "open",
+   "state": "expired",
    "ticker": "NVO",
    "written": "2026-09-29",
    "side": "BUY",
@@ -2144,7 +2171,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-26-0650-none",
+   "supersededBy": "2026-10-29-0652-none",
    "phase": "live",
    "counts": false
   },
@@ -2161,7 +2188,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-26-0650-none",
+   "supersededBy": "2026-10-29-0652-none",
    "phase": "live",
    "counts": false
   },
@@ -3053,9 +3080,9 @@
    "below": 20.7955
   },
   "none": {
-   "last": "2026-10-26-0650-none",
+   "last": "2026-10-29-0652-none",
    "limit": null,
-   "until": "2026-11-09",
+   "until": "2026-11-12",
    "below": null
   },
   "BN.PA": {
@@ -3200,5 +3227,5 @@
    }
   ]
  },
- "today": "2026-10-29"
+ "today": "2026-10-30"
 }
