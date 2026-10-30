@@ -643,7 +643,11 @@ The contract. An instruction missing any of these is not executable.
 **A (add/remove)**
 
 1. **Order** — ticker, exchange, buy/sell, amount in £, order type.
-2. **Thesis** — three sentences. Why this, why now, what the market is missing.
+2. **Thesis** — five labelled parts, about 150 to 250 words: **the business** (what it sells, to
+   whom, how it earns), **the engine** (margin, its consistency, growth), **why now**, **what the
+   market is missing**, and **what has to happen**. *Leo, 30 Oct 2026: it was three sentences, which
+   left too little room to explain the business; the separate "What it does" line is now the
+   first part (D103).*
 3. **Falsifier** — what specific, observable thing would prove this wrong. Not "the price falls".
    Something like "FY27 gross margin below 40%" or "the Q3 order book shrinks again".
 4. **Review date** — when to look, regardless of price.

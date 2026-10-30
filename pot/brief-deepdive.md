@@ -332,8 +332,9 @@ the trigger that woke you — it is not a reason to own a business, and §2.4 sa
 **filter**: a filter screens things out, it never argues you in.
 
 So the floor comparison belongs in P5 with the other numbers, as a gate the name passed. The thesis
-in P2 has to stand on the business: what it does, whether the earnings are any good (margin level,
-the *consistency* of that margin, growth — §2.4), and what the market is missing. Leo's own two
+in P2 has to stand on the business: what it does (**The business**), whether the earnings are any
+good (**The engine**: margin level, the *consistency* of that margin, growth — §2.4), and what the
+market is missing. Leo's own two
 proud buys were NVDA *because he used ChatGPT and reasoned about what compute would be worth*, and
 M&S *because he kept noticing the food range changing in the shops* — neither was a screen result.
 
@@ -661,22 +662,20 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 
 # <TICKER> — <company>
 
-**What it does:** <Two or three sentences of ordinary course of business, in plain English: what it
- sells, to whom, and how it earns. No thesis, no adjectives, no valuation — a reader who has never
- heard of the company should be able to say what it is. Leo buys what he is familiar enough with
- (§2), and this is what he judges that on; it also forces the business to be described before it is
- argued about, which is where a category-level risk becomes hard to skip.>
-
 <Only for a name in `cooldown` proposed again under exception 2 or 3 (D93):>
 **Re-proposed:** <what changed since <cooldown last id>, with its date: the results or filing, or how
  the case moved>
 
 ## 1. Order
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
-Valid through <d Month yyyy>. Currency <ccy>. Cash left idle: £<remainder>.
-<The last day Leo may place it: the proposal expires after that date, and with no date stated it
- expires after the next weekday (D101). Above the limit inside that window it is still open; it has
- just not filled yet.>
+Good till cancelled. Currency <ccy>. Cash left idle: £<remainder>.
+<Not a day order: Leo may not read it the day it is written. The proposal stays open 14 days, and
+ ends early at the company's next results or if the price falls more than 10% below the limit
+ (D102); `positions.js` works that out, so do not write an expiry date. Above the limit it is still
+ open; it has just not filled yet.>
+**Next results:** <d Month yyyy, from the company's investor-relations calendar or filing, with its
+ link; or "not announced". Yahoo has no date for most London and Paris names, and this is what ends
+ the proposal when it has none.>
 Expected first-year costs: <breakdown, naming the broker assumed and the flat commission>, <x>% of
  the ticket. <If a flat fee applies and idle cash could buy another whole share, what that does to
  the percentage — a consideration, never a gate.>
@@ -684,9 +683,19 @@ Expected first-year costs: <breakdown, naming the broker assumed and the flat co
  under the 50% cap. If the dominant risk is slow or unfalsifiable: half size, per Rule 4.>
 
 ## 2. Thesis
-<Three sentences. Why this, why now, what the market is missing.
- About the BUSINESS. See "The multiple is not the thesis" below.
- Must NOT contain the answer to P6's dominant risk — that answer is what P3 tests (Rule 2).>
+**The business:** <What it sells, to whom, and how it earns, in plain English: no adjectives, no
+ valuation. A reader who has never heard of the company should be able to say what it is. Leo buys
+ what he is familiar enough with (§2), and this is what he judges that on; it also forces the
+ business to be described before it is argued about, which is where a category-level risk becomes
+ hard to skip.>
+**The engine:** <whether the earnings are any good: margin level, how steady that margin has been,
+ and growth (§2.4), each with a sourced figure.>
+**Why now:** <what has changed, or the event that makes this the time.>
+**What the market is missing:** <the different view, and the evidence for it.>
+**What has to happen:** <the measurable outcome the case depends on; P3 tests it.>
+<About 150 to 250 words across the five, each part at least a sentence. About the BUSINESS: see "The
+ multiple is not the thesis" below. Must NOT contain the answer to P6's dominant risk; that answer is
+ what P3 tests (Rule 2).>
 
 ## 3. Falsifier
 **Warning:** <the first observable that says the thesis is under strain. Usually a miss against

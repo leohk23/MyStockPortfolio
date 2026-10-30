@@ -13,8 +13,8 @@
 // A proposal's state is therefore a FACT about the workbook, not an opinion:
 //
 //   accepted  a pot trade names this proposal id
-//   expired   no trade, and the last day its order says it may be placed has passed (D101)
-//   open      no trade yet, and the order is still inside its stated life
+//   expired   no trade, and 14 days have passed, or results, or a fall of 10% below the limit (D102)
+//   open      no trade yet, and still inside that life
 //   withdrawn the Deep dive's second reader took it back before Leo saw it (D95)
 //   obsolete  written before the pot was funded and never bought (D97): free to be proposed again
 //
@@ -44,42 +44,6 @@ function limitOf(order) {
     const m = String(order || '').match(new RegExp('\\blimit(?:\\s+price)?(?:\\s+of)?\\s*@?\\s*\\**\\s*'
         + CCY.source + '?\\s*(\\d[\\d,]*(?:\\.\\d+)?)', 'i'));
     return m ? Number(m[1].replace(/,/g, '')) : null;
-}
-
-// D101: the last day the order may be placed, as P1 states it ("Valid through 30 October 2026",
-// "DAY order for 10 September 2026", "good for 28 September 2026", "expire at the end of 19
-// October's regular session"). This, not the price, is what expires a proposal: NFLX's day order
-// for 10 Sep sat "open" for seven weeks because the price fell below its limit, while HLN.L's
-// expired within a day on a 0.5% rise. A clause naming the order's life is read before one that
-// only says when to cancel ("cancel before the 28 October release"). A date before the proposal or
-// more than 60 days after it is not believed. No stated date: through the next weekday after it
-// was written, so a day order written after the close can still be read and placed.
-const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December';
-const DATE = new RegExp('\\b(\\d{4})-(\\d{2})-(\\d{2})\\b|\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(' + MONTHS + ')(?:\'s)?(?:,?\\s+(\\d{4}))?'
-    + '|\\b(' + MONTHS + ')\\s+(\\d{1,2}),?\\s+(\\d{4})', 'i');
-const LIFE = [/valid|day (?:order|limit)|good (?:for|until|till|through)|expir|session on/i, /cancel|lapse/i];
-function validUntilOf(order, written) {
-    const ymd = d => d.toISOString().slice(0, 10);
-    const base = new Date(written + 'T00:00:00Z');
-    if (isNaN(base)) return null;
-    const dateIn = s => {
-        const m = s.match(DATE);
-        if (!m) return null;
-        if (m[1]) return `${m[1]}-${m[2]}-${m[3]}`;
-        const [day, month, year] = m[4] ? [m[4], m[5], m[6]] : [m[8], m[7], m[9]];
-        let d = new Date(`${day} ${month} ${year || base.getUTCFullYear()} UTC`);
-        if (!year && d < base) d = new Date(`${day} ${month} ${base.getUTCFullYear() + 1} UTC`);
-        return isNaN(d) ? null : ymd(d);
-    };
-    const clauses = String(order || '').replace(/\*/g, '').split(/\.\s|;\s|\n/);
-    for (const kind of LIFE) for (const c of clauses) {
-        if (!kind.test(c)) continue;
-        const d = dateIn(c);
-        if (d && d >= written && (Date.parse(d) - base) / 864e5 <= 60) return d;
-    }
-    const next = new Date(base);
-    do next.setUTCDate(next.getUTCDate() + 1); while ([0, 6].includes(next.getUTCDay()));
-    return ymd(next);
 }
 
 const WITHDRAWN = /\*\*Withdrawn by the second reader:?\*\*[:\s]*([^\n]+)/i;   // D95
@@ -112,12 +76,16 @@ function parseProposal(file) {
     const words = (s4.match(/\b(\d{1,2}\s+[A-Z][a-z]+\s+\d{4})\b/) || [])[1];
     const reviewBy = iso || (words && !isNaN(Date.parse(words))
         ? new Date(words + ' UTC').toISOString().slice(0, 10) : null);
+    // D102: the next results date P1 states, which ends the proposal where Yahoo has none.
+    const stated = (md.match(/\*\*Next results:?\*\*[:\s]*\**\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Z][a-z]+\s+\d{4})/) || [])[1];
+    const nextResults = stated && !isNaN(Date.parse(/-/.test(stated) ? stated : stated + ' UTC'))
+        ? new Date(/-/.test(stated) ? stated + 'T00:00:00Z' : stated + ' UTC').toISOString().slice(0, 10) : null;
     return {
         ticker: file.replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}(-\d{4})?-/, ''),
         written: file.slice(0, 10),
+        nextResults,
         side: /\bSELL\b/.test(order) ? 'SELL' : 'BUY',
         limit,
-        validUntil: validUntilOf(order, file.slice(0, 10)),
         // Two tiers since 30 Aug. Older proposals carry one unlabelled paragraph; keep it as the
         // break, because that is what a single-threshold falsifier always meant.
         warning: line(falsifier, 'Warning'),
@@ -190,6 +158,31 @@ function riskHistory(proposals, rejected = new Set()) {
 // the rule began are judged: the history before it was written under D15 and is not a breach.
 const REPROPOSE_DAYS = 14, REPROPOSE_DROP = 0.05, REPROPOSE_FROM = '2026-10-26';
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+
+// D102: how long an unbought proposal stays open. Leo cannot always read or place one the day it
+// is written, so it is not a day order: it stays open for the same 14 days its name stands under
+// D93, and ends early once the numbers it was written on stop holding: on the company's next
+// results, or a price more than 10% below its limit. The limit, not the price that day, because it
+// is the price the proposal agreed to pay. So a name either has a proposal Leo can still act on, or
+// is free to be proposed fresh; never both blocked and expired. Expiry is final, which is why an
+// early one is carried from the last book: a price that recovers does not make stale numbers good.
+// `resultsDue` is the earlier of the quote's next results date and the one the proposal states
+// (**Next results:**, for the London and Paris names Yahoo has none for), after the day it was
+// written: results that day are taken as in it. Refreshed while still ahead (an estimate moves),
+// and kept once passed (the quote then drops it). A proposal first seen after results already
+// passed, with no stated date, cannot know of them; the 14 days still bound it.
+const FALL_BELOW_LIMIT = 0.10;
+function openLife(p, before, quote, px, today) {
+    const next = [quote?.earnings?.date, p.nextResults].filter(d => d > p.written).sort()[0];
+    const resultsDue = before?.resultsDue && before.resultsDue <= today ? before.resultsDue : next || before?.resultsDue || null;
+    const until = addDays(p.written, REPROPOSE_DAYS);
+    let expiredBy = before?.state === 'expired' && before.expiredBy !== 'days' ? before.expiredBy : null;
+    if (!expiredBy) expiredBy = today >= until ? 'days'
+        : resultsDue && today >= resultsDue ? 'results'
+            : p.side === 'BUY' && p.limit && px != null && px < p.limit * (1 - FALL_BELOW_LIMIT) ? 'fall' : null;
+    const lastDay = addDays([until, resultsDue].filter(Boolean).sort()[0], -1);
+    return { validUntil: lastDay, ...(resultsDue ? { resultsDue } : {}), ...(expiredBy ? { expiredBy } : {}) };
+}
 // A reason that is not price must name what changed; "price" alone is checked against the bar.
 const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
 
@@ -279,6 +272,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     const holdings = vaulted.holdings;
     const quotes = read('prices.json')?.quotes || {};
     const prev = read('pot/positions.json', {});
+    const prevById = new Map((prev.proposals || []).map(x => [x.id, x]));
 
     const trades = potTrades(holdings);
     const claimed = new Set(trades.map(t => t.pot).filter(x => x && x !== 'Y'));
@@ -306,14 +300,13 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         if (trade) state = 'accepted';                      // a bought name stays bought, rejected or not
         else if (parsed.withdrawn) state = 'withdrawn';     // D95: never reached Leo
         else if (rejected) state = 'rejected';
-        // D101: an order lapses on its own stated date, not on the price. Inside that window a
-        // price above the limit only means it has not filled yet, so the proposal stays open with
-        // `vsLimit` saying how far away it is; after it, the numbers it was written on are stale.
-        else if (parsed.ticker !== 'none' && today > parsed.validUntil) state = 'expired';
         const px = quotes[parsed.ticker]?.price;
+        const life = parsed.ticker === 'none' ? {} : openLife(parsed, prevById.get(id), quotes[parsed.ticker], px, today);
+        if (state === 'open' && life.expiredBy) state = 'expired';
+        // Inside its life a price above the limit only means the order has not filled yet.
         const vsLimit = state === 'open' && parsed.limit && px != null ? Number((px / parsed.limit - 1).toFixed(4)) : null;
         return {
-            file, id, state, ...parsed, ...(vsLimit != null ? { vsLimit } : {}),
+            file, id, state, ...parsed, ...life, ...(vsLimit != null ? { vsLimit } : {}),
             ...(trade ? { executed: { date: trade.date, qty: trade.qty, price: trade.price } } : {}),
             ...(!trade && rejected ? { rejected: { date: rejected.date, reason: rejected.reason } } : {}),
         };
@@ -345,7 +338,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         // D97: written before the pot had money, under rules that have since moved, and never
         // bought. Not awaiting Leo, and not a rejection either: the name is free to be proposed
         // again. NVDA and RSGN.SW from 31 Aug had sat "open" for two months on limits still in reach.
-        // Expired too since D101: every pre-live order's date has passed, so "expired" would now
+        // Expired too since D102: every pre-live proposal is past its 14 days, so "expired" would now
         // swallow all of them, and what marks these is when they were written, not how they lapsed.
         if ((p.state === 'open' || p.state === 'expired') && p.phase === 'pre-live') p.state = 'obsolete';
     }
@@ -467,20 +460,31 @@ if (process.argv.includes('--selftest')) {
     assert.strictEqual(limitOf('under the 0.5% fee limit, then limit HK$12.5'), 12.5, 'a limit with no price is not the limit');
     assert.strictEqual(limitOf('BUY at market'), null);
 
-    // D101: an order's life, as the proposals actually phrase it.
-    const life = (o, w) => validUntilOf(o, w);
-    assert.strictEqual(life('BUY 2 shares of NFLX on NASDAQ, limit $76.00, regular session, DAY order for **10 September 2026**. Currency USD.', '2026-09-09'), '2026-09-10');
-    assert.strictEqual(life('limit €63.20**. Currency EUR. Valid until the Paris close on **30 October 2026**, then cancel unfilled.', '2026-10-28'), '2026-10-30');
-    assert.strictEqual(life('limit $40.50, regular session only, good for 28 September 2026.**', '2026-09-28'), '2026-09-28');
-    assert.strictEqual(life('Valid through 27 October 2026; cancel before the 28 October sales release if unfilled.', '2026-10-21'), '2026-10-27',
-        'the clause naming the order\'s life wins over a later cancel date');
-    assert.strictEqual(life('Expire unfilled at the end of **19 October\'s regular session**; do not chase.', '2026-10-18'), '2026-10-19', 'no year: the proposal\'s');
-    assert.strictEqual(life('Day order on 30 October 2026; expires at the regular London close.', '2026-10-30'), '2026-10-30');
-    assert.strictEqual(life('Expire unfilled after January 4, 2027.', '2026-12-30'), '2027-01-04');
-    assert.strictEqual(life('BUY 2 ADSs of PDD on NASDAQ through Trading 212 Invest, limit USD81.00.', '2026-10-09'), '2026-10-12',
-        'no stated life, written on a Friday: through Monday');
-    assert.strictEqual(life('Day order for the next Paris session; let it expire rather than chase.', '2026-10-07'), '2026-10-08');
-    assert.strictEqual(life('Valid through 9 October 2025.', '2026-10-02'), '2026-10-05', 'a date before the proposal is not believed');
+    // D102: a proposal's life. HLN.L written 30 Oct at a 317.7p limit.
+    {
+        const hln = { written: '2026-10-30', side: 'BUY', limit: 317.7 };
+        const life = (px, today, quote, before) => openLife(hln, before, quote, px, today);
+        assert.deepStrictEqual(life(319.4, '2026-10-31'), { validUntil: '2026-11-12' }, 'above the limit is not filled yet, not expired');
+        assert.strictEqual(life(300, '2026-11-12').expiredBy, undefined, 'day 13, 5.6% below: still open');
+        assert.strictEqual(life(300, '2026-11-13').expiredBy, 'days', 'the 14 days end with the D93 window');
+        assert.strictEqual(life(285, '2026-11-02').expiredBy, 'fall', 'more than 10% below the limit');
+        const early = life(319, '2026-11-02', { earnings: { date: '2026-11-05' } });
+        assert.deepStrictEqual(early, { validUntil: '2026-11-04', resultsDue: '2026-11-05' }, 'results cut the life short');
+        assert.strictEqual(life(319, '2026-11-05', {}, { state: 'open', ...early }).expiredBy, 'results',
+            'the date is kept once the quote has dropped it');
+        assert.strictEqual(life(319, '2026-11-03', {}, { state: 'expired', expiredBy: 'fall' }).expiredBy, 'fall',
+            'an early expiry is final: a recovered price does not make stale numbers good');
+        assert.strictEqual(life(319, '2026-11-02', { earnings: { date: '2026-10-30' } }).resultsDue, undefined,
+            'results on the day it was written are in it');
+        const own = { ...hln, nextResults: '2026-11-05' };
+        assert.strictEqual(openLife(own, undefined, {}, 319, '2026-11-05').expiredBy, 'results', 'the proposal\'s own date where Yahoo has none');
+        assert.strictEqual(openLife({ ...hln, nextResults: '2026-11-09' }, undefined, { earnings: { date: '2026-11-05' } }, 319, '2026-11-02').resultsDue,
+            '2026-11-05', 'the earlier of the two');
+        const orig = fs.readFileSync;
+        fs.readFileSync = () => '# X\n\n## 1. Order\nBUY 1 X, limit $10. Good till cancelled.\n**Next results:** **5 November 2026**, [IR](https://x)\n\n## 2. Thesis\nx';
+        try { assert.strictEqual(parseProposal('2026-10-30-0705-X.md').nextResults, '2026-11-05'); } finally { fs.readFileSync = orig; }
+    }
+
     assert.strictEqual(parsed.reviewBy, '2026-11-20', `reviewBy parsed as ${parsed.reviewBy}`);
     assert.ok(/73\.5/.test(parsed.warning), 'warning tier not read');
     assert.ok(/70\.0/.test(parsed.break), 'break tier not read');

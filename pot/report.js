@@ -1097,10 +1097,10 @@ does not look exactly like a healthy one.
     // Nor are a run report, a `-none` (cash won: nothing to execute) or a superseded proposal
     // awaiting anything — together they had inflated this to 68 on 12 Sep.
     const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
-    // D101: an order lasts until the date its P1 states; above its limit inside that, it has
-    // simply not filled yet.
+    // D102: a proposal stays open 14 days, less if results come first or the price falls 10% below
+    // its limit; above its limit inside that, it has simply not filled yet.
     const byFile = new Map((pos.proposals || []).map(p => [p.file, p]));
-    const validOf = f => byFile.get(f)?.validUntil || '–';
+    const validOf = f => (p => p?.validUntil ? p.validUntil + (p.resultsDue ? `, results ${p.resultsDue}` : '') : '–')(byFile.get(f));
     const vsLimitOf = f => {
         const v = byFile.get(f)?.vsLimit;
         return v == null ? '–' : v > 0 ? `${(v * 100).toFixed(1)}% above, not filled yet` : `${(-v * 100).toFixed(1)}% below`;
