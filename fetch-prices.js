@@ -2098,6 +2098,17 @@ function resolveEps(manual, fresh, carried, currency) {
     return typeof carried === 'number' ? carried : undefined;
 }
 
+// The other form of the override, `{ value, currency, basis, source }`: the figure as the company
+// files it, per receipt, in its own currency. A plain number in the quote's currency is a figure
+// converted once at that day's rate, and its P/E then drifts with the exchange rate (TKOMY's yen
+// override would move with JPY/USD). This converts at each run's rate instead. Null when the entry
+// is malformed or a rate is missing: the caller shows "–" rather than the Yahoo figure it replaces.
+function filedEpsInQuote(f, currency, rates) {
+    if (typeof f?.value !== 'number' || !f.currency) return null;
+    const fx = epsToQuote({ currency: f.currency }, currency, rates);
+    return fx == null ? null : Number((f.value * fx).toPrecision(6));
+}
+
 // USD per unit of a currency, from the pair quoted the precise way round. Yahoo quotes a pair to
 // four decimal places, so a currency worth a fraction of a dollar lost most of its digits:
 // KRWUSD=X read 0.0008 against 1 / 1,325.4 = 0.000754, which valued every Korean holding 6% high
@@ -2415,6 +2426,9 @@ async function main() {
     const carried = previousEps();
     const manualEps = Object.fromEntries([...holdings, ...watchlist]
         .filter(x => typeof x.eps === 'number').map(x => [x.yahoo, x.eps]));
+    // Overrides in the company's own currency wait for this run's rates (filedEpsInQuote).
+    const filedEps = Object.fromEntries([...holdings, ...watchlist]
+        .filter(x => x.eps && typeof x.eps === 'object').map(x => [x.yahoo, x.eps]));
     let fresh = {}, earningsDates = {}, quoteTypes = {}, sessions = {}, freshFwd = {}, shareCount = {};
     let auth = null;                 // reused by the trough-multiple step, after weekly history
     try {
@@ -2717,6 +2731,24 @@ async function main() {
         const rate = rateFor(q.currency, rates);
         if (!rate) throw new Error(`no rate for ${q.currency} (${t}); not writing`);
         q.priceUSD = q.price * rate;
+    }
+
+    // Manual EPS in the company's own currency, now the rates are in. It replaces whatever Yahoo
+    // sent, and everything after this point treats it as manual (no split rebase, no derived TTM).
+    for (const [t, f] of Object.entries(filedEps)) {
+        if (!quotes[t]) continue;
+        const v = filedEpsInQuote(f, quotes[t].currency, rates);
+        if (v == null) { delete quotes[t].eps; console.error(`manual eps for ${t} unusable (${JSON.stringify(f)}); showing none`); continue; }
+        quotes[t].eps = manualEps[t] = v;
+        // A hand-set figure goes out of date silently. `through` is the last quarter in it; once a
+        // later quarter is reported (the quote's own, or the home listing's stored statements, which
+        // arrive within days), the page says so and the log asks for an update.
+        const newest = [quotes[t].mrq, lastQuarterDate(store.eps[primaryOf[t]]), lastQuarterDate(store.eps[t])]
+            .filter(Boolean).sort().pop();
+        const stale = !!(f.through && newest && newest > f.through);
+        quotes[t].epsManual = { value: f.value, currency: f.currency, through: f.through || null,
+            basis: f.basis || null, source: f.source || null, ...(stale ? { stale: true } : {}) };
+        if (stale) console.error(`manual eps for ${t} runs to ${f.through}, but ${newest} is reported: update meta.json`);
     }
 
     const priced = holdings.filter(h => quotes[h.yahoo]);
@@ -3352,6 +3384,12 @@ function selftest() {
     assert.strictEqual(resolveEps(undefined, 0.12, 999, 'GBp'), 12);       // fresh, scaled once
     assert.strictEqual(resolveEps(undefined, undefined, 12, 'GBp'), 12);   // carried as-is
     assert.strictEqual(resolveEps(undefined, undefined, undefined, 'USD'), undefined);
+    // filedEpsInQuote: TKOMY's ¥18.9287 per receipt at 157.562 yen to the dollar, at each run's rate.
+    const yen = { USD: 1, JPY: 1 / 157.562, GBP: 1.3 };
+    assert.strictEqual(filedEpsInQuote({ value: 18.9287, currency: 'JPY' }, 'USD', yen), 0.120135);
+    assert.strictEqual(filedEpsInQuote({ value: 0.5, currency: 'GBP' }, 'GBp', yen), 50);   // pounds into pence
+    assert.strictEqual(filedEpsInQuote({ value: 18.9287, currency: 'JPY' }, 'USD', { USD: 1 }), null); // no yen rate
+    assert.strictEqual(filedEpsInQuote({ value: '18.9', currency: 'JPY' }, 'USD', yen), null);        // malformed
 
     // normEpsFrom: headline EPS scaled by the latest year's normalized/reported ratio.
     const normEntry = { years: [{ date: '2024-12-31', norm: 90, ni: 100 }, { date: '2025-12-31', norm: 112, ni: 132 }] };

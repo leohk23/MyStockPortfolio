@@ -282,7 +282,7 @@ Neither field is ever carried forward from the previous run. A stale `ext` would
 
 Two optional `meta.json` fields per instrument drive the PE columns:
 
-- `eps` — checked manual trailing EPS override. It takes precedence over Yahoo when present; use it only for a known bad/missing Yahoo figure. Native quote currency.
+- `eps` — checked manual trailing EPS override. It takes precedence over Yahoo when present; use it only for a known bad/missing Yahoo figure. Either a number in the native quote currency, or (30 Oct 2026, TKOMY) `{ value, currency, through, basis, source }`: the figure as the company files it, per receipt, in its own currency, which the bot converts at each run's rate (`filedEpsInQuote`) so the P/E does not drift with the exchange rate. `through` is the last quarter it covers; once a later quarter is reported the page tags it **out of date** and the bot's log asks for an update. The page shows `basis` and `source` on the EPS (TTM) row. The bot reads it from `holdings.json`, so run `npm run publish` after editing it (a watchlist entry is read directly).
 - `specialEps` / `specialEpsLabel` — a stock- or industry-appropriate earnings figure that isn't plain trailing EPS (FFO/share for a REIT, adjusted/core EPS for a bank, a normalized multi-year average for a cyclical, ...) and a short label shown in the column's tooltip. Native quote currency. Omit both to leave Special PE identical to the normal PE.
 
 **Earnings bases — always say which one a multiple is on.** Filed figures are never overwritten; each

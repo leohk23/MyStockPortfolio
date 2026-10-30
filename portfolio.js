@@ -177,7 +177,8 @@ function incomeReceived(h, divs, rates, quoteCurrency, since = null) {
 // for a single instrument — so it never once rendered. Deleted rather than left as a second,
 // dead definition of the same idea.
 function valuation(h, quote) {
-    const eps = quote.eps ?? h.eps ?? null;
+    // h.eps can be the { value, currency } form, which only fetch-prices converts.
+    const eps = quote.eps ?? (typeof h.eps === 'number' ? h.eps : null);
     const pe = eps > 0 ? quote.price / eps : null;
     // Special P/E denominator, in order: a manual meta.json override (FFO, bank-adjusted, ...);
     // else the recurring EPS fetch-prices derives from normalized income (headline minus one-offs

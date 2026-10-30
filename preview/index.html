@@ -1324,7 +1324,11 @@
                 // source-backed company-adjusted TTM figure.
                 ['Normalized EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
                 ['P/E (normalized)', '<span id="deep-rec-pe" class="muted">…</span>'],
-                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
+                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsManual
+                    // Set by hand because Yahoo's figure was found wrong; the workings travel with it.
+                    ? ` <span class="tag" title="${escapeHTML(`Set by hand in meta.json, replacing Yahoo's figure: ${q.epsManual.currency} ${q.epsManual.value} per share, converted at today's rate. ${q.epsManual.basis || ''} Source: ${q.epsManual.source || 'not recorded'}.`
+                        + (q.epsManual.stale ? ` OUT OF DATE: it runs to ${ymd(q.epsManual.through)}, and a later quarter has been reported.` : ''))}">${q.epsManual.stale ? 'manual · out of date' : q.epsManual.through ? `manual · ${qShort(q.epsManual.through)}` : 'manual'}</span>`
+                    : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
                     : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],
                 ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×'],
@@ -2203,7 +2207,7 @@
                         recEps = leg.quote.normEps;
                         recPe = recEps > 0 ? leg.quote.price / recEps : null;
                         note = basisBreak
-                            ? `Yahoo's reported TTM EPS × the recurring share of the latest fiscal year. The four `
+                            ? `${leg.quote.epsManual ? 'The manual' : 'Yahoo\'s reported'} TTM EPS × the recurring share of the latest fiscal year. The four `
                                 + `filed quarters are not summed: ${basisBreak}.`
                             : 'Latest fiscal year — four filed quarters not yet in range, or the filed '
                                 + 'window is behind the reported one and the statements are in another currency.';
