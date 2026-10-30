@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-30T06:30:05.517Z",
- "cashGBP": 186.61,
+ "generated": "2026-10-30T12:45:04.137Z",
+ "cashGBP": 187.86,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -146,6 +146,23 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-10-30-0705-HLN.L.md",
+   "id": "2026-10-30-0705-HLN.L",
+   "state": "expired",
+   "ticker": "HLN.L",
+   "written": "2026-10-30",
+   "side": "BUY",
+   "limit": 317.7,
+   "warning": null,
+   "break": null,
+   "reviewBy": "2026-11-06",
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-10-29-0652-none.md",
    "id": "2026-10-29-0652-none",
@@ -658,9 +675,9 @@
    "reviewBy": "2026-10-30",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-10-30-0705-HLN.L",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-12-1129-BN.PA.md",
@@ -692,7 +709,7 @@
    "reviewBy": "2026-10-29",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-12-1129-HLN.L",
+   "supersededBy": "2026-10-30-0705-HLN.L",
    "phase": "live",
    "counts": false
   },
@@ -726,7 +743,7 @@
    "reviewBy": "2026-10-30",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-12-1129-HLN.L",
+   "supersededBy": "2026-10-30-0705-HLN.L",
    "phase": "live",
    "counts": false
   },
@@ -3085,6 +3102,12 @@
    "until": "2026-11-12",
    "below": null
   },
+  "HLN.L": {
+   "last": "2026-10-30-0705-HLN.L",
+   "limit": 317.7,
+   "until": "2026-11-13",
+   "below": 301.815
+  },
   "BN.PA": {
    "last": "2026-10-28-1017-BN.PA",
    "limit": 63.2,
@@ -3210,8 +3233,8 @@
    },
    {
     "category": "financial",
-    "text": "Recurring restructuring and shareholder distributions absorb the cash that adjusted profit suggests is available to owners.",
-    "id": "2026-10-12-1129-HLN.L"
+    "text": "recurring restructuring and shareholder distributions consume the cash that adjusted profit suggests ordinary owners can retain.",
+    "id": "2026-10-30-0705-HLN.L"
    }
   ],
   "BN.PA": [
