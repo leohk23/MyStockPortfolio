@@ -2055,15 +2055,21 @@
                     const prev = priorQ ? qsum(priorQ, f) : null;
                     return { v, g: v != null && prev != null ? yoy(v, prev) : null };
                 };
+                // Income adds up across any four quarters; EPS only where all four are per the same
+                // share (shareBasisBreak). Tokio Marine's mixed old and new shares read 2.0x.
+                const basisBreak = ttmQ ? portfolioLib.shareBasisBreak(ttmQ) : null;
+                const priorBreak = priorQ ? portfolioLib.shareBasisBreak(priorQ) : null;
+                const ttmPs = f => basisBreak ? { v: null, g: null }
+                    : priorBreak ? { v: ttmM(f).v, g: null } : ttmM(f);
                 const tRev = ttmM(x => x.rev), tOp = ttmM(x => x.opinc), tNic = ttmM(x => x.nic),
-                    tEps = ttmM(x => x.eps), tRec = ttmM(quarterRecEps);
+                    tEps = ttmPs(x => x.eps), tRec = ttmPs(quarterRecEps);
                 const researchTtm = ttmQ?.every(x => researchFor(researchPeriods, x.date));
                 if (researchTtm && !priorQ?.every(x => researchFor(researchPeriods, x.date))) tRec.g = null;
                 const ratio = (n, d) => n != null && d ? n / d : null;
                 const pOpM = priorQ ? ratio(qsum(priorQ, x => x.opinc), qsum(priorQ, x => x.rev)) : null;
                 const pNetM = priorQ ? ratio(qsum(priorQ, x => x.nic), qsum(priorQ, x => x.rev)) : null;
                 const ttmRow = ttmQ ? `<tr class="ttm-row">
-                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}${ttmQ.some(x => x.derivedQuarter) ? '. Includes a quarter reconstructed from the annual — the total still ties to the filed accounts.' : ''}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}${ttmQ.some(x => x.derivedQuarter) ? ', with one quarter reconstructed from the audited annual' : ''}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">${ttmQ.some(x => x.derivedQuarter) ? 'part-derived' : 'filed'} · ${qShort(ttmQ[3].date)}</span></td>
+                        <td title="Trailing 12 months: the four quarters ended ${ymd(ttmQ[3].date)}${priorQ ? `, vs the four ended ${ymd(priorQ[3].date)}` : ' — no prior-year quarters in range for a comparison'}${ttmQ.some(x => x.derivedQuarter) ? '. Includes a quarter reconstructed from the annual — the total still ties to the filed accounts.' : ''}${basisBreak ? `. EPS left blank: ${basisBreak}.` : ''}">TTM <span class="tag" title="Summed from filed quarterly statements, through ${qShort(ttmQ[3].date)}${ttmQ.some(x => x.derivedQuarter) ? ', with one quarter reconstructed from the audited annual' : ''}. Lags the reported TTM EPS in Valuation until Yahoo files the newest quarter — so this can read a quarter behind.">${ttmQ.some(x => x.derivedQuarter) ? 'part-derived' : 'filed'} · ${qShort(ttmQ[3].date)}</span></td>
                         ${cell(tRev.v, tRev.g)}
                         ${cell(tOp.v, tOp.g)}
                         ${marginCell(ratio(tOp.v, tRev.v), pOpM)}
@@ -2148,6 +2154,10 @@
                     const fxRep = rateOf(e.currency), fxQuote = rateOf(leg.quote.currency);
                     const fx = !e.currency || e.currency === leg.quote.currency ? 1
                         : (fxRep > 0 && fxQuote > 0 ? fxRep / fxQuote : null);
+                    // `e` is per ORDINARY share (a home listing's own figures, or onUnderlying's),
+                    // and the price is per receipt. Without this TSM's five shares a receipt read
+                    // 136.7x against 27.3x, and Nintendo's quarter-share receipt 5.0x against 19.9x.
+                    const perReceipt = leg.adrShares > 0 ? leg.adrShares : 1;
                     const recRatio = tEps.v > 0 && tRec.v != null ? tRec.v / tEps.v : null;
                     const aligned = leg.quote.mrq && ttmQ && leg.quote.mrq === ttmQ[3].date;
                     let recEps = null, recPe = null, note = '', tag = '';
@@ -2172,12 +2182,13 @@
                         note = leg.specialEpsLabel;
                         tag = 'manual';
                     } else if (tRec.v != null && fx != null) {
-                        recEps = tRec.v * fx;
+                        recEps = tRec.v * fx * perReceipt;
                         // A loss-making recurring year has no meaningful multiple — same rule
                         // troughPe uses. Show the negative EPS, withhold the P/E.
                         recPe = recEps > 0 ? leg.quote.price / recEps : null;
                         note = `Sum of the recurring EPS of the four filed quarters ended ${ymd(ttmQ[3].date)}, `
                             + (fx === 1 ? '' : `converted from ${e.currency} into ${leg.quote.currency}, `)
+                            + (perReceipt === 1 ? '' : `times ${perReceipt} ordinary shares to one receipt, `)
                             + `against today's price. Yahoo normalized income is the source; it is not `
                             + `treated as proof that every one-off was removed.`;
                         tag = `filed · ${qShort(ttmQ[3].date)}`;
@@ -2191,8 +2202,11 @@
                     } else if (leg.quote.normEps != null) {
                         recEps = leg.quote.normEps;
                         recPe = recEps > 0 ? leg.quote.price / recEps : null;
-                        note = 'Latest fiscal year — four filed quarters not yet in range, or the filed '
-                            + 'window is behind the reported one and the statements are in another currency.';
+                        note = basisBreak
+                            ? `Yahoo's reported TTM EPS × the recurring share of the latest fiscal year. The four `
+                                + `filed quarters are not summed: ${basisBreak}.`
+                            : 'Latest fiscal year — four filed quarters not yet in range, or the filed '
+                                + 'window is behind the reported one and the statements are in another currency.';
                         tag = 'annual';
                     }
                     const mark = tag ? ` <span class="tag" title="${note}">${tag}</span>` : '';
