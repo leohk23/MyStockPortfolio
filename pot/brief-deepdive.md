@@ -673,7 +673,10 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 
 ## 1. Order
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
-Currency <ccy>. Cash left idle: £<remainder>.
+Valid through <d Month yyyy>. Currency <ccy>. Cash left idle: £<remainder>.
+<The last day Leo may place it: the proposal expires after that date, and with no date stated it
+ expires after the next weekday (D101). Above the limit inside that window it is still open; it has
+ just not filled yet.>
 Expected first-year costs: <breakdown, naming the broker assumed and the flat commission>, <x>% of
  the ticket. <If a flat fee applies and idle cash could buy another whole share, what that does to
  the percentage — a consideration, never a gate.>

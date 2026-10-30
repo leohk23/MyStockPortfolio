@@ -1097,6 +1097,14 @@ does not look exactly like a healthy one.
     // Nor are a run report, a `-none` (cash won: nothing to execute) or a superseded proposal
     // awaiting anything — together they had inflated this to 68 on 12 Sep.
     const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
+    // D101: an order lasts until the date its P1 states; above its limit inside that, it has
+    // simply not filled yet.
+    const byFile = new Map((pos.proposals || []).map(p => [p.file, p]));
+    const validOf = f => byFile.get(f)?.validUntil || '–';
+    const vsLimitOf = f => {
+        const v = byFile.get(f)?.vsLimit;
+        return v == null ? '–' : v > 0 ? `${(v * 100).toFixed(1)}% above, not filled yet` : `${(-v * 100).toFixed(1)}% below`;
+    };
     const openProposals = proposals.filter(f => !/-(ranking|none)\.md$/.test(f) && !superseded.has(f)
         && (stateOf.get(f) || 'open') === 'open');
     // D93: a name proposed again inside its two weeks with neither a limit 5% lower nor a reason.
@@ -1130,8 +1138,8 @@ ${sig?.instructions?.length
 ${unannotatedLines(unannotated)}${openProposals.length
         ? '- **' + openProposals.length + ' proposal' + (openProposals.length === 1 ? '' : 's')
             + ' awaiting your decision**' + String.fromCharCode(10) + String.fromCharCode(10)
-            + '| proposal | written | second reader |' + String.fromCharCode(10) + '|---|---|---|' + String.fromCharCode(10)
-            + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} | ${secondRead(f)} |`).join(String.fromCharCode(10))
+            + '| proposal | written | valid until | price vs limit | second reader |' + String.fromCharCode(10) + '|---|---|---|---|---|' + String.fromCharCode(10)
+            + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} | ${validOf(f)} | ${vsLimitOf(f)} | ${secondRead(f)} |`).join(String.fromCharCode(10))
         : '- No proposal is waiting.'}
 ${reproposals.length
         ? reproposals.map(p => '- **Re-proposed inside its two weeks** — [' + p.id + '](proposals/' + p.file + ') repeats ['
