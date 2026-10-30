@@ -1622,6 +1622,19 @@ function previousQuotes() {
     catch { return {}; }
 }
 
+// A gilt's `yahoo` is only a key: it is priced by ISIN. So a gilt whose key was renamed (T31.L
+// became UKT31.L on 30 Oct 2026) finds its stored closes and its backfill under the old key by that
+// ISIN, rather than starting again from nothing. `isinOf` reads the ISIN off a stored entry.
+function byIsin(store, lseOf, isinOf) {
+    const out = { ...store };
+    for (const [t, isin] of Object.entries(lseOf)) {
+        if (out[t]) continue;
+        const old = Object.keys(store).find(k => isinOf(store[k]) === isin);
+        if (old) out[t] = store[old];
+    }
+    return out;
+}
+
 // Annual EPS is reported four times a year, so re-fetching it hourly for every holding is 56
 // wasted requests an hour against the one endpoint Yahoo rate-limits hardest. Keep it in the
 // repo and refresh only when it ages out — or when a new holding has no history yet.
@@ -2399,14 +2412,16 @@ async function main() {
         .map(x => [x.yahoo, x.isin || (x.lse && prevLse[x.yahoo]?.bond?.isin)]).filter(([, isin]) => isin));
     let giltBack = {};
     try { giltBack = JSON.parse(fs.readFileSync('gilt-history.json', 'utf8')); } catch { /* no backfill: the mids alone */ }
+    const prevGilt = byIsin(prevLse, lseOf, q => q?.bond?.isin);
+    giltBack = byIsin(giltBack, lseOf, g => g?.isin);
 
     for (const t of tickers) {
         try {
-            quotes[t] = lseOf[t] ? await fetchGilt(lseOf[t], prevLse[t]?.lseCloses, giltBack[t]) : await fetchTicker(t);
+            quotes[t] = lseOf[t] ? await fetchGilt(lseOf[t], prevGilt[t]?.lseCloses, giltBack[t]) : await fetchTicker(t);
             console.log(`ok   ${t} ${quotes[t].price} ${quotes[t].currency}`);
         } catch (e) {
-            if (lseOf[t] && prevLse[t]?.lseCloses) {
-                quotes[t] = { ...prevLse[t], '1d': null, ...giltSeries(prevLse[t].lseCloses, giltBack[t], prevLse[t].price, Date.now()) };
+            if (lseOf[t] && prevGilt[t]?.lseCloses) {
+                quotes[t] = { ...prevGilt[t], '1d': null, ...giltSeries(prevGilt[t].lseCloses, giltBack[t], prevGilt[t].price, Date.now()) };
                 console.error(`stale ${t}: ${e.message} — kept the last London price and its closes`);
                 continue;
             }
@@ -4089,6 +4104,12 @@ function selftest() {
         { '2024-10-07': 99, '2025-10-07': 97, '2025-12-31': 96, '2026-10-05': 94.5, '2026-10-06': 94.6, '2026-10-07': 94.75 },
         'the mids win where both exist');
     assert.deepStrictEqual(withBackfill({ '2026-10-06': 94.6 }, null), { '2026-10-06': 94.6 });
+    // A renamed gilt keeps its history: found by ISIN under its old key; a current key always wins.
+    const renamed = byIsin({ 'T31.L': { isin: 'GB00BPSNBF73', n: 1 }, 'UKT36.L': { isin: 'GB00BWBR1N39', n: 2 } },
+        { 'UKT31.L': 'GB00BPSNBF73', 'UKT36.L': 'GB00BWBR1N39', 'UKT40.L': 'GB0000000000' }, g => g?.isin);
+    assert.strictEqual(renamed['UKT31.L'].n, 1);
+    assert.strictEqual(renamed['UKT36.L'].n, 2);
+    assert.strictEqual(renamed['UKT40.L'], undefined, 'a gilt with no stored entry starts empty');
     const filled = shapeLse(lseJ, { '2026-10-06': 94.6, '2026-10-07': 94.75 }, new Date('2026-10-08T09:00:00Z'), backT31);
     assert.deepStrictEqual(filled.lseCloses, gilt.lseCloses, 'the backfill never enters the store of mids');
     assert.strictEqual(filled['1d'], gilt['1d'], '1D stays mid against mid');
