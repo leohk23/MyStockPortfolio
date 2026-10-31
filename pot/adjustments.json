@@ -1,7 +1,51 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-29",
+  "updated": "2026-10-31",
   "normalizedEps": {
+    "RMD": {
+      "basis": "company-adjusted (non-GAAP) diluted EPS",
+      "ccy": "USD",
+      "note": "Added 31 October 2026. Direct issuer EPS; excludes amortization, restructuring, specified transaction and safety costs and some gains/tax items. Not owner earnings. Five consecutive quarters establish current TTM USD11.53 through September 2026, but only two overlapping TTM observations and no adjusted historical percentile. GAAP quarterly EPS for the latest four periods: 2.68, 2.74, 2.64, 2.92. The local quote's USD10.43 still ends June 2026. September non-GAAP income retains an approximately USD6m Apnimed investment gain per the issuer call; do not describe all adjustments as fully recurring.",
+      "annual": [
+        {
+          "end": "2025-06-30",
+          "eps": 9.55,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/427/resmed-inc-announces-results-for-the-fourth-quarter-of-fiscal-year-2026"
+        },
+        {
+          "end": "2026-06-30",
+          "eps": 11.17,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/427/resmed-inc-announces-results-for-the-fourth-quarter-of-fiscal-year-2026"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "eps": 2.55,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/433/resmed-inc-announces-results-for-the-first-quarter-of-fiscal-year-2027"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 2.81,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/416/resmed-inc-announces-results-for-the-second-quarter-of-fiscal-year-2026"
+        },
+        {
+          "end": "2026-03-31",
+          "eps": 2.86,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/420/resmed-inc-announces-results-for-the-third-quarter-of-fiscal-year-2026"
+        },
+        {
+          "end": "2026-06-30",
+          "eps": 2.95,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/427/resmed-inc-announces-results-for-the-fourth-quarter-of-fiscal-year-2026"
+        },
+        {
+          "end": "2026-09-30",
+          "eps": 2.91,
+          "source": "https://investor.resmed.com/news-events/press-releases/detail/433/resmed-inc-announces-results-for-the-first-quarter-of-fiscal-year-2027"
+        }
+      ]
+    },
     "SAF.PA": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "EUR",
@@ -479,6 +523,68 @@
     }
   },
   "adjustments": {
+    "RMD": [
+      {
+        "fy": "2027-06-30",
+        "amountPerShare": 0.38,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "September 2026 MatrixCare divestment gain, issuer diluted-EPS contribution removed in its non-GAAP reconciliation.",
+        "source": "https://investor.resmed.com/news-events/press-releases/detail/433/resmed-inc-announces-results-for-the-first-quarter-of-fiscal-year-2027",
+        "found": "2026-10-31",
+        "note": "Evidence only: the current local trailing EPS USD10.43 predates this gain, so subtracting it automatically now would remove income not yet present. Latest four reported quarters total USD10.98; USD10.60 is a conservative sensitivity after removing this direct per-share gain, retaining expenses. Do not subtract again from company-adjusted EPS. FY2027 end is the known June fiscal year end, not a filed annual row."
+      },
+      {
+        "fy": "2027-06-30",
+        "amount": 6000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Approximate Apnimed equity-investment gain retained within September non-GAAP net other income.",
+        "source": "https://investor.resmed.com/_assets/_0963557030a6bf65e868c5a046e196ae/resmed/db/2598/48783/webcast_transcript/RMD_1Q27_Earnings_Transcript_29OCT26.pdf",
+        "found": "2026-10-31",
+        "note": "Gross amount, no separately stated after-tax attributable amount; evidence only."
+      },
+      {
+        "fy": "2025-06-30",
+        "amount": 21430000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Tax benefit from business cessation excluded in issuer FY2025 non-GAAP reconciliation.",
+        "source": "https://investor.resmed.com/news-events/press-releases/detail/427/resmed-inc-announces-results-for-the-fourth-quarter-of-fiscal-year-2026",
+        "found": "2026-10-31",
+        "note": "Historical evidence; no current TTM subtraction. Local FY2025 annual EPS is absent."
+      },
+      {
+        "fy": "2025-06-30",
+        "amount": 29976000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Income-tax effect of interest and penalties on income-tax refunds removed in FY2025 non-GAAP reconciliation.",
+        "source": "https://investor.resmed.com/news-events/press-releases/detail/427/resmed-inc-announces-results-for-the-fourth-quarter-of-fiscal-year-2026",
+        "found": "2026-10-31",
+        "note": "Historical tax benefit, not September 2026's tax expense adjustment. No current TTM subtraction."
+      },
+      {
+        "fy": "2024-06-30",
+        "amount": 64228000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Restructuring expense omitted by local operating-income field; local USD1384.121m less charge equals issuer GAAP USD1319.893m.",
+        "source": "https://investor.resmed.com/sec-filings/content/0000943819-25-000079/rmd-20251001.htm",
+        "found": "2026-10-31",
+        "note": "Expense and field-reconciliation evidence, not income to remove from net earnings."
+      },
+      {
+        "fy": "2026-06-30",
+        "amount": 21745000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Restructuring expense omitted by local operating-income field; local USD1908.460m less charge equals issuer GAAP USD1886.715m.",
+        "source": "https://investor.resmed.com/sec-filings/content/0000943819-26-000080/rmd-20261001.htm",
+        "found": "2026-10-31",
+        "note": "Expense and field-reconciliation evidence, not income to remove from net earnings."
+      }
+    ],
     "NFLX": [
       {
         "fy": "2026-12-31",
