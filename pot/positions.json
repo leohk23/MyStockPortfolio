@@ -1,6 +1,6 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-10-30T23:55:56.882Z",
+ "generated": "2026-10-31T09:00:04.044Z",
  "cashGBP": 186.68,
  "contributions": [
   {
@@ -146,6 +146,27 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-10-31-0004-RMD.md",
+   "id": "2026-10-31-0004-RMD",
+   "state": "open",
+   "ticker": "RMD",
+   "written": "2026-10-31",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 230,
+   "warning": "at the next quarterly result, checked by **5 February 2027**, re-read if the filing describes flat/falling sleep-device or mask unit demand; if Americas sleep-device constant-currency revenue growth is below **3%** (latest **6%**); or if the comparable GLP-1/CPAP cohort loses its positive initiation or one-year resupply advantage. If the company ceases to attribute growth to units and gives no replacement volume evidence, keep the warning active as **cannot tell**, even if revenue rises. These tests can move before operating profit falls.",
+   "break": "by **7 May 2027**, recommend exit under §5.1 if either (a) two consecutive post-entry quarterly filings explicitly report falling sleep-device or mask unit demand, regardless of revenue/price growth, or (b) two comparable updates show CPAP initiation or one-year mask resupply worse for the drug-treated cohort than CPAP-only patients. Independently, two consecutive quarters of declining constant-currency Americas sleep-device revenue **and** mask revenue break the repeat-demand case. Compare like-for-like definitions, excluding discontinued life-support products. A financial break is trailing twelve-month cash from operations less PP&E purchases becoming non-positive. Retain all operating restructuring cash and exclude disposal proceeds. Observe quarterly; it is a separate route, not an extra condition required for a demand break. The cohort series is company-produced, observational and not guaranteed quarterly. Missing data cannot establish a pass or a numerical break: require a specific re-review and maintain the warning. The external FDA label and Apnimed's quarterly launch/adoption disclosures supply an independent check on the substitute; no OSA-specific prescription count was verified, and total obesity-drug sales would not substitute for one.",
+   "reviewBy": "2027-02-05",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-11-13",
+   "resultsDue": "2027-01-28",
+   "vsLimit": -0.0003,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-10-30-0705-HLN.L.md",
    "id": "2026-10-30-0705-HLN.L",
@@ -557,7 +578,7 @@
   {
    "file": "2026-10-17-0821-MWA.md",
    "id": "2026-10-17-0821-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-10-17",
    "nextResults": null,
@@ -570,7 +591,7 @@
    "withdrawn": null,
    "validUntil": "2026-10-30",
    "resultsDue": "2026-11-04",
-   "vsLimit": 0.0469,
+   "expiredBy": "days",
    "supersededBy": "2026-10-21-1818-MWA",
    "phase": "live",
    "counts": false
@@ -578,7 +599,7 @@
   {
    "file": "2026-10-17-0821-BN.PA.md",
    "id": "2026-10-17-0821-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-17",
    "nextResults": null,
@@ -590,7 +611,7 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-10-30",
-   "vsLimit": 0.0643,
+   "expiredBy": "days",
    "supersededBy": "2026-10-28-1017-BN.PA",
    "phase": "live",
    "counts": false
@@ -3682,6 +3703,12 @@
    "limit": 63.2,
    "until": "2026-11-11",
    "below": 60.04
+  },
+  "RMD": {
+   "last": "2026-10-31-0004-RMD",
+   "limit": 230,
+   "until": "2026-11-14",
+   "below": 218.5
   }
  },
  "earlierRisks": {
@@ -3817,7 +3844,14 @@
     "text": "private label and price-led rivals take volume, so the +3% to +5% like-for-like growth arrives only through price while the shopper trades down.",
     "id": "2026-10-15-0002-BN.PA"
    }
+  ],
+  "RMD": [
+   {
+    "category": "competitive",
+    "text": "drug treatments reduce CPAP initiation and mask replacement before aggregate revenue reveals it.",
+    "id": "2026-10-31-0004-RMD"
+   }
   ]
  },
- "today": "2026-10-30"
+ "today": "2026-10-31"
 }
