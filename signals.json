@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-01T21:11:11.403Z",
- "pricesAt": "2026-11-01T21:11:10.538Z",
+ "generated": "2026-11-01T22:41:12.817Z",
+ "pricesAt": "2026-11-01T21:39:30.404Z",
  "vix": {
   "close": 19.42,
   "day": 0.1291
@@ -148,6 +148,35 @@
   },
   {
    "rule": "6.1 valuation",
+   "ticker": "MC.PA",
+   "where": "HELD",
+   "pe": 17.639015496809478,
+   "pctile": 0.01587,
+   "window": "5y",
+   "weeks": 189,
+   "floor": 17.3249,
+   "floorDate": "2026-10-02",
+   "p5": 18.1665,
+   "median": 22.659,
+   "vsFloor": 0.01813086925808971,
+   "cheapOn": "both",
+   "cash": {
+    "pocf": 10.2076,
+    "pctile": 0.01587,
+    "median": 16.8592,
+    "weeks": 189,
+    "window": "5y"
+   },
+   "oneOff": {
+    "why": "recurring earnings put it above its floor",
+    "recurringPe": 17.5145615249888,
+    "recurringVsFloor": 0.0181286382363699,
+    "epsBasis": "vendor",
+    "floorBasis": "vendor recurring"
+   }
+  },
+  {
+   "rule": "6.1 valuation",
    "ticker": "SUPR.L",
    "where": "HELD",
    "pe": 11.964285714285714,
@@ -205,35 +234,6 @@
     "why": "recurring earnings put it above its floor",
     "recurringPe": 23.35857381728941,
     "recurringVsFloor": 0.012302383878854739,
-    "epsBasis": "vendor",
-    "floorBasis": "vendor recurring"
-   }
-  },
-  {
-   "rule": "6.1 valuation",
-   "ticker": "MC.PA",
-   "where": "HELD",
-   "pe": 17.784926470588236,
-   "pctile": 0.01587,
-   "window": "5y",
-   "weeks": 189,
-   "floor": 17.3249,
-   "floorDate": "2026-10-02",
-   "p5": 18.1665,
-   "median": 22.659,
-   "vsFloor": 0.026552907698643935,
-   "cheapOn": "both",
-   "cash": {
-    "pocf": 10.2076,
-    "pctile": 0.01587,
-    "median": 16.8592,
-    "weeks": 189,
-    "window": "5y"
-   },
-   "oneOff": {
-    "why": "recurring earnings put it above its floor",
-    "recurringPe": 17.659459903443366,
-    "recurringVsFloor": 0.02655164034967572,
     "epsBasis": "vendor",
     "floorBasis": "vendor recurring"
    }
@@ -4315,14 +4315,30 @@
    "currency": "USD"
   },
   {
+   "id": "2026-11-01-2119-none",
+   "ticker": "none",
+   "state": "open",
+   "written": "2026-11-01",
+   "days": 0,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "entry": null,
+   "now": null,
+   "move": null,
+   "basis": "no price on that date",
+   "limit": null,
+   "currency": null
+  },
+  {
    "id": "2026-10-29-0652-none",
    "ticker": "none",
    "state": "open",
    "written": "2026-10-29",
    "days": 3,
-   "supersededBy": null,
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
-   "counts": true,
+   "counts": false,
    "entry": null,
    "now": null,
    "move": null,
@@ -4336,7 +4352,7 @@
    "state": "open",
    "written": "2026-10-26",
    "days": 6,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "entry": null,
@@ -4352,7 +4368,7 @@
    "state": "open",
    "written": "2026-10-25",
    "days": 7,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "entry": null,
@@ -4368,7 +4384,7 @@
    "state": "open",
    "written": "2026-10-25",
    "days": 7,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "entry": null,
@@ -4384,7 +4400,7 @@
    "state": "open",
    "written": "2026-09-08",
    "days": 54,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "entry": null,
@@ -4400,7 +4416,7 @@
    "state": "open",
    "written": "2026-09-08",
    "days": 54,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "entry": null,
@@ -4960,9 +4976,9 @@
    "sym": "BTC-USD",
    "name": "Bitcoin",
    "group": "Commodity",
-   "real": -0.3178,
+   "real": -0.3176,
    "says": "-30% over a year but 23% over three months — cooling",
-   "cooling": 0.226,
+   "cooling": 0.2264,
    "mixed": true
   }
  ],
