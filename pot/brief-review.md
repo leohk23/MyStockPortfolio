@@ -20,6 +20,7 @@ thorough, it is to stop re-reading the repo to reach the same verdicts.
 | `pot/proposals/` | the open theses — the subject of the verdicts. Only what is current sits here; superseded, expired, obsolete, rejected and withdrawn proposals are in `pot/proposals/archive/` (D99), and `pot/positions.json` carries the state of both |
 | `prices.json` | marks and `epsStale`, for the paper record and for checking a thesis's numbers |
 | `pot/theses.md` | Leo's standing views, where one bears on a thesis you are judging |
+| `pot/calls.md` | the second reader's dated tests. Its **Due** table is what you score (D106) |
 
 `AGENTS.md` is already in your context before you start — you do not need to open it, and reading
 it again costs the same tokens twice.
@@ -120,6 +121,21 @@ it up.
   failure, and this lane will report calm while the thesis rots. Say so, and say what P3 should
   have tested — that is a re-proposal, not a sale.
 
+## The second reader's calls
+
+`pot/calls.md` lists under **Due** every dated test the Deep dive's second reader set whose date has
+passed (D106). Score each one from the company's own document. This is a reading, not a judgement:
+apply the test as written, even where you would have written it differently, and do not open the
+question of what the result means for the name.
+
+| result | when |
+|---|---|
+| `pass` | the published figure meets the test |
+| `fail` | it does not |
+| `void` | the test cannot be read as written: the company stopped disclosing it, or the test was badly drawn. Say which |
+
+If the figure is simply not out yet, leave that call out: it stays Due and comes back next time.
+
 ## Sources
 
 `pot/sources.md` governs, as everywhere: numbers this repo holds come from the repo, company
@@ -145,6 +161,12 @@ model: pending, lane: review, date: <today>, tokens: pending
 
 ## Instruction        <only if broken, played-out or breach>
 **SELL <qty> <TICKER> ... day limit @ <price>.** <costs, and the §5.1 clause invoked>
+
+## Calls              <only if any were due, headed exactly so>
+
+| id | result | figure | source |
+|---|---|---|---|
+| <id from pot/calls.md> | pass, fail or void | <the figure as published> | <link to the document> |
 ```
 
 Header your output with the provenance line above. Leave `model` and `tokens` as `pending`:

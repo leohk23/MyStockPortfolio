@@ -155,7 +155,7 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due; two stages, drafter then examiner on the other model | `$doDeep`, `Invoke-DeepDive` | D73, D95 |
 | Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
 | Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |
-| What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
+| What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/questions.md`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
 | **Subagents** | Sweep: `scout` (Haiku). Deep dive and its second reader: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
 | Scout tools | WebSearch, WebFetch only — no Agent, so a scout cannot spawn another | `pot/agents/*.md` | D76 |
 | Scouts per run | **at most 3, at most 3 at once** — a brief rule; the CLI has no hard count | `brief-sweep.md`, `brief-deepdive.md` | D76 |
@@ -174,12 +174,14 @@ would break D3 (no metered API spend), because CI has no subscription auth.
 
 **`pot/proposals/` holds only what is current** (bought, awaiting Leo, a D93 standing proposal, the newest run); `pot/archive.js` files the rest in `pot/proposals/archive/` at the end of every cycle, by state, and moves a file back if its state returns (D99). A proposal's id is its file name in either folder, so read both when looking one up.
 
+**The second reader's search is open and its decision is not (D106).** What it examines is its own choice, with no checklist (D95). What follows is a rule in `pot/brief-examine.md`: findings graded `holds`, `weakens` or `breaks`, the grades set the outcome, and each section opens with its own `Would I place it` line. A disagreement is settled by type, and a gap in the rules goes once to `pot/questions.md`, which surfaces under "Needs you" until Leo's answer closes it. Its dated calls, each with a forecast, are scored by the Review and tallied by model in `pot/calls.md`.
+
 `npm run pot-report` regenerates `pot/SUMMARY.md` (the entry point), `pot/summaries/*.md` (one dated
 report per run), `pot/runs.md` (the cost ledger) and `pot/logs/*.md` (transcripts made readable).
 All four are derived and gitignored; every figure in them is read from the Codex session logs, never
 from what an agent said about itself. It also writes the two performance pages, `pot/performance.md`
 (what the money did, against VUSA.L, D81) and `pot/paper.md` (every call marked as if bought), from
-`positions.json`, `prices.json` and `history.json`.
+`positions.json`, `prices.json` and `history.json`, and `pot/calls.md` (D106), from the rankings and the reviews.
 
 ## Files
 

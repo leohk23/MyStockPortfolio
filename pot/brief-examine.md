@@ -16,7 +16,8 @@ failure was not bad writing or a wrong number. It was a question nobody asked.
 
 So this is an open brief, by Leo's choice. There is no checklist of what to examine: decide, from
 the draft in front of you, where it is thin, what it assumed without checking, which question a
-careful CPA reading it would ask first, and what it could not read. Then go and find out.
+careful CPA reading it would ask first, and what it could not read. Then go and find out. What is
+structured is what follows from your answers: see **How you decide** (D106).
 
 ## Your input
 
@@ -29,6 +30,8 @@ careful CPA reading it would ask first, and what it could not read. Then go and 
   (with `cooldown`, D93, and `earlierRisks`, D94), `pot/adjustments.json`, `pot/origins.json`,
   `pot/rejections.json` and `pot/sources.md`. Open what the gap you are chasing needs, not all of it:
   every file you open is resent on every turn after.
+- `pot/questions.md`: rule questions already put to Leo, and his answers. Read it before you add
+  one. `pot/calls.md`: the calls already made and how they were scored.
 - `AGENTS.md` is already in your context. Do not open it.
 - **Subagents — Claude runs only.** If `scout-filings` is available you may use it to pull a figure
   or statement from an issuer's own documents: at most 3 per run, at most 3 at once. What it returns
@@ -56,17 +59,99 @@ Leo's rejections. A change you make must clear them as the draft had to.
 What not to do: do not re-rank the whole watchlist from scratch, and do not rewrite for style. The
 drafter's ranking is the frame; your effort goes where the research was missing.
 
+## How you decide
+
+The search is open. The decision is not (D106). In the first five examinations every one found
+something the draft had missed, and none changed an order: "nothing found breaks the case" let a
+doubt sit beside the order instead of moving it, and each disagreement went to Leo unsettled.
+
+**Grade each finding** that bears on a proposal, against the case as it is written:
+
+| grade | meaning |
+|---|---|
+| **holds** | it supports the case, or does not bear on it |
+| **weakens** | the case survives, but it is worse than it reads |
+| **breaks** | a premise of the thesis is false, P3's break is already met, or a rule in `strategy.md` fails |
+
+For each `weakens`, say whether it lands on P6's dominant risk, and whether a falsifier covers it. A
+falsifier covers it if it reads a published figure and its first reading is inside two quarters,
+the same test as Rule 4 of the Deep dive. One you add to P3 yourself counts, if it passes that test.
+
+**The grades decide.** The strictest line that applies:
+
+| what you found | what follows |
+|---|---|
+| any `breaks` | withdraw the proposal, or EXCLUDE the name |
+| two or more `weakens` | WAIT, and withdraw the proposal |
+| one `weakens` on the dominant risk, no falsifier covering it | a condition before placing, or half size |
+| otherwise | the order stands |
+
+- **A condition** goes in P1, as a line under the order: `**Before placing:** <what to read, by
+  when, and what to do on each answer>`.
+- **Half size** applies only where half still buys a whole share and clears §4.1a. Otherwise use a
+  condition.
+- **You may depart from the rule only out loud.** Name the line you are not following and why, in
+  the `Would I place it` line below. Nothing else overrides the table, and neither does "nothing
+  breaks the case".
+
+**Commit to a position.** Open each Second reader section with one line, yours, not the drafter's:
+
+- On a proposal: `**Would I place it:** yes`, `no` or `only if <condition>`, then `, because
+  <one sentence>`.
+- On a `none` file: `**Would I keep the cash:** yes`, `no` or `only if <condition>`, then `, because
+  <one sentence>`.
+
+It must agree with what you did to the file. Leo still decides; he should not have to work out what
+you think.
+
+**Settle a disagreement by its type.** Give the drafter's view and yours in a sentence each, so the
+difference stays visible, then:
+
+| type | what you do |
+|---|---|
+| a fact is missing | find it. If it is not published yet, name the date it arrives: that is a condition or a call |
+| a judgement a rule governs | name the rule and apply it |
+| a judgement no rule governs | decide it yourself for today, and add it to `pot/questions.md` |
+
+`pot/questions.md` holds gaps in the rules, not doubts about one name. Check it first. If the
+question is there and open, cite it rather than adding it again, and if it is answered, apply the
+answer. Otherwise add one row with `open` in the last column. Leo's answer becomes a rule, so a
+question is asked once.
+
+**Make your calls checkable.** Every test you sharpen and every condition you set goes in a
+`### Calls` table, at the end of the Second reader section in the **ranking file**:
+
+| name | test | by | I expect | if it fails |
+|---|---|---|---|---|
+| 0388.HK | Q3 attributable profit at or above HK$5,380m | 2026-11-06 | pass | EXCLUDE |
+
+- **test:** a published figure against a threshold, which someone else can read without judgement.
+  "Margin pressure eases" is not a test.
+- **by:** the date, as `YYYY-MM-DD`, by which the figure will be out.
+- **I expect:** `pass` or `fail`, exactly one of those words. This is your forecast and the part
+  that is scored, so say which you think is likelier, even if only just.
+- **if it fails:** the verdict or action that follows.
+- **At most five a run**, and only calls that would change a verdict. No table if there are none.
+
+The Review scores them against the company's own figure, and `pot/calls.md` keeps the record by
+model. A call nobody can read afterwards measures nothing.
+
 ## Show your work: a `## Second reader` section
 
 Append one to the **ranking file**, and one to **each proposal you examined**, whether you changed
 it or not. Leo must be able to tell "read and left as it was" from "never read".
 
+- **Your one line** — `Would I place it` or `Would I keep the cash`, first, on its own line.
 - **What you examined** — the questions you judged the draft had not answered, and why those.
 - **What you found** — the research you added, every figure with its source and date.
+- **Grades** — a table, one row per finding on a proposal: the finding, its grade, whether it lands
+  on the dominant risk, whether a falsifier covers it. Then which line of the rule applied.
 - **What you changed** — each change as before → after (verdict, size, limit, falsifier, numbers),
   or "nothing: the draft stands" with the reason.
-- **Where you disagree and could not settle it** — say so plainly, with both arguments. A
-  disagreement between two models is information for Leo, not something to smooth over.
+- **Where you and the drafter differ** — each difference, its type and how it was settled. A
+  disagreement between two models is information for Leo, not something to smooth over, so it stays
+  on the page, settled.
+- **Calls** — in the ranking file only, as above.
 
 Do not edit the first line of any file. It is the drafter's provenance line, and `npm run
 pot-report` adds a second line naming you, from your own session log.
@@ -75,7 +160,7 @@ pot-report` adds a second line naming you, from your own session log.
 
 - Write only in `pot/proposals/` (your amendments, your sections, any proposal you raise), and
   append to `pot/adjustments.json` and `pot/data-wishlist.md` where the Deep dive's rules would
-  require it. Touch nothing else.
+  require it, and to `pot/questions.md` as above. Touch nothing else.
 - Write files with the file-editing tool as UTF-8, never through a shell redirection.
 - No figure without a source (§7.3), settled by `pot/sources.md`.
 - You are examining, not deciding. Leo executes.

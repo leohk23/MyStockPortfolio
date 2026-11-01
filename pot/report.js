@@ -221,6 +221,109 @@ function amendments(draft, now) {
     if (!added && !removed) return section ? 'Second reader section only, no amendments' : 'no amendments and no Second reader section';
     return `+${added} -${removed} lines outside its Second reader section`;
 }
+// D106: the second reader's calls. Dated tests it wrote in a `### Calls` table in the ranking file,
+// with its own forecast, scored by the Review in a `## Calls` table. What it found is on the page
+// already; this measures whether its judgement is any good, by examiner, so the two models can be
+// compared. Parsed from the documents rather than kept in a store: the proposal and the review stay
+// the record, and nothing here can drift from them.
+function sectionRows(md, heading) {
+    const rows = [];
+    let inside = false;
+    for (const raw of md.replace(/\r/g, '').split('\n')) {
+        const l = raw.trim();
+        if (/^#{1,6} /.test(l)) { inside = heading.test(l); continue; }
+        if (!inside || !l.startsWith('|') || /^\|[\s:|-]+\|$/.test(l)) continue;
+        rows.push(l.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+    }
+    return rows.slice(1);          // the first row is the header
+}
+// An id is the run's stamp and the row's place, so nobody has to write one. A row that cannot be
+// read is reported, never dropped: a call that silently vanished would flatter the score.
+function parseCalls(md, stamp) {
+    const calls = [], bad = [];
+    sectionRows(md, /^### Calls\b/).forEach((c, i) => {
+        const id = `${stamp}-${i + 1}`, expect = (c[3] || '').toLowerCase();
+        if (c.length !== 5 || !/^\d{4}-\d{2}-\d{2}$/.test(c[2]) || !/^(pass|fail)$/.test(expect)) { bad.push(id); return; }
+        calls.push({ id, name: c[0], test: c[1], by: c[2], expect, ifFails: c[4] });
+    });
+    return { calls, bad };
+}
+function parseScores(md) {
+    return sectionRows(md, /^## Calls\b/).filter(c => c.length === 4 && /^(pass|fail|void)$/i.test(c[1]))
+        .map(c => ({ id: c[0], result: c[1].toLowerCase(), figure: c[2], source: c[3] }));
+}
+// Each call's state on a date. Scores arrive oldest first, so a later review corrects an earlier one.
+function scoreCalls(calls, scores, today) {
+    const byId = new Map(scores.map(s => [s.id, s]));
+    return calls.map(c => {
+        const s = byId.get(c.id);
+        if (!s) return { ...c, state: c.by <= today ? 'due' : 'waiting' };
+        return { ...c, ...s, state: 'scored', right: s.result === 'void' ? null : s.result === c.expect };
+    });
+}
+function callsPage(rows, bad, today) {
+    const table = (head, list, cell) => ['| ' + head.join(' | ') + ' |', '|' + head.map(() => '---').join('|') + '|',
+        ...list.map(c => '| ' + cell(c).join(' | ') + ' |')].join('\n');
+    const of = state => rows.filter(c => c.state === state);
+    const open = c => [c.id, c.name, c.test, c.by, c.expect, c.ifFails];
+    const openHead = ['id', 'name', 'test', 'by', 'expected', 'if it fails'];
+    const models = [...new Set(rows.map(c => c.model))].sort();
+    const tally = m => {
+        const mine = rows.filter(c => c.model === m);
+        return [m, mine.filter(c => c.right === true).length, mine.filter(c => c.right === false).length,
+            mine.filter(c => c.state === 'scored' && c.right === null).length,
+            mine.filter(c => c.state !== 'scored').length];
+    };
+    return `# Second reader's calls
+
+_${today}. Each dated test the second reader set (D106), with what it expected, scored by the Review
+against the company's own figure. Right means what it expected happened. This measures its
+judgement; what its research found is in the proposals._
+
+${models.length ? table(['examiner', 'right', 'wrong', 'void', 'not scored yet'], models, tally) : '_No calls yet._'}
+${bad.length ? `\n**Could not be read, so not counted:** ${bad.join(', ')}. A row needs five cells, a date as YYYY-MM-DD, and pass or fail.\n` : ''}
+## Due
+
+${of('due').length ? table(openHead, of('due'), open) : '_Nothing due._'}
+
+## Waiting
+
+${of('waiting').length ? table(openHead, of('waiting').slice().sort((a, b) => a.by.localeCompare(b.by)), open) : '_Nothing waiting._'}
+
+## Scored
+
+${of('scored').length ? table(['id', 'name', 'test', 'expected', 'result', 'figure', 'source', 'right'], of('scored'),
+        c => [c.id, c.name, c.test, c.expect, c.result, c.figure, c.source, c.right == null ? '–' : c.right ? 'yes' : 'no']) : '_Nothing scored yet._'}
+`;
+}
+function writeCalls(today) {
+    const rankings = ['pot/proposals', 'pot/proposals/archive'].flatMap(d => {
+        try { return fs.readdirSync(d).filter(f => f.endsWith('-ranking.md')).map(f => d + '/' + f); }
+        catch { return []; }
+    }).sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
+    const calls = [], bad = [];
+    for (const rel of rankings) {
+        const md = fs.readFileSync(rel, 'utf8');
+        const parsed = parseCalls(md, path.basename(rel).replace(/-ranking\.md$/, ''));
+        const model = md.match(/^examined: `([^`]+)`/m)?.[1] || 'unknown';
+        calls.push(...parsed.calls.map(c => ({ ...c, model })));
+        bad.push(...parsed.bad);
+    }
+    let reviews = [];
+    try { reviews = fs.readdirSync('pot/reviews').filter(f => f.endsWith('.md')).sort(); } catch { /* none yet */ }
+    const scores = reviews.flatMap(f => parseScores(fs.readFileSync('pot/reviews/' + f, 'utf8')));
+    const known = new Set(calls.map(c => c.id));
+    bad.push(...scores.filter(s => !known.has(s.id)).map(s => s.id + ' (scored, but no such call)'));
+    const rows = scoreCalls(calls, scores, today);
+    fs.writeFileSync('pot/calls.md', callsPage(rows, bad, today));
+    return { due: rows.filter(c => c.state === 'due').length, bad: bad.length };
+}
+// The rule gaps still waiting for Leo (D106).
+const openQuestions = md => sectionRows(md, /^## Questions\b/).filter(c => /^open$/i.test(c[c.length - 1] || ''));
+// The second reader's own line, for the table of what is waiting. Its reason stays on the proposal.
+const ownLine = md => (md.match(/^\*\*Would I (?:place it|keep the cash):\*\*\s*(.+)$/m)?.[1] || '')
+    .split(/,? because /)[0].replace(/\|/g, '/').trim() || null;
+
 // The drafter's version is the commit that added the file. Null when git cannot say (not yet
 // committed, or no repository), and the line then simply carries no measure.
 function contribution(rel, now) {
@@ -847,6 +950,12 @@ function build() {
     catch (e) { console.error(`skip paper.md: ${e.message}`); }
     try { writeActual(pos, read('prices.json'), hist); }
     catch (e) { console.error(`skip performance.md: ${e.message}`); }
+    let calls = { due: 0, bad: 0 };
+    try { calls = writeCalls(new Date().toISOString().slice(0, 10)); }
+    catch (e) { console.error(`skip calls.md: ${e.message}`); }
+    let questions = [];
+    try { questions = openQuestions(fs.readFileSync('pot/questions.md', 'utf8')); }
+    catch { /* no questions file: nothing is waiting */ }
     // By modification time. Sorting these by NAME put "smoke.md" after every dated sweep and
     // "2026-08-29-RSGN.SW.md" after "2026-08-29-1442-...", so the summary confidently named the
     // wrong output for both lanes: a smoke test as the latest Sweep, and a proposal four runs
@@ -1117,7 +1226,7 @@ does not look exactly like a healthy one.
         if (f.slice(0, 10) < '2026-10-26') return '–';
         let md = '';
         try { md = fs.readFileSync('pot/proposals/' + f, 'utf8'); } catch { /* listed but gone */ }
-        return /^## Second reader/m.test(md) ? 'read' : '**not second-read**';
+        return /^## Second reader/m.test(md) ? ownLine(md) || 'read' : '**not second-read**';
     };
 
     // Each run gets its own dated file, so the history is a history and not the last one only.
@@ -1159,6 +1268,13 @@ ${strandedSweep
             + strandedSweep.replace('.md', '') + '](sweeps/' + strandedSweep + ')'
             + ' quoted a price for a name we do not carry. Rule 3 of [sources.md](sources.md) says '
             + 'add the ticker to `watchlist.json`, so the next fetch makes it local.'
+        : ''}
+${questions.length
+        ? '- **' + questions.length + ' rule question' + (questions.length === 1 ? '' : 's') + ' for you**, in [questions.md](questions.md):'
+            + String.fromCharCode(10) + questions.map(q => '  - ' + q[1]).join(String.fromCharCode(10))
+        : ''}
+${calls.bad
+        ? '- **' + calls.bad + ' second-reader call' + (calls.bad === 1 ? '' : 's') + ' could not be read**, so ' + (calls.bad === 1 ? 'it is' : 'they are') + ' not counted ([calls.md](calls.md))'
         : ''}
 ${openProposals.length ? '- To turn a company down for good: `node pot/reject.js TICKER "reason"`, or ask Claude.' : ''}
 
@@ -1208,6 +1324,8 @@ ${weeklyBurn ? `A full cycle costs about **${weeklyBurn.per.toFixed(1)}%** of th
 |---|---|
 | The rules — what to buy, what to sell | [strategy.md](../strategy.md) |
 | The system — decisions, lanes, why | [pot-design.md](../pot-design.md) |
+| The second reader's calls, scored | [calls.md](calls.md) |
+| Rule questions for you | [questions.md](questions.md) |
 | Run ledger and costs | [runs.md](runs.md) |
 | Readable transcripts | [logs/](logs/) |
 | Articles you kept, as Sweep input | [reading.md](reading.md) |
@@ -1306,6 +1424,45 @@ function selftest() {
             assert.ok(y[0].startsWith('model: `claude-opus-5-5`, lane: examine'), 'a raised proposal is the examiner\'s: ' + y[0]);
             assert.strictEqual(pass(), 0, 'stamping again changes nothing');
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+
+    // D106: the second reader's calls, its own line and the rule questions.
+    {
+        const ranking = [
+            'examined: `claude-opus-5-5`, lane: examine', '## Second reader', '### What I changed', '| a | b |', '|---|---|', '| x | y |',
+            '### Calls', '', '| name | test | by | I expect | if it fails |', '|---|---|---|---|---|',
+            '| 0388.HK | Q3 profit at or above HK$5,380m | 2026-11-06 | pass | EXCLUDE |',
+            '| RMD | Philips names no US return date | 2026-11-03 | PASS | withdraw |',
+            '| BAD | no forecast here | 2026-11-09 | maybe | WAIT |',
+            '| BAD2 | no date here | soon | fail | WAIT |',
+            '## Next section', '| not | a | call | at | all |',
+        ].join('\r\n');
+        const { calls, bad } = parseCalls(ranking, '2026-11-02-0650');
+        assert.deepStrictEqual(calls.map(c => c.id), ['2026-11-02-0650-1', '2026-11-02-0650-2']);
+        assert.strictEqual(calls[1].expect, 'pass');         // case does not matter
+        assert.strictEqual(calls[0].ifFails, 'EXCLUDE');
+        assert.deepStrictEqual(bad, ['2026-11-02-0650-3', '2026-11-02-0650-4']);    // reported, never dropped
+        const review = '## MWA — hold\n\n## Calls\n\n| id | result | figure | source |\n|---|---|---|---|\n'
+            + '| 2026-11-02-0650-1 | Fail | HK$5,100m | [Q3](x) |\n| 2026-11-02-0650-2 | void | not disclosed | [Q3](y) |\n| 2026-11-02-0650-9 | maybe | x | y |\n';
+        const scores = parseScores(review);
+        assert.strictEqual(scores.length, 2);                // a row with no valid result is not a score
+        const rows = scoreCalls([...calls, { id: 'c', by: '2026-11-07', expect: 'pass' }, { id: 'd', by: '2026-12-01', expect: 'fail' }], scores, '2026-11-07');
+        assert.strictEqual(rows[0].right, false);            // expected pass, it failed: wrong
+        assert.strictEqual(rows[1].right, null);             // a void is neither right nor wrong
+        assert.strictEqual(rows[2].state, 'due');            // on its date, and unscored
+        assert.strictEqual(rows[3].state, 'waiting');
+        // A later review corrects an earlier one.
+        const again = scoreCalls(calls, [...scores, { id: '2026-11-02-0650-1', result: 'pass', figure: 'r', source: 's' }], '2026-11-07');
+        assert.strictEqual(again[0].right, true);
+        const page = callsPage(rows.map(c => ({ model: 'claude-opus-5-5', name: 'n', test: 't', ifFails: 'f', ...c })), bad, '2026-11-07');
+        assert.ok(page.includes('| claude-opus-5-5 | 0 | 1 | 1 | 2 |'), page);
+        assert.ok(page.includes('2026-11-02-0650-3'));       // the unread rows are on the page
+        assert.ok(callsPage([], [], '2026-11-07').includes('_No calls yet._'));
+        assert.strictEqual(ownLine('## Second reader\r\n\r\n**Would I place it:** only if Philips is silent, because the rest holds.\r\n'), 'only if Philips is silent');
+        assert.strictEqual(ownLine('**Would I keep the cash:** yes, because nothing clears.'), 'yes');
+        assert.strictEqual(ownLine('## Second reader\nThe draft stands.'), null);
+        const q = '## Questions\n\n| asked | question | answer |\n|---|---|---|\n| 1 Nov | Does X count? | open |\n| 2 Nov | Does Y? | D107: no |\n';
+        assert.deepStrictEqual(openQuestions(q).map(r => r[1]), ['Does X count?']);
     }
 
     // D95: what the second reader changed, outside its own section and the header lines.

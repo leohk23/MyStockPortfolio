@@ -40,6 +40,7 @@ file you open is resent on every turn that follows.
 | `pot/adjustments.json` | one-offs this repo can cite, plus direct company-adjusted EPS by period |
 | `pot/origins.json` | why each name is on the watchlist at all, in the words of the Sweep that found it |
 | `pot/rejections.json` | companies Leo has turned down: not candidates, under any listing named |
+| `pot/calls.md` | the second reader's dated tests (D106). A call scored `fail` carries the consequence it stated unless you argue otherwise by name, and a call still waiting is a date to respect |
 
 **Filings are for the shortlist, not the list.** Accounting for all ~72 watchlist names (§D34) is a
 screening job done from local data — an excluded line may be one clause. Opening a company's own

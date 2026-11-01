@@ -47,13 +47,13 @@ Add-Content -Path $log -Value "`n=== $started  $Agent  $Brief ===" -Encoding utf
 git pull --ff-only --quiet origin main 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { Note 'git pull failed (diverged, ahead, or offline) - continuing on local data'; }
 
-# Only what a lane writes: its three output folders, the two stores the briefs append to, the book,
+# Only what a lane writes: its three output folders, the three stores the briefs append to, the book,
 # and the watchlist. Anything else the agent touches is put back below, not committed. Until D91
 # this was `pot/*`, which also matched run-lane.ps1, run-daily.ps1, every pot/*.js, the briefs and
 # the scouts' definitions: a lane steered by a web page could rewrite the scripts that run it, and
 # the next cycle would execute them outside any sandbox.
 $allowed = @('pot/proposals/*', 'pot/reviews/*', 'pot/sweeps/*',
-    'pot/data-wishlist.md', 'pot/adjustments.json', 'pot/positions.json', 'watchlist.json')
+    'pot/data-wishlist.md', 'pot/adjustments.json', 'pot/questions.md', 'pot/positions.json', 'watchlist.json')
 # ...except Leo's own decisions, which are never a lane's to change (D83).
 $protected = @('pot/rejections.json')
 function LaneMay($p) { [bool]($allowed | Where-Object { $p -like $_ }) -and $protected -notcontains $p }

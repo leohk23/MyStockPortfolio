@@ -227,6 +227,8 @@ const splitProposals = () => {
         { dir: 'pot', file: 'performance.md', kind: 'actual', title: 'Actual performance' },
         { dir: 'pot', file: 'paper.md', kind: 'paper', title: 'Paper performance' },
         { dir: 'pot', file: 'runs.md', kind: 'runs', title: 'Runs and cost' },
+        { dir: 'pot', file: 'calls.md', kind: 'calls', title: "Second reader's calls" },
+        { dir: 'pot', file: 'questions.md', kind: 'questions', title: 'Questions for you' },
         { dir: 'pot', file: 'scan.md', kind: 'scan', title: 'Scan' },
         ...listDir('pot/summaries', 'archive'),
     ].filter(d => fs.existsSync(path.join(ROOT, d.dir, d.file)));
