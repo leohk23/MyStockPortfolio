@@ -247,7 +247,10 @@ $LANE_COST = @{
     # sol review/sweep and astra deepdive re-measured 13 Sep from session logs: the 08:00 cycle passed
     # the check at an estimated 73% of the 5-hour window and died in the deep dive at 99%. Actuals
     # were review 13, sweep 23, deep dive 62+ (unfinished) - rounded up. The rest are older figures.
-    'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 11; h = 70 } }
+    # astra deepdive and examine re-measured 1 Nov at high effort (D96, D105): seven drafts took 55-87
+    # points of the 5-hour window and 12-14 of the week, against the 70 priced here before, and the
+    # one examination 43 and 7. Each is the highest seen, rounded up.
+    'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 14; h = 87 }; examine = @{ w = 8; h = 45 } }
     'gpt-5.6-sol'  = @{ review = @{ w = 2; h = 14 }; sweep = @{ w = 3; h = 24 }; deepdive = @{ w = 2; h = 14 } }
 }
 
@@ -289,7 +292,10 @@ function Test-Allowance($lanes) {
     $w = 0; $h = 0
     foreach ($l in $lanes) {
         $model = $LANE_MODEL["pot/brief-$l.md"]
-        $c = $LANE_COST[$model][$l]
+        # On Tue and Thu Codex only examines the Deep dive (D95), which costs half what a draft does;
+        # pricing it as a draft would move the Sweep and Review off Codex for nothing.
+        $key = if ($l -eq 'deepdive' -and (Get-DeepDiveOrder ((Get-Date).DayOfWeek.ToString()))[0] -eq 'claude') { 'examine' } else { $l }
+        $c = $LANE_COST[$model][$key]
         if (-not $c) { continue }
         $w += $c.w; $h += $c.h
     }
