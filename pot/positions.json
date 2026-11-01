@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-01T21:06:15.564Z",
- "cashGBP": 186.88,
+ "generated": "2026-11-01T23:51:11.775Z",
+ "cashGBP": 436.81,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -22,6 +22,11 @@
    "date": "2026-10-08",
    "amountGBP": 250,
    "note": "fourth contribution"
+  },
+  {
+   "date": "2026-11-01",
+   "amountGBP": 250,
+   "note": "fifth contribution"
   }
  ],
  "holdings": {
@@ -147,6 +152,34 @@
  },
  "proposals": [
   {
+   "file": "2026-11-01-2119-none.md",
+   "id": "2026-11-01-2119-none",
+   "state": "open",
+   "ticker": "none",
+   "written": "2026-11-01",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": null,
+   "warning": null,
+   "break": null,
+   "reviewBy": null,
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "reproposalBreach": {
+    "after": "2026-10-29-0652-none",
+    "bar": null
+   },
+   "earlierRisksMissing": [
+    {
+     "category": "accounting",
+     "id": "2026-09-08-1040-none"
+    }
+   ]
+  },
+  {
    "file": "2026-10-31-0004-RMD.md",
    "id": "2026-10-31-0004-RMD",
    "state": "open",
@@ -201,9 +234,9 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
-   "counts": true,
+   "counts": false,
    "reproposalBreach": {
     "after": "2026-10-26-0650-none",
     "bar": null
@@ -249,7 +282,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false,
    "reproposalBreach": {
@@ -277,7 +310,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false
   },
@@ -295,7 +328,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false
   },
@@ -2589,7 +2622,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false
   },
@@ -2607,7 +2640,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-10-29-0652-none",
+   "supersededBy": "2026-11-01-2119-none",
    "phase": "live",
    "counts": false
   },
@@ -3687,9 +3720,9 @@
    "below": 20.7955
   },
   "none": {
-   "last": "2026-10-29-0652-none",
+   "last": "2026-11-01-2119-none",
    "limit": null,
-   "until": "2026-11-12",
+   "until": "2026-11-15",
    "below": null
   },
   "HLN.L": {
