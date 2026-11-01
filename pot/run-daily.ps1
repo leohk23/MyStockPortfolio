@@ -622,12 +622,28 @@ try {
     if ($doReview) { $planned += 'review' }
     if ($doSweep) { $planned += 'sweep' }
     if ($doDeep) { $planned += 'deepdive' }
+    # D105: when astra is to draft the Deep dive, the Sweep runs on Claude so astra has Codex's
+    # 5-hour window to itself. On high effort an astra draft takes 55-87 points of that window and a
+    # sol Sweep 13-23, and on 30 Oct and 1 Nov the pair hit 100 with the draft unfinished. This is the
+    # plan, not a failover, so -MaxClaudeLanes does not count it, and it is priced out of Resolve-Plan.
+    # Not when Claude is cooling, under -Failover none, or when the plan sends the Deep dive itself to
+    # Claude: then astra is not drafting and the Sweep is planned the ordinary way.
+    $sweepOnClaude = $doSweep -and $doDeep -and -not $OnClaude -and $Failover -ne 'none' -and
+        (Get-DeepDiveOrder ((Get-Date).DayOfWeek.ToString()))[0] -eq 'codex' -and -not (Claude-Cooling)
     $PLAN = @{}
     if ($planned.Count) {
-        $PLAN = Resolve-Plan $planned
+        $PLAN = if ($sweepOnClaude) { Resolve-Plan @($planned | Where-Object { $_ -ne 'sweep' }) } else { Resolve-Plan $planned }
+        if ($sweepOnClaude -and $null -ne $PLAN -and $PLAN['deepdive'] -ne 'codex') {
+            $sweepOnClaude = $false
+            $PLAN = Resolve-Plan $planned
+        }
         if ($null -eq $PLAN) {
             Remove-Item $lock -Force -ErrorAction SilentlyContinue
             exit 4
+        }
+        if ($sweepOnClaude) {
+            $PLAN['sweep'] = 'claude'
+            Note "  sweep on Claude $CLAUDE_MODEL - astra drafts the Deep dive and keeps the 5-hour window (D105)"
         }
     }
 
