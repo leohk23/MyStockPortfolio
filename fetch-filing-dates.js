@@ -61,8 +61,17 @@ async function getJson(url) {
 //   DURATION  GrossProfit, tax, pretax — a period, and only a ~year-long one counts.
 // Taking a quarterly duration row as the year is how a plausible wrong number gets in, so the
 // same 340-380 day guard filedDates uses applies here too.
-const INSTANT = { assets: ['Assets'], liabCurrent: ['LiabilitiesCurrent'], equity: ['StockholdersEquity'] };
+// Cash comes out of invested capital (D104), so ROIC is the return on the operating business, not
+// on a pile of deposits. Cash and equivalents only, the same line Yahoo carries for the other
+// filers; the restricted-cash total is a fallback for filers that tag only that.
+const INSTANT = { assets: ['Assets'], liabCurrent: ['LiabilitiesCurrent'], equity: ['StockholdersEquity'],
+    cash: ['CashAndCashEquivalentsAtCarryingValue',
+        'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents', 'Cash'] };
 const DURATION = {
+    // Operating income as filed (D104), so ROIC's numerator comes from the same filing as its
+    // denominator. Yahoo's reading added MWA's $11.2m of charges back. A filer that presents no
+    // operating line (IBM, Nike) gets no ROIC rather than a vendor's reconstruction of one.
+    opinc: ['OperatingIncomeLoss'],
     grossProfit: ['GrossProfit'],
     tax: ['IncomeTaxExpenseBenefit'],
     // Cash conversion, the single most-reached-for series in pot/data-wishlist.md — 19 separate

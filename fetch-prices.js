@@ -1400,18 +1400,25 @@ catch { console.log('note no pot/adjustments.json — no source-backed earnings 
 
 const CAPITAL_YEARS = 6;
 
-function capitalMetrics(year, cap, fallbackTax = null) {
+function capitalMetrics(year, cap, fallbackTax = null, prev = null) {
     if (!cap || !(cap.assets > 0)) return null;
     const out = { year: cap.end || null, assets: cap.assets };
     // Gross profit over TOTAL ASSETS — the measure the research actually supports, and the one
     // the reading says is misread as gross MARGIN by swapping the denominator for sales.
     if (cap.grossProfit != null) out.gpa = cap.grossProfit / cap.assets;
     if (year?.rev > 0) out.turnover = year.rev / cap.assets;
-    // ROIC. Invested capital is total assets less current liabilities: what the business has
-    // to fund for more than a year. A financial has no meaningful current-liability split and
-    // EDGAR does not tag one, so banks and insurers come back without a ROIC rather than with
-    // a fabricated one.
-    const invested = cap.liabCurrent != null ? cap.assets - cap.liabCurrent : null;
+    // ROIC (D104). Invested capital is total assets less current liabilities less cash: what the
+    // operating business has to fund for more than a year, without the deposits that would
+    // otherwise drag a cash-rich company down. Averaged over the opening and closing balance
+    // sheets, because the year's profit was earned on the capital held through it, not on the
+    // closing figure alone. Every input on both dates or no ROIC. A financial has no meaningful
+    // current-liability split and EDGAR does not tag one, so banks and insurers come back without
+    // a ROIC rather than with a fabricated one. A side at or below zero (more cash than operating
+    // capital) has no meaningful return, so it gets none.
+    const operating = b => b && b.assets > 0 && b.liabCurrent != null && b.cash != null
+        ? b.assets - b.liabCurrent - b.cash : null;
+    const open = operating(prev), close = operating(cap);
+    const invested = open > 0 && close > 0 ? (open + close) / 2 : null;
     // A negative effective rate is real, not bad data: AMD booked a net tax BENEFIT in seven of
     // its last fifteen years from deferred-tax releases, and its 2025 rate is -2.5%. Rejecting
     // those left AMD with no ROIC at all despite every input being present. Using them instead
@@ -1424,6 +1431,7 @@ function capitalMetrics(year, cap, fallbackTax = null) {
     if (invested > 0 && year?.opinc != null && taxRate != null) {
         out.roic = (year.opinc * (1 - taxRate)) / invested;
         out.taxRate = taxRate;
+        out.invested = invested;
         // Say when the rate is not the year's own, so a reader can discount it.
         if (!sane(own)) out.taxFrom = 'median';
     }
@@ -3103,11 +3111,19 @@ async function main() {
                     .sort((a, b) => Math.abs(Date.parse(a) - want) - Math.abs(Date.parse(b) - want))[0];
                 if (!end) continue;
                 const cap = capYears[end];
+                // The balance sheet a year earlier, for ROIC's average capital (D104).
+                const prevEnd = ends.find(d => {
+                    const gap = (Date.parse(end) - Date.parse(d)) / (DAY * 1000);
+                    return gap > 340 && gap < 390;
+                });
                 // A Yahoo row brings its own rev and opinc. Using them keeps both halves of
                 // every ratio in one currency and one accounting basis — BYD files in CNY.
-                const m = capitalMetrics({ rev: cap.rev ?? y.rev, opinc: cap.opinc ?? y.opinc,
+                // Operating income comes ONLY from the capital row (D104): EDGAR's is as filed,
+                // and falling back to earnings.json would put Yahoo's reading, which can add
+                // charges back, over a filed balance sheet.
+                const m = capitalMetrics({ rev: cap.rev ?? y.rev, opinc: cap.opinc,
                     nic: cap.nic ?? y.nic },
-                    { ...cap, end }, medianTax);
+                    { ...cap, end }, medianTax, prevEnd ? capYears[prevEnd] : null);
                 if (m) series.push(m);
                 if (series.length >= CAPITAL_YEARS) break;
             }
@@ -4432,6 +4448,25 @@ function selftest() {
     const cashOnly = capitalMetrics({}, { end: '2025-12-31', assets: 1000, cfo: 100, capex: 30 });
     assert.strictEqual(cashOnly.fcf, 70);
     assert.strictEqual(cashOnly.roic, undefined);
+
+    // ROIC (D104): filed operating income after tax over AVERAGE invested capital, which is total
+    // assets less current liabilities less cash, at the opening and closing balance sheets.
+    const roicOpen = { assets: 900, liabCurrent: 200, cash: 100 };             // invested 600
+    const roicClose = { ...capBase, assets: 1200, cash: 200 };                  // invested 800
+    const strict = capitalMetrics({ rev: 500, opinc: 140 }, roicClose, null, roicOpen);
+    assert.strictEqual(strict.invested, 700);                                   // (600 + 800) / 2
+    assert.ok(Math.abs(strict.roic - 140 * 0.8 / 700) < 1e-12);                 // 20% own tax rate -> 16%
+    // No opening balance sheet: no ROIC, rather than one on the closing figure alone.
+    assert.strictEqual(capitalMetrics({ opinc: 140 }, roicClose, null, null)?.roic, undefined);
+    // Cash missing on either date: no ROIC. Without it the capital is the old, wider measure.
+    assert.strictEqual(capitalMetrics({ opinc: 140 }, roicClose, null, { assets: 900, liabCurrent: 200 })?.roic, undefined);
+    assert.strictEqual(capitalMetrics({ opinc: 140 }, { ...roicClose, cash: undefined }, null, roicOpen)?.roic, undefined);
+    // More cash than operating capital: no meaningful return, so none.
+    assert.strictEqual(capitalMetrics({ opinc: 140 }, roicClose, null, { assets: 900, liabCurrent: 200, cash: 800 })?.roic, undefined);
+    // No filed operating income (IBM, Nike present none): no ROIC; the other metrics still come back.
+    const noOp = capitalMetrics({ rev: 500 }, roicClose, null, roicOpen);
+    assert.strictEqual(noOp.roic, undefined);
+    assert.ok(noOp.turnover > 0);
 
 
     // adjustedYears / the own basis. Every input is a filed figure minus a cited one-off.

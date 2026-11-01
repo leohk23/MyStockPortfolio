@@ -27,8 +27,10 @@ const TYPES = [
     'annualTotalAssets', 'annualCurrentLiabilities', 'annualGrossProfit',
     'annualTotalRevenue', 'annualTaxProvision', 'annualPretaxIncome', 'annualOperatingIncome',
     'annualOperatingCashFlow',       // D71: P/OCF for every name EDGAR cannot reach
+    'annualCashAndCashEquivalents',  // D104: cash comes out of ROIC's invested capital
 ];
 const FIELD = {
+    annualCashAndCashEquivalents: 'cash',
     annualTotalAssets: 'assets', annualCurrentLiabilities: 'liabCurrent',
     annualGrossProfit: 'grossProfit', annualTotalRevenue: 'rev',
     annualTaxProvision: 'tax', annualPretaxIncome: 'pretax', annualOperatingIncome: 'opinc',

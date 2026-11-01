@@ -460,7 +460,11 @@ Use his own tests, not generic ones:
   either: a margin is profit over SALES, and Leo invests capital. `earnings.json` carries filed
   `rev`, `opinc`, `nic` and `norm` per year; `prices.json` carries `capital` per quote with
   **roic**, **gpa** (gross profit over total assets) and **turnover** (revenue over total assets),
-  with the fiscal year they came from.
+  with the fiscal year they came from. **roic** is filed operating income after tax over the
+  average of opening and closing invested capital (total assets less current liabilities less
+  cash, D104), with that average as `invested`. Proposals from before 1 Nov 2026 quote the older,
+  wider measure, which kept cash in and used the closing balance sheet, so their figures read
+  lower; do not compare the two as a trend.
 
   **Quote all three where they exist, and say the year.** They are blank for about a third of the
   book — a bank has no meaningful current-liability split so it gets no ROIC, and some filers do

@@ -203,6 +203,10 @@ So earnings quality is **margin, plus what the capital behind it earns, plus how
 are worked**:
 
 - **ROIC** — operating profit after tax over capital employed. What actually compounds.
+  Operating income as filed, after the year's own tax rate, over the **average** of the opening
+  and closing invested capital, which is total assets less current liabilities **less cash**
+  (D104, 1 Nov 2026). Cash is out so a cash-rich company is judged on its business, not its
+  deposits.
 - **Gross profit ÷ total assets** — the measure the academic work supports. The research everyone
   cites for "look at gross margins" used *total assets* as the denominator, not sales; swapping it
   is a misreading, and gross and net margins have the same predictive power anyway.
@@ -214,7 +218,9 @@ pass on its own.
 
 All three are on every holding's Valuation panel where the filings support them, and blank where
 they do not — a bank has no meaningful current-liability split, so it gets no ROIC rather than an
-invented one. Absent is an answer; 38 of 59 holdings carry them.
+invented one. Nor does a business holding more cash than operating capital (an exchange's
+clearing balances, a contractor's customer prepayments), or a filer that presents no operating
+income line. Absent is an answer; 38 of 59 holdings carry them.
 
 None of this displaces the filter. Valuation still screens things out. This says what has to be
 true of the business *before* the multiple is worth arguing about.
