@@ -1,7 +1,25 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-10-31",
+  "updated": "2026-11-01",
   "normalizedEps": {
+    "UU.L": {
+      "basis": "company underlying basic EPS",
+      "ccy": "GBP",
+      "note": "FY2025 comparator is unaudited pro forma, re-presented for FY2026 estimation changes. FY2026 includes 37p from higher IRE capitalisation and 3p from inflation-linked debt estimation. Annual evidence only: no current research TTM or comparable adjusted percentile established.",
+      "annual": [
+        {
+          "end": "2025-03-31",
+          "eps": 0.753,
+          "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf"
+        },
+        {
+          "end": "2026-03-31",
+          "eps": 1.071,
+          "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf"
+        }
+      ],
+      "quarters": []
+    },
     "RMD": {
       "basis": "company-adjusted (non-GAAP) diluted EPS",
       "ccy": "USD",
@@ -523,6 +541,84 @@
     }
   },
   "adjustments": {
+    "WRT1V.HE": [
+      {
+        "fy": "2026-12-31",
+        "amountPerShare": -0.07,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "Q3 2026 loss per share attributable to discontinued operations (Energy Storage, classified held for sale and discontinued in June 2026). Derived, not stated: total EPS EUR 0.21 less EPS from continuing operations EUR 0.28; Q3 2025 was EUR 0.31 total against EUR 0.29 continuing. Negative = a charge, not income. Evidence only: one quarter, derived, and the other three quarters of the trailing EPS (1.03 in prices.json) were not split here.",
+        "source": "https://www.wartsila.com/media/news/27-10-2026-wartsila-s-interim-report-january-september-2026-3806530",
+        "found": "2026-11-01"
+      }
+    ],
+    "AMZN": [
+      {
+        "fy": "2026-12-31",
+        "amount": 68400000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Nine-month other income, net, primarily Anthropic valuation/conversion gains per Q3 10-Q. Aggregate includes other components; not a separately identified one-off or after-tax attributable amount, so evidence only.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000040/amzn-20260930.htm",
+        "found": "2026-11-01"
+      },
+      {
+        "fy": "2025-12-31",
+        "amount": 9500000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Q3 2025 pre-tax Anthropic investment gains cited in the Q3 2026 comparative. Historical evidence; no mechanical current-TTM subtraction.",
+        "source": "https://ir.aboutamazon.com/news-release/news-release-details/2026/Amazon-com-Announces-Third-Quarter-Results/default.aspx",
+        "found": "2026-11-01"
+      }
+    ],
+    "UU.L": [
+      {
+        "fy": "2026-03-31",
+        "amountPerShare": 0.37,
+        "what": "FY2026 underlying EPS contribution from higher infrastructure renewals expenditure (IRE) capitalisation. Note 1 describes a prospective estimation/judgement change from 1 April 2025; GBP249.7m additions would previously have been expensed. Not a one-time gain to subtract automatically.",
+        "ccy": "GBP",
+        "arithmetic": false,
+        "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf",
+        "found": "2026-11-01"
+      },
+      {
+        "fy": "2026-03-31",
+        "amountPerShare": 0.03,
+        "what": "FY2026 underlying EPS contribution from changed inflation-linked debt estimation; evidence of comparability break, not a certified current-TTM adjustment.",
+        "ccy": "GBP",
+        "arithmetic": false,
+        "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf",
+        "found": "2026-11-01"
+      },
+      {
+        "fy": "2026-03-31",
+        "amount": 39900000,
+        "what": "HS2 diverted-works revenue removed from underlying revenue and operating profit. Revenue/gross operating amount, not after-tax attributable earnings.",
+        "ccy": "GBP",
+        "arithmetic": false,
+        "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf",
+        "found": "2026-11-01"
+      },
+      {
+        "fy": "2026-03-31",
+        "amount": 1100000,
+        "what": "Fair-value finance gain removed from underlying profit. Gross finance amount, no separately established after-tax attributable adjustment.",
+        "ccy": "GBP",
+        "arithmetic": false,
+        "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf",
+        "found": "2026-11-01"
+      },
+      {
+        "fy": "2026-03-31",
+        "amount": 184200000,
+        "what": "Deferred-tax adjustment added in the issuer underlying-profit reconciliation. Evidence of the company basis, not a one-off uplift to reported income or an automatic EPS subtraction.",
+        "ccy": "GBP",
+        "arithmetic": false,
+        "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf",
+        "found": "2026-11-01"
+      }
+    ],
     "RMD": [
       {
         "fy": "2027-06-30",
