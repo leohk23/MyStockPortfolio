@@ -1348,6 +1348,15 @@
                 // recurring case is the P/E (recurring) row below, on trailing quarterly earnings.
                 leg.specialEpsLabel && leg.specialEpsLabel !== 'Recurring' ? [`P/E (${leg.specialEpsLabel})`,
                     leg.specialPe == null ? '–' : num2(leg.specialPe) + '×'] : null,
+                // Beside the multiples: like a P/E, it is what today's price buys. A dash means none
+                // on Yahoo's record, not none paid: the record is incomplete for the over-the-counter
+                // Japanese receipts, which do pay. Funds and gilts show theirs in the facts box.
+                ['Yield TTM', q.divYield > 0
+                    ? `${plain(q.divYield)} <span class="muted">${px(q.divTTM)} a share, ${q.divCount} payment${q.divCount === 1 ? '' : 's'} in the last year</span>`
+                    : '<span class="muted">–</span>',
+                    ` title="${q.divYield > 0
+                        ? 'Trailing twelve-month dividends divided by the current price. Gross: withholding tax is not deducted.'
+                        : 'No dividend on Yahoo’s record in the last twelve months. That is not proof of none: its record is incomplete for some over-the-counter receipts.'}"`],
                 // Historical numbers remain on a disclosed basis. A four-quarter research TTM is
                 // enough for today's multiple and not enough to manufacture a five-year percentile.
                 ['P/E low (reported, 5y)', recurringHist.low == null
