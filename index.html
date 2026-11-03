@@ -131,6 +131,7 @@
         #deep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
         @media (max-width: 760px) { #deep-grid { grid-template-columns: minmax(0, 1fr); } }
         #deep-grid.solo { grid-template-columns: minmax(0, 1fr); }   /* Valuation hidden: a gilt or bond fund */
+        .deep-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
         .deep-box { background: var(--surface-1); border: 1px solid var(--line); border-radius: 6px;
             padding: 10px 12px; min-width: 0; }
         .deep-box h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
@@ -146,12 +147,12 @@
         .date-chip b { font-weight: 600; color: var(--text-primary); }
         .date-chip.next { border-color: var(--series-port); color: var(--series-port); }
         .date-chip.next b { color: var(--series-port); }
-        #deep-val { margin: 0; font-size: 13px; }
-        #deep-val div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+        #deep-val, #deep-income { margin: 0; font-size: 13px; }
+        #deep-val div, #deep-income div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
         #deep-val .valuation-group-start { border-top: 1px solid var(--line); margin-top: 4px;
             padding-top: 7px; }
-        #deep-val dt { color: var(--text-secondary); }
-        #deep-val dd { margin: 0; font-variant-numeric: tabular-nums; }
+        #deep-val dt, #deep-income dt { color: var(--text-secondary); }
+        #deep-val dd, #deep-income dd { margin: 0; font-variant-numeric: tabular-nums; }
         #deep-val .derived { font-size: 11px; color: var(--text-secondary);
             border-bottom: 1px dotted var(--text-secondary); cursor: help; }
         /* Source remark (reported / filed) — which feed a TTM figure comes from. */
@@ -767,10 +768,17 @@
                 <h3>Valuation</h3>
                 <dl id="deep-val"></dl>
             </div>
-            <div class="deep-box">
-                <h3>Financials <span id="deep-ccy"></span></h3>
-                <div id="deep-dates"></div>
-                <div id="deep-fin"></div>
+            <div class="deep-col">
+                <div class="deep-box">
+                    <h3>Financials <span id="deep-ccy"></span></h3>
+                    <div id="deep-dates"></div>
+                    <div id="deep-fin"></div>
+                </div>
+                <div class="deep-box" id="deep-income-box">
+                    <h3>Dividends</h3>
+                    <dl id="deep-income"></dl>
+                    <p id="deep-income-note" class="deep-note"></p>
+                </div>
             </div>
         </div>
     </section>
@@ -1324,7 +1332,11 @@
                 // source-backed company-adjusted TTM figure.
                 ['Normalized EPS (TTM)', '<span id="deep-rec-eps" class="muted">…</span>'],
                 ['P/E (normalized)', '<span id="deep-rec-pe" class="muted">…</span>'],
-                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsDerived
+                ['EPS (TTM)', px(q.eps) + (q.eps == null ? '' : q.epsManual
+                    // Set by hand because Yahoo's figure was found wrong; the workings travel with it.
+                    ? ` <span class="tag" title="${escapeHTML(`Set by hand in meta.json, replacing Yahoo's figure: ${q.epsManual.currency} ${q.epsManual.value} per share, converted at today's rate. ${q.epsManual.basis || ''} Source: ${q.epsManual.source || 'not recorded'}.`
+                        + (q.epsManual.stale ? ` OUT OF DATE: it runs to ${ymd(q.epsManual.through)}, and a later quarter has been reported.` : ''))}">${q.epsManual.stale ? 'manual · out of date' : q.epsManual.through ? `manual · ${qShort(q.epsManual.through)}` : 'manual'}</span>`
+                    : q.epsDerived
                     ? ' <span class="derived" title="Yahoo carries no trailing EPS for this listing, so this is summed from the last four quarters of filed earnings — with any missing quarter (Yahoo omits the Q4 per-share figure for Korean filers) reconstructed from the audited annual. Same reporting currency as the price, so no FX.">derived</span>'
                     : ` <span class="tag" title="Yahoo's reported trailing 12-month EPS, running through its most recent quarter${q.mrq ? ' (' + qShort(q.mrq) + ')' : ''}. Includes the latest released quarter, which the filed statements in the table below may not carry yet — that is why this can differ from the TTM row there (tagged &quot;filed&quot;).">reported${q.mrq ? ' · ' + qShort(q.mrq) : ''}</span>`)],
                 ['P/E (TTM)', leg.pe == null ? '–' : num2(leg.pe) + '×'],
@@ -1404,6 +1416,28 @@
             // changed layout each time he moved between 3M and 6M).
             const notACompany = !!q.bond || (!!q.type && q.type !== 'EQUITY');
             document.getElementById('deep-val').closest('.deep-box').hidden = notACompany;
+            // What a share pays is a different question from what it is worth, so it has its own
+            // box. A fund or a gilt shows its income in the facts box instead. Received is only
+            // there for a position with a figure: locked, in a cohort cut, or on a watched name
+            // there is none. A dash means none on Yahoo's record, not none paid: the record is
+            // incomplete for the over-the-counter Japanese receipts, which do pay. So that is said
+            // in words on the page, where a phone can read it, and not in a tooltip.
+            document.getElementById('deep-income-box').hidden = notACompany;
+            const paying = q.divYield > 0;
+            const dash = '<span class="muted">–</span>';
+            const incomeRows = [
+                ['Yield TTM', paying ? plain(q.divYield) : dash],
+                ['Paid, last 12 months', paying
+                    ? `${px(q.divTTM)} a share <span class="muted">${q.divCount} payment${q.divCount === 1 ? '' : 's'}</span>` : dash],
+                q.exDiv ? [q.exDiv >= todayISO() ? 'Next ex-dividend' : 'Last ex-dividend', ymd(q.exDiv)] : null,
+                leg.received != null ? ['Received on this holding', money(leg.received),
+                    ' title="What this position has paid you since you bought it, net of withholding tax, at today\u2019s exchange rate."'] : null,
+            ].filter(Boolean);
+            document.getElementById('deep-income').innerHTML = incomeRows
+                .map(([k, v, attrs = '']) => `<div${attrs}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+            document.getElementById('deep-income-note').textContent = paying
+                ? 'Yield is before withholding tax.'
+                : 'No dividend on Yahoo\u2019s record in the last 12 months. That is not proof of none: its record is incomplete for some over-the-counter receipts.';
             document.getElementById('deep-grid').classList.toggle('solo', notACompany);
 
             renderFinancials(leg);
@@ -2203,7 +2237,7 @@
                         recEps = leg.quote.normEps;
                         recPe = recEps > 0 ? leg.quote.price / recEps : null;
                         note = basisBreak
-                            ? `Yahoo's reported TTM EPS × the recurring share of the latest fiscal year. The four `
+                            ? `${leg.quote.epsManual ? 'The manual' : 'Yahoo\'s reported'} TTM EPS × the recurring share of the latest fiscal year. The four `
                                 + `filed quarters are not summed: ${basisBreak}.`
                             : 'Latest fiscal year — four filed quarters not yet in range, or the filed '
                                 + 'window is behind the reported one and the statements are in another currency.';
