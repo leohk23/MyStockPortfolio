@@ -115,7 +115,7 @@ new, and the Deep dive reads both (pot-design §2):
 the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
 entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
 Scan, then whichever LLM lanes are DUE, in order, then the report. Review runs every 2 days, Sweep daily, and the Deep dive only if the Sweep ran in the same cycle (D30, D33, D36). **Weekdays 06:30, 12:45 and 21:15;
-weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
+weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). It skips the Sweep when another ran under three hours before, as when it catches up behind a late cycle (D108). **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
 
 Two things that constrain any change to it:
 
@@ -149,9 +149,9 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
 | Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted, and nor is the **Sweep on the days astra drafts** (Mon, Wed, Fri and weekends), which runs on Opus so astra keeps the 5-hour window. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95, D105 |
-| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive`, Mon/Wed/Fri 12:45 | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88 |
+| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive -SweepGapHours 3`, Mon/Wed/Fri 12:45 | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88, D108 |
 | After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |
-| Failed lane on Claude | skipped; the cycle continues | `Invoke-Lane` | D72 |
+| Failed lane on Claude | skipped; the cycle continues. A failed lane on either agent keeps none of what it wrote, so it stays due | `Invoke-Lane`, `run-lane.ps1` | D72, D108 |
 | Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due; two stages, drafter then examiner on the other model | `$doDeep`, `Invoke-DeepDive` | D73, D95 |
 | Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
 | Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |

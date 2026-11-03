@@ -225,10 +225,15 @@ git reset --quiet $headBefore 2>&1 | Out-Null
 
 # Revert anything outside the allowlist before staging, so a stray edit cannot ride along. A failed
 # agent too: otherwise failing on purpose would leave its edits on disk for the next cycle to run.
-function Strays { Changed | Where-Object { ($discard -or -not (LaneMay $_)) -and $dirtyBefore -notcontains $_ } }
+# A failed agent loses its allowed writes as well (D108). On 3 Nov a Sweep cut off by Claude's session
+# limit left a file still reading PLACEHOLDER, the cycle's stamp commit took it, and the day's real
+# Sweep then counted as done.
+$failed = $agentExit -ne 0
+function Strays { Changed | Where-Object { ($discard -or $failed -or -not (LaneMay $_)) -and $dirtyBefore -notcontains $_ } }
 $stray = @(Strays)
 if ($stray) {
-    Note "reverting $($stray.Count) file(s) outside the allowlist: $($stray -join ', ')"
+    $what = if ($failed -or $discard) { 'this lane wrote' } else { 'outside the allowlist' }
+    Note "reverting $($stray.Count) file(s) ${what}: $($stray -join ', ')"
     # A checkout restores what git tracks; a file the agent created is simply removed.
     $tracked = @(git -c core.quotePath=false ls-files -- $stray)
     if ($tracked) { git checkout -- $tracked 2>&1 | Out-Null }

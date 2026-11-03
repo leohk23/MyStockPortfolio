@@ -44,6 +44,10 @@ param(
     # passes it: since D95 the day's one Deep dive is the morning's, drafted and examined by both
     # models, and the second run keeps only its Sweep.
     [switch]$NoDeepDive,
+    # Skip a due or forced Sweep when the newest one is younger than this many hours; 0, the default,
+    # never skips. The second run passes 3 (D108): on 3 Nov it waited out the cycle ahead of it and
+    # then forced a Sweep 46 minutes after that cycle's own, straight into Claude's session limit.
+    [int]$SweepGapHours = 0,
     [string]$Repo = 'C:/Users/leohk/MyStockPortfolio'
 )
 
@@ -450,6 +454,18 @@ function Lane-Due($dir, $everyDays) {
     return $false
 }
 
+# Hours since the newest Sweep, read from its file's UTC stamp (YYYY-MM-DD-HHMM, brief-sweep.md),
+# or $null when there is none. Returns a value, so nothing in it may write to the pipeline.
+function Sweep-Age {
+    $last = Get-ChildItem (Join-Path $Repo 'pot/sweeps') -Filter '*.md' -ErrorAction SilentlyContinue |
+        ForEach-Object { if ($_.BaseName -match '^\d{4}-\d{2}-\d{2}-\d{4}$') {
+            [datetime]::ParseExact($_.BaseName, 'yyyy-MM-dd-HHmm', [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]'AssumeUniversal, AdjustToUniversal') } } |
+        Sort-Object -Descending | Select-Object -First 1
+    if (-not $last) { return $null }
+    return [double]((Get-Date).ToUniversalTime() - $last).TotalHours
+}
+
 function Invoke-Lane($brief, $agent = $null, [switch]$Soft) {
     Note "--- $brief"
     # -Soft: a failure on Codex is noted and the cycle carries on, as it already does on Claude. For
@@ -613,6 +629,15 @@ try {
     # only reads filenames, so asking all three here is free and the answers cannot drift.
     $doReview = Lane-Due 'pot/reviews' 2
     $doSweep = Lane-Due 'pot/sweeps' 1
+    # D108: a Sweep only hours after the last one reads the same news, so the second run, which
+    # forces its Sweep, skips it when a cycle it waited behind has just swept.
+    if ($doSweep -and $SweepGapHours -gt 0) {
+        $age = Sweep-Age
+        if ($null -ne $age -and $age -lt $SweepGapHours) {
+            Note ("  sweep skipped - the last one is {0:N1} h old, under -SweepGapHours {1} (D108)" -f $age, $SweepGapHours)
+            $doSweep = $false
+        }
+    }
     # Paired to the Sweep, but still once a day (D73). Pairing alone re-ran a Deep dive that had
     # already written today's proposal whenever the Sweep stayed due: on 17 Sep the 05:30 Deep dive
     # succeeded on astra, then ran again at 12:45 and 21:15 — both on Claude, both into its session
