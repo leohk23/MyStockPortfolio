@@ -715,6 +715,9 @@ Expected first-year costs: <breakdown, naming the broker assumed and the flat co
 ## 5. Numbers as of today
 | figure | value | source |
 <price, multiple, and whatever the thesis rests on — each with a URL or a local file>
+**Growth:** <three-year reported revenue growth a year, from earnings.json, in the reporting currency;
+ then the latest organic growth split into price and volume, with its period and source, or "not
+ disclosed". Never blank, never omitted, in scope of §2.4b or not.>
 Local check: <agree / disagree, and which you used>
 **Adjustments:** <the entry you appended to pot/adjustments.json for any one-off or direct adjusted
  EPS you reconciled — ticker, period and amount/amountPerShare/EPS — or one clause saying why none was writable
@@ -744,17 +747,31 @@ hand-wave the accounts. His stated regret is 7532.T, *"blinded by the tourist re
 looking at the fundamentals, valuation, forward prospectus and yen depreciation carefully"* —
 so answer, explicitly, **why this is not that mistake again.**
 
-**§2.4b — a shrinking business must be argued, never implied.** If the company's operating profit
-fell in its latest fiscal year, or it guides sales or operating profit to fall this year (midpoint
-below 0%), it may still be proposed, as a recovery, but:
+**§2.4b — a shrinking or flat business must be argued, never implied.** A company may still be
+proposed, as a recovery, if any of these is true:
+
+- its operating profit fell in its latest fiscal year;
+- it guides sales or operating profit to fall this year (midpoint below 0%);
+- its reported revenue grew under 1% a year over its last three fiscal years, in its reporting
+  currency, across the four year-ends in `earnings.json`;
+- its volume grew under 1% in the latest reported period, where it discloses price and volume
+  (volume/mix counts as volume).
+
+Then:
 
 1. **The thesis says so in its first sentences, with the sign.** "Guides 2026 sales and operating
    profit to fall 0–6% at CER." Quote guidance as a range with its direction, every time and
    anywhere in your output: an outlook that moved from a 4–12% decline to a 0–6% decline
    **narrowed its expected decline**. Never write "raised" or "lowered" alone. On 4 Oct a Novo
    proposal said the company "raised its full-year adjusted outlook", and a business guiding to
-   shrink read as one guiding to grow.
+   shrink read as one guiding to grow. A flat business is stated the same way: "Reported revenue
+   −0.5% a year over 2022-25, and +4.0% organic in Q3, of which +0.4% was volume", never "growing
+   organically". Where reported and organic growth differ, explain the gap with figures: currency,
+   disposals, acquisitions.
 2. **Name when growth resumes and what would show it**: the period, and the figure in which filing.
+   For a flat business that figure is revenue or volume. A recovering margin does not answer a flat
+   top line: Danone's and Haleon's proposals both tested operating profit and left the sales line
+   untested.
 3. **P3 tests that resumption by that date.** The recovery is the thesis, so it is the falsifier.
 
 This is the 7532.T question in its sharpest form, so answer it directly: what makes this recovery

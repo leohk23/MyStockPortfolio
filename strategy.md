@@ -15,7 +15,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 
 | §   | Rule                                     | Value                                                                                                               |
 | ---- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 2.4b | **A shrinking business must be argued**  | Falling or guided-to-fall sales/op. profit: state it with its sign, name when growth resumes, test that in P3       |
+| 2.4b | **A shrinking or flat business must be argued** | Falling or guided-to-fall sales/op. profit, revenue under 1% a year over three years, or volume under 1%: state it with its sign, name when growth resumes, test that in P3 |
 | 3.1  | Universe                                 | No constraints                                                                                                      |
 | 3.2  | Permanent exclusions                     | Companies Leo has rejected, until he lifts it (`pot/rejections.json`)                                               |
 | 3.3  | May buy what the main book already holds | Yes                                                                                                                 |
@@ -225,24 +225,44 @@ income line. Absent is an answer; 38 of 59 holdings carry them.
 None of this displaces the filter. Valuation still screens things out. This says what has to be
 true of the business *before* the multiple is worth arguing about.
 
-**Q 2.4b** What if the business is shrinking? `[agent]`
+**Q 2.4b** What if the business is shrinking, or not growing? `[agent]`
 
 > Raised by Leo on 4 Oct 2026 over an NVO proposal whose thesis said Novo had "raised its full-year
 > adjusted outlook": from a 4-12% decline to a 0-6% decline, so still a decline. Growth is one of
 > his four measures of earnings quality above, but nothing made a proposal confront it, and the
 > word "raised" let a shrinking business read as a growing one.
+>
+> Extended by Leo on 2 Nov 2026 over Danone and Haleon. Reported revenue moved −0.5% and +0.5% a year
+> over 2022-25, and the organic growth that read as healthy was mostly price: Danone's Q3 was +4.0%
+> with +0.4% from volume. Neither tripped this rule, because it asked only whether something was
+> falling, not whether the business was going anywhere.
 
-**A** — **Allowed, but it must be argued, never implied.** A company whose operating profit fell in
-its latest fiscal year, or which guides sales or operating profit to fall this year (the midpoint
-below 0%), may still be proposed, as a recovery. The proposal must then:
+**A** — **Allowed, but it must be argued, never implied.** A company may still be proposed, as a
+recovery, if any of these is true:
+
+- its operating profit fell in its latest fiscal year;
+- it guides sales or operating profit to fall this year (the midpoint below 0%);
+- **its reported revenue grew under 1% a year over its last three fiscal years**, measured in its
+  reporting currency, across the four year-ends in `earnings.json`;
+- **its volume grew under 1% in the latest reported period**, where it discloses price and volume
+  (volume/mix counts as volume).
+
+The proposal must then:
 
 1. **Say it in the thesis, with the sign.** "Guides 2026 sales and operating profit to fall 0-6%",
    never "raised its outlook". Guidance is always quoted as a range with its direction: an outlook
-   that improved from a 4-12% decline to a 0-6% decline "narrowed its expected decline".
+   that improved from a 4-12% decline to a 0-6% decline "narrowed its expected decline". A flat
+   business is stated the same way: "Reported revenue −0.5% a year over 2022-25, and +4.0% organic
+   in Q3, of which +0.4% was volume", never "growing organically". Where reported and organic
+   growth differ, the gap is explained with figures: currency, disposals, acquisitions.
 2. **Say when growth resumes and what would show it**: the period, and the figure in a filing that
-   would prove it.
+   would prove it. For a flat business that figure is revenue or volume. A recovering margin does
+   not answer a flat top line.
 3. **Make that the falsifier.** P3 tests the resumption by that date, so the recovery case is
    checked rather than assumed.
+
+**Every proposal shows the test was run,** in scope or not: P5 carries its three-year reported
+revenue growth, and its latest organic growth split into price and volume, or "not disclosed".
 
 And it must answer the 7532.T question directly, since a rebound bought on hope is that mistake:
 what makes this recovery visible in the accounts, not just in the story.
