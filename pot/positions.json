@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-02T23:37:18.764Z",
- "cashGBP": 437.04,
+ "generated": "2026-11-03T07:21:18.403Z",
+ "cashGBP": 266.15,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -148,9 +148,43 @@
      "pot": "2026-10-08-0459-BVI.PA"
     }
    ]
+  },
+  "RMD": {
+   "qty": 1,
+   "cost": 229.38,
+   "currency": "USD",
+   "trades": [
+    {
+     "date": "2026-11-02",
+     "side": "BUY",
+     "qty": 1,
+     "price": 229.38,
+     "pot": "2026-10-31-0004-RMD"
+    }
+   ]
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-03-0010-PDD.md",
+   "id": "2026-11-03-0010-PDD",
+   "state": "withdrawn",
+   "ticker": "PDD",
+   "written": "2026-11-03",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 82,
+   "warning": "Re-read at the first Q3 release, with an analyst check on **30 November 2026**, if any of these occurs: - Quarterly online-marketing-services revenue growth is **below 2% year on year**, against 3.47% in Q2. - Its growth trails **Alibaba's same-quarter, like-for-like China customer-management revenue growth by at least 3 percentage points**. Compare the quarter, not PDD's year-to-date figure with Alibaba's quarter. This is a competitive-spending proxy, not a market-share calculation. - Q3 operating profit fails to grow year on year, or nine-month operating cash flow is below nine-month net income. The external source is **Alibaba's quarterly results**, customer-management revenue and any merchant-incentive accounting bridge. Its [June-quarter release](https://data.alibabagroup.com/ecms-files/1532295521/fa5d65fc-9b3e-4e82-a8fc-4ce1c3e2c407/Alibaba%20Group%20Announces%20June%20Quarter%202026%20Results.pdf) reports −7% customer-management revenue but **+1% like for like**, excluding its new merchant-incentive programme; quick-commerce revenue rose 45%. Using −7% without that bridge would flatter PDD. Recheck both companies each quarter. If the comparison or release is unavailable by 30 November, record the test as unresolved and re-read; never mark it passed.",
+   "break": "Recommend exit under §5.1 if **online-marketing-services revenue is flat or falling year on year in both Q3 and Q4 2026**, regardless of transaction-service growth or group margin. Independently, the recovery fails if **FY2026 reported operating profit is no higher than RMB93.102131bn**, tested on the annual release and audited filing. Review by **31 March 2027**; a missing release is unresolved evidence requiring review, not a fabricated failure or pass. These are analyst thresholds, not management guidance. A slowing marketing line or relative shortfall can warn before two quarters of contraction. Price increases could still conceal falling merchant numbers: PDD does not supply a sufficiently current active-merchant series here. That residual blind spot is another reason not to use a full allocation.",
+   "reviewBy": "2026-11-30",
+   "reproposed": null,
+   "withdrawn": "two findings weaken the case: a RMB1.5bn SAMR penalty that P6 omits, and H1 operating growth of 13% that rests on FY2025's trough quarter (Q2 alone +7.6%); the Q3 release that first tests the recovery is due in mid to late November, so it WAITs for that.",
+   "validUntil": "2026-11-16",
+   "resultsDue": "2026-11-18",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": false
+  },
   {
    "file": "2026-11-01-2119-none.md",
    "id": "2026-11-01-2119-none",
@@ -182,7 +216,7 @@
   {
    "file": "2026-10-31-0004-RMD.md",
    "id": "2026-10-31-0004-RMD",
-   "state": "open",
+   "state": "accepted",
    "ticker": "RMD",
    "written": "2026-10-31",
    "nextResults": null,
@@ -195,7 +229,11 @@
    "withdrawn": null,
    "validUntil": "2026-11-13",
    "resultsDue": "2027-01-28",
-   "vsLimit": 0.0128,
+   "executed": {
+    "date": "2026-11-02",
+    "qty": 1,
+    "price": 229.38
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -488,7 +526,7 @@
   {
    "file": "2026-10-20-0548-MWA.md",
    "id": "2026-10-20-0548-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-10-20",
    "nextResults": null,
@@ -501,7 +539,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-02",
    "resultsDue": "2026-11-04",
-   "vsLimit": 0.1044,
+   "expiredBy": "days",
    "supersededBy": "2026-10-21-1818-MWA",
    "phase": "live",
    "counts": false
@@ -509,7 +547,7 @@
   {
    "file": "2026-10-20-0548-BN.PA.md",
    "id": "2026-10-20-0548-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-20",
    "nextResults": null,
@@ -521,7 +559,7 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-02",
-   "vsLimit": 0.0901,
+   "expiredBy": "days",
    "supersededBy": "2026-10-28-1017-BN.PA",
    "phase": "live",
    "counts": false
@@ -916,9 +954,9 @@
    "validUntil": "2026-10-22",
    "resultsDue": "2026-11-18",
    "expiredBy": "days",
-   "supersededBy": null,
+   "supersededBy": "2026-11-03-0010-PDD",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-10-09-1359-NVO.md",
@@ -3701,6 +3739,7 @@
   }
  ],
  "open": [
+  "2026-10-31-0004-RMD",
   "2026-10-08-0459-BVI.PA",
   "2026-10-07-1755-BVI.PA",
   "2026-10-06-0558-MWA",
@@ -3850,8 +3889,8 @@
   "PDD": [
    {
     "category": "competitive",
-    "text": "the domestic marketplace's monetisation is stalling. Online marketing services, PDD's core profit pool, grew only 2.5% and 3% in H1 2026 while merchant support and the Alibaba, JD and Meituan subsidy war continue. If it turns negative, Temu's lower-margin transaction fees have to carry the whole company.",
-    "id": "2026-10-09-1359-PDD"
+    "text": "Subsidised rivals take merchants' advertising budgets, so transaction growth conceals deterioration in PDD's domestic monetisation.",
+    "id": "2026-11-03-0010-PDD"
    }
   ],
   "HLN.L": [
@@ -3886,5 +3925,5 @@
    }
   ]
  },
- "today": "2026-11-02"
+ "today": "2026-11-03"
 }
