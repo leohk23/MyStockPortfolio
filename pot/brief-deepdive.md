@@ -97,6 +97,22 @@ evidence sets it, the standing proposal's id, and today's price against its limi
 From `cooldown[ticker].until` the name is free. A rejected name is out under §3.2 regardless. The
 report flags any proposal that breaks this, so a repeat cannot pass unnoticed.
 
+**A standing proposal whose price ran more than 5% above its limit has ended, out of reach (D109).**
+Its order will not fill, so `positions.js` drops the name from `cooldown` the day it happens, and you
+may propose it again at today's price. Leo was shown the case at the old limit, so P5 says what the
+higher price does to it: the old limit, today's price, and whether the valuation still clears the
+rules on today's figures.
+
+## Results due within three days: WAIT (D109)
+
+A name whose next results are due within the next three days, and not yet published, gets **WAIT**,
+not a proposal, whatever else it clears. The figures that will test the case are days away, and a
+proposal written the morning of an after-close release would stay open through numbers it never saw.
+Take the date from the company's own calendar where it has one, else `quotes[ticker].earnings`, and
+put it in the WAIT row. Results due today count unless they are already out; if they are, say so on
+the **Next results:** line. `positions.js` marks a proposal written within three days of its results
+(`beforeResults`) and the report lists it under *Needs you*.
+
 ## Answer every risk an earlier proposal of the name found — `earlierRisks` (D94)
 
 Leo's rule, 25 Oct. On 16 October a Deep dive found Halma's real risk: one hyperscaler, 20% of
@@ -390,7 +406,8 @@ also arrived at unprompted, and were kept:
 - **PROPOSE** — and the share count, where a proposal follows
 - **STANDS** — it would be proposed, but it was proposed inside the last two weeks and none of the
   three exceptions holds (D93); name the standing proposal and give today's price against its limit
-- **WAIT** — it clears the rules but something dated is missing; say what and by when
+- **WAIT** — it clears the rules but something dated is missing; say what and by when. Results due
+  within three days are always this (D109)
 - **EXCLUDE** — it does not clear a rule; say which one, in a clause
 
 A ranking that is only an ordering makes the reader infer the decision from position, and position
@@ -675,9 +692,9 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
 BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
 Good till cancelled. Currency <ccy>. Cash left idle: £<remainder>.
 <Not a day order: Leo may not read it the day it is written. The proposal stays open 14 days, and
- ends early at the company's next results or if the price falls more than 10% below the limit
- (D102); `positions.js` works that out, so do not write an expiry date. Above the limit it is still
- open; it has just not filled yet.>
+ ends early at the company's next results, if the price falls more than 10% below the limit, or if
+ it rises more than 5% above it (D102, D109); `positions.js` works that out, so do not write an
+ expiry date. Up to 5% above the limit it is still open; it has just not filled yet.>
 **Next results:** <d Month yyyy, from the company's investor-relations calendar or filing, with its
  link; or "not announced". Yahoo has no date for most London and Paris names, and this is what ends
  the proposal when it has none.>

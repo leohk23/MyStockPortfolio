@@ -318,6 +318,18 @@ function writeCalls(today) {
     fs.writeFileSync('pot/calls.md', callsPage(rows, bad, today));
     return { due: rows.filter(c => c.state === 'due').length, bad: bad.length };
 }
+// A proposal that ended early in the last three days (D102, D109), so a placed order gets cancelled.
+// `expiredOn` exists only from D109, so the older early ends are not listed. One already superseded
+// when it ended is not either: Leo was shown its successor, not it. Superseded after, by the fresh
+// proposal its end allowed, it still is: that order may be at the broker.
+const EARLY_END = {
+    above: 'more than 5% above its limit, so out of reach; a fresh Deep dive may propose it at the new price (D109)',
+    fall: 'more than 10% below its limit, so the numbers it was written on no longer hold (D102)',
+    results: 'the company has reported since it was written (D102)',
+};
+const earlyEnds = (proposals, today) => proposals.filter(p => p.state === 'expired' && EARLY_END[p.expiredBy]
+    && p.expiredOn && p.expiredOn > new Date(Date.parse(today + 'T00:00:00Z') - 3 * 864e5).toISOString().slice(0, 10)
+    && (!p.supersededBy || p.supersededBy.slice(0, 10) >= p.expiredOn));
 // The rule gaps still waiting for Leo (D106).
 const openQuestions = md => sectionRows(md, /^## Questions\b/).filter(c => /^open$/i.test(c[c.length - 1] || ''));
 // The second reader's own line, for the table of what is waiting. Its reason stays on the proposal.
@@ -1207,7 +1219,7 @@ does not look exactly like a healthy one.
     // awaiting anything — together they had inflated this to 68 on 12 Sep.
     const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
     // D102: a proposal stays open 14 days, less if results come first or the price falls 10% below
-    // its limit; above its limit inside that, it has simply not filled yet.
+    // its limit; up to 5% above its limit it has simply not filled yet, and beyond that it ends (D109).
     const byFile = new Map((pos.proposals || []).map(p => [p.file, p]));
     const validOf = f => (p => p?.validUntil ? p.validUntil + (p.resultsDue ? `, results ${p.resultsDue}` : '') : '–')(byFile.get(f));
     const vsLimitOf = f => {
@@ -1221,6 +1233,9 @@ does not look exactly like a healthy one.
     const reproposals = (pos.proposals || []).filter(p => p.reproposalBreach);
     // D94: a proposal that did not answer a risk an earlier proposal of the same name named.
     const unanswered = (pos.proposals || []).filter(p => p.earlierRisksMissing);
+    // D109: what ended early, and what was written days before results it could not see.
+    const ended = earlyEnds(pos.proposals || [], new Date().toISOString().slice(0, 10));
+    const preResults = (pos.proposals || []).filter(p => p.beforeResults && p.state === 'open' && !p.supersededBy);
     // D95: whether the second reader examined a proposal. Before 26 Oct there was no second reader.
     const secondRead = f => {
         if (f.slice(0, 10) < '2026-10-26') return '–';
@@ -1259,6 +1274,14 @@ ${unanswered.length
         ? unanswered.map(p => '- **Earlier risk not answered** — [' + p.id + '](proposals/' + p.file + ') says nothing about '
             + p.earlierRisksMissing.map(m => 'the `' + m.category + '` risk in [' + m.id + '](proposals/' + m.id + '.md)').join(', ')
             + ' (D94)').join(String.fromCharCode(10))
+        : ''}
+${ended.length
+        ? ended.map(p => '- **Ended early** — [' + p.id + '](proposals/' + p.file + '): ' + EARLY_END[p.expiredBy]
+            + '. Cancel it at the broker if you placed it.').join(String.fromCharCode(10))
+        : ''}
+${preResults.length
+        ? preResults.map(p => '- **Written before results it could not see** — [' + p.id + '](proposals/' + p.file + '): results are due '
+            + p.beforeResults + ', within three days of writing. Wait for them before placing it (D109)').join(String.fromCharCode(10))
         : ''}
 ${violations.length
         ? violations.map(v => '- **Cited a never-cite source** — ' + v.file + ' used ' + v.bad.join(', ') + ' ([sources.md](sources.md))').join(String.fromCharCode(10))
@@ -1463,6 +1486,13 @@ function selftest() {
         assert.strictEqual(ownLine('## Second reader\nThe draft stands.'), null);
         const q = '## Questions\n\n| asked | question | answer |\n|---|---|---|\n| 1 Nov | Does X count? | open |\n| 2 Nov | Does Y? | D107: no |\n';
         assert.deepStrictEqual(openQuestions(q).map(r => r[1]), ['Does X count?']);
+        const E = (id, expiredBy, expiredOn, state = 'expired') => ({ id, state, expiredBy, expiredOn });
+        assert.deepStrictEqual(earlyEnds([E('a', 'above', '2026-11-04'), E('b', 'fall', '2026-11-02'), E('c', 'days', '2026-11-04'),
+            E('d', 'above', '2026-11-01'), E('e', 'above', '2026-11-04', 'accepted'), E('f', 'results')], '2026-11-04').map(p => p.id),
+            ['a', 'b'], 'early ends of the last three days only, and not a bought or a 14-day one');
+        assert.deepStrictEqual(earlyEnds([{ ...E('g', 'above', '2026-11-04'), supersededBy: '2026-10-28-1017-BN.PA' },
+            { ...E('h', 'above', '2026-11-04'), supersededBy: '2026-11-05-0630-MWA' }], '2026-11-05').map(p => p.id),
+            ['h'], 'superseded before it ended: not listed; by the re-proposal its end allowed: listed');
     }
 
     // D95: what the second reader changed, outside its own section and the header lines.

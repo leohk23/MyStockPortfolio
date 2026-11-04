@@ -171,18 +171,36 @@ const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5)
 // written: results that day are taken as in it. Refreshed while still ahead (an estimate moves),
 // and kept once passed (the quote then drops it). A proposal first seen after results already
 // passed, with no stated date, cannot know of them; the 14 days still bound it.
-const FALL_BELOW_LIMIT = 0.10;
+//
+// D109: and a price more than 5% ABOVE the limit ends it too, as out of reach (`above`). The limit
+// is the price the case was argued at, so an order that far under the market will not fill, and
+// whether the case holds at the higher price is a question for a fresh Deep dive. MWA's 21 Oct
+// limit was that day's close; by 3 Nov the price was 7.8% over it and D93 still blocked a second
+// look. `expiredOn` dates an early end, so reproposalRule can free the name from that day.
+// `beforeResults` marks a proposal written within three days of results it could not have seen
+// (D109: such a name is WAIT, not PROPOSE); judged from 4 Nov, so history is not called a breach.
+const FALL_BELOW_LIMIT = 0.10, ABOVE_LIMIT = 0.05, RESULTS_WAIT_DAYS = 3, RESULTS_WAIT_FROM = '2026-11-04';
 function openLife(p, before, quote, px, today) {
     const next = [quote?.earnings?.date, p.nextResults].filter(d => d > p.written).sort()[0];
     const resultsDue = before?.resultsDue && before.resultsDue <= today ? before.resultsDue : next || before?.resultsDue || null;
     const until = addDays(p.written, REPROPOSE_DAYS);
+    const buyAt = p.side === 'BUY' && p.limit && px != null;
     let expiredBy = before?.state === 'expired' && before.expiredBy !== 'days' ? before.expiredBy : null;
     if (!expiredBy) expiredBy = today >= until ? 'days'
         : resultsDue && today >= resultsDue ? 'results'
-            : p.side === 'BUY' && p.limit && px != null && px < p.limit * (1 - FALL_BELOW_LIMIT) ? 'fall' : null;
+            : buyAt && px < p.limit * (1 - FALL_BELOW_LIMIT) ? 'fall'
+                : buyAt && px > p.limit * (1 + ABOVE_LIMIT) ? 'above' : null;
+    const expiredOn = expiredBy && expiredBy !== 'days' ? before?.expiredOn || today : null;
+    const early = p.side === 'BUY' && p.written >= RESULTS_WAIT_FROM && resultsDue
+        && resultsDue <= addDays(p.written, RESULTS_WAIT_DAYS);
     const lastDay = addDays([until, resultsDue].filter(Boolean).sort()[0], -1);
-    return { validUntil: lastDay, ...(resultsDue ? { resultsDue } : {}), ...(expiredBy ? { expiredBy } : {}) };
+    return { validUntil: lastDay, ...(resultsDue ? { resultsDue } : {}), ...(expiredBy ? { expiredBy } : {}),
+        ...(expiredOn ? { expiredOn } : {}), ...(early ? { beforeResults: resultsDue } : {}) };
 }
+// The day a proposal's D93 window closes: its 14 days, or earlier if it ended out of reach (D109).
+// Not a bought one: an order that filled was never out of reach, whatever the price did after.
+const windowEnd = q => [addDays(q.written, REPROPOSE_DAYS),
+    q.expiredBy === 'above' && q.state === 'expired' ? q.expiredOn : null].filter(Boolean).sort()[0];
 // A reason that is not price must name what changed; "price" alone is checked against the bar.
 const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
 
@@ -192,7 +210,7 @@ function reproposalRule(proposals, today, rejected = new Set()) {
     const last = new Map(), breaches = new Map();
     for (const p of buys) {
         const q = last.get(p.ticker);
-        if (q && p.written < addDays(q.written, REPROPOSE_DAYS) && p.written >= REPROPOSE_FROM) {
+        if (q && p.written < windowEnd(q) && p.written >= REPROPOSE_FROM) {
             const bar = q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null;
             const cheaper = bar != null && p.limit != null && p.limit <= bar;
             if (!cheaper && !(p.reproposed && REASON.test(p.reproposed))) breaches.set(p.id, { after: q.id, bar });
@@ -201,7 +219,7 @@ function reproposalRule(proposals, today, rejected = new Set()) {
     }
     const cooldown = {};
     for (const [ticker, q] of last) {
-        const until = addDays(q.written, REPROPOSE_DAYS);
+        const until = windowEnd(q);
         if (today >= until || rejected.has(ticker)) continue;
         cooldown[ticker] = { last: q.id, limit: q.limit, until,
             below: q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null };
@@ -476,6 +494,18 @@ if (process.argv.includes('--selftest')) {
             'an early expiry is final: a recovered price does not make stale numbers good');
         assert.strictEqual(life(319, '2026-11-02', { earnings: { date: '2026-10-30' } }).resultsDue, undefined,
             'results on the day it was written are in it');
+        // D109: more than 5% above the limit, out of reach, final, and dated.
+        assert.deepStrictEqual(life(334, '2026-10-31'), { validUntil: '2026-11-12', expiredBy: 'above', expiredOn: '2026-10-31' },
+            '5.1% above the limit: out of reach');
+        assert.strictEqual(life(333, '2026-10-31').expiredBy, undefined, '4.8% above: not filled yet');
+        assert.deepStrictEqual(life(320, '2026-11-02', {}, { state: 'expired', expiredBy: 'above', expiredOn: '2026-10-31' }),
+            { validUntil: '2026-11-12', expiredBy: 'above', expiredOn: '2026-10-31' }, 'carried with its date when the price comes back');
+        // D109: written within three days of results it could not see.
+        const nov = { written: '2026-11-04', side: 'BUY', limit: 21.89 };
+        assert.strictEqual(openLife(nov, undefined, { earnings: { date: '2026-11-06' } }, 22, '2026-11-04').beforeResults, '2026-11-06');
+        assert.strictEqual(openLife(nov, undefined, { earnings: { date: '2026-11-07' } }, 22, '2026-11-04').beforeResults, '2026-11-07', 'day 3 counts');
+        assert.strictEqual(openLife(nov, undefined, { earnings: { date: '2026-11-08' } }, 22, '2026-11-04').beforeResults, undefined, 'day 4 does not');
+        assert.strictEqual(life(319, '2026-10-30', { earnings: { date: '2026-11-01' } }).beforeResults, undefined, 'not judged before 4 Nov');
         const own = { ...hln, nextResults: '2026-11-05' };
         assert.strictEqual(openLife(own, undefined, {}, 319, '2026-11-05').expiredBy, 'results', 'the proposal\'s own date where Yahoo has none');
         assert.strictEqual(openLife({ ...hln, nextResults: '2026-11-09' }, undefined, { earnings: { date: '2026-11-05' } }, 319, '2026-11-02').resultsDue,
@@ -559,6 +589,15 @@ if (process.argv.includes('--selftest')) {
         // Pence stay pence: the bar is in the listing's own units.
         assert.strictEqual(reproposalRule([P('2026-10-27-0900-HLMA.L', 3276)], '2026-10-28').cooldown['HLMA.L'].below, 3112.2);
         assert.ok(!reproposalRule([P('2026-10-27-0900-YUMC', 40)], '2026-10-28', new Set(['YUMC'])).cooldown.YUMC, 'rejected: out, not cooling');
+        // D109: a proposal that ended out of reach frees its name from that day, unless it was bought.
+        const away = P('2026-11-04-0900-MWA', 21.89, { state: 'expired', expiredBy: 'above', expiredOn: '2026-11-06' });
+        assert.ok(!reproposalRule([away], '2026-11-06').cooldown.MWA, 'free the day it ended');
+        assert.strictEqual(reproposalRule([away], '2026-11-05').cooldown.MWA.until, '2026-11-06', 'standing until then');
+        const again = reproposalRule([away, P('2026-11-07-0900-MWA', 23.5)], '2026-11-08');
+        assert.strictEqual(again.breaches.size, 0, 'a fresh proposal at the higher price is no breach');
+        assert.strictEqual(again.cooldown.MWA.last, '2026-11-07-0900-MWA', 'and opens its own window');
+        assert.strictEqual(reproposalRule([away, P('2026-11-05-0900-MWA', 23.5)], '2026-11-08').breaches.size, 1, 'before it ended, still a repeat');
+        assert.ok(reproposalRule([{ ...away, state: 'accepted' }], '2026-11-08').cooldown.MWA, 'a bought proposal keeps its window');
     }
 
     // D95: a withdrawn proposal is recognised, opens no two-week window, and is not scored.
