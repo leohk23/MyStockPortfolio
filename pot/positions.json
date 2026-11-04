@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-03T07:21:18.403Z",
- "cashGBP": 266.15,
+ "generated": "2026-11-04T08:15:36.956Z",
+ "cashGBP": 269.62,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -181,6 +181,10 @@
    "withdrawn": "two findings weaken the case: a RMB1.5bn SAMR penalty that P6 omits, and H1 operating growth of 13% that rests on FY2025's trough quarter (Q2 alone +7.6%); the Q3 release that first tests the recovery is due in mid to late November, so it WAITs for that.",
    "validUntil": "2026-11-16",
    "resultsDue": "2026-11-18",
+   "rejected": {
+    "date": "2026-11-03",
+    "reason": "No reason given. The second reader had withdrawn it: a RMB1.5bn SAMR penalty that P6 omitted, and H1 operating growth resting on FY2025's trough quarter."
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": false
@@ -253,7 +257,7 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-12",
-   "vsLimit": 0.0173,
+   "vsLimit": 0.0249,
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -301,7 +305,7 @@
    "reproposed": "Since 2026-10-24-0948-BN.PA, Danone published Q3 sales on **28 October 2026**: organic growth +4.0%, comprising +0.4% volume/mix and +3.6% pricing. This is D93 exception 2, a new result, not the cheaper-limit exception. The old order expired on 27 October; this is a separate recommendation.",
    "withdrawn": null,
    "validUntil": "2026-11-10",
-   "vsLimit": 0.0453,
+   "vsLimit": 0.0446,
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -386,6 +390,8 @@
    "withdrawn": null,
    "validUntil": "2026-11-06",
    "resultsDue": "2026-11-19",
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -397,7 +403,7 @@
   {
    "file": "2026-10-24-0948-BN.PA.md",
    "id": "2026-10-24-0948-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-24",
    "nextResults": null,
@@ -409,7 +415,8 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-06",
-   "vsLimit": 0.0614,
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "supersededBy": "2026-10-28-1017-BN.PA",
    "phase": "live",
    "counts": false
@@ -430,6 +437,8 @@
    "withdrawn": null,
    "validUntil": "2026-11-05",
    "resultsDue": "2026-11-19",
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -465,7 +474,7 @@
   {
    "file": "2026-10-22-0724-BN.PA.md",
    "id": "2026-10-22-0724-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-22",
    "nextResults": null,
@@ -477,7 +486,8 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-04",
-   "vsLimit": 0.0862,
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "supersededBy": "2026-10-28-1017-BN.PA",
    "phase": "live",
    "counts": false
@@ -485,7 +495,7 @@
   {
    "file": "2026-10-21-1818-MWA.md",
    "id": "2026-10-21-1818-MWA",
-   "state": "open",
+   "state": "expired",
    "ticker": "MWA",
    "written": "2026-10-21",
    "nextResults": null,
@@ -498,7 +508,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-03",
    "resultsDue": "2026-11-04",
-   "vsLimit": 0.0973,
+   "expiredBy": "days",
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -506,7 +516,7 @@
   {
    "file": "2026-10-21-1818-BN.PA.md",
    "id": "2026-10-21-1818-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-21",
    "nextResults": null,
@@ -518,7 +528,7 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-03",
-   "vsLimit": 0.0862,
+   "expiredBy": "days",
    "supersededBy": "2026-10-28-1017-BN.PA",
    "phase": "live",
    "counts": false
@@ -940,7 +950,7 @@
   {
    "file": "2026-10-09-1359-PDD.md",
    "id": "2026-10-09-1359-PDD",
-   "state": "expired",
+   "state": "rejected",
    "ticker": "PDD",
    "written": "2026-10-09",
    "nextResults": null,
@@ -954,6 +964,10 @@
    "validUntil": "2026-10-22",
    "resultsDue": "2026-11-18",
    "expiredBy": "days",
+   "rejected": {
+    "date": "2026-11-03",
+    "reason": "No reason given. The second reader had withdrawn it: a RMB1.5bn SAMR penalty that P6 omitted, and H1 operating growth resting on FY2025's trough quarter."
+   },
    "supersededBy": "2026-11-03-0010-PDD",
    "phase": "live",
    "counts": false
@@ -3752,12 +3766,6 @@
   "2026-09-08-2133-MWA"
  ],
  "cooldown": {
-  "MWA": {
-   "last": "2026-10-21-1818-MWA",
-   "limit": 21.89,
-   "until": "2026-11-04",
-   "below": 20.7955
-  },
   "none": {
    "last": "2026-11-01-2119-none",
    "limit": null,
@@ -3886,13 +3894,6 @@
     "id": "2026-10-05-1040-CME"
    }
   ],
-  "PDD": [
-   {
-    "category": "competitive",
-    "text": "Subsidised rivals take merchants' advertising budgets, so transaction growth conceals deterioration in PDD's domestic monetisation.",
-    "id": "2026-11-03-0010-PDD"
-   }
-  ],
   "HLN.L": [
    {
     "category": "accounting",
@@ -3925,5 +3926,5 @@
    }
   ]
  },
- "today": "2026-11-03"
+ "today": "2026-11-04"
 }
