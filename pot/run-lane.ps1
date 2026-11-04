@@ -300,9 +300,19 @@ if ($Push) {
     git rebase --quiet --autostash FETCH_HEAD 2>&1 | Out-Null
     $rebaseOk = $LASTEXITCODE -eq 0
 
+    # Retried as run-daily.ps1's Restore-Scratch is: anything reading the file at that instant (an
+    # editor, a virus scan) holds a mapped section, and Copy-Item fails with "user-mapped section
+    # open". Here it went unretried, and on 4 Nov it threw out of the Deep dive's push, which stopped
+    # the cycle before the second reader and the report. Unlike there, a lock that outlasts ten tries
+    # does not stop anything: the commit is made, and CI's copy of the file is a valid one to keep.
     foreach ($kv in $saved.GetEnumerator()) {
-        Copy-Item $kv.Value $kv.Key -Force
-        Remove-Item $kv.Value -Force -ErrorAction SilentlyContinue
+        $copied = $false
+        foreach ($try in 1..10) {
+            try { Copy-Item $kv.Value $kv.Key -Force -ErrorAction Stop; $copied = $true; break }
+            catch { Start-Sleep -Seconds 1 }
+        }
+        if ($copied) { Remove-Item $kv.Value -Force -ErrorAction SilentlyContinue }
+        else { Note "could not put back $($kv.Key) (locked); keeping CI's copy" }
     }
 
     # Whatever happened, do not hand the next lane a half-merged tree. `git rebase --autostash`
