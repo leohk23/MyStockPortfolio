@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-04T12:45:04.210Z",
- "cashGBP": 269.68,
+ "generated": "2026-11-04T21:15:05.905Z",
+ "cashGBP": 269.22,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -273,7 +273,7 @@
   {
    "file": "2026-10-30-0705-HLN.L.md",
    "id": "2026-10-30-0705-HLN.L",
-   "state": "open",
+   "state": "expired",
    "ticker": "HLN.L",
    "written": "2026-10-30",
    "nextResults": null,
@@ -285,7 +285,8 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-11-12",
-   "vsLimit": 0.0148,
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -321,7 +322,7 @@
   {
    "file": "2026-10-28-1017-BN.PA.md",
    "id": "2026-10-28-1017-BN.PA",
-   "state": "open",
+   "state": "expired",
    "ticker": "BN.PA",
    "written": "2026-10-28",
    "nextResults": null,
@@ -333,7 +334,8 @@
    "reproposed": "Since 2026-10-24-0948-BN.PA, Danone published Q3 sales on **28 October 2026**: organic growth +4.0%, comprising +0.4% volume/mix and +3.6% pricing. This is D93 exception 2, a new result, not the cheaper-limit exception. The old order expired on 27 October; this is a separate recommendation.",
    "withdrawn": null,
    "validUntil": "2026-11-10",
-   "vsLimit": 0.0427,
+   "expiredBy": "above",
+   "expiredOn": "2026-11-04",
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -465,8 +467,6 @@
    "withdrawn": null,
    "validUntil": "2026-11-05",
    "resultsDue": "2026-11-19",
-   "expiredBy": "above",
-   "expiredOn": "2026-11-04",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -3799,18 +3799,6 @@
    "limit": null,
    "until": "2026-11-18",
    "below": null
-  },
-  "HLN.L": {
-   "last": "2026-10-30-0705-HLN.L",
-   "limit": 317.7,
-   "until": "2026-11-13",
-   "below": 301.815
-  },
-  "BN.PA": {
-   "last": "2026-10-28-1017-BN.PA",
-   "limit": 63.2,
-   "until": "2026-11-11",
-   "below": 60.04
   },
   "RMD": {
    "last": "2026-10-31-0004-RMD",

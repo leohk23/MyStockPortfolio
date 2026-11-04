@@ -1,6 +1,6 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-01",
+  "updated": "2026-11-04",
   "normalizedEps": {
     "UU.L": {
       "basis": "company underlying basic EPS",
@@ -544,6 +544,17 @@
     }
   },
   "adjustments": {
+    "KWHIY": [
+      {
+        "fy": "2027-03-31",
+        "amount": 8000000000,
+        "ccy": "JPY",
+        "arithmetic": false,
+        "what": "IEEPA tariff refund in Powersports & Engine, quarter ended 2026-06-30 (issuer FY2026 Q1). Kawasaki's 7 August presentation, page 9, attributes JPY8.0bn of the business-profit bridge to the refund. Group-level pre-tax evidence, not an after-tax amount attributable to common shareholders or a per-receipt figure; do not subtract it from net earnings or create normalized EPS. KWHIY follows 7012.T at 0.4 ordinary shares per ADR.",
+        "source": "https://global.kawasaki.com/en/corp/ir/library/pdf/pre_260807-1e.pdf",
+        "found": "2026-11-04"
+      }
+    ],
     "PDD": [
       {
         "fy": "2025-12-31",
