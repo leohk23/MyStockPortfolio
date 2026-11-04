@@ -882,7 +882,9 @@ function summariseClaude(file) {
     // live in this directory too — the one that designed this function is 11MB of it. Only a lane
     // run starts with run-lane.ps1's exact prompt.
     if (!/^Follow the instructions in /.test(asked)) return null;
-    const brief = (asked.match(/pot[\/]brief-([a-z-]+)\.md/) || [])[1];
+    // Either separator, as the codex side reads it: run-lane.ps1's own examples write `pot\brief-...`,
+    // and on 4 Nov a Claude examination started that way was left out, its files stamped "not run".
+    const brief = (asked.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1];
     if (!brief) return null;
     if (!/MyStockPortfolio/i.test(user?.cwd || '')) return null;
     const said = lines.filter(l => l.type === 'assistant' && l.message);
@@ -1447,6 +1449,20 @@ function selftest() {
             assert.ok(y[0].startsWith('model: `claude-opus-5-5`, lane: examine'), 'a raised proposal is the examiner\'s: ' + y[0]);
             assert.strictEqual(pass(), 0, 'stamping again changes nothing');
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+    // A Claude lane whose brief path has a backslash is still a lane.
+    {
+        const os = require('os');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-')), f = path.join(dir, 's.jsonl');
+        try {
+            fs.writeFileSync(f, [
+                { type: 'user', cwd: 'C:\\Users\\x\\MyStockPortfolio', timestamp: '2026-11-04T22:51:22Z',
+                    message: { content: 'Follow the instructions in pot\\brief-examine.md' } },
+                { type: 'assistant', timestamp: '2026-11-04T22:57:24Z',
+                    message: { model: 'claude-opus-5-5', usage: { input_tokens: 1, output_tokens: 1 }, content: [] } },
+            ].map(l => JSON.stringify(l)).join('\n') + '\n');
+            assert.strictEqual(summariseClaude(f)?.brief, 'examine', 'pot\\brief-examine.md names the examine lane');
+        } finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
 
     // D106: the second reader's calls, its own line and the rule questions.
