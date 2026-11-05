@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-04T21:15:05.905Z",
- "cashGBP": 269.22,
+ "generated": "2026-11-05T08:31:33.273Z",
+ "cashGBP": 269.28,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -166,6 +166,34 @@
  },
  "proposals": [
   {
+   "file": "2026-11-04-2243-none.md",
+   "id": "2026-11-04-2243-none",
+   "state": "open",
+   "ticker": "none",
+   "written": "2026-11-04",
+   "nextResults": "2026-11-10",
+   "side": "BUY",
+   "limit": null,
+   "warning": "already present. Trailing cash after PP&E purchases, intangible purchases and lease principal is negative, and Q1 operating cash weakened year on year. At the 10 November release, flag further deterioration in the same trailing measure or a cut to the August FY2026 business-profit forecast of ¥180bn. Read inventories, contract assets, advances, refund liabilities and factoring together; a working-capital release is not automatically repeatable cash.",
+   "break": "reject the self-funding investment thesis if the year ending 31 March 2027 still has cash after those three outlays at or below zero, assessed by **31 May 2027**, or if a disclosed project loss/additional financing requirement shows the planned expansion cannot fund itself on the proposed economics. This is an analyst test, not management guidance. A new defence-procurement suspension is a separate reason to re-underwrite the affected orders immediately.",
+   "reviewBy": "2026-11-10",
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true,
+   "reproposalBreach": {
+    "after": "2026-11-04-0857-none",
+    "bar": null
+   },
+   "earlierRisksMissing": [
+    {
+     "category": "accounting",
+     "id": "2026-09-08-1040-none"
+    }
+   ]
+  },
+  {
    "file": "2026-11-04-0857-none.md",
    "id": "2026-11-04-0857-none",
    "state": "open",
@@ -179,9 +207,9 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
-   "counts": true,
+   "counts": false,
    "reproposalBreach": {
     "after": "2026-11-01-2119-none",
     "bar": null
@@ -231,7 +259,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false,
    "reproposalBreach": {
@@ -305,7 +333,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false,
    "reproposalBreach": {
@@ -354,7 +382,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false,
    "reproposalBreach": {
@@ -382,7 +410,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false
   },
@@ -400,7 +428,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false
   },
@@ -467,6 +495,8 @@
    "withdrawn": null,
    "validUntil": "2026-11-05",
    "resultsDue": "2026-11-19",
+   "expiredBy": "above",
+   "expiredOn": "2026-11-05",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -491,6 +521,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-04",
    "resultsDue": "2026-11-19",
+   "expiredBy": "days",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -2702,7 +2733,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false
   },
@@ -2720,7 +2751,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-04-0857-none",
+   "supersededBy": "2026-11-04-2243-none",
    "phase": "live",
    "counts": false
   },
@@ -3795,7 +3826,7 @@
  ],
  "cooldown": {
   "none": {
-   "last": "2026-11-04-0857-none",
+   "last": "2026-11-04-2243-none",
    "limit": null,
    "until": "2026-11-18",
    "below": null
@@ -3849,6 +3880,11 @@
     "category": "accounting",
     "text": "The leading candidates' apparently cheap earnings are not yet demonstrated to be repeatable on a comparable basis, so buying the current screen could capitalize temporary gains as durable profit.",
     "id": "2026-09-08-1040-none"
+   },
+   {
+    "category": "financial",
+    "text": "equipment growth and expansion absorb more cash than they produce, requiring additional capital and reducing the return to each existing share.",
+    "id": "2026-11-04-2243-none"
    }
   ],
   "NFLX": [
@@ -3942,5 +3978,5 @@
    }
   ]
  },
- "today": "2026-11-04"
+ "today": "2026-11-05"
 }
