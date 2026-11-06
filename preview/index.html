@@ -2838,6 +2838,16 @@
         // part of it, and read once it is settled knowledge. Opened, it stays open across redraws.
         let chartNoteOpen = false;
 
+        // A y label's width as drawn (.axis-label is 10px in the chart's font), measured on a
+        // canvas; where there is none, about 6px a character.
+        let axisCtx;
+        const axisTextWidth = (text, svg) => {
+            if (axisCtx === undefined) axisCtx = document.createElement('canvas').getContext('2d') || null;
+            if (!axisCtx) return String(text).length * 6;
+            axisCtx.font = `10px ${getComputedStyle(svg).fontFamily}`;
+            return axisCtx.measureText(text).width;
+        };
+
         function drawChart() {
             const spec = chartSpec();
             if (!spec) return;   // Performance before history.json lands; updateChart draws it on arrival
@@ -2848,7 +2858,7 @@
             // because only it knows what its x values ARE (date strings vs epoch seconds).
             const fmtX = spec.fmtX || ymd;
             const W = svg.clientWidth || svg.parentNode.clientWidth;
-            const H = 210, L = 64, R = 14, T = 10, B = 22;
+            const H = 210, R = 14, T = 10, B = 22;
             if (!W) return;
 
             // Before the empty-series exit, so a chart with nothing to draw still says why
@@ -2889,12 +2899,19 @@
             const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.02 || 1;
             lo -= pad; hi += pad;
 
+            // The left margin is the widest y label plus its 8px gap, not a fixed 64px: a
+            // percentage axis left a blank strip beside "+25.0%" (Leo, 6 Nov), while an HK$
+            // value axis ran past the edge.
+            const ticks = Array.from({ length: 5 }, (_, k) => lo + (k / 4) * (hi - lo));
+            const labels = ticks.map(v => spec.fmtY(v));
+            const L = Math.ceil(Math.max(0, ...labels.map(t => axisTextWidth(t, svg)))) + 10;
+
             const x = i => L + (i / (days.length - 1)) * (W - L - R);
             const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
 
-            const gridEls = Array.from({ length: 5 }, (_, k) => lo + (k / 4) * (hi - lo)).map(v =>
+            const gridEls = ticks.map((v, k) =>
                 `<line class="grid" x1="${L}" y1="${y(v).toFixed(1)}" x2="${W - R}" y2="${y(v).toFixed(1)}"/>` +
-                `<text class="axis-label" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${spec.fmtY(v)}</text>`
+                `<text class="axis-label" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${labels[k]}</text>`
             ).join('');
             const zeroEl = spec.zero && lo < 0 && hi > 0 ? `<line class="zero" x1="${L}" y1="${y(0).toFixed(1)}" x2="${W - R}" y2="${y(0).toFixed(1)}"/>` : '';
             // Average cost: a reference line, not a series — it has no per-day value to hover.
