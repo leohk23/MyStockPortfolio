@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-05T08:31:33.273Z",
- "cashGBP": 269.28,
+ "generated": "2026-11-06T00:35:53.530Z",
+ "cashGBP": 268.5,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -165,6 +165,27 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-05-0910-NFLX.md",
+   "id": "2026-11-05-0910-NFLX",
+   "state": "open",
+   "ticker": "NFLX",
+   "written": "2026-11-05",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 66.5,
+   "warning": "(re-read, not a sale). **Already tripped at entry on one month:** Nielsen's August 2026 Netflix share of 7.7% is **11.5% below** August 2025's 8.7%. It stays active until a comparable month is back within 5% of its year-ago share. It re-trips on any of these: - Nielsen's combined September and October 2026 release shows Netflix **5% or more below** the same months of 2025. Nielsen is changing its methodology from September. If its release gives no comparable year-ago figure, the warning counts as **cannot tell**, not as a pass. - Q4 2026 revenue comes in below the **$13.4bn** guided in the Q3 letter. - Netflix lowers its 2026 advertising expectation below **$2.7bn**.",
+   "break": "(sell under §5.1), checked at the Q4 2026 letter and the 2026 engagement report, **by 31 March 2027**. Any one of these breaks it: 1. **Hours fail the tightened floor.** Netflix's 2026 engagement report shows total hours viewed below **193bn**, the second reader's threshold. The original 191bn floor could pass with roughly 94bn in H2 after roughly 97bn in H1, versus 96bn in H2 2025. The new floor is approximately flat H2 on those rounded published totals, not a claim of exact half-year growth. 2. **Monetisation stops outrunning attention.** FY2027 revenue guidance in the Q4 letter implies F/X-neutral growth **below 8%**, against 12% for 2026. 3. **Sustained share loss.** Two consecutive comparable Nielsen monthly observations after August 2026 show Netflix **10% or more below** the same month a year earlier, **irrespective of revenue growth**. September and October count separately even if published together. Never splice across the methodology change without comparable year-ago figures. Review their availability by **31 December 2026**; an unavailable comparison remains an active warning, not a pass. Read both audience tests by 31 March 2027. If Netflix's annual hours are unavailable or the scope has changed without a reconciliation, keep the warning active and re-review; do not score an unpublished number as a failed business test. The independently dated annual report covers the global risk within two quarters even if Nielsen's comparison remains unavailable. The break is not on margin. A margin can be defended for a while by cutting content spend while attention leaks away (the Q3 letter's Q4 guide already includes headcount reductions). Tests 1 and 3 move as soon as viewing moves, without waiting for revenue to miss.",
+   "reviewBy": "2027-01-22",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-11-18",
+   "resultsDue": "2027-01-19",
+   "vsLimit": -0.0141,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-11-04-2243-none.md",
    "id": "2026-11-04-2243-none",
@@ -448,8 +469,6 @@
    "withdrawn": null,
    "validUntil": "2026-11-06",
    "resultsDue": "2026-11-19",
-   "expiredBy": "above",
-   "expiredOn": "2026-11-04",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -495,8 +514,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-05",
    "resultsDue": "2026-11-19",
-   "expiredBy": "above",
-   "expiredOn": "2026-11-05",
+   "expiredBy": "days",
    "rejected": {
     "date": "2026-10-24",
     "reason": "One hyperscaler is 20% of group revenue and about half of organic growth; the case is AI data-centre capex, which the book already holds at ~40%. Revisit after the 19 Nov interim."
@@ -2647,9 +2665,9 @@
    "validUntil": "2026-09-22",
    "resultsDue": "2027-01-19",
    "expiredBy": "days",
-   "supersededBy": null,
+   "supersededBy": "2026-11-05-0910-NFLX",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-09-2039-MWA.md",
@@ -2689,7 +2707,7 @@
    "validUntil": "2026-09-21",
    "resultsDue": "2027-01-19",
    "expiredBy": "days",
-   "supersededBy": "2026-09-09-2039-NFLX",
+   "supersededBy": "2026-11-05-0910-NFLX",
    "phase": "live",
    "counts": false
   },
@@ -3831,6 +3849,12 @@
    "until": "2026-11-18",
    "below": null
   },
+  "NFLX": {
+   "last": "2026-11-05-0910-NFLX",
+   "limit": 66.5,
+   "until": "2026-11-19",
+   "below": 63.175
+  },
   "RMD": {
    "last": "2026-10-31-0004-RMD",
    "limit": 230,
@@ -3890,8 +3914,8 @@
   "NFLX": [
    {
     "category": "competitive",
-    "text": "Other entertainment, including creator and generated video, takes viewing time while price rises and advertising temporarily conceal the loss in revenue.",
-    "id": "2026-09-09-2039-NFLX"
+    "text": "YouTube and creator or generated video take viewing time faster than price rises and advertising can make up, so revenue growth fades and pricing power goes with it.",
+    "id": "2026-11-05-0910-NFLX"
    }
   ],
   "NVO": [
@@ -3978,5 +4002,5 @@
    }
   ]
  },
- "today": "2026-11-05"
+ "today": "2026-11-06"
 }
