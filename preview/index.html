@@ -38,6 +38,7 @@
         #updated-row { display: flex; flex-wrap: wrap; align-items: center;
             justify-content: space-between; gap: 6px 12px; margin-bottom: 14px; }
         #updated { color: var(--text-muted); font-size: 12px; margin-right: auto; }
+        #updated span { white-space: nowrap; }
         #priv-toggle { line-height: 0; padding: 5px 8px; }
         #priv-toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none;
             stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -120,6 +121,8 @@
         #tip .row { display: flex; align-items: center; gap: 5px; }
         #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        #chart-note .deep-notes { margin-top: 0; }
+        #chart-note .deep-notes > div { margin-top: 4px; }
 
         /* ---- deep dive ---- */
         #deep { background: var(--surface-3); border: 1px solid var(--line); border-radius: 8px;
@@ -2831,6 +2834,10 @@
             { date: '2025-04-07', label: 'Liberation Day' },
         ];
 
+        // The chart's note folds away like the panel's Notes: it explains the line rather than being
+        // part of it, and read once it is settled knowledge. Opened, it stays open across redraws.
+        let chartNoteOpen = false;
+
         function drawChart() {
             const spec = chartSpec();
             if (!spec) return;   // Performance before history.json lands; updateChart draws it on arrival
@@ -2849,7 +2856,13 @@
             document.getElementById('chart-title').textContent = spec.title;
             document.getElementById('chart-change').innerHTML = spec.headline;
             document.getElementById('chart-sub').textContent = spec.sub;
-            document.getElementById('chart-note').textContent = spec.note;
+            const noteEl = document.getElementById('chart-note');
+            noteEl.innerHTML = spec.note
+                ? `<details class="deep-notes"${chartNoteOpen ? ' open' : ''}><summary>About this chart</summary>`
+                    + `<div>${escapeHTML(spec.note)}</div></details>`
+                : '';
+            const noteFold = noteEl.querySelector('details');
+            if (noteFold) noteFold.ontoggle = e => { chartNoteOpen = e.target.open; };
             if (days.length < 2) { svg.innerHTML = ''; return; }
 
             // Legend (always shown for >=2 series).
@@ -4751,7 +4764,7 @@ function renderPot() {
             // The pot reports, optional in the same way: a checkout that has never run the pot
             // still has a working dashboard, and the Pot tab says so rather than breaking.
             fetch(DATA + 'pot.json' + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])).then(async ([{ holdings, sealed }, { updated, rates, quotes, macro, fed, inflation, countries, nav, received, performance, weights, gains }, watchlist, signals, pot]) => {
+        ])).then(async ([{ holdings, sealed, generated }, { updated, rates, quotes, macro, fed, inflation, countries, nav, received, performance, weights, gains }, watchlist, signals, pot]) => {
             // Sealed since D67. Skipping keeps the PUBLIC half of holdings.json: which stocks are held
             // (ticker, group, geography, currency), with prices, moves and valuation, and no amounts.
             // It used to fall back to an empty list, blanking the table, although D67 kept the
@@ -4804,7 +4817,12 @@ function renderPot() {
             // "click the chevron to expand") taught a one-reader page something it learns in a
             // single session, then sat there for good — costing a line at the top of every phone
             // screen forever. The behaviours are unchanged; only the caption is gone.
-            document.getElementById('updated').textContent = `Prices as of ${stamp(updated)}`;
+            // Beside it, when the book last changed (Leo, 6 Nov): holdings.json `generated`, public, so
+            // it shows locked too. The extract leaves that file alone when nothing in the Tradelog
+            // changed, so a save that touches no trade does not move it. Each fact is one unbroken
+            // span, so a narrow screen wraps between them rather than inside one.
+            document.getElementById('updated').innerHTML = `<span>Prices as of ${stamp(updated)}.</span>` +
+                (generated ? ` <span title="When the last change to the Tradelog reached the site. A workbook save that changes no trade leaves this as it was.">Tradelog updated ${stamp(generated)}</span>` : '');
             new ResizeObserver(drawChart).observe(document.getElementById('plot'));
 
             // Floating Total row: follow the page as it scrolls, and rebuild widths on resize
