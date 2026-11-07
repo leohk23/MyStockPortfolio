@@ -356,7 +356,9 @@ function stampProvenance(run, claimed = new Set()) {
         + `stamped from the session log rather than self-reported`;
     let stamped = 0;
     for (const abs of run.wrote || []) {
-        const rel = abs.replace(/\\/g, '/').replace(/^.*?MyStockPortfolio\//, '');
+        // From the LAST MyStockPortfolio/: a cloud Sweep (D111) ran on a GitHub runner, whose
+        // checkout is D:\a\MyStockPortfolio\MyStockPortfolio, the name twice.
+        const rel = abs.replace(/\\/g, '/').replace(/^.*MyStockPortfolio\//, '');
         if (!rel.startsWith('pot/') || !rel.endsWith('.md')) continue;
         const onDisk = fs.existsSync(rel) ? rel
             : renamedOutput(rel.slice(0, rel.lastIndexOf('/')), run, claimed);
@@ -1448,6 +1450,14 @@ function selftest() {
             assert.strictEqual(x[2], '# X', 'the body is untouched');
             assert.ok(y[0].startsWith('model: `claude-opus-5-5`, lane: examine'), 'a raised proposal is the examiner\'s: ' + y[0]);
             assert.strictEqual(pass(), 0, 'stamping again changes nothing');
+            // D111: a Sweep run on a GitHub runner wrote under the repository's name twice.
+            const S = 'pot/sweeps/2026-11-09-1117.md';
+            fs.mkdirSync('pot/sweeps', { recursive: true });
+            fs.writeFileSync(S, 'model: pending, lane: sweep, date: x, tokens: pending\n# S\n');
+            const cloud = { ...run('sweep', 'claude-opus-5-5', '2026-11-09T11:17:00Z', []),
+                wrote: ['D:\\a\\MyStockPortfolio\\MyStockPortfolio\\pot\\sweeps\\2026-11-09-1117.md'] };
+            assert.strictEqual(stampProvenance(cloud), 1, "a runner's path is the repository's own file");
+            assert.ok(fs.readFileSync(S, 'utf8').startsWith('model: `claude-opus-5-5`, lane: sweep'));
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
     }
     // A Claude lane whose brief path has a backslash is still a lane.

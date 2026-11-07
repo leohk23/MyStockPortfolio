@@ -466,6 +466,42 @@ function Sweep-Age {
     return [double]((Get-Date).ToUniversalTime() - $last).TotalHours
 }
 
+# D111: the Mon/Wed/Fri second-run Sweep runs on GitHub Actions (.github/workflows/pot-sweep.yml).
+# A cycle that starts while one is queued or running waits for it, so it pulls that Sweep rather
+# than writing a second beside it. Bounded, and silent without gh: no cloud run is the old behaviour.
+function Wait-CloudSweep {
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
+    $until = (Get-Date).AddMinutes(30)
+    $noted = $false
+    while ((Get-Date) -lt $until) {
+        $states = @(gh run list --workflow pot-sweep.yml --limit 5 --json status --jq '.[].status' 2>$null)
+        if ($LASTEXITCODE -ne 0) { return }
+        if (-not @($states | Where-Object { $_ -and $_ -ne 'completed' }).Count) { return }
+        if (-not $noted) { Note '  a cloud Sweep is running - waiting for it (D111)'; $noted = $true }
+        Start-Sleep -Seconds 60
+    }
+    Note '  the cloud Sweep is still running after 30 minutes - carrying on without it'
+}
+
+# D111: a cloud Sweep's transcript comes back as its run's `sweep-transcript` artifact, into the
+# lanes' transcript folder, where report.js reads every Claude lane: that is how the Sweep gets its
+# provenance stamp and its row in runs.md. GitHub keeps it 14 days, so a laptop off for longer
+# leaves that Sweep `model: pending`. A download that fails is simply tried again next cycle.
+function Sync-CloudTranscripts {
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
+    $ids = @(gh api 'repos/{owner}/{repo}/actions/artifacts?name=sweep-transcript&per_page=30' `
+        --jq '.artifacts[] | select(.expired | not) | .workflow_run.id' 2>$null)
+    if ($LASTEXITCODE -ne 0) { Note '  could not list the cloud Sweep transcripts - left for next cycle'; return }
+    $dest = Join-Path $env:USERPROFILE '.claude-lanes\projects\cloud'
+    foreach ($id in ($ids | Where-Object { $_ } | Select-Object -Unique)) {
+        $dir = Join-Path $dest $id
+        if (Test-Path $dir) { continue }
+        gh run download $id --name sweep-transcript --dir $dir 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { Note "  cloud Sweep transcript fetched (run $id)" }
+        else { Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 function Invoke-Lane($brief, $agent = $null, [switch]$Soft) {
     Note "--- $brief"
     # -Soft: a failure on Codex is noted and the cycle carries on, as it already does on Claude. For
@@ -592,6 +628,7 @@ try {
     # modified, and a fast-forward will not overwrite them, so 49 cycles to 23 Oct 2026 failed this
     # pull on world-history.json alone and ran on whatever the laptop last had. They are rebuilt
     # below either way. The same list as publish.js, which hit the same wall on 14 Oct.
+    Wait-CloudSweep
     $regenerated = $ciOwned + @('alerts-state.json', 'pot.json', 'pot/positions.json', 'pot/origins.json')
     git checkout --quiet -- @($regenerated) 2>&1 | Out-Null
     git pull --ff-only --quiet origin main 2>&1 | Out-Null
@@ -767,6 +804,7 @@ try {
     #
     # The comment above used to be a lie: only report.js ran, so pot.json never got rebuilt and
     # the Pot tab served whatever the last manual run left behind.
+    Sync-CloudTranscripts
     node pot/report.js 2>&1 | ForEach-Object { Note "  $_" }
     # D99: file what is no longer current into pot/proposals/archive/, here because no lane is
     # running (a file moved under a lane is put back by D91), and before the bundle that lists them.

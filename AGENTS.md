@@ -115,7 +115,7 @@ new, and the Deep dive reads both (pot-design §2):
 the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
 entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
 Scan, then whichever LLM lanes are DUE, in order, then the report. Review runs every 2 days, Sweep daily, and the Deep dive only if the Sweep ran in the same cycle (D30, D33, D36). **Weekdays 06:30, 12:45 and 21:15;
-weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). It skips the Sweep when another ran under three hours before, as when it catches up behind a late cycle (D108). **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
+weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). It skips the Sweep when another ran under three hours before, as when it catches up behind a late cycle (D108). **Since D111 that Sweep runs on GitHub Actions** (`.github/workflows/pot-sweep.yml`, 11:17 UTC with a 12:17 retry, no laptop needed), and the laptop's entry is its fallback: once the cloud Sweep has landed, the three-hour rule makes the laptop's a no-op. **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
 
 Two things that constrain any change to it:
 
@@ -149,11 +149,12 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 | Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
 | Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted, and nor is the **Sweep on the days astra drafts** (Mon, Wed, Fri and weekends), which runs on Opus so astra keeps the 5-hour window. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95, D105 |
-| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive -SweepGapHours 3`, Mon/Wed/Fri 12:45 | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88, D108 |
+| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive -SweepGapHours 3`, Mon/Wed/Fri 12:45, now the fallback for the cloud Sweep | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88, D108, D111 |
+| **Cloud Sweep** | the second run's Sweep on GitHub Actions, Mon/Wed/Fri 11:17 UTC (12:17 retry): `run-lane.ps1` unchanged on a Windows runner, model and effort read from `run-daily.ps1`; the lane job has no push credential, and a second job checks paths and the token before pushing. A cycle waits for a running one (`Wait-CloudSweep`) and fetches its transcript for the ledger (`Sync-CloudTranscripts`, needs `gh`) | `.github/workflows/pot-sweep.yml` | D111 |
 | After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |
 | Failed lane on Claude | skipped; the cycle continues. A failed lane on either agent keeps none of what it wrote, so it stays due | `Invoke-Lane`, `run-lane.ps1` | D72, D108 |
 | Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due; two stages, drafter then examiner on the other model | `$doDeep`, `Invoke-DeepDive` | D73, D95 |
-| Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it | `run-lane.ps1` | D72 |
+| Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it. The cloud Sweep uses a second token, the `CLAUDE_CODE_OAUTH_TOKEN` secret, so either can be revoked alone | `run-lane.ps1`, `pot-sweep.yml` | D72, D111 |
 | Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |
 | What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/questions.md`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
 | **Subagents** | Sweep: `scout` (Haiku). Deep dive and its second reader: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
@@ -169,8 +170,10 @@ loses its quotes on the way from PowerShell 5.1 to a program; use definition fil
 
 **Write lane output as UTF-8 with the file-editing tool, never through a PowerShell redirection, `Set-Content` or `Out-File`.** Windows PowerShell 5.1 re-encodes on the way out: on 14 Sep the deep dive's run report lost every £, € and — to a literal `?` (27 characters) while its three proposals, written the other way, were intact.
 
-`npm run signals` must stay free — plain JavaScript over data CI already fetches. An LLM call in CI
-would break D3 (no metered API spend), because CI has no subscription auth.
+`npm run signals` must stay free — plain JavaScript over data CI already fetches. The price
+workflow never calls an LLM. The one lane that runs in CI, the cloud Sweep (D111), does so on the
+subscription through Claude's long-lived token, so D3 holds; Codex cannot follow, because OpenAI's
+guide to a ChatGPT login in CI rules out public repositories.
 
 **`pot/proposals/` holds only what is current** (bought, awaiting Leo, a D93 standing proposal, the newest run); `pot/archive.js` files the rest in `pot/proposals/archive/` at the end of every cycle, by state, and moves a file back if its state returns (D99). A proposal's id is its file name in either folder, so read both when looking one up.
 
@@ -200,6 +203,7 @@ from what an agent said about itself. It also writes the two performance pages, 
 | `push-alerts.js` + `sw.js` | Phone alerts (D86): after each price fetch, a holding (book or pot) moving ±5% on the day sends one Web Push notification; `sw.js` shows it on the phone. Secrets `VAPID_PRIVATE_KEY` and `PUSH_SUBSCRIPTION`; memory in `alerts-state.json`. The bell button on the page produces the subscription. Dependency-free. | GitHub Actions (prices.yml) + browser |
 | `publish.js`                   | `npm run publish`: extract → commit holdings.json → rebase → push.                                                                                                                                                                                      | User's machine                            |
 | `.github/workflows/prices.yml` | Run every 15 min on weekdays by an **outside scheduler** calling `workflow_dispatch` (GitHub's own cron delivers only ~1 run in 6 hours and stays as a backup), and on every push; runs selftests, fetches, sends phone alerts, commits. Weekdays only — every exchange in the book is shut at weekends. Public repo, so the runs are free.                                                                                                                                                                                                               | GitHub                                    |
+| `.github/workflows/pot-sweep.yml` | The Mon/Wed/Fri second-run Sweep on Claude, so it needs no laptop (D111). Runs `pot/run-lane.ps1` on a Windows runner with no push credential; a second job checks the patch against the lane allowlist and the token, then pushes. Secret `CLAUDE_CODE_OAUTH_TOKEN`. `workflow_dispatch` takes `mode`: run, force or check. | GitHub |
 
 ## How to run / test
 
