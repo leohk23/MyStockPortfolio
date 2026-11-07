@@ -135,8 +135,13 @@ function filedDates(facts, withEps = false) {
                 if (!(days > 340 && days < 380)) continue;
                 const prev = out.get(x.end);
                 if (!prev || x.filed < prev) out.set(x.end, x.filed);
-                if (tag === 'EarningsPerShareDiluted' && typeof x.val === 'number' && !eps.has(x.end)) {
-                    eps.set(x.end, x.val);
+                // The year as first filed, with the date of that filing: the two have to travel
+                // together, because onTodaysBasis reads the date to decide which splits the value
+                // has not yet seen. Taking whichever row came first in the file paired a value with
+                // a date it might not belong to.
+                if (tag === 'EarningsPerShareDiluted' && typeof x.val === 'number'
+                    && (!eps.has(x.end) || x.filed < eps.get(x.end).filed)) {
+                    eps.set(x.end, { val: x.val, filed: x.filed });
                 }
             }
         }
@@ -189,28 +194,17 @@ function quarterlyEps(facts) {
         // the per-share figure rather than a cumulative or segment variant.
         const newest = all.reduce((a, x) => x.filed > a ? x.filed : a, all[0].filed);
         const candidates = all.filter(x => x.filed === newest).map(x => x.val);
-        out.push({ end, filed, eps: candidates.reduce((a, v) => Math.abs(v) < Math.abs(a) ? v : a),
+        const nearZero = vals => vals.reduce((a, v) => Math.abs(v) < Math.abs(a) ? v : a);
+        // `restated` is the filing the value came from, which decides the splits it has already
+        // absorbed; `filed` stays the first publication, for the point-in-time date; `first` is the
+        // value as first filed, which is how restatedEvents tells a split from a spin-off.
+        out.push({ end, filed, restated: newest, eps: nearZero(candidates),
+            first: nearZero(all.filter(x => x.filed === filed).map(x => x.val)),
             alts: [...new Set(candidates)] });
     }
     return out.sort((a, b) => a.end.localeCompare(b.end));
 }
 
-// Put every quarter on TODAY'S share basis.
-//
-// EDGAR restates a period only while it still appears in new filings, so recent quarters come back
-// split-adjusted and old ones do not. GameStop's quarter to Oct 2017 is still recorded at 0.59, its
-// pre-split value, because 2017 stopped appearing in filings before the 2022 four-for-one. Prices
-// from Yahoo are adjusted all the way back, so pairing the two divides an adjusted price by an
-// unadjusted denominator and reports a company as four times cheaper than it was.
-//
-// Truncating at the last split was the first idea and it is too blunt — Netflix keeps 3 quarters of
-// 72, ServiceNow 3 of 43. The events carry their ratios, so the factor can simply be applied: a
-// quarter is divided by the product of every split that happened after it.
-//
-// ponytail: this assumes EDGAR's newest value for a period is on the basis prevailing at its last
-// filing, which is what "restated" means, and that a period never appears again after a later
-// split without being restated. Both hold for the filers here; the reconciliation below is what
-// would catch it if they stopped holding.
 const SPLIT_URL = t => `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}`
     + `?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1mo&events=split`;
 
@@ -225,12 +219,52 @@ async function splitHistory(ticker) {
         .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function onTodaysBasis(quarters, splits, lastRestated) {
+// Which of Yahoo's "splits" EDGAR restates.
+//
+// A share split is restated in every later filing (ASC 260 requires it). A spin-off is not, though
+// Yahoo lists it as a split so its prices line up: IBM's Kyndryl at 1046:1000, Encompass's Enhabit
+// at 1257:1000, Dell's VMware at 1973:1000. No share count changed, so a value filed after it is
+// still on the old basis and has to be divided like any older one.
+//
+// Decided from the quarters filed on both sides of the event, each voting for the reading its later
+// value is nearer: the earlier value divided by the ratio (restated), or unchanged (not). With no
+// such quarter the event is taken as restated; that only reaches a quarter first filed after an
+// event it predates, a window of a few weeks.
+function restatedEvents(quarters, splits) {
+    return new Set(splits.filter(s => {
+        let yes = 0, no = 0;
+        for (const q of quarters) {
+            if (!q.first || !(q.end < s.date && q.filed < s.date && q.restated >= s.date)) continue;
+            // A second event between the two filings would make this ratio the wrong one to test.
+            if (splits.some(o => o !== s && o.date > q.filed && o.date <= q.restated)) continue;
+            if (Math.abs(q.eps - q.first / s.ratio) < Math.abs(q.eps - q.first)) yes++; else no++;
+        }
+        return yes >= no;
+    }));
+}
+
+// Put every quarter on TODAY'S share basis.
+//
+// EDGAR restates a period only while it still appears in new filings, so recent quarters come back
+// split-adjusted and old ones do not. GameStop's quarter to Oct 2017 is still recorded at 0.59, its
+// pre-split value, because 2017 stopped appearing in filings before the 2022 four-for-one. Prices
+// from Yahoo are adjusted all the way back, so pairing the two divides an adjusted price by an
+// unadjusted denominator and reports a company as four times cheaper than it was.
+//
+// Truncating at the last split was the first idea and it is too blunt — Netflix keeps 3 quarters of
+// 72, ServiceNow 3 of 43. The events carry their ratios, so the factor can simply be applied: a
+// quarter is divided by the product of every split after it that its value has not absorbed.
+//
+// A value has absorbed an event when EDGAR restates it (restatedEvents) and the filing the value
+// came from (`restated`) is on or after it. Until 7 Nov 2026 the date tested was the FIRST filing:
+// Netflix's Q1-Q3 2025, filed before the November 2025 ten-for-one and restated after it (0.66,
+// 0.72, 0.59), were divided by ten again, and the Q4 derived from them read 2.333 against 0.56.
+// Every split in the store was hit the same way, NVDA's FY2025 Q4 reading 1.43 against 0.89.
+function onTodaysBasis(quarters, splits, restates = new Set(splits)) {
     if (!splits.length) return quarters;
     return quarters.map(q => {
-        // Only adjust what EDGAR has NOT already restated. A quarter whose newest filing postdates
-        // a split is already on the later basis, and dividing it again would halve it twice.
-        const after = splits.filter(s => s.date > q.end && s.date > (q.filed || q.end));
+        const basis = q.restated || q.filed || q.end;
+        const after = splits.filter(s => s.date > q.end && (s.date > basis || !restates.has(s)));
         const factor = after.reduce((a, s) => a * s.ratio, 1);
         return factor === 1 ? q
             : { ...q, eps: Number((q.eps / factor).toFixed(4)), splitAdj: factor };
@@ -330,13 +364,17 @@ async function main() {
             if (Object.keys(cap).length) capital[t] = cap;
             const splits = await splitHistory(t);
             await sleep();
-            const q = onTodaysBasis(quarterlyEps(facts), splits);
+            const raw = quarterlyEps(facts);
+            const restates = restatedEvents(raw, splits);
+            const q = onTodaysBasis(raw, splits, restates);
+            const unrestated = splits.filter(s => !restates.has(s))
+                .map(s => `${s.date} ${Number(s.ratio.toFixed(4))}:1`);
             // The annual has to be put on the same basis before Q4 is derived from it, or the
             // subtraction mixes an unadjusted year with adjusted quarters — GME's FY2016 came
             // out at 3.05 where it should be 0.76, and that one bad quarter poisoned every
             // trailing window containing it.
             const annualAdj = Object.fromEntries(onTodaysBasis(
-                [...annualEps].map(([end, eps]) => ({ end, eps, filed: filed.get(end) })), splits)
+                [...annualEps].map(([end, a]) => ({ end, eps: a.val, filed: a.filed })), splits, restates)
                 .map(x => [x.end, x.eps]));
             const withQ4 = [...q, ...deriveQ4(q, annualAdj, Object.fromEntries(filed))]
                 .sort((a, b) => a.end.localeCompare(b.end));
@@ -355,7 +393,8 @@ async function main() {
             const lags = Object.entries(forTicker)
                 .map(([end, f]) => Math.round((Date.parse(f) - Date.parse(end)) / 864e5));
             console.log(`ok   ${t.padEnd(8)} ${Object.keys(forTicker).length} year(s)`
-                + (lags.length ? `, filed ${Math.min(...lags)}–${Math.max(...lags)}d after year end` : ''));
+                + (lags.length ? `, filed ${Math.min(...lags)}–${Math.max(...lags)}d after year end` : '')
+                + (unrestated.length ? `; not restated by EDGAR, so applied to every earlier period: ${unrestated.join(', ')}` : ''));
         } catch (e) {
             console.error(`skip ${t}: ${e.message}`);
             dates[t] = prev[t] || {};       // keep what we had rather than losing it to one bad call
@@ -403,6 +442,51 @@ function selftest() {
     const two = new Map([['2025-01-26', 'A'], ['2025-02-08', 'B']]);
     assert.strictEqual(matchYearEnd('2025-02-05', two, 30), 'B');
     assert.strictEqual(matchYearEnd('2025-01-28', two, 30), 'A');
+
+    // Netflix: ten-for-one on 2025-11-17. Q1-Q3 2025 were filed before it and restated after it in
+    // the 2026 10-Qs; Q2 2024 last appeared in a 10-Q filed before it, so it was never restated.
+    const q = (start, end, filed, val) => ({ form: '10-Q', fp: 'Q', start, end, filed, val });
+    const y = (start, end, filed, val) => ({ form: '10-K', fp: 'FY', start, end, filed, val });
+    const nflx = { facts: { 'us-gaap': { EarningsPerShareDiluted: { units: { 'USD/shares': [
+        q('2024-04-01', '2024-06-30', '2024-07-19', 4.88), q('2024-04-01', '2024-06-30', '2025-07-18', 4.88),
+        q('2025-01-01', '2025-03-31', '2025-04-18', 6.61), q('2025-01-01', '2025-03-31', '2026-04-17', 0.66),
+        q('2025-04-01', '2025-06-30', '2025-07-18', 7.19), q('2025-04-01', '2025-06-30', '2026-07-17', 0.72),
+        q('2025-07-01', '2025-09-30', '2025-10-22', 5.87), q('2025-07-01', '2025-09-30', '2026-10-21', 0.59),
+        // The restated comparative listed BEFORE the original: the year must not depend on row order.
+        y('2024-01-01', '2024-12-31', '2026-01-23', 1.98), y('2024-01-01', '2024-12-31', '2025-01-27', 19.83),
+        y('2025-01-01', '2025-12-31', '2026-01-23', 2.53),
+    ] } } } } };
+    const split = [{ date: '2025-11-17', ratio: 10 }];
+    const restates = restatedEvents(quarterlyEps(nflx), split);
+    assert.strictEqual(restates.size, 1, 'three quarters show EDGAR restated the ten-for-one');
+    const qs = onTodaysBasis(quarterlyEps(nflx), split, restates);
+    const at = end => qs.find(x => x.end === end);
+    assert.strictEqual(at('2025-03-31').eps, 0.66, 'restated after the split: not divided again');
+    assert.strictEqual(at('2025-03-31').splitAdj, undefined);
+    assert.strictEqual(at('2025-03-31').filed, '2025-04-18', 'still dated by first publication');
+    assert.strictEqual(at('2025-09-30').eps, 0.59);
+    assert.strictEqual(at('2024-06-30').eps, 0.488, 'last filed before the split: adjusted');
+    assert.strictEqual(at('2024-06-30').splitAdj, 10);
+    const { filed: nf, eps: ne } = filedDates(nflx, true);
+    assert.deepStrictEqual(ne.get('2024-12-31'), { val: 19.83, filed: '2025-01-27' }, 'the year as first filed');
+    const annualAdj = Object.fromEntries(onTodaysBasis(
+        [...ne].map(([end, a]) => ({ end, eps: a.val, filed: a.filed })), split).map(x => [x.end, x.eps]));
+    assert.strictEqual(annualAdj['2024-12-31'], 1.983);
+    const q4 = deriveQ4(qs, annualAdj, Object.fromEntries(nf)).find(x => x.end === '2025-12-31');
+    assert.strictEqual(q4.eps, 0.56, 'Q4 2025 is the year less three quarters on one basis, not 2.333');
+
+    // Encompass: Yahoo's 1257:1000 on 2022-07-01 is the Enhabit spin-off. Q2 2021 was refiled after
+    // it unchanged, so the event is not a restatement and the refiled value is still divided.
+    const ehc = { facts: { 'us-gaap': { EarningsPerShareDiluted: { units: { 'USD/shares': [
+        q('2021-04-01', '2021-06-30', '2021-07-28', 1.13), q('2021-04-01', '2021-06-30', '2022-07-27', 1.13),
+        q('2021-07-01', '2021-09-30', '2021-10-27', 1.00), q('2021-07-01', '2021-09-30', '2022-10-26', 1.00),
+    ] } } } } };
+    const spin = [{ date: '2022-07-01', ratio: 1.257 }];
+    const eq = quarterlyEps(ehc);
+    assert.strictEqual(restatedEvents(eq, spin).size, 0, 'a spin-off is not restated');
+    assert.strictEqual(onTodaysBasis(eq, spin, restatedEvents(eq, spin))[0].eps, 0.899);
+    // No quarter on both sides of an event: taken as restated, the documented default.
+    assert.strictEqual(restatedEvents([], spin).size, 1);
 
     console.log('selftest ok');
 }
