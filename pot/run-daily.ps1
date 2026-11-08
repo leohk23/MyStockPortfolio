@@ -219,9 +219,14 @@ function Assert-Merged($what) {
 #
 # Review is on sol for the same reason as the Sweep, though Leo named only the other two: leaving it
 # on astra would put review+sweep+deepdive back over one window on the days all three are due.
+#
+# D113: Review and Sweep moved from gpt-5.6-sol to gpt-6.1-sol on 8 Nov 2026, Leo's choice. The lanes
+# run the npm Codex CLI, and 0.153.4 refused 6.1-sol ("not supported when using Codex with a ChatGPT
+# account") while Leo's editor, which bundles its own, used it: check `codex --version` and probe a
+# new model before pinning it here, as D79 says for Claude.
 $LANE_MODEL = @{
-    'pot/brief-review.md'   = 'gpt-5.6-sol'
-    'pot/brief-sweep.md'    = 'gpt-5.6-sol'
+    'pot/brief-review.md'   = 'gpt-6.1-sol'
+    'pot/brief-sweep.md'    = 'gpt-6.1-sol'
     'pot/brief-deepdive.md' = 'gpt-6-astra'
     # The Deep dive's second reader (D95), when Codex is the examiner (Tue and Thu).
     'pot/brief-examine.md'  = 'gpt-6-astra'
@@ -235,6 +240,7 @@ $LANE_EFFORT = @{
     'gpt-6-astra'     = 'high'
     'claude-opus-5-5' = 'high'
     'gpt-5.6-sol'     = 'high'
+    'gpt-6.1-sol'     = 'high'
 }
 
 # What a lane costs, in points of each window. Measured, per model, from pot/runs.md and the
@@ -256,6 +262,11 @@ $LANE_COST = @{
     # one examination 43 and 7. Each is the highest seen, rounded up.
     'gpt-6-astra'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 14; h = 87 }; examine = @{ w = 8; h = 45 } }
     'gpt-5.6-sol'  = @{ review = @{ w = 2; h = 14 }; sweep = @{ w = 3; h = 24 }; deepdive = @{ w = 2; h = 14 } }
+    # PROVISIONAL (D113): gpt-6.1-sol has no measured runs yet, so it is priced at astra's figures, the
+    # dearest Codex model. Too high only moves a lane to Claude; too low lets a cycle start that dies
+    # in the Deep dive, which is what this table exists to prevent. Replace with the highest of its
+    # first week's runs from the `of 5h` and `of week` columns of pot/runs.md (D112).
+    'gpt-6.1-sol'  = @{ review = @{ w = 4; h = 27 }; sweep = @{ w = 5; h = 41 }; deepdive = @{ w = 14; h = 87 } }
 }
 
 # Current allowance, read from the newest session log rather than by probing — a probe costs tokens

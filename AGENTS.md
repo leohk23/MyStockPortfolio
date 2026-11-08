@@ -144,8 +144,8 @@ pre-flight moves it; these govern what happens when it runs on Claude.
 
 | Setting | Value | Where | Why |
 |---|---|---|---|
-| Model per lane on Codex | Review, Sweep `gpt-5.6-sol`; Deep dive `gpt-6-astra` | `run-daily.ps1` `$LANE_MODEL` | D51 |
-| Reasoning effort | **high** for `gpt-6-astra`, `gpt-5.6-sol` and `claude-opus-5-5`, pinned rather than taken from `~/.codex/config.toml` (it read `low` from 19 Oct) | `run-daily.ps1` `$LANE_EFFORT` | D96 |
+| Model per lane on Codex | Review, Sweep `gpt-6.1-sol` (from 8 Nov; `gpt-5.6-sol` before); Deep dive `gpt-6-astra`. The lanes run the npm Codex CLI (`codex --version`: 0.167.0 since 8 Nov), not the copy Leo's editor bundles, so probe a new model through it before pinning one: 0.153.4 refused 6.1-sol. 6.1-sol is priced at astra's costs in `$LANE_COST` until measured | `run-daily.ps1` `$LANE_MODEL`, `$LANE_COST` | D51, D113 |
+| Reasoning effort | **high** for `gpt-6-astra`, `gpt-6.1-sol`, `gpt-5.6-sol` and `claude-opus-5-5`, pinned rather than taken from `~/.codex/config.toml` (it read `low` from 19 Oct) | `run-daily.ps1` `$LANE_EFFORT` | D96 |
 | Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
 | When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
 | Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted, and nor is the **Sweep on the days astra drafts** (Mon, Wed, Fri and weekends), which runs on Opus so astra keeps the 5-hour window. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95, D105 |
