@@ -1,0 +1,4 @@
+# The wishlist takes appends from two machines since D111 (the laptop's lanes and the cloud Sweep).
+# Rows are independent, so a merge keeps both sides' lines instead of stopping on a conflict that
+# would leave the laptop unable to push. report.js re-sorts it and drops any row a union repeated.
+pot/data-wishlist.md merge=union

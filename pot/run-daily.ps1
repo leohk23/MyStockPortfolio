@@ -818,7 +818,10 @@ try {
     # machine. Unattended, nobody would notice; on 30 Aug the stamps sat uncommitted until a human
     # ran git by hand. Same for pot.json, which is outside the lanes' allowlist and so is reverted
     # by every lane that touches it.
-    git add pot.json pot/proposals pot/sweeps pot/reviews 2>&1 | Out-Null
+    # And the wishlist the report re-sorts every run (D111). Left out, it stayed modified after every
+    # cycle, which only cost something once a second machine wrote to it: the cloud Sweep's appends
+    # then made the next cycle's fast-forward pull refuse, and the cycle ran on stale data.
+    git add pot.json pot/proposals pot/sweeps pot/reviews pot/data-wishlist.md 2>&1 | Out-Null
     if (git diff --cached --name-only) {
         git commit --quiet -m "pot: provenance stamps and the app bundle for $started"
         Note 'stamps and bundle committed'

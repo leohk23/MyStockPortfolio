@@ -833,7 +833,11 @@ function wishlistEntries(file = 'pot/data-wishlist.md') {
     }
     // Refuse to shrink the log. If a future entry shape stops parsing, the safe outcome is an
     // untidy file, never a shorter one — the whole point of the log is that nothing falls out.
-    const already = (body.match(/^\|\s*\d{4}-\d{2}-\d{2}\s*\|/gm) || []).length;
+    // Distinct rows, not lines: since D111 two machines append to this file, git merges it by union
+    // (.gitattributes), and a union can repeat a row this sort had moved. A repeat is not an entry.
+    const already = new Set(body.split(/\r?\n/)
+        .map(l => l.match(/^\|\s*(\d{4}-\d{2}-\d{2})\s*\|(.+?)\|/)).filter(Boolean)
+        .map(m => m[1] + '|' + cell(m[2]))).size;
     if (!seen.size || seen.size < already) {
         console.log(`  wishlist NOT normalised: parsed ${seen.size} of ${already} existing rows`);
         return;
@@ -1459,6 +1463,22 @@ function selftest() {
             assert.strictEqual(stampProvenance(cloud), 1, "a runner's path is the repository's own file");
             assert.ok(fs.readFileSync(S, 'utf8').startsWith('model: `claude-opus-5-5`, lane: sweep'));
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+    // D111: a union merge of two machines' appends repeats a row the sort had moved, and the log
+    // keeps one copy of it, sorted, rather than refusing to normalise.
+    {
+        const os = require('os');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wish-')), f = path.join(dir, 'w.md');
+        try {
+            const row = (d, s) => `| ${d} | ${s} | detail of ${s} |`;
+            fs.writeFileSync(f, ['# Wishlist', '', '## Entries', '', '<!-- entries:start -->',
+                '| date | wanted | detail |', '|---|---|---|',
+                row('2026-11-07', 'B'), row('2026-11-06', 'A'), row('2026-11-06', 'A'), row('2026-11-07', 'C'),
+                '<!-- entries:end -->', ''].join('\n'));
+            wishlistEntries(f);
+            const rows = fs.readFileSync(f, 'utf8').split('\n').filter(l => /^\| 2026/.test(l));
+            assert.deepStrictEqual(rows, [row('2026-11-07', 'B'), row('2026-11-07', 'C'), row('2026-11-06', 'A')]);
+        } finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     // A Claude lane whose brief path has a backslash is still a lane.
     {
