@@ -58,7 +58,9 @@ function summarise(file) {
     // one-line verification probes on 8 Sep were filed as "review" runs on that basis. run-lane.ps1
     // sends exactly one prompt shape, so anything with a prompt of its own is somebody at a
     // terminal. An empty `asked` still falls through — the oldest logs store the prompt elsewhere.
-    if (asked && !/^Follow the instructions in /.test(asked)) return null;
+    // A byte-order mark is allowed in front: since 8 Nov the brief reaches the agent on stdin, and
+    // Windows PowerShell puts one there unless the console is set not to (run-lane.ps1).
+    if (asked && !/^﻿?Follow the instructions in /.test(asked)) return null;
     const brief = (asked.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1]
         || (blob.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1] || null;
     return {
@@ -888,7 +890,7 @@ function summariseClaude(file) {
     // The same guard the codex side needs, and it matters more here: Leo's own interactive sessions
     // live in this directory too — the one that designed this function is 11MB of it. Only a lane
     // run starts with run-lane.ps1's exact prompt.
-    if (!/^Follow the instructions in /.test(asked)) return null;
+    if (!/^﻿?Follow the instructions in /.test(asked)) return null;
     // Either separator, as the codex side reads it: run-lane.ps1's own examples write `pot\brief-...`,
     // and on 4 Nov a Claude examination started that way was left out, its files stamped "not run".
     const brief = (asked.match(/pot[\\/]brief-([a-z-]+)\.md/) || [])[1];
@@ -1556,6 +1558,15 @@ function selftest() {
                     message: { model: 'claude-opus-5-5', usage: { input_tokens: 1, output_tokens: 1 }, content: [] } },
             ].map(l => JSON.stringify(l)).join('\n') + '\n');
             assert.strictEqual(summariseClaude(f)?.brief, 'examine', 'pot\\brief-examine.md names the examine lane');
+            // Since 8 Nov the brief follows the prompt, and it names other briefs: the first line decides.
+            // A byte-order mark in front, from a console run-lane.ps1 could not set, is still a lane.
+            fs.writeFileSync(f, [
+                { type: 'user', cwd: 'C:\\Users\\x\\MyStockPortfolio', timestamp: '2026-11-09T06:51:22Z',
+                    message: { content: '\uFEFFFollow the instructions in pot\\brief-examine.md. Its text is below.\n\n# Examine\nThe draft was written under `pot/brief-deepdive.md`.' } },
+                { type: 'assistant', timestamp: '2026-11-09T06:57:24Z',
+                    message: { model: 'claude-opus-5-5', usage: { input_tokens: 1, output_tokens: 1 }, content: [] } },
+            ].map(l => JSON.stringify(l)).join('\n') + '\n');
+            assert.strictEqual(summariseClaude(f)?.brief, 'examine', 'the brief in the prompt does not rename the lane');
         } finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
 

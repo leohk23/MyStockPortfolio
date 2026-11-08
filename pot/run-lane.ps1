@@ -88,12 +88,29 @@ $branchBefore = git symbolic-ref -q HEAD
 $prompt = if ($Ticker) { "Follow the instructions in $Brief for $Ticker" }
           else { "Follow the instructions in $Brief" }
 Note "prompt: $prompt"
+# The brief goes in with the prompt rather than being left for the agent to open (8 Nov). Opened as a
+# tool output it was 15-23% of what astra's Deep dive draft sent: Windows PowerShell's Get-Content
+# misread its UTF-8 on the first try, so it was read twice, and the compaction every draft reaches
+# dropped it, so it was read again. Codex keeps the prompt through a compaction. It goes on stdin,
+# because the Deep dive's brief is 58KB against Windows's 32,767-character command line.
+# The first line stays the prompt above, which pot/report.js reads to tell a lane run from any other.
+try { $briefText = [IO.File]::ReadAllText((Join-Path $Repo $Brief), [Text.Encoding]::UTF8) }
+catch { Note "cannot read ${Brief}: $($_.Exception.Message)"; exit 1 }
+$message = "$prompt. Its text is below, read from the file when this run began, so you do not need to open it.`n`n$briefText"
+# Windows PowerShell 5.1 writes to a program's stdin in $OutputEncoding (ASCII: every £, € and —
+# arrives as ?) and puts the console's input encoding's byte-order mark in front, which would hide
+# the prompt's first line from report.js. Probed 8 Nov: Task Scheduler's console is code page 437,
+# and only both set to UTF-8 without a BOM delivered the brief byte for byte. Put back after the agent.
+$OutputEncoding = New-Object Text.UTF8Encoding $false
+$consoleIn = try { [Console]::InputEncoding } catch { $null }
+try { [Console]::InputEncoding = $OutputEncoding } catch { }
 
 if ($Agent -eq 'codex') {
     $modelArgs = if ($Model) { @('--model', $Model) } else { @() }
     if ($Effort) { $modelArgs += @('-c', "model_reasoning_effort=""$Effort""") }
-    codex exec --cd $Repo --sandbox workspace-write @modelArgs `
-        --output-last-message pot\last-message.txt $prompt 2>&1 |
+    # `-`: the prompt is read from stdin.
+    $message | codex exec --cd $Repo --sandbox workspace-write @modelArgs `
+        --output-last-message pot\last-message.txt - 2>&1 |
         Select-Object -Last 3 | ForEach-Object { Note "  $_" }
 } else {
     # -Model defaults to a codex model name, so only pass it on when it is plainly a Claude one.
@@ -183,7 +200,8 @@ if ($Agent -eq 'codex') {
     # it, subagents included - that is what a future per-lane --max-budget-usd will be calibrated
     # from. On a subscription it is a usage measure, not a bill. The result's last lines are still
     # logged, so a session-limit refusal still reaches Note-ClaudeLimit in run-daily.ps1.
-    $raw = claude -p $prompt --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
+    # No prompt argument: with none, -p reads it from stdin.
+    $raw = $message | claude -p --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
         --output-format json 2>&1 | Out-String
     $code = $LASTEXITCODE
     $jsonLine = ($raw -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -Last 1)
@@ -199,6 +217,7 @@ if ($Agent -eq 'codex') {
     $global:LASTEXITCODE = $code
 }
 $agentExit = $LASTEXITCODE
+if ($consoleIn) { try { [Console]::InputEncoding = $consoleIn } catch { } }
 
 # Put the snapshot back before git runs again, a failed agent included, and remove any hook it added.
 foreach ($p in @(Hooks)) { if (-not $snapshot.ContainsKey($p)) { $snapshot[$p] = $null } }

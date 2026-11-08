@@ -137,7 +137,9 @@ minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` c
 (131,072 in `~/.codex/config.toml`; past that the end is dropped silently — D38). Claude Code does
 not: `run-lane.ps1` passes it with `--append-system-prompt-file` (D64). An interactive Claude
 session does **not** load it, and there is deliberately no `CLAUDE.md`. The briefs assume it is
-in context, so keep both routes working.
+in context, so keep both routes working. The brief itself goes in with the prompt, on stdin, so a
+lane never opens it (D115); the prompt's first line must stay `Follow the instructions in <brief>`,
+which is how `pot/report.js` tells a lane run from anything else.
 
 **Claude lane controls — every setting in one place (D72–D76).** A lane runs on Codex unless the
 pre-flight moves it; these govern what happens when it runs on Claude.
