@@ -78,10 +78,6 @@ What remains is that GitHub simply drops most scheduled firings on this repo, wh
 This is why 2325.T's ranking row read "all three capital measures are absent". It was *not* the reason the name was rejected — that was the 30th valuation percentile — but a reader cannot tell those apart at a glance, and every non-US candidate carries the same thin row.
 Filling it means a per-market fundamentals source, which is the same shape of job as the HK report-dates entry above and should be sized before starting.
 
-### The ledger reports the rate limit that was not binding
-`pot/runs.md` carries the **weekly** allowance (`limits.secondary`) and not the 5-hour one (`limits.primary`). On 8 Sep the weekly sat at a comfortable 28% while the 5-hour window hit 100% and killed a cycle mid-run.
-Both numbers are in the same `rate_limits` object already parsed in `pot/report.js`. Two lines, and it is the column that would have shown the failure coming.
-
 ### The Sweep's thesis hook is still opt-in
 Rule 0 in `brief-deepdive.md` forces every proposal to declare which entries in `pot/theses.md` bear on the name, or the word `none`. The Sweep's equivalent is *"say which thesis, if one drove the candidate"* — a suggestion, and the failure it was written to prevent was exactly this kind of silence.
 Left deliberate for now: the Sweep ranges over a market rather than one name, so "which theses bear on this" has no single subject. The right fix is probably parked guard #2 below rather than copying Rule 0 across.

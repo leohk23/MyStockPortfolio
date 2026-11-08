@@ -77,12 +77,13 @@ function summarise(file) {
         // counts above say what a run COST; this says how much of the allowance is left, and the
         // two answer different questions — at five cycles a day the weekly window is the one that
         // runs out first, and it is invisible until Codex simply refuses.
+        // The LAST reading of each window, wherever it sits. Not simply the last rate_limits record:
+        // a run that hits its limit ends on a second one (limit_id "premium") with both windows
+        // null, and reading only that blanked exactly the runs that died on the limit (30 Oct 06:53,
+        // 1 Nov 09:25, 6 Nov 00:55), handing their share of the allowance to the next run's figure.
         limits: (() => {
-            const i = blob.lastIndexOf('"rate_limits"');
-            if (i < 0) return null;
-            const tail = blob.slice(i);
             const win = name => {
-                const m = tail.match(new RegExp('"' + name + '":\\{"used_percent":([\\d.]+),"window_minutes":(\\d+),"resets_at":(\\d+)\\}'));
+                const m = [...blob.matchAll(new RegExp('"' + name + '":\\{"used_percent":([\\d.]+),"window_minutes":(\\d+),"resets_at":(\\d+)\\}', 'g'))].pop();
                 return m ? { used: Number(m[1]), minutes: Number(m[2]), resets: Number(m[3]) } : null;
             };
             const primary = win('primary'), secondary = win('secondary');
@@ -927,6 +928,37 @@ function summariseClaude(file) {
     };
 }
 
+// What each run ADDED to one allowance window, not merely where it stood: the standing figure cannot
+// tell a cheap review from an expensive sweep, and knowing which lane spends the budget is the
+// reason to read a ledger per lane at all. `key` is 'primary' (Codex's 5-hour window) or
+// 'secondary' (the weekly one). The 5-hour one was missing until 8 Nov 2026, though it is the one
+// that killed cycles: on 8 Sep the week stood at 28% while the window hit 100% mid Deep dive.
+//
+// Runs arrive newest-first, so a run's predecessor is the next one carrying that window.
+//   - Same window as the predecessor (same resets_at): the difference between the two readings.
+//   - Otherwise the run may have opened the window: it began within five minutes of the run's
+//     start, so everything in the reading is this run's.
+//   - It began later still: the window turned over partway through. The reading is what the run
+//     spent since then, flagged `reset`, because what it spent before is not in it.
+// A window opened by something else, before the run, gets no figure rather than a guess.
+function windowSpend(runs, key) {
+    const out = new Map();
+    const seen = runs.filter(r => r.limits?.[key]);
+    for (let i = 0; i < seen.length; i++) {
+        const cur = seen[i], prev = seen[i + 1], w = cur.limits[key];
+        if (prev && prev.limits[key].resets === w.resets) {
+            const d = w.used - prev.limits[key].used;
+            if (d >= 0) out.set(cur.file, { added: d });
+            continue;
+        }
+        const opened = w.resets - w.minutes * 60, began = Date.parse(cur.started || '') / 1000;
+        if (!Number.isFinite(began)) continue;
+        if (opened >= began - 60 && opened <= began + 300) out.set(cur.file, { added: w.used });
+        else if (opened > began + 300) out.set(cur.file, { added: w.used, reset: true });
+    }
+    return out;
+}
+
 function build() {
     fs.mkdirSync(LOGS, { recursive: true });
     // Both agents, one ledger, sorted together. A lane is a lane whoever ran it.
@@ -999,22 +1031,8 @@ function build() {
     const totalSecs = runs.reduce((a, r) => a + (r.seconds || 0), 0);
 
     // ---- the ledger
-    // What each run ADDED to the weekly allowance, not merely what it stood at. The standing
-    // figure cannot tell a cheap review from an expensive sweep, and knowing which lane spends
-    // the budget is the reason to read a ledger per lane at all.
-    //
-    // Runs are newest-first, so a run's predecessor is the NEXT element. A window boundary
-    // (a different resets_at) ends the chain rather than subtracting across a reset.
-    const spent = new Map();
-    {
-        const seen = runs.filter(r => r.limits?.secondary);
-        for (let i = 0; i < seen.length; i++) {
-            const cur = seen[i], prev = seen[i + 1];
-            if (!prev || prev.limits.secondary.resets !== cur.limits.secondary.resets) continue;
-            const d = cur.limits.secondary.used - prev.limits.secondary.used;
-            if (d >= 0) spent.set(cur.file, d);
-        }
-    }
+    const shortSpent = windowSpend(runs, 'primary'), weekSpent = windowSpend(runs, 'secondary');
+    const added = s => !s ? '–' : '+' + s.added.toFixed(1) + (s.reset ? ' since a reset' : '');
 
     wishlistEntries();
     wishlistTally();
@@ -1033,15 +1051,22 @@ The token columns are kept because that is D12's whole purpose: if this ever mov
 credits these are the numbers that would be charged, and runs either side of the switch stay
 comparable. **Fresh** is input not served from cache — the part a metered call charges full rate for.
 
+Codex has two allowances and a lane can run out of either. **5-hour** and **weekly** are where each
+stood when the run ended; **of 5h** and **of week** are what the run added: its reading less the run
+before it in the same window, or the whole reading where the run opened the window. "Since a reset"
+means the window turned over partway through, and what the run spent before that is not counted.
+Codex use outside the lanes lands in the next run's figure. Claude lanes report neither, so they read –.
+
 | runs | wall time | fresh input | total tokens |
 |---|---|---:|---:|
 | ${runs.length} | ${mmss(totalSecs)} | ${fmt(totalFresh)} | ${fmt(totalTokens)} |
 
-| started | lane | model | effort | wall | fresh in | cached in | out | total | weekly | of week | transcript |
-|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| started | lane | model | effort | wall | fresh in | cached in | out | total | 5-hour | of 5h | weekly | of week | transcript |
+|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 ${runs.map(r => `| ${when(r.started)} | ${r.lane} | \`${r.model || '?'}\` | ${r.effort || '–'} | ${mmss(r.seconds)} `
         + `| ${fmt(fresh(r.usage))} | ${fmt(r.usage?.cached_input_tokens)} | ${fmt(r.usage?.output_tokens)} `
-        + `| ${fmt(r.usage?.total_tokens)} | ${r.limits?.secondary ? r.limits.secondary.used + '%' : '–'} | ${spent.has(r.file) ? '+' + spent.get(r.file).toFixed(1) : '–'} | [read](${r.log.replace('pot/','')}) |`).join(String.fromCharCode(10)) || '| – | none yet | | | | | | | | | |'}
+        + `| ${fmt(r.usage?.total_tokens)} | ${r.limits?.primary ? r.limits.primary.used + '%' : '–'} | ${added(shortSpent.get(r.file))} `
+        + `| ${r.limits?.secondary ? r.limits.secondary.used + '%' : '–'} | ${added(weekSpent.get(r.file))} | [read](${r.log.replace('pot/','')}) |`).join(String.fromCharCode(10)) || '| – | none yet | | | | | | | | | | | |'}
 
 ## Scan lane
 
@@ -1463,6 +1488,45 @@ function selftest() {
             assert.strictEqual(stampProvenance(cloud), 1, "a runner's path is the repository's own file");
             assert.ok(fs.readFileSync(S, 'utf8').startsWith('model: `claude-opus-5-5`, lane: sweep'));
         } finally { process.chdir(here); fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+    // A run that died on its limit ends on a rate_limits record with both windows null; the reading
+    // before it is the one that counts.
+    {
+        const os = require('os');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-')), f = path.join(dir, 'rollout-x.jsonl');
+        try {
+            const rl = (id, primary, secondary) => ({ timestamp: '2026-11-01T09:40:00Z', type: 'event_msg',
+                payload: { type: 'token_count', rate_limits: { limit_id: id, primary, secondary } } });
+            fs.writeFileSync(f, [
+                { timestamp: '2026-11-01T09:25:07Z', type: 'session_meta', payload: { cwd: 'C:\\Users\\x\\MyStockPortfolio' } },
+                { timestamp: '2026-11-01T09:25:08Z', payload: { item: { type: 'UserMessage',
+                    content: [{ text: 'Follow the instructions in pot/brief-deepdive.md' }] } } },
+                rl('codex', { used_percent: 100.0, window_minutes: 300, resets_at: 1793541963 },
+                    { used_percent: 82.0, window_minutes: 10080, resets_at: 1793776566 }),
+                rl('premium', null, null),
+            ].map(l => JSON.stringify(l)).join('\n') + '\n');
+            const r = summarise(f);
+            assert.strictEqual(r?.limits?.primary?.used, 100, 'the 5-hour reading before the null record');
+            assert.strictEqual(r.limits.secondary.used, 82);
+        } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+    }
+    // What a run added to each window. Newest first, as build() passes them; times in epoch seconds.
+    {
+        const t = s => Date.parse(s) / 1000, h5 = 300;
+        const run = (file, started, used, opened) => ({ file, started,
+            limits: { primary: { used, minutes: h5, resets: t(opened) + h5 * 60 } } });
+        const runs = [
+            run('sweep', '2026-11-05T08:40:51Z', 38, '2026-11-05T08:31:55Z'),   // same window as the review
+            run('review', '2026-11-05T08:31:49Z', 16, '2026-11-05T08:31:55Z'),  // opened it
+            run('deepdive', '2026-11-04T08:39:54Z', 99, '2026-11-04T09:10:00Z'),// turned over 30 minutes in
+            run('examine', '2026-11-03T12:00:00Z', 40, '2026-11-03T10:00:00Z'), // opened by something else
+        ];
+        const s = windowSpend(runs, 'primary');
+        assert.deepStrictEqual(s.get('sweep'), { added: 22 });
+        assert.deepStrictEqual(s.get('review'), { added: 16 });
+        assert.deepStrictEqual(s.get('deepdive'), { added: 99, reset: true });
+        assert.strictEqual(s.has('examine'), false, 'no figure for a window this run did not open');
+        assert.strictEqual(windowSpend([{ file: 'c', started: '2026-11-05T08:00:00Z', limits: null }], 'primary').size, 0, 'a Claude lane has none');
     }
     // D111: a union merge of two machines' appends repeats a row the sort had moved, and the log
     // keeps one copy of it, sorted, rather than refusing to normalise.

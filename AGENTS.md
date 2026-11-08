@@ -123,7 +123,7 @@ Two things that constrain any change to it:
   costs ~5% of the weekly allowance on `gpt-5.6-sol` but **~14% on `gpt-6-astra`** — about 4x,
   measured like for like. Ungated on astra the schedule needs 238% of what exists, which is why the
   lanes are gated at all. One astra cycle is also ~99% of a **5-hour** window, so there is no slack
-  for an ad-hoc run. Read BOTH limit columns of `pot/runs.md` before adding a slot; §4.2 has the
+  for an ad-hoc run. Read BOTH limit columns of `pot/runs.md` (5-hour and weekly, each with what the run added, D112) before adding a slot; §4.2 has the
   arithmetic.
 - **A slot is chosen so the cycle finishes just before Leo can read it** — before work, at lunch,
   after the US close. He has a full-time job, and a proposal nobody reads is spent allowance.
