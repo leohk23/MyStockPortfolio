@@ -78,11 +78,6 @@ What remains is that GitHub simply drops most scheduled firings on this repo, wh
 This is why 2325.T's ranking row read "all three capital measures are absent". It was *not* the reason the name was rejected — that was the 30th valuation percentile — but a reader cannot tell those apart at a glance, and every non-US candidate carries the same thin row.
 Filling it means a per-market fundamentals source, which is the same shape of job as the HK report-dates entry above and should be sized before starting.
 
-### One model for every lane, and the deep dive is the only one that needs the expensive one
-`-Model` is threaded through `run-daily.ps1` to every lane, so a cycle cannot mix models. On `gpt-6-astra` a cycle costs roughly **4x** what it did on `gpt-5.6-sol` — measured like for like on the same lane, 13.8 allowance points per million tokens against 4.1.
-The quality that justified astra came **entirely from the deep dive** (the 7 Sep RELX proposal, where it declined to buy). Review is mechanical and the sweep produced nothing distinctive. Splitting — sol for review and sweep, astra for the deep dive — would cut a cycle to about a third with the reasoning intact.
-Not done because Leo asked to hold it while cadence changes settle. It needs a per-lane override on the existing parameter, which is small.
-
 ### The ledger reports the rate limit that was not binding
 `pot/runs.md` carries the **weekly** allowance (`limits.secondary`) and not the 5-hour one (`limits.primary`). On 8 Sep the weekly sat at a comfortable 28% while the 5-hour window hit 100% and killed a cycle mid-run.
 Both numbers are in the same `rate_limits` object already parsed in `pot/report.js`. Two lines, and it is the column that would have shown the failure coming.
@@ -96,15 +91,15 @@ Left deliberate for now: the Sweep ranges over a market rather than one name, so
 Without them the file can become a confirmation-bias engine — the Sweep goes and finds evidence for a conclusion Leo already holds, which is the failure mode `brief-sweep.md`'s bias section exists to prevent. Guard 2 also turns out to be the natural fix for the entry above.
 `brief-deepdive.md` Rule 4 still bites independently: an undated dominant risk halves the order whatever a thesis says.
 
-### 70 names on the watchlist, 7 ever proposed
-The Sweep has added **48 names over 27 runs** and the deep dive has ever proposed **7** (GME, INTU, MWA, NVDA, REL.L, RSGN.SW, TW). Until 8 Sep the ranking covered 23 of 70 and said nothing about the other 47.
-The ranking rule now requires every watchlist name to be accounted for — ranked, or one line saying why not — so the backlog is at least visible. What has not been decided is what to do about it: whether names that fail the valuation filter repeatedly should age off the list, or whether 70 is simply the size of the funnel. Wait for a run or two under the new rule before choosing.
+### 165 names on the watchlist, 21 ever proposed
+On 8 Nov 2026 the watchlist holds **165 names** after 103 Sweep files, and the Deep dive has written **171 proposals on 21 names**, 11 of them bought (8 names). On 8 Sep it was 70 names and 7 proposed.
+The ranking rule requires every watchlist name to be accounted for — ranked, or one line saying why not — so the backlog is at least visible, and D93 stops a name being re-proposed inside two weeks. What has not been decided is whether names that fail the valuation filter repeatedly should age off the list, or whether the list is simply the size of the funnel. It has more than doubled in two months.
 
-### The transaction-cost rule has never been exercised
-§4.5's fee handling (D25) makes P1 name the broker it costs against, default to **$1 per US ticket**, state the fee as a percentage of the ticket, and say whether another whole share would improve it. No order has been proposed since it landed — the 8 Sep deep dive held cash — so none of it has run once.
-**Superseded in part (8 Sep 2026, D42):** the broker is now decided by venue — T212 where it lists the name at 0.15% all-in, IBKR only where it cannot trade. The `$1` inference is gone for US tickets. **Still open:** IBKR's non-US schedules are unknown to this repo and must be sourced per venue, and a per-order minimum can push a §7.2a half-size through §4.1's 2% ceiling where a full size would pass.
+### IBKR's non-US fees are still unsourced
+§4.5's fee handling (D25) makes P1 name the broker it costs against, state the fee as a percentage of the ticket, and say whether another whole share would improve it. Since D42 (8 Sep) the broker is decided by venue: T212 where it lists the name at 0.15% all-in, IBKR only where it cannot trade. It applies to every proposal since, and the pot has bought 11 times. **Still open:** IBKR's non-US schedules are unknown to this repo and must be sourced per venue (the 6 Nov Deep dive could not find Helsinki's), and a per-order minimum can push a §7.2a half-size through §4.1's 2% ceiling where a full size would pass.
 
-### The recurring P/E is a vendor judgement, and 39% of the time it adjusts nothing — this is now the pot's binding constraint
+### The recurring P/E is a vendor judgement, and 39% of the time it adjusts nothing — the pot's binding constraint in September
+**Partly addressed since:** two bases now sit beside Yahoo's `norm`. One is the repo's own, filed earnings less the cited one-offs in `pot/adjustments.json` (D61–D63). The other is issuer-stated adjusted EPS over four quarters (`researchEps`). `signals.js` `oneOffRisk` reads research, then own, then vendor, and records which (D65). Non-US names still lack the EDGAR cross-check below.
 `pePctileRecurring` and `peLowRecurring` divide price by `recurringEps`, which rebases **`norm`** — Yahoo's *normalised* net income — onto the latest share count. `norm` is not a filed figure. It is Yahoo deciding, with hindsight, what was one-off, and it can be restated.
 Measured across `earnings.json`: **479 fiscal years carry net income; in 187 of them (39%) `norm` is within 1% of filed `ni`** — the vendor adjusted nothing at all. So for two years in five, "recurring" and "headline" are the same number wearing different labels, and a name can pass the cheapest-decile filter on an earnings base nobody has cleaned.
 LULU is the worked example. FY2026: `ni` and `norm` are both **1,579,183,000 — identical to the dollar**. Yet its Q2 release discloses a **$134.5m tariff refund** adding 5.6pp to operating margin, and $0.86 of the quarter's $2.92 EPS. The deep dive found this by reading the filing and concluded *"neither $12.15 local trailing EPS nor normEps $12.21 is thereby certified clean"* — correctly.
@@ -117,7 +112,7 @@ Codex rollout logs under `~/.codex/sessions/` do contain `Reasoning` records —
 What IS complete, committed and shipped to the app: `pot/logs/<stamp>-<lane>.md` carries every command the run executed, every output it saw, and every message it wrote. That is what a brief can actually respond to — a rule can only constrain what the agent writes down, so the transcript is the right artifact to design against anyway.
 
 ### More series worth distilling into the repo
-The wishlist tally counts how many separate sweeps reached for each series. Cash conversion (19) is now fetched in CI. Still hand-fetched every time: **margin 13, volume/units 13, leverage 9, backlog 8, inventory 7, capital returns 6**.
+The wishlist tally (top of `pot/data-wishlist.md`) counts how many lane entries reached for each series. On 8 Nov: **margin 65, volume/units 51, cash conversion 49, leverage 28, return on capital 28, backlog 23, inventory 18, capital returns 15**. The counts cover every entry ever made, so cash conversion and return on capital, fetched since September, include reaches from before that, and from non-US names EDGAR cannot cover.
 Most are the same shape of job as cash conversion — two EDGAR tag lists each — and the payoff is larger than it looks: a fetched page enters the agent's context and is resent on every subsequent turn, so a 20k-token filing pulled at turn 5 of 21 costs ~340k tokens where four numbers cost ~1k.
 
 ## Deliberate shortcuts already marked in the code
@@ -130,6 +125,6 @@ These are `ponytail:` comments, not bugs — each names its own ceiling and upgr
 | [fetch-prices.js](fetch-prices.js) `REPORT_LAG_DAYS` | Flat 90-day lag from fiscal year end to "published" | A few weeks' slack starts mattering; real filed dates would go in `earnings.json` |
 | [fetch-prices.js](fetch-prices.js) `normaliseEps` | Rebasing through net income also absorbs buybacks (AAPL reads ~8% cheap at its low over four years) | A trustworthy split feed exists — Yahoo's is not one (it reports a 6:1 for BYD it never applied to prices) |
 
-## Waiting on the calendar, not on work
+## Overdue: the half-year figures
 
-`interim.json` is still empty. Nothing is overdue: the HK Main Board issuers' H1 results (period ending 30 Jun 2026) may be announced up to **30 Aug 2026**, and M&S's H1 ends 30 Sep. Run `npm run interim` — it derives the list from the store, so it will say when something is actually due.
+`interim.json` is still empty, and that is now overdue: the HK Main Board issuers' H1 results (period ending 30 Jun 2026) were due by 30 Aug. On 8 Nov `npm run interim` lists **25 names** whose half-year would make their figures fresher, mostly HK, plus BEZ.L and BNZL.L, and the next batch (half-years to 30 Sep, such as 0823.HK, BME.L and UU.L) falls due from 29 Nov. `hk-interim.json` holds half-year EPS read from HKEXnews as a proposal, but it was last written on 18 Aug and needs checking before use: 0001.HK reads 7 against 0.22 a year earlier. Revenue and net income have to be typed from each announcement.
