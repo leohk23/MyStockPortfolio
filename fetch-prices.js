@@ -839,7 +839,7 @@ async function fetchMrq(ticker, { crumb, cookie }) {
 // after quarter end). Below it, nothing new can exist — leave the cached value alone.
 const MRQ_STALE_DAYS = 120;
 // Cold start (no ticker has a cached mrq) would otherwise fire one gated call for every equity in
-// a single run — the burst AGENTS.md warns can 401 the whole handshake. Cap it; the daily throttle
+// a single run — the burst DASHBOARD.md's ex-dividend section warns can 401 the whole handshake. Cap it; the daily throttle
 // carries the rest to later runs, and steady state is a trickle of 0-2 around earnings.
 const MRQ_MAX_PER_RUN = 8;
 function mrqToFetch(prevQuotes, equities, today) {

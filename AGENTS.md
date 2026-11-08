@@ -2,6 +2,8 @@
 
 Orientation for anyone (human or agent) picking this repo up cold. Read this before changing code. Also read `README.md` (user-facing) and the header comment in each JS file.
 
+**Changing the dashboard's code (the extract, the price bot, `portfolio.js`, the workflows or the page)? Read [DASHBOARD.md](DASHBOARD.md) as well.** It holds the file table, the publish routine, and the machinery and war stories behind gilts, dividends, funds and the workbook. It is a separate file because every pot lane carries this one on every model call (D117), so new material goes there unless a lane needs it to read the data.
+
 ## What this is
 
 A **static** stock-portfolio dashboard on GitHub Pages. No server, no runtime deps. Live at [https://leohk23.github.io/MyStockPortfolio/](https://leohk23.github.io/MyStockPortfolio/). The repo is **public** — treat everything committed as world-readable.
@@ -111,24 +113,17 @@ new, and the Deep dive reads both (pot-design §2):
 
 ### When it runs
 
-**Schedule: [pot-design.md §4.2](pot-design.md#42-the-llm-lanes--one-scheduled-cycle). That section is
-the source of truth — go there before changing any timing.** In short: one Windows Task Scheduler
-entry, `MyStockPortfolio pot daily`, runs [`pot/run-daily.ps1`](pot/run-daily.ps1) — the book, the
-Scan, then whichever LLM lanes are DUE, in order, then the report. Review runs when `pot/review-due.js` says so (below), Sweep daily, and the Deep dive only if the Sweep ran in the same cycle (D30, D33, D36). **Weekdays 06:30, 12:45 and 21:15;
-weekends 09:00**, UK local (D17). On **Mon, Wed and Fri the 12:45 slot is a second run** from a second entry, `MyStockPortfolio pot second run`: the Sweep forced on Claude Opus 5.5, and since D95 no Deep dive (D88). It skips the Sweep when another ran under three hours before, as when it catches up behind a late cycle (D108). **Since D111 that Sweep runs on GitHub Actions** (`.github/workflows/pot-sweep.yml`, 11:17 UTC with a 12:17 retry, no laptop needed), and the laptop's entry is its fallback: once the cloud Sweep has landed, the three-hour rule makes the laptop's a no-op. **The Review runs on GitHub Actions nightly when it is due** (D114, `.github/workflows/pot-review.yml`, 00:31 UTC with a 01:31 retry): the night after a date the last Review booked under `## Next checks`, or a pot holding's results, and at least every two days (`pot/review-due.js`). The laptop's cycle asks the same script, so it runs the Review only when the cloud one did not. A Review that returns `broken`, `played-out` or `breach` opens a GitHub issue, which GitHub emails to Leo (`pot-alert.yml`, `pot/sell-alert.js`). **The day's one Deep dive is drafted by one model and examined by the other** (D95): Mon, Wed, Fri and weekends astra drafts and Opus examines, Tue and Thu the reverse (`Invoke-DeepDive`, `pot/brief-examine.md`).
+**[pot-design.md §4.2](pot-design.md#42-the-llm-lanes--one-scheduled-cycle) is the source of truth for
+when the pot runs, and holds every Claude lane setting in one table. Go there before changing any
+timing or lane setting.** In short: Task Scheduler runs [`pot/run-daily.ps1`](pot/run-daily.ps1) on
+weekdays at 06:30, 12:45 and 21:15 and at weekends at 09:00, UK local. A cycle does the book, the
+Scan, then whichever lanes are due, in order, then the report. The Review also runs on GitHub on the
+nights `pot/review-due.js` finds it due (D114), and the Mon/Wed/Fri second-run Sweep runs there too
+(D111). The day's one Deep dive is drafted by one model and examined by the other (D95). The
+allowance, not the clock, limits the schedule: read both limit columns of `pot/runs.md` before
+adding a slot.
 
-Two things that constrain any change to it:
-
-- **The weekly allowance is the budget, not the clock**, and the model sets the price. A full cycle
-  costs ~5% of the weekly allowance on `gpt-5.6-sol` but **~14% on `gpt-6-astra`** — about 4x,
-  measured like for like. Ungated on astra the schedule needs 238% of what exists, which is why the
-  lanes are gated at all. One astra cycle is also ~99% of a **5-hour** window, so there is no slack
-  for an ad-hoc run. Read BOTH limit columns of `pot/runs.md` (5-hour and weekly, each with what the run added, D112) before adding a slot; §4.2 has the
-  arithmetic.
-- **A slot is chosen so the cycle finishes just before Leo can read it** — before work, at lunch,
-  after the US close. He has a full-time job, and a proposal nobody reads is spent allowance.
-
-**Two cycles never overlap** (D100): a cycle holds the named mutex `Global\MyStockPortfolio-pot-cycle`, and a second one, such as both entries catching up when the laptop wakes, waits up to 90 minutes for it rather than running alongside. `pot/.daily-lock` is still written by the holder, for the Tradelog watcher.
+**Two cycles never overlap** (D100): a cycle holds the named mutex `Global\MyStockPortfolio-pot-cycle`, and a second one, such as both entries catching up when the laptop wakes, waits up to 90 minutes for it rather than running alongside. `pot/.daily-lock` is still written by the holder, for the Tradelog watcher. A lane treats a commit landing mid-run as tampering and discards its run (D91, D92), so check for that lock before committing by hand while a cycle may be running.
 
 Do **not** hand-run `pot/run-daily.ps1` to test a change: it spends a real 5% and takes 20–35
 minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` covers the JS.
@@ -140,37 +135,10 @@ no longer passes it (D116: D64's `--append-system-prompt-file` had become a seco
 call). There is deliberately no `CLAUDE.md`. The briefs assume it is in context, so if a Claude
 Code update stops loading it, restore the flag. The brief itself goes in with the prompt, on stdin, so a
 lane never opens it (D115); the prompt's first line must stay `Follow the instructions in <brief>`,
-which is how `pot/report.js` tells a lane run from anything else.
-
-**Claude lane controls — every setting in one place (D72–D76).** A lane runs on Codex unless the
-pre-flight moves it; these govern what happens when it runs on Claude.
-
-| Setting | Value | Where | Why |
-|---|---|---|---|
-| Model per lane on Codex | Review, Sweep `gpt-6.1-sol` (from 8 Nov; `gpt-5.6-sol` before); Deep dive `gpt-6-astra`. The lanes run the npm Codex CLI (`codex --version`: 0.167.0 since 8 Nov), not the copy Leo's editor bundles, so probe a new model through it before pinning one: 0.153.4 refused 6.1-sol. 6.1-sol is priced at astra's costs in `$LANE_COST` until measured | `run-daily.ps1` `$LANE_MODEL`, `$LANE_COST` | D51, D113 |
-| Reasoning effort | **high** for `gpt-6-astra`, `gpt-6.1-sol`, `gpt-5.6-sol` and `claude-opus-5-5`, pinned rather than taken from `~/.codex/config.toml` (it read `low` from 19 Oct) | `run-daily.ps1` `$LANE_EFFORT` | D96 |
-| Model on Claude | `claude-opus-5-5`, pinned by exact ID | `run-daily.ps1` `$CLAUDE_MODEL` | the `opus` alias once resolved to 4.8; Opus 5 → 5.5 on 23 Sep (D79) |
-| When a lane moves to Claude | only if it does not fit Codex's 5-hour or weekly allowance; Review, then Sweep, move first so the Deep dive keeps astra | `Resolve-Plan` | D68 |
-| Lanes on Claude per cycle | **1** failover lane (`-MaxClaudeLanes`); the Deep dive is kept, the rest skipped. The Deep dive's own Claude half (D95) is planned and not counted, and nor is the **Sweep on the days astra drafts** (Mon, Wed, Fri and weekends), which runs on Opus so astra keeps the 5-hour window. **1** in the Mon/Wed/Fri 12:45 second run, its Sweep | `run-daily.ps1`, the second-run task | D73, D88, D95, D105 |
-| Whole cycle on Claude | by hand for measurement (`-OnClaude -Force all -MaxClaudeLanes 3`), and **scheduled as the second run**: `-OnClaude -Force sweep -MaxClaudeLanes 1 -NoDeepDive -SweepGapHours 3`, Mon/Wed/Fri 12:45, now the fallback for the cloud Sweep | `run-daily.ps1` `-OnClaude`, Task Scheduler | D80, D88, D108, D111 |
-| **Cloud Sweep** | the second run's Sweep on GitHub Actions, Mon/Wed/Fri 11:17 UTC (12:17 retry): `run-lane.ps1` unchanged on a Windows runner, model and effort read from `run-daily.ps1`; the lane job has no push credential, and a second job checks paths and the token before pushing. Since D114 the lane and publish jobs are `pot-lane.yml`, shared with the cloud Review. A cycle waits for a running one (`Wait-CloudLanes`) and fetches its transcript for the ledger (`Sync-CloudTranscripts`, needs `gh`). The wishlist, which both machines append to, is merged by union (`.gitattributes`) and committed with every cycle | `.github/workflows/pot-sweep.yml`, `pot-lane.yml` | D111 |
-| **Cloud Review** | the Review on GitHub Actions, nightly at 00:31 UTC (01:31 retry) when `pot/review-due.js` finds it due; the same `pot-lane.yml`, with the Scan run first (scratch, no passphrase). The laptop's cycle asks the same script and is the fallback, Codex first. A call for a sale opens a GitHub issue that GitHub emails to Leo; no mail credential exists | `.github/workflows/pot-review.yml`, `pot-alert.yml` | D114 |
-| After Claude's session limit | no Claude until the reset time in its refusal (`pot/.claude-cooldown`) | `Note-ClaudeLimit` | D73 |
-| Failed lane on Claude | skipped; the cycle continues. A failed lane on either agent keeps none of what it wrote, so it stays due | `Invoke-Lane`, `run-lane.ps1` | D72, D108 |
-| Deep dive cadence | once a day on its own record (`pot/proposals`), not on the Sweep being due; two stages, drafter then examiner on the other model | `$doDeep`, `Invoke-DeepDive` | D73, D95 |
-| Login | long-lived token in `.claude-token` (gitignored, lanes denied), run in `~/.claude-lanes` so a stored login cannot outrank it. The cloud Sweep and Review use a second token, the `CLAUDE_CODE_OAUTH_TOKEN` secret, so either can be revoked alone | `run-lane.ps1`, `pot-lane.yml` | D72, D111, D114 |
-| Tools | Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, and named read-only shell commands; no PowerShell, no curl; credential paths and `.git` denied | `run-lane.ps1` `$allow` / `$deny` | D67, D91 |
-| What a lane may commit (Codex too) | `pot/proposals`, `pot/reviews`, `pot/sweeps`, `pot/data-wishlist.md`, `pot/adjustments.json`, `pot/questions.md`, `pot/positions.json`, `watchlist.json`. Anything else is put back; a lane that touches `.git` has its whole run discarded. Your own uncommitted edits under `pot/` are no longer committed by a lane | `run-lane.ps1` `$allowed` | D91 |
-| **Subagents** | Sweep: `scout` (Haiku). Deep dive and its second reader: `scout-filings` (Sonnet). Review: none. All six built-in types denied by name (`general-purpose`, `claude`, `Explore`, `Plan`, `claude-code-guide`, `statusline-setup`) | `pot/agents/*.md`, `run-lane.ps1` | D75, D76 |
-| Scout tools | WebSearch, WebFetch only — no Agent, so a scout cannot spawn another | `pot/agents/*.md` | D76 |
-| Scouts per run | **at most 3, at most 3 at once** — a brief rule; the CLI has no hard count | `brief-sweep.md`, `brief-deepdive.md` | D76 |
-| Cost record | each Claude lane logs `total_cost_usd` and the models in it (subagents included) | `run-lane.ps1` | D76 |
-| Spend cap per lane | **not set yet** — `--max-budget-usd` works on the subscription token; to be calibrated from the logged costs | — | D76 |
-
-Two traps found the hard way: an agent definition written by Windows PowerShell 5.1's `-Encoding utf8`
-carries a BOM, its frontmatter does not parse, and the agent silently does not exist — so the lane script
-copies `pot/agents/*.md` into the lanes config without one. And a JSON argument such as `--agents '{...}'`
-loses its quotes on the way from PowerShell 5.1 to a program; use definition files, not inline JSON.
+which is how `pot/report.js` tells a lane run from anything else. Everything here is resent on each
+of a lane's 30 to 60 model calls, which is why the dashboard's machinery lives in `DASHBOARD.md`
+(D117). Both CLIs can skip this file too (`claude --setting-sources user`, Codex
+`-c project_doc_max_bytes=0`, probed 8 Nov), if a lane ever needs a context of its own.
 
 **Write lane output as UTF-8 with the file-editing tool, never through a PowerShell redirection, `Set-Content` or `Out-File`.** Windows PowerShell 5.1 re-encodes on the way out: on 14 Sep the deep dive's run report lost every £, € and — to a literal `?` (27 characters) while its three proposals, written the other way, were intact.
 
@@ -190,65 +158,6 @@ from what an agent said about itself. It also writes the two performance pages, 
 (what the money did, against VUSA.L, D81) and `pot/paper.md` (every call marked as if bought), from
 `positions.json`, `prices.json` and `history.json`, and `pot/calls.md` (D106), from the rankings and the reviews.
 
-## Files
-
-| File                             | Role                                                                                                                                                                                                                                                         | Runs where                                |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| `extract-portfolio.js`         | Reads the Tradelog tab +`meta.json` → `holdings.json`. Sums qty/cost/realized from the Tradelog; pulls yahoo/group/geography from `meta.json`.                                                                                                        | User's machine only (`npm run extract`) |
-| `meta.json`                    | Per-instrument facts not in the Tradelog:`yahoo`, `group` (consolidation key), `geography`, `currency`, and optional PE inputs `eps`/`specialEps`/`specialEpsLabel` (see below). Keyed by Tradelog symbol. Edit when opening a new instrument. | Committed                                 |
-| `fetch-prices.js`              | Yahoo Finance →`prices.json` + `history.json`. Also best-effort fetches trailing EPS (crumb-authenticated, unlike the rest of this file). **No dependencies** (uses global `fetch`).                                                            | GitHub Actions (15 min, Mon-Fri) + local  |
-| `watchlist.json`               | Stocks watched but**not owned** — `yahoo`, `name`, `geography` (+ the same optional `eps`/`specialEps` overrides `meta.json` takes). Hand-edited. See "Watchlist" below.                                                                  | Committed                                 |
-| `guidance.json`                | Manual company-issued guidance for operating-company holdings/watchlist names. Literal display values + period, issue date, official source and material assumptions;`_coverage` records names checked with no matching quantitative guidance.             | Committed                                 |
-| `backfill-earnings.js`         | `npm run backfill`: tops `earnings.json` up with fiscal years Yahoo cannot reach (see "Deeper financial history" below). **Manual, one-off — never in CI.**                                                                                       | User's machine only                       |
-| `gilt-quote.js` | A gilt's live London Stock Exchange quote by ISIN, through onvista.de: the mid of the book, the coupon, maturity and issuer. Used by the price bot and by the extract, which also writes a new gilt's `meta.json` entry from it (see "Gilts" below). Dependency-free. | GitHub Actions + local |
-| `backfill-gilts.js` + `gilt-history.json` | `npm run backfill-gilts`: a gilt's daily closes from before the price bot started storing mids, from onvista.de (see "Gilts" below). **Manual, one-off — never in CI.** The bot only reads the committed file. | User's machine only |
-| `portfolio.js`                 | Pure aggregation shared by page and tests.`build(holdings, rates, quotes, dimension)`, `valuation`, `buildWatchlist`, `fillMissingQuarters`. Anything selftestable lives here rather than in the page.                                                        | Browser (`window.portfolioLib`) + node  |
-| `index.html`                   | Dark-only UI: totals, chart, sortable/groupable table.                                                                                                                                                                                                       | Browser                                   |
-| `push-alerts.js` + `sw.js` | Phone alerts (D86): after each price fetch, a holding (book or pot) moving ±5% on the day sends one Web Push notification; `sw.js` shows it on the phone. Secrets `VAPID_PRIVATE_KEY` and `PUSH_SUBSCRIPTION`; memory in `alerts-state.json`. The bell button on the page produces the subscription. Dependency-free. | GitHub Actions (prices.yml) + browser |
-| `publish.js`                   | `npm run publish`: extract → commit holdings.json → rebase → push.                                                                                                                                                                                      | User's machine                            |
-| `.github/workflows/prices.yml` | Run every 15 min on weekdays by an **outside scheduler** calling `workflow_dispatch` (GitHub's own cron delivers only ~1 run in 6 hours and stays as a backup), and on every push; runs selftests, fetches, sends phone alerts, commits. Weekdays only — every exchange in the book is shut at weekends. Public repo, so the runs are free.                                                                                                                                                                                                               | GitHub                                    |
-| `.github/workflows/pot-sweep.yml` | The Mon/Wed/Fri second-run Sweep on Claude, so it needs no laptop (D111). Gates on D108's three hours, then calls `pot-lane.yml`. `workflow_dispatch` takes `mode`: run, force or check. | GitHub |
-| `.github/workflows/pot-review.yml` + `pot/review-due.js` | The Review on Claude, nightly when due (D114). `review-due.js` decides for both machines: booked dates, a pot holding's results, two days. `workflow_dispatch` takes `mode`: run, force or check. | GitHub + local |
-| `.github/workflows/pot-lane.yml` | One pot lane on Claude, called by the two above. Runs `pot/run-lane.ps1` on a Windows runner with no push credential; a second job checks the patch against the lane allowlist and the token, then pushes. Secret `CLAUDE_CODE_OAUTH_TOKEN`. | GitHub |
-| `.github/workflows/pot-alert.yml` + `pot/sell-alert.js` | A Review's `broken`, `played-out` or `breach` becomes a GitHub issue assigned to Leo, which GitHub emails (D114). On a push that changes a Review, and called after the cloud Review. `-f test=true` opens a test issue. | GitHub |
-
-## How to run / test
-
-```sh
-npm install          # dev-deps: xlsx (extract), jsdom (only for manual page tests)
-npm test             # selftests: fetch-prices, portfolio, extract-portfolio, backfill-earnings
-node fetch-prices.js --selftest    # movement math incl. 1d, NAV fill/backfill, alignedCloses,
-                                   #   trough PE, quote parsing (EPS, session freshness)
-node portfolio.js  --selftest      # grouping, weighting, since-last-trade, dimensions,
-                                   #   valuation, watchlist, fillMissingQuarters
-node extract-portfolio.js --selftest   # yahoo-symbol mapping, group-name cleaning
-```
-
-Every non-trivial JS file has an `assert`-based `--selftest`. **Add to it when you change logic.** The page has no automated test in-repo; exercise it with jsdom ad hoc if changing `index.html` (see git history for the pattern), then eyeball the rendered SVG.
-
-## After the owner updates the Tradelog
-
-The whole routine, on the owner's machine, on `main`:
-
-```sh
-npm run publish     # extract -> commit holdings.json -> pull --rebase -> push
-```
-
-`extract-portfolio.js` refuses to write without the passphrase, so a missing `.holdings-key` can never publish positions in the clear. First-time setup: `tools/set-holdings-key.ps1`.
-
-**It now runs itself** (14 Oct 2026). The workbook is Leo's live master on OneDrive, `Master Cashflow_CC_v0.5.xlsm`, kept synced to the laptop; its path is in the gitignored `.tradelog-path`, and the extractor reads that file's Tradelog tab (without `.tradelog-path` it falls back to a `Tradelog.xlsx` in the repo; the old copies were removed on 14 Oct 2026). Task Scheduler's **`MyStockPortfolio tradelog watch`** runs `publish-on-change.js` every 15 minutes while Leo is logged in: when the workbook's modified time or size has moved since the last successful publish (`.tradelog-published`), and the save has been still for two minutes (so a file still syncing down is never read half-written), it runs `npm run publish`. A failure is logged to `publish-on-change.log` and retried on the next run, and it never publishes off `main`. **It waits while a pot cycle runs** (`pot/.daily-lock` names a live process): a commit landing inside a lane looks like the lane tampering with git, and D91 discards the whole run (D92). The same goes for any commit you make by hand, so check for that lock before committing while a cycle may be running. So an edit made in Excel Online or on the phone reaches the site once the laptop has synced it. Running `npm run publish` by hand still works and is harmless. **A new instrument's `meta.json` entry is written by the extract** (`resolveMeta`, 26 Oct 2026): from the watchlist where the name is on it, otherwise the Tradelog symbol on the exchange its trade currency implies (pence `.L`, HKD a 4-digit `.HK`, JPY `.T`, ...). It is accepted only if exactly one listing is quoted in the trade's currency within 40% of the price last paid; Frankfurt and Vienna count only when no home-exchange listing fits. The entry carries an `auto` note saying how it was found, never the price paid (`meta.json` is public). Anything ambiguous is refused as before, and the log says why. A dry run over the book found 46 right, 0 wrong. **A gilt recorded by its ISIN is filled too** (`resolveGilt`, 28 Oct 2026): see "Gilts" below.
-
-Do not hand-edit `holdings.json`, and do not reconstruct trades by hand — the workbook is the source of truth and `extract-portfolio.js` is the only thing that reads it.
-
-- **Check the branch first.** `publish.js` commits to the current branch. Off `main`, the live site never sees it (Pages serves `main`). Fix: `git checkout main && git cherry-pick <sha>`.
-- **The workbook is local-only** (on OneDrive, synced to the laptop), so this cannot run in a cloud session — there is no workbook there. Everything else can.
-- **Writing to the workbook is the owner's job.** It is an Excel Table with ~5k formulas, external links and a data connection; SheetJS round-trips drop all three. If a row must be added, give the owner the input-column values (C,D,E,F,G,H,I,P,X — the rest are formulas) rather than writing the file. Excel COM works but is flaky here (locale/link quirks).
-- Verify after: `wrote holdings.json: N instruments`, then the new trade's date, quantity and average cost, and that `Bal Qty` closed out if it was a full exit. Dates are calendar days read straight off the workbook (`ymdLocal`) — a date one day out is a bug, not rounding.
-
-## Preview-first workflow
-
-New UI and content work goes to `preview/index.html` and is pushed to `main`, which makes it reviewable at `/MyStockPortfolio/preview/`. Keep `index.html` unchanged until the owner asks to promote it. `npm run promote` copies the reviewed preview over the live page; do not run it by inference. Root data files are shared by both pages, so a pilot-only dataset must remain unused by `index.html` until promotion.
-
 ## Invariants — do not break these
 
 1. **Public repo, sealed positions (D67).** `holdings.json` publishes only `ticker`, `yahoo`, `group`, `geography`, `currency`; quantities, costs, trades (with their comments) sit in its `sealed` field, AES-GCM under Leo's passphrase (`vault.js`). Anything derived from them that carries an AMOUNT is sealed too — `prices.json nav` and `history.json long.nav` — or left out (`signals.json` has no `totalGBP`). Percentage weights and TWR percentages stay public. They are published for the locked view (D84): `prices.json weights` (each holding's share) and `history.json twr` / `long.twr` (the Performance lines), computed by the price bot; `prices.json gains` (each holding's gain %, D85, which with the price reveals the average cost). Per-holding CAGR and trade dates are not. Read holdings with `require('./vault').readHoldings()` and check `.full`; never publish a new amount-bearing field in the clear. The passphrase is `HOLDINGS_KEY` (GitHub secret) or the gitignored `.holdings-key`; the page asks for it and can Skip. `*.xlsx` is gitignored; keep it so. Git history before D67 still holds plain holdings — accepted, not rewritten.
@@ -256,7 +165,7 @@ New UI and content work goes to `preview/index.html` and is pushed to `main`, wh
 3. **Movements are fractions**, not whole percents (0.25 = +25%) everywhere in the JSON. The page multiplies by 100 for display. (A past bug shipped -59% as -5900%.)
 4. **One y-axis per chart, ever.** Two different scales → index both to % (see the benchmark overlay) or use separate charts. Never dual-axis.
 5. **Chart colors are validated.** Series use `--series-port/spx/hsi`, validated against the dark surface with the dataviz skill's `validate_palette.js`. Re-validate if you change them.
-6. **Every series replays the Tradelog. Nothing back-projects today's shares.** All of them still use *today's* FX for every past day. **Performance and benchmark lines are total return** (Leo, 8 Oct 2026): dividends net of withholding tax, reinvested on the ex-date, the benchmarks counted the same way (see "Dividends and total return"). **Value lines exclude dividends**: the cash left the asset.
+6. **Every series replays the Tradelog. Nothing back-projects today's shares.** All of them still use *today's* FX for every past day. **Performance and benchmark lines are total return** (Leo, 8 Oct 2026): dividends net of withholding tax, reinvested on the ex-date, the benchmarks counted the same way (see "Dividends and total return" in DASHBOARD.md). **Value lines exclude dividends**: the cash left the asset.
 
    - **Value** (portfolio and group) = `cohortMV` market value: what you actually held, priced
      at past closes. The line starts at your first purchase and steps up when you buy, and its
@@ -408,18 +317,6 @@ git add watchlist.json prices.json history.json && git commit -m "watchlist" && 
 
 Each watched name adds ~30KB to `history.json` (lazy-loaded, so it costs nothing on first paint). Fine for a dozen; reconsider at 30+.
 
-## Ex-dividend date (`fetchExDiv` / `exDivToFetch`)
-
-Shown as a chip in the deep dive — accented when it's in the future (own by then to collect), muted "Last ex-div" when it's the past cycle. Payers only.
-
-A company's panel also has a **Dividends** box under Financials (Leo, 2 Nov 2026), kept out of Valuation because what a share pays is a different question from what it is worth. It shows the trailing yield, what was paid a share and how many payments, the ex-dividend date, and what the position has paid you when unlocked. A dash there means none on Yahoo's record, not none paid: the record is incomplete for the over-the-counter Japanese receipts (NTDOY, CCOEY, TKOMY), so the box says so in words. Funds and gilts keep their income in the facts box instead.
-
-Unlike the next-results date (which is **free**, batched into the v7/quote call), the ex-div date is **not** in that response — its `exDividendDate` is empty and its `dividendDate` is the pay date, stale and missing outside the US. It lives in `quoteSummary?modules=calendarEvents`, which is **per-ticker and crumb-gated** — the same endpoint the EPS handshake and PE columns depend on.
-
-So it is **cached in prices.json** (`quote.exDiv` + `quote.exDivChecked`) and `exDivToFetch` only looks when there's a reason: no cached date, or the cached one has passed (the next may now be announced). A payer with a future date is left alone. And a per-ticker `exDivChecked` caps a still-unannounced payer to **one look a day**, or an annual HK/EU name would refetch every run for the months its last ex-div sits in the past — the same trap the earnings due-window solves. Steady state is **0 lookups a run**. Hammering that gated endpoint 40×/run for a date few of these holdings pay on could 401 the whole EPS/trough pipeline; that's the reason for all the caution.
-
-ETFs 404 on `calendarEvents` (VOO, EWJ, …). `fetchExDiv` treats 404 as a definitive "no date" (cached, so it backs off) rather than a transient error (retried) — otherwise every ETF payer would retry daily forever.
-
 ## Official company guidance
 
 `guidance.json` is deliberately separate from Yahoo's filed annual history. Guidance is forward-looking, quarterly or annual, and each company guides different measures, so the page shows a clearly labelled estimate row in the financials table, with blanks for accounts the company did not guide. Every entry must carry its period, issue date, official investor-relations URL and any material assumption. Never annualise, FX-convert or fill a metric the company did not guide. The one explicit exception is NVIDIA's labelled `runRatePe`: it derives the aligned income/margin/EPS accounts, moves its annualised P/E into the valuation box, and excludes un-guided other income/expense. Update entries by hand after results; there is no generic scraper because companies publish incompatible measures and formats. Keep `_coverage.checked` and `noMatchingGuidance` current so a blank row means "official sources checked, no matching quantitative guidance" rather than "forgotten".
@@ -502,93 +399,6 @@ Whichever reconciles first wins **outright** — years are never mixed across so
 **`NW0.DE` (CSG N.V.) has fabricated fundamentals and should not be trusted.** Yahoo's `nic ÷ eps` is *exactly* 1,000,000,000 for every year — a placeholder share count — and it shows revenue collapsing 24.9B → 1.7B for a €13 stock. It is stuck on FY2024, and no free source covers Xetra, so it cannot be repaired. It is the one holding whose financials panel is knowingly wrong.
 
 Re-run `npm run backfill` after adding a holding; it is incremental and skips tickers that are already complete.
-
-## Grouping (the "one line per company" feature)
-
-`holdings.json` carries `group` (from `meta.json`, e.g. VOO + VUSA.L → "S&P 500") and `geography` per instrument. `portfolio.js` `build(...)` buckets by a `dimension`: `'company'` (default), `'geography'`, `'sector'`, or `'instrument'`. Sector reads `quote.sector` (Yahoo `assetProfile`); a fund has no single sector and sits under **Funds**. Multi-instrument company rows expand to show their legs; instrument rows expand to show every adjusted trade with balance and average cost. Clicking a row charts it. The stock chart has Price/Gain-Loss views. Clicking a Company or Geography row charts that row's aggregate NAV; the metric toggle is reserved for individual Stock/leg charts. Exception: a single-instrument Company row behaves like its underlying Stock and keeps Price/Gain-Loss because NAV adds no distinct shape.
-
-**Cohort views.** The table follows the chart: Performance with **New** on and **Existing** off cuts it to this year's purchases (`portfolio.js` `newBuys`), and **Existing** on and **New** off to the shares held before it (`existingShares`), each then through the ordinary `build()`, in any grouping. New with Existing is the whole book again, so that shows everything; selecting a stock does not undo the cut, and a group selected from the cut table charts its full legs, whose own cohort lines do the splitting. The two cuts add up to every share held, and sales this year come out of the older shares first.
-
-Existing is at the 31 Dec average cost and keeps all realized gains; its gain is since purchase, not this year. Its line holds the 31 Dec shares all year as if left alone, so the table is smaller than the line wherever an old holding was trimmed this year; elsewhere the two agree exactly. New is at what was paid this year, so Shares, Cost, Value, Gain, Held and CAGR are those shares' own, and its value equals the New line's endpoint; it never shows more shares than are held.
-
-Received is "–" for any row with a cut leg, because IBKR records income per holding, not per lot; an Existing row bought nothing this year keeps it. The tiles and Mix stay whole-portfolio. It needs the trades, so locked there is no cut.
-
-## Dividends and total return
-
-The performance lines count income (Leo, 8 Oct 2026). A price-only return understates exactly the holdings bought for income, and a gilt's coupon is most of its return.
-
-- **What counts:** each dividend, **net of withholding tax**, reinvested on its **ex-date**, on the shares held the day before (a buy on the ex-date misses it). `cohortMV` returns the day's `income` and `twr` counts it as return. Accumulating funds pay nothing out, so they are excluded by construction: their income is already in the price.
-- **Where it comes from:** Yahoo's dividend events, on the weekly full-history call the job already makes (`events=div,split`), put on today's share basis exactly as the closes are (`perShareOnBasis`). Gilt coupons come from their schedule (`giltCoupons`: ex 7 business days before the coupon, paid gross). `history.json divs` holds `{ wht, ex: [[date, gross per share]] }` per series, **unioned with the previous run's**, so a failed fetch cannot drop history.
-- **Withholding** (`whtOf`): by market, then issuer exceptions. Leo approved the rates, and they were checked against a year of what IBKR actually deducted: US 15.0%, Japan and its ADRs 15.32%, France 25.0% (statutory; the 12.8% treaty rate needs forms 5000/5001), Korea 22.0%, BYD's ADR 10.0%, Hong Kong and Irish funds 0%, Garmin 0% (paid from Swiss capital reserves). A market not in the table has no rate: its dividends count gross, `wht` is null and the job logs it. Not UK tax: that depends on the wrapper.
-- **Benchmarks on the same footing** (`BENCH_INCOME`): the S&P 500 through VOO and the Hang Seng through the Tracker Fund (2800.HK), each with its distributions net. A price index against a total-return portfolio would hand the portfolio the index's own yield every year. Checked on 8 Oct: VOO net read +14.8% YTD, between the S&P price index (+14.0%) and Yahoo's gross total-return index (+15.0%).
-- **Published both ways:** `twrIncome` / `long.twrIncome` and `performance.income` are total return, and both pages read them (promoted 8 Oct 2026). The price-only `twr`, `long.twr` and `performance` fields are still published, and the page falls back to them only if a total-return field is missing.
-- **Known gap:** Yahoo's dividend record is incomplete for the over-the-counter Japanese receipts (NTDOY, CCOEY, TKOMY: the last one to two years missing). It matched IBKR's actual payments for the other 23 IBKR holdings. The performance lines still use Yahoo's per-share figures, so they miss these few payments (about a quarter of a percent of the book); the income received below does not.
-
-**Income received** (the table's Received column and the Income received tile) is what each position has paid since it was bought, net of withholding, in USD at today's FX (`incomeReceived` in portfolio.js):
-
-- **Actual, for IBKR shares:** `ibkr-dividends.js` (`npm run dividends`, run first by `npm run publish`) reads IBKR's Flex Web Service, a year per request, with the token and query id in `.ibkr-flex`. Every dividend, the tax IBKR withheld from it, payments in lieu and a bond's interest go into `.ibkr-dividends.json`. Both files are gitignored and denied to lanes, and the token never leaves the laptop. `extract-portfolio.js` matches the rows to holdings (`matchReceipts`: exact symbol, then without suffix or leading zeros, then shared ISIN, which is how LVMH's "MOHd" line joins MC) and seals them into `holdings.json` as `received`.
-- **IBKR's record starts on 29 Mar 2024**, the first activity of the account behind the token. The 2022-23 IBKR trades were on an earlier account, and Flex answers 1003 "Statement is not available" before it, and for today, since it serves completed days only. A holding with IBKR shares but no rows was paid nothing inside the record. **A refusal never shrinks the record:** the newest window ends on the last weekday (Flex has no statement for a weekend day), a window IBKR refuses that is already on record keeps its rows, and an account refused outright ("Too many failed attempts") keeps its previous record. On Sunday 25 Oct 2026 a Saturday end date dropped six months of the current account and five holdings lost their dividends in `holdings.json`.
-- **Calculated, for everything else:** shares at T212, TD and SC, and IBKR shares before 29 Mar 2024. Each ex-date's dividend net of withholding (`history.json divs`) on the shares held the day before; never for a payment IBKR's record already holds.
-- `fetch-prices.js` computes it per holding and publishes it **sealed** as `prices.json received` (`{ actual, estimated, ttm: { actual, estimated } }`, USD; `ttm` is the last 12 months, by IBKR payment date and by ex-date for the rest), like the NAV. The page opens it with the passphrase; locked, the column is "–". The Income 12M tile shows `ttm` and what it yields on today's value; the table's Received column stays since bought.
-
-## Gilts: priced from the London Stock Exchange's order book, by ISIN, not Yahoo
-
-Yahoo lists no individual gilts (no `.L` code resolves, and its search finds none), and the DMO's site blocks scripts. A gilt is recorded in the Tradelog under its **ISIN**, so its `meta.json` key is the ISIN, and the holding carries **`isin`**, which marks it as a gilt; `yahoo` is then only its key (`UKT31.L`, `UKT36.L`). `isin` and `lse` (the exchange code, where known) are public fields (`vault.js` `PUBLIC_FIELDS`): identifiers, like `yahoo`.
-
-**A new gilt needs nothing by hand** (`resolveGilt`, 28 Oct 2026). The extract looks the ISIN up on onvista and fills the entry only if: the issuer is the UK government; the trade was in pounds; and the London price is within 40% of the price paid per £100. The 40% check catches a Qty entered as the nominal. The ticker is `UKT` plus the maturity year, and the group is `UK Gilts`. A second gilt maturing in the same year is refused rather than numbered. The exchange's own code can no longer be looked up, so it is not guessed. Both the ticker and `yahoo` can be renamed by hand: the bot finds a renamed gilt's stored closes and backfill under its old key by ISIN (`byIsin`), and everything else keyed by `yahoo` is rebuilt each run. T31 (named after its exchange code, `lse`) became **UKT31** that way on 30 Oct 2026, so every gilt follows the one convention the extract writes.
-
-**In the Tradelog:** Qty = **nominal ÷ 100**, Price = the **clean price per £100** from the contract note, currency GBP. Every gilt price is quoted per £100 nominal, so Qty × Price is what was paid. Accrued interest goes in the comment, never in Price or Commission: it is not cost, and the next coupon repays it.
-
-- **The price is the exchange's book, read through onvista.de** (`gilt-quote.js`, shared by the bot and the extract). The bot read the exchange's own instrument endpoint by code until it began refusing scripts with 403 on **22 Oct 2026**. Every run after that logged `stale T31.L` and still succeeded, so T31 sat at that evening's price for six days and nothing flagged it. onvista carries every gilt by ISIN with the London Stock Exchange as a venue, delayed 15 minutes. Its bid and offer are the exchange's book: T31's spread reads 0.30 there, as it did on the exchange.
-  - `price` is the **mid** of bid and offer. The last trade is used only when the book is one-sided.
-  - A close is filed under the day the book was struck, not the day of the run, so a 06:30 run's reading of last night's book goes to last night.
-  - The response is checked before it is used: the ISIN must match, the venue must be London in GBP per £100, and the price must be plausible. A changed shape throws, and the last price and closes are kept.
-  - Undocumented, the same risk class as HKEXnews.
-  - Do not get round the exchange's refusal by sending a browser's headers: it is refusing scripts on purpose.
-- `quote.bond` carries the coupon (onvista's, for a fixed coupon; null for an index-linked gilt, whose price is real and whose coupon onvista gives already uplifted), maturity, ISIN, bid, offer and **`ytm`**, the gross redemption yield the DMO quotes. `divYield` is the running yield, coupon ÷ clean price. `type: 'BOND'` keeps it out of every Yahoo-only lookup, and the Sector view files it under Bonds.
-- **Its price history exists only in `prices.json`.** The bot reads no history endpoint, so each run stores the mid in `quote.lseCloses` (the name predates onvista) under the London date it was struck (weekdays only), and the last run of a day leaves that day's close. The daily and weekly series are built from it. Not the exchange's `lastclose`: that is the last trade, often at the bid or offer, and against a mid it shows the spread as a move. Never drop the field or rebuild `prices.json` without it. A failed fetch keeps the last quote and its closes (stale, and `at` says so) rather than losing the history.
-- **Before the first stored mid, the closes come from `gilt-history.json`** (25 Oct 2026). The exchange has no history endpoint, but onvista.de carries each gilt by ISIN with the London Stock Exchange as a venue, back to issue: T31 has 671 days from 29 Feb 2024. `backfill-gilts.js` fetches it **once, by hand** (`npm run backfill-gilts`; in a cloud session, with `NODE_USE_ENV_PROXY=1`), and the bot only reads the committed file: onvista's history stays off the scheduled path, though its live quote has been on it since 28 Oct. Its close is the day's **last trade**, not the mid: on T31's first 12 stored days it sat 0.055 below the mid on average, against a typical daily move of 0.16. Hence:
-  - The script refuses a gilt whose overlapping days miss the stored mids by more than 0.5 (a wrong instrument or unit misses by points), or that has fewer than 5 days to compare.
-  - `withBackfill` uses the backfill only for days **before** the first `lseCloses` day; the mids always win, and the backfill never enters `lseCloses`. 1D stays mid against mid.
-  - The daily series is cut to the last year (`lastYear`), the window Yahoo's daily call covers: `alignedCloses` takes the union of every ticker's days, so a 2024 start would stretch every daily series with nulls. 2Y/5Y/All read the weekly, built from every close.
-  - `quote.backfill = { source, basis, from, until }` tells the page where the last trades end; the price chart's note and the deep panel say so.
-  - `giltSeries` builds the moves, the daily series and that label, for a fresh fetch and for a failed one alike: a run where the exchange refuses keeps the last price, and its moves still reach back through the backfill.
-  - Re-run it after buying a new gilt (it needs the gilt's ISIN in `prices.json` and at least 5 stored mids first, so a week after it is added).
-- A period longer than the stored history shows "–" (`sinceStored`), never a move from the first close. Weekly bars are bucketed with the same `weekEnd` as Yahoo's (`weeklyFromDaily`).
-- `extract-portfolio.js` verifies a new gilt the way the bot will price it, by ISIN through `gilt-quote.js`, instead of against Yahoo.
-- **A bond fund's yield to maturity** is its issuer's figure, never computed here: `ishares` in `meta.json` (the fund page's `id/slug`; the id alone is refused) makes `fetchIsharesYtm` read the "Weighted Average YTM" iShares embeds in the page, into `quote.fundYtm` with its as-of date. Once a day, carried between, the last figure kept on failure. iShares sits behind bot protection that admits a browser's headers; a script's are refused.
-- **The Valuation box is hidden for anything that is not a single company** (Leo, 8 Oct): a gilt, a fund, a trust or an index (`quote.bond`, or `quote.type` not EQUITY). Every row there is a company's (EPS, five-year low, normalized basis), so for these it would be all "–". What does apply sits in the facts box: a gilt's yield, and for an equity fund the **P/E of its holdings**, Yahoo's trailing figure, shown only when positive and the fund holds companies (Yahoo gives the gold trust a negative EPS and SPOL -200).
-- Ceilings: the yield ignores the ex-dividend window (the 7 business days before a coupon) and settlement ignores bank holidays, a basis point or so.
-
-## Funds: what the deep panel shows instead of financials
-
-A tracker has no earnings, so the Financials box used to dead-end on "not an operating company".
-It now renders `fundFacts()`: fee, income policy, payout count, yield and category.
-
-- **`quotes[t].divCount`** — how many distributions in the trailing year, free from the chart call
-  that already asks `events=div,split` for `divTTM`. Payout frequency needs no extra request.
-  Deliberately a **count of what the fund did**, not a schedule read off a prospectus.
-- **`quotes[t].fund`** = `{ expense, category, family, name, checked }` from `quoteSummary`'s
-  `fundProfile` + `quoteType`. Non-equities only, gated on `FUND_STALE_DAYS = 90` — an expense
-  ratio never moves — and carried forward between sweeps like `exDiv`.
-
-**Yahoo reports a MISSING expense ratio as 0.000%.** VUSA.L and WDEF.PA both come back zero and
-neither is free (Vanguard's S&P 500 UCITS charges 0.07%). A zero is therefore dropped, not
-published — the same placeholder-zero trap as the quarterly fallback's operating income. 12 of 16
-funds have a fee on file; the rest correctly show "–".
-
-Accumulating vs distributing, in order of evidence quality (`incomePolicy()`):
-1. `divCount > 0` → **Distributing**. A payment settles it.
-2. Name matches `Acc` / `(Acc)` / `accumulating` → **Accumulating**. The issuer's own word beats
-   inferring a policy from silence, which is why the fund's `longName` is stored at all.
-3. Category or name is commodity/crypto → **No income**. IAU, IBIT and GBTC hold assets that pay
-   nothing, so there is neither a distribution nor anything to accumulate; calling them
-   "accumulating" would imply income exists.
-4. Otherwise → **"No distributions in the last year"**, unlabelled. Not the same as proving
-   accumulation.
-
-Not a table column: the fee would be blank on 43 of 59 rows. If a scannable comparison is ever
-wanted, the watchlist table is the place, not the holdings table.
 
 ## One company, one dataset (`primary`)
 
@@ -681,67 +491,3 @@ price loop never calls HKEXnews; it only reads `hk-board.json`, and runs unchang
 
 Known refusals, both correct: **1211.HK** (partial PDF extraction loses the word "results"; Yahoo
 has BYD confirmed anyway) and **6288.HK** (undecodable font; its date comes from `9983.T`).
-
-## Yahoo symbol mapping
-
-Each `meta.json` entry carries its `yahoo` symbol directly — no derivation, no `OVERRIDES` map. A new holding's entry is filled by the extract when one listing passes its checks (see "After the owner updates the Tradelog"). `extract-portfolio.js` verifies every *new* symbol (one not yet in `prices.json`) against Yahoo and refuses to write if it returns no price, so a typo fails the extract instead of silently dropping the row (`portfolio.js` skips holdings with no quote). Normal runs make zero network calls. All 56 are currently verified.
-
-## Workbook tabs (for the user trimming the xlsx)
-
-`extract-portfolio.js` now reads **only the Tradelog tab**, and only its cached cell values.
-
-**Portfolio is no longer a dependency of the app.** Its Currency column used to be an `INDEX/MATCH` into Portfolio, which quietly made Portfolio load-bearing; that column is now hardcoded (401 cells). The only Tradelog formulas still pointing at Portfolio are **MktVal** and **YEVal** (cols 20–21), which the extractor never reads. Portfolio is now purely the owner's own Excel reporting — delete it and only those two columns break.
-
-**Forex is still live.** Tradelog Price/Commission formulas use named ranges from it (`=5315/rngUSDJPY`). Extraction reads *cached* values, so a broken formula fails quietly rather than loudly — the app would happily consume a `#REF`. Keep Forex.
-
-Tab name `Tradelog` must not be renamed. Per-instrument display facts (yahoo/group/geography) live in `meta.json`.
-
-**Split column = the units→shares multiplier.** Tradelog `Stock split/Bonus shares` scales raw Qty up and raw Price down. A wrong value here is silent: it keeps total cost correct while misstating both share count and per-share price. (7532 was logged with `2` when the true split was `5`, so the app showed 200 shares instead of 500.) Cross-check quantities against the broker when a position looks off.
-
-## Gotchas
-
-- `fetch-prices.js` must stay dependency-free — CI installs nothing. Don't `require` a package.
-- Index symbols (`^GSPC`, `^HSI`) need the caret URL-encoded (`%5E`); `fetchTicker` does this.
-- The price bot commits to `main` on every scheduled run, so local pushes need `git pull --rebase` first (`publish.js` does it). On conflict in prices.json/history.json, the bot's/your newer generated file wins — regenerate rather than hand-merge.
-- Windows shell here is PowerShell; a Bash tool exists too. `.xlsx` reads need `xlsx` installed (`npm install`), which is dev-only and absent in CI by design.
-
-## The old external link (resolved 14 Oct 2026)
-
-**Resolved:** the live master, `Master Cashflow_CC_v0.5.xlsm`, has no external-link formulas in the columns the extractor reads (0 cells checked), so an edit made in Excel Online computes normally. Kept for the reasoning, and because the `parseTrade` guard below still matters.
-
-The old `Tradelog.xlsx` was a renamed copy of the Master Cashflow workbook, and the copy left behind an **external link** to the original on OneDrive:
-
-```
-https://d.docs.live.net/.../Master Cashflow_CC_v0.4.xlsx
-```
-
-Two columns the extractor reads still resolve through it, in every row:
-
-- **Adj Qty** — `[1]!Table1[[Qty]] × [1]!Table1[[Stock split]]` → every trade's quantity
-- **Gain/(Loss)** — realized gain
-
-Both reference only Tradelog's *own* columns (`Table1` is defined locally, `ref="C1:Y402"`), so the `[1]!` prefix is a pure copy artifact. It works today only because `xlsx` reads Excel's **cached** values — if Excel ever recalculates with the link unresolved, Adj Qty becomes `#REF!`.
-
-`parseTrade` now **throws** on any non-finite numeric cell rather than letting `Math.abs("#REF!")` publish `NaN` quantities. Do not weaken that check.
-
-**To make the workbook self-contained** (then Master Cashflow can be deleted anywhere): retype the two columns without the prefix — `=[@Qty]*[@[Stock split/ Bonus shares]]` and `=IF([@Side]="SELL",-([@[Adjusted Price w Commisions]]-[@[Average Purchase Price]])*[@[Adjusted Qty]],0)` — then Data → Edit Links → Break Link.
-
-## Japanese rows: the price hides in the formula
-
-The workbook's data provider (`_FV`) has no Tokyo coverage, so it prices the Japanese holdings off their **US ADR**. Those three Tradelog rows therefore record a USD price with `Currency = "USD"`, even though the trade happened in yen on the Tokyo line:
-
-```
-5332  Price = 3976/rngUSDJPY      -> the trade was ¥3,976
-7532  Price = 5315/rngUSDJPY      -> ¥5,315
-8001  Price = 2075.5/rngUSDJPY    -> ¥2,075.5
-```
-
-**This cannot be "fixed" in the workbook** — Excel's own reporting depends on the ADR price. So `extract-portfolio.js` recovers the real figure instead (`LOCAL_PRICE` / `localPriceScale`): the yen price is the formula's numerator, and every USD-derived figure on the row (adjusted price, average cost, realized gain) rescales by the same factor. Quantities never rescale.
-
-⚠️ The scale is derived from the **cell itself** (`numerator ÷ cached value`), NOT from the Forex tab, because `rngUSDJPY` is a **live** rate (`=_FV(...,"Price")`) — Excel recomputes the USD value on every refresh. Reading the rate separately would drift out of step with the cached value; deriving it from the cell is exact whatever the rate was when the file was last saved.
-
-`meta.json` `currency` for these three must be **JPY**, to agree with the recovered trade currency. Verified against IBKR: 5332 ¥3,979.18 avg, 8001 ¥2,077.16 — the app now matches.
-
-Side effect, and a good one: cost basis now converts at Yahoo's live JPY rate like every other foreign holding, instead of being pinned to the workbook's FX snapshot.
-
-

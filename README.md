@@ -53,7 +53,7 @@ Committing the price files re-triggers the Pages build, so the live site follows
 
   Practically this is US-only: Hong Kong, Tokyo, London and Paris have no extended-hours feed, so those rows never carry the marker and their freshness is the last-traded time in the tooltip. Moves are shown **at any size**, so a blank cell means exactly one thing — no extended-hours data for that listing, never "it moved but we hid it".
 
-For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md).
+For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md), and [DASHBOARD.md](DASHBOARD.md) for the dashboard's machinery.
 
 ## The Tradelog is the source of truth
 
