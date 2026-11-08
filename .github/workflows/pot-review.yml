@@ -1,0 +1,75 @@
+name: Pot Review
+
+# The Review, on Claude with Leo's subscription, run here nightly when its dates say so (D114). A
+# falsifier mostly tests a company's reported figures, so the Review runs the night after a date it
+# booked under `## Next checks`, or after a pot holding's results, and every other day regardless.
+# pot/review-due.js decides, the same script the laptop's cycle asks: once this has run the laptop
+# finds nothing due, and when this did not, the laptop runs the Review itself (on Codex first, D113).
+# pot-lane.yml runs the lane and pushes it; pot-alert.yml then emails Leo if it called for a sale.
+
+on:
+  schedule:
+    # 00:31 UTC, 01:31 in summer: after the US after-close releases, and in a Claude 5-hour window of
+    # its own, closed before the 06:30 cycle's Opus Sweep and examination open the next. 01:31 UTC is
+    # the retry for a firing GitHub drops; the gate makes it a no-op when the first one ran.
+    - cron: '31 0 * * *'
+    - cron: '31 1 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'run: as scheduled, gated. force: skip the gate. check: sign in and answer one line, no lane.'
+        type: choice
+        options: [run, force, check]
+        default: run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pot-review
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.gate.outputs.go }}
+    env:
+      MODE: ${{ github.event.inputs.mode || 'run' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The Scan first, as on the laptop: it is what turns a holding's results into a 6.3 signal
+      # while the laptop is off. Scratch; this job commits nothing.
+      - name: Gate
+        id: gate
+        run: |
+          node signals.js | tail -n 2
+          if [ "$MODE" != run ] || node pot/review-due.js; then go=true; else go=false; fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+
+  review:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/pot-lane.yml
+    with:
+      lane: review
+      mode: ${{ github.event.inputs.mode == 'check' && 'check' || 'run' }}
+      scan: true
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  # A push made with a workflow's own token starts no other workflow, so the alert is called here.
+  alert:
+    needs: review
+    if: needs.review.outputs.pushed == 'true'
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/pot-alert.yml

@@ -1,0 +1,44 @@
+name: Pot sale alert
+
+# An email when a Review calls for a sale (D114). pot/sell-alert.js opens a GitHub issue assigned to
+# the owner and GitHub mails it, so no mail credential exists anywhere. It runs on a push that
+# changes a Review, which is how the laptop's Reviews arrive, and is called by pot-review.yml after
+# the cloud Review pushes, because a push made with a workflow's own token starts no other workflow.
+
+on:
+  push:
+    branches: [main]
+    paths: ['pot/reviews/*.md']
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Open one test issue, to check the email reaches the inbox.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pot-alert
+      cancel-in-progress: false
+    steps:
+      # main, not the commit that started the run: called after pot-review.yml's push, the run's own
+      # commit predates the Review it is meant to read.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST: ${{ inputs.test && '--test' || '' }}
+        run: node pot/sell-alert.js $TEST

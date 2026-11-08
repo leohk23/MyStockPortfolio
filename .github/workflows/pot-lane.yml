@@ -1,0 +1,222 @@
+name: Pot lane on Claude
+
+# One pot lane on Claude with Leo's subscription, on a machine that is not the laptop (D111, D114).
+# Called by pot-sweep.yml and pot-review.yml, which decide WHEN it runs; this is how, kept in one
+# place because the guards below must not drift between lanes. The same lane as on the laptop, not a
+# copy of it: pot/run-lane.ps1 unchanged, under Windows PowerShell 5.1, with the model and effort read
+# from pot/run-daily.ps1, the same tool lists, scouts and commit allowlist.
+#
+# Two jobs, so the agent never holds a credential that can push. `lane` checks out with nothing
+# saved in .git/config, runs the lane, and hands its commit on as a patch. `publish` is a fresh
+# machine the agent never ran on: it checks every path against the lane allowlist and the diff
+# against the token, then pushes.
+#
+# Codex lanes cannot follow: OpenAI's guide to a ChatGPT login in CI says not to use it for a public
+# repository. Claude's long-lived token (`claude setup-token`) is subscription auth wherever it runs.
+#
+# Secret: CLAUDE_CODE_OAUTH_TOKEN, a token made for CI alone, so it can be revoked without stopping
+# the laptop's lanes.
+
+on:
+  workflow_call:
+    inputs:
+      lane:
+        description: 'sweep or review: the lane runs pot/brief-<lane>.md.'
+        type: string
+        required: true
+      mode:
+        description: 'run, or check: sign in and answer one line, no lane.'
+        type: string
+        default: run
+      scan:
+        description: 'Run the Scan first, as the laptop cycle does before the lane. Scratch, never committed.'
+        type: boolean
+        default: false
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+    outputs:
+      pushed:
+        description: 'true once the lane commit is on main.'
+        value: ${{ jobs.publish.outputs.pushed }}
+
+permissions:
+  contents: read
+
+jobs:
+  lane:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    outputs:
+      committed: ${{ steps.lane.outputs.committed }}
+    env:
+      MODE: ${{ inputs.mode }}
+      LANE: ${{ inputs.lane }}
+    steps:
+      - name: Which lane
+        run: |
+          if ($env:LANE -notin 'sweep', 'review') { throw "no such lane: $env:LANE" }
+
+      # No credential left behind: the lane can fetch this public repository and nothing more.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Without the passphrase, which never comes near a lane's machine, the Scan has no view of Leo's
+      # own book; the Review does not read it. Left uncommitted, as on the laptop: run-lane.ps1
+      # leaves a file that was modified before the lane alone. A failed Scan does not stop the lane,
+      # which then reads the committed signals.json, as it would on the laptop.
+      - name: Scan
+        if: inputs.scan
+        run: |
+          node signals.js | Select-Object -Last 2
+          if ($LASTEXITCODE) { "signals.js exited $LASTEXITCODE - the lane reads the committed signals.json" }
+          exit 0
+
+      # Pinned, as the laptop's lane CLI is: a new model can need a newer CLI (D79), and an unpinned
+      # one changes under the lane with no commit to show it.
+      - name: Claude Code
+        run: |
+          npm install -g --silent @anthropic-ai/claude-code@2.1.311
+          claude --version
+
+      # One source for both machines: $CLAUDE_MODEL and its $LANE_EFFORT entry in run-daily.ps1.
+      - name: Model and effort
+        id: model
+        run: |
+          $text = Get-Content pot/run-daily.ps1 -Raw
+          $model = [regex]::Match($text, '(?m)^\$CLAUDE_MODEL\s*=\s*''([^'']+)''').Groups[1].Value
+          $effort = [regex]::Match($text, "'" + [regex]::Escape($model) + "'\s*=\s*'(\w+)'").Groups[1].Value
+          if (-not $model -or -not $effort) { throw 'could not read $CLAUDE_MODEL and its $LANE_EFFORT from pot/run-daily.ps1' }
+          "Claude lanes: $model at $effort effort"
+          Add-Content $env:GITHUB_OUTPUT "model=$model"
+          Add-Content $env:GITHUB_OUTPUT "effort=$effort"
+
+      - name: Sign-in check
+        if: env.MODE == 'check'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if (-not $env:CLAUDE_CODE_OAUTH_TOKEN) { throw 'The CLAUDE_CODE_OAUTH_TOKEN secret is not set.' }
+          # A config folder of its own, so nothing but the token can sign it in.
+          $env:CLAUDE_CONFIG_DIR = Join-Path $env:RUNNER_TEMP 'claude-check'
+          claude -p 'Reply with the single word OK.' --model '${{ steps.model.outputs.model }}' --max-turns 1
+          if ($LASTEXITCODE -ne 0) { throw "claude exited $LASTEXITCODE" }
+
+      - name: Lane
+        id: lane
+        if: env.MODE != 'check'
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if (-not $env:TOKEN) { throw 'The CLAUDE_CODE_OAUTH_TOKEN secret is not set.' }
+          # run-lane.ps1 reads the token from the gitignored .claude-token, as on the laptop, and
+          # denies the agent that file. No BOM.
+          [IO.File]::WriteAllText((Join-Path $env:GITHUB_WORKSPACE '.claude-token'), $env:TOKEN)
+          Remove-Item Env:TOKEN
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          $brief = "pot/brief-$env:LANE.md"
+          $since = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          powershell -NoProfile -ExecutionPolicy Bypass -File pot/run-lane.ps1 -Brief $brief -Agent claude `
+            -Model '${{ steps.model.outputs.model }}' -Effort '${{ steps.model.outputs.effort }}' -Repo $env:GITHUB_WORKSPACE
+          $code = $LASTEXITCODE
+
+          # The lane's commit, if it made one: run-lane.ps1 makes at most one, after its own pull.
+          New-Item -ItemType Directory -Force out/patch, out/transcript | Out-Null
+          if ((git log -1 --format=%s) -like "pot: claude ran brief-$env:LANE.md at *" -and [int64](git log -1 --format=%ct) -ge $since) {
+            git format-patch --quiet -1 HEAD -o out/patch
+          }
+          # The transcript, for the laptop's ledger (Sync-CloudTranscripts in run-daily.ps1).
+          $projects = Join-Path $env:USERPROFILE '.claude-lanes\projects'
+          if (Test-Path $projects) { Copy-Item $projects out/transcript -Recurse }
+          if (Test-Path pot/run-log.txt) { Copy-Item pot/run-log.txt out/transcript }
+
+          # The token must leave this machine in neither. An exact match only: the agent holds it in
+          # its environment, as on the laptop, so an encoded copy cannot be ruled out here.
+          $token = [IO.File]::ReadAllText((Join-Path $env:GITHUB_WORKSPACE '.claude-token'))
+          $leak = @(Get-ChildItem out -Recurse -File | Select-String -SimpleMatch -Pattern $token -List)
+          if ($leak.Count) { Remove-Item out -Recurse -Force; throw "the Claude token is in the lane's output ($($leak.Path -join ', ')) - nothing is uploaded" }
+
+          $committed = [bool](Get-ChildItem out/patch -Filter '*.patch')
+          Add-Content $env:GITHUB_OUTPUT "committed=$($committed.ToString().ToLower())"
+          if ($code -ne 0) { throw "run-lane.ps1 exited $code" }
+
+      - uses: actions/upload-artifact@v4
+        if: steps.lane.outputs.committed == 'true'
+        with:
+          name: ${{ inputs.lane }}-patch
+          path: out/patch
+          retention-days: 14
+
+      # Uploaded for a failed lane too: what it spent belongs in the ledger.
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('out/transcript/**') != ''
+        with:
+          name: ${{ inputs.lane }}-transcript
+          path: out/transcript
+          retention-days: 14
+
+  publish:
+    needs: lane
+    if: needs.lane.outputs.committed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.lane }}-patch
+          path: ${{ runner.temp }}/patch
+
+      - name: Check, then push
+        id: push
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PATCHES: ${{ runner.temp }}/patch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --quiet --depth 20 origin main
+          git reset --hard --quiet FETCH_HEAD
+          base=$(git rev-parse HEAD)
+          git am --3way --quiet "$PATCHES"/*.patch
+
+          # What a lane may commit: run-lane.ps1's $allowed and $protected (D91, D83), which this must
+          # match. --no-renames, or a protected file renamed into an allowed folder would show only
+          # its new name.
+          bad=0
+          while IFS= read -r f; do
+            case "$f" in
+              pot/rejections.json) echo "::error::Leo's own file, not a lane's: $f"; bad=1 ;;
+              pot/proposals/*|pot/reviews/*|pot/sweeps/*|pot/data-wishlist.md|pot/adjustments.json|pot/questions.md|pot/positions.json|watchlist.json) ;;
+              *) echo "::error::outside the lane allowlist: $f"; bad=1 ;;
+            esac
+          done < <(git diff --no-renames --name-only "$base" HEAD)
+          [ "$bad" = 0 ] || exit 1
+
+          # To a file, not a pipe: under pipefail, grep -q stopping early fails the pipeline and
+          # would read as "not found".
+          git diff "$base" HEAD > "$RUNNER_TEMP/lane.diff"
+          if [ -n "$TOKEN" ] && grep -qF -- "$TOKEN" "$RUNNER_TEMP/lane.diff"; then
+            echo "::error::the Claude token is in the lane's commit - not pushing"; exit 1
+          fi
+
+          git log --oneline "$base"..HEAD
+          for try in 1 2 3; do
+            if git push --quiet origin HEAD:main; then echo pushed; echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+            git fetch --quiet --depth 20 origin main
+            git rebase --quiet FETCH_HEAD || { git rebase --abort; echo "::error::rebase onto origin failed"; exit 1; }
+          done
+          echo "::error::push failed three times"; exit 1

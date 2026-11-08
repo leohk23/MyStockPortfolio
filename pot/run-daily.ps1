@@ -477,39 +477,49 @@ function Sweep-Age {
     return [double]((Get-Date).ToUniversalTime() - $last).TotalHours
 }
 
-# D111: the Mon/Wed/Fri second-run Sweep runs on GitHub Actions (.github/workflows/pot-sweep.yml).
-# A cycle that starts while one is queued or running waits for it, so it pulls that Sweep rather
-# than writing a second beside it. Bounded, and silent without gh: no cloud run is the old behaviour.
-function Wait-CloudSweep {
+# The lanes that run on GitHub Actions: the Mon/Wed/Fri second-run Sweep (D111) and the nightly
+# Review (D114), each a workflow calling pot-lane.yml, whose artifacts are named after the lane.
+$CLOUD_LANES = @{ sweep = 'pot-sweep.yml'; review = 'pot-review.yml' }
+
+# A cycle that starts while a cloud lane is queued or running waits for it, so it pulls that lane's
+# file rather than writing a second beside it. Bounded, and silent without gh: no cloud run is the
+# old behaviour.
+function Wait-CloudLanes {
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
     $until = (Get-Date).AddMinutes(30)
     $noted = $false
     while ((Get-Date) -lt $until) {
-        $states = @(gh run list --workflow pot-sweep.yml --limit 5 --json status --jq '.[].status' 2>$null)
-        if ($LASTEXITCODE -ne 0) { return }
-        if (-not @($states | Where-Object { $_ -and $_ -ne 'completed' }).Count) { return }
-        if (-not $noted) { Note '  a cloud Sweep is running - waiting for it (D111)'; $noted = $true }
+        $running = @()
+        foreach ($lane in $CLOUD_LANES.Keys) {
+            $states = @(gh run list --workflow $CLOUD_LANES[$lane] --limit 5 --json status --jq '.[].status' 2>$null)
+            if ($LASTEXITCODE -ne 0) { continue }
+            if (@($states | Where-Object { $_ -and $_ -ne 'completed' }).Count) { $running += $lane }
+        }
+        if (-not $running.Count) { return }
+        if (-not $noted) { Note "  a cloud $($running -join ' and ') is running - waiting for it (D111, D114)"; $noted = $true }
         Start-Sleep -Seconds 60
     }
-    Note '  the cloud Sweep is still running after 30 minutes - carrying on without it'
+    Note '  a cloud lane is still running after 30 minutes - carrying on without it'
 }
 
-# D111: a cloud Sweep's transcript comes back as its run's `sweep-transcript` artifact, into the
-# lanes' transcript folder, where report.js reads every Claude lane: that is how the Sweep gets its
+# A cloud lane's transcript comes back as its run's `<lane>-transcript` artifact, into the lanes'
+# transcript folder, where report.js reads every Claude lane: that is how the lane's file gets its
 # provenance stamp and its row in runs.md. GitHub keeps it 14 days, so a laptop off for longer
-# leaves that Sweep `model: pending`. A download that fails is simply tried again next cycle.
+# leaves that file `model: pending`. A download that fails is simply tried again next cycle.
 function Sync-CloudTranscripts {
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
-    $ids = @(gh api 'repos/{owner}/{repo}/actions/artifacts?name=sweep-transcript&per_page=30' `
-        --jq '.artifacts[] | select(.expired | not) | .workflow_run.id' 2>$null)
-    if ($LASTEXITCODE -ne 0) { Note '  could not list the cloud Sweep transcripts - left for next cycle'; return }
     $dest = Join-Path $env:USERPROFILE '.claude-lanes\projects\cloud'
-    foreach ($id in ($ids | Where-Object { $_ } | Select-Object -Unique)) {
-        $dir = Join-Path $dest $id
-        if (Test-Path $dir) { continue }
-        gh run download $id --name sweep-transcript --dir $dir 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { Note "  cloud Sweep transcript fetched (run $id)" }
-        else { Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue }
+    foreach ($lane in $CLOUD_LANES.Keys) {
+        $ids = @(gh api "repos/{owner}/{repo}/actions/artifacts?name=$lane-transcript&per_page=30" `
+            --jq '.artifacts[] | select(.expired | not) | .workflow_run.id' 2>$null)
+        if ($LASTEXITCODE -ne 0) { Note "  could not list the cloud $lane transcripts - left for next cycle"; continue }
+        foreach ($id in ($ids | Where-Object { $_ } | Select-Object -Unique)) {
+            $dir = Join-Path $dest $id
+            if (Test-Path $dir) { continue }
+            gh run download $id --name "$lane-transcript" --dir $dir 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { Note "  cloud $lane transcript fetched (run $id)" }
+            else { Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
     }
 }
 
@@ -639,7 +649,7 @@ try {
     # modified, and a fast-forward will not overwrite them, so 49 cycles to 23 Oct 2026 failed this
     # pull on world-history.json alone and ran on whatever the laptop last had. They are rebuilt
     # below either way. The same list as publish.js, which hit the same wall on 14 Oct.
-    Wait-CloudSweep
+    Wait-CloudLanes
     $regenerated = $ciOwned + @('alerts-state.json', 'pot.json', 'pot/positions.json', 'pot/origins.json')
     git checkout --quiet -- @($regenerated) 2>&1 | Out-Null
     git pull --ff-only --quiet origin main 2>&1 | Out-Null
@@ -675,7 +685,17 @@ try {
     # to keep in step: the artifact IS the record that the lane ran (A20).
     # Decide the WHOLE plan before running any of it, so the cost can be priced up front. Lane-Due
     # only reads filenames, so asking all three here is free and the answers cannot drift.
-    $doReview = Lane-Due 'pot/reviews' 2
+    #
+    # Since D114 the Review's due-ness is pot/review-due.js, not two days alone: also the night after a
+    # date the last Review booked, or a pot holding's results. The nightly cloud Review asks the same
+    # script, so once it has run this finds nothing due, and the laptop runs the Review only when the
+    # cloud one did not. The Scan above has just run, so a 6.3 results signal is already in it.
+    if ($Force -contains 'all' -or $Force -contains 'review') { $doReview = Lane-Due 'pot/reviews' 2 }
+    else {
+        $reviewWhy = node pot/review-due.js 2>&1
+        $doReview = $LASTEXITCODE -eq 0
+        Note "  review $reviewWhy"
+    }
     $doSweep = Lane-Due 'pot/sweeps' 1
     # D108: a Sweep only hours after the last one reads the same news, so the second run, which
     # forces its Sweep, skips it when a cycle it waited behind has just swept.

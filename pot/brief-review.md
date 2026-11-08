@@ -136,6 +136,25 @@ question of what the result means for the name.
 
 If the figure is simply not out yet, leave that call out: it stays Due and comes back next time.
 
+## Book your next checks (D114)
+
+This lane no longer runs on a clock alone. A free check runs every night and starts the Review the
+night after any date you book here, as well as after a pot holding's results and every other day
+regardless. **The dates you write are when you next look.** A tier waiting on a date you did not
+book waits for the two-day floor instead.
+
+End the file with a `## Next checks` table, one row per dated event that could move a verdict:
+
+- every "cannot tell until" above: the results or filing that tier waits on;
+- every P4 review date still ahead;
+- every Due call in `pot/calls.md` whose figure is not out yet.
+
+The **date** cell holds `YYYY-MM-DD` and nothing else: the day the figure lands, not the day after.
+Only dates after today. In **what**, say what lands that day, which tier or call it tests, and
+whether the date is the company's own or an estimate: Yahoo's projected dates are estimates, and
+an estimate that slips costs one run that finds nothing, after which you book the new date. A row
+without a `YYYY-MM-DD` date is ignored by the check.
+
 ## Sources
 
 `pot/sources.md` governs, as everywhere: numbers this repo holds come from the repo, company
@@ -167,6 +186,12 @@ model: pending, lane: review, date: <today>, tokens: pending
 | id | result | figure | source |
 |---|---|---|---|
 | <id from pot/calls.md> | pass, fail or void | <the figure as published> | <link to the document> |
+
+## Next checks       <always, headed exactly so>
+
+| date | ticker | what | source |
+|---|---|---|---|
+| <YYYY-MM-DD> | <TICKER> | <what lands, the tier or call it tests; company date or estimate> | <link> |
 ```
 
 Header your output with the provenance line above. Leave `model` and `tokens` as `pending`:
