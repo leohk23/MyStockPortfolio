@@ -134,10 +134,11 @@ Do **not** hand-run `pot/run-daily.ps1` to test a change: it spends a real 5% an
 minutes. `pot/run-lane.ps1 -Brief … -NoPush` runs one lane, and `--selftest` covers the JS.
 
 **How this file reaches a lane.** Codex loads it automatically, up to `project_doc_max_bytes`
-(131,072 in `~/.codex/config.toml`; past that the end is dropped silently — D38). Claude Code does
-not: `run-lane.ps1` passes it with `--append-system-prompt-file` (D64). An interactive Claude
-session does **not** load it, and there is deliberately no `CLAUDE.md`. The briefs assume it is
-in context, so keep both routes working. The brief itself goes in with the prompt, on stdin, so a
+(131,072 in `~/.codex/config.toml`; past that the end is dropped silently — D38). Claude Code now
+loads it from the working folder too, a lane and an interactive session alike, so `run-lane.ps1`
+no longer passes it (D116: D64's `--append-system-prompt-file` had become a second copy on every
+call). There is deliberately no `CLAUDE.md`. The briefs assume it is in context, so if a Claude
+Code update stops loading it, restore the flag. The brief itself goes in with the prompt, on stdin, so a
 lane never opens it (D115); the prompt's first line must stay `Follow the instructions in <brief>`,
 which is how `pot/report.js` tells a lane run from anything else.
 

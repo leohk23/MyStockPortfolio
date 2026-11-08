@@ -142,9 +142,10 @@ if ($Agent -eq 'codex') {
     $deny = 'Bash(git push*) Bash(git commit*) Bash(git reset*) Bash(rm *) ' +
         'Read(~/.codex/**) Read(~/.claude/**) Read(~/.ssh/**) Read(~/.git-credentials) Read(~/AppData/**) Read(./.holdings-key) Read(./.claude-token) Read(./.vapid-key) Read(./.ibkr-flex) Read(./.ibkr-dividends.json) ' +
         'Edit(./.git/**)'
-    # Codex auto-loads AGENTS.md; Claude Code only auto-loads CLAUDE.md, so hand it over explicitly.
-    # The briefs say AGENTS.md "is already in your context" - without this, that was false on Claude.
-    $docArgs = @('--append-system-prompt-file', (Join-Path $Repo 'AGENTS.md'))
+    # AGENTS.md is not passed: Claude Code now loads it from the working folder by itself, as Codex
+    # does. D64 passed it with --append-system-prompt-file when it did not, and by 8 Nov that was a
+    # second copy, about 28k tokens on every call (D116; probed on 2.1.280: 21k outside the repo,
+    # 49k inside, 77k inside with the flag). The briefs say it "is already in your context".
     # Unattended runs need a login that does not lapse. The interactive OAuth session expired on
     # 16 Sep after a day with no interactive use and could not refresh headless (D72). A long-lived
     # token from `claude setup-token`, saved to the gitignored .claude-token, is passed for this
@@ -201,7 +202,7 @@ if ($Agent -eq 'codex') {
     # from. On a subscription it is a usage measure, not a bill. The result's last lines are still
     # logged, so a session-limit refusal still reaches Note-ClaudeLimit in run-daily.ps1.
     # No prompt argument: with none, -p reads it from stdin.
-    $raw = $message | claude -p --permission-mode acceptEdits @claudeArgs @toolArgs @docArgs `
+    $raw = $message | claude -p --permission-mode acceptEdits @claudeArgs @toolArgs `
         --output-format json 2>&1 | Out-String
     $code = $LASTEXITCODE
     $jsonLine = ($raw -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -Last 1)
