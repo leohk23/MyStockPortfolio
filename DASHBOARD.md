@@ -26,7 +26,7 @@ bot, `portfolio.js`, the workflows or the page.**
 | `.github/workflows/pot-sweep.yml` | The Mon/Wed/Fri second-run Sweep on Claude, so it needs no laptop (D111). Started by the outside scheduler, since GitHub's cron runs hours late (D118). Gates on D108's three hours, then calls `pot-lane.yml`. `workflow_dispatch` takes `mode`: run, force or check. | GitHub |
 | `.github/workflows/pot-review.yml` + `pot/review-due.js` | The Review on Claude, nightly when due (D114), started by the outside scheduler (D118). `review-due.js` decides for both machines: booked dates, a pot holding's results, two days. `workflow_dispatch` takes `mode`: run, force or check. | GitHub + local |
 | `.github/workflows/pot-lane.yml` | One pot lane on Claude, called by the two above. Runs `pot/run-lane.ps1` on a Windows runner with no push credential; a second job checks the patch against the lane allowlist and the token, then pushes. Secret `CLAUDE_CODE_OAUTH_TOKEN`. | GitHub |
-| `.github/workflows/pot-alert.yml` + `pot/sell-alert.js` | A Review's `broken`, `played-out` or `breach` becomes a GitHub issue assigned to Leo, which GitHub emails (D114). On a push that changes a Review, and called after the cloud Review. `-f test=true` opens a test issue. | GitHub |
+| `.github/workflows/pot-alert.yml` + `pot/sell-alert.js`, `pot/proposal-alert.js` | A Review's `broken`, `played-out` or `breach` becomes a GitHub issue assigned to Leo, which GitHub emails (D114), and so does each new proposal, with its whole text, once the cycle has stamped it (D119). On a push that changes a Review or a proposal, and called after the cloud Review. `-f test=sale` or `-f test=proposal` opens a test issue. | GitHub |
 
 ## How to run / test
 

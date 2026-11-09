@@ -1,21 +1,24 @@
-name: Pot sale alert
+name: Pot alerts
 
-# An email when a Review calls for a sale (D114). pot/sell-alert.js opens a GitHub issue assigned to
-# the owner and GitHub mails it, so no mail credential exists anywhere. It runs on a push that
-# changes a Review, which is how the laptop's Reviews arrive, and is called by pot-review.yml after
-# the cloud Review pushes, because a push made with a workflow's own token starts no other workflow.
+# Emails for the pot, each a GitHub issue assigned to the owner that GitHub mails, so no mail
+# credential exists anywhere. pot/sell-alert.js: a Review that calls for a sale (D114).
+# pot/proposal-alert.js: a new proposal, the whole of it, once its cycle has stamped it (D119). It
+# runs on a push that changes a Review or a proposal, which is how the laptop's arrive, and is called
+# by pot-review.yml after the cloud Review pushes, because a push made with a workflow's own token
+# starts no other workflow.
 
 on:
   push:
     branches: [main]
-    paths: ['pot/reviews/*.md']
+    paths: ['pot/reviews/*.md', 'pot/proposals/*.md']
   workflow_call:
   workflow_dispatch:
     inputs:
       test:
-        description: 'Open one test issue, to check the email reaches the inbox.'
-        type: boolean
-        default: false
+        description: 'Open one test issue, to check the email reaches the inbox: a sale, or the newest proposal.'
+        type: choice
+        options: [none, sale, proposal]
+        default: none
 
 permissions:
   contents: read
@@ -37,8 +40,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Alert
+      # A test runs only the step it names. On a push or a call, `inputs.test` is empty and both run.
+      - name: Sale
+        if: inputs.test != 'proposal'
         env:
           GH_TOKEN: ${{ github.token }}
-          TEST: ${{ inputs.test && '--test' || '' }}
+          TEST: ${{ inputs.test == 'sale' && '--test' || '' }}
         run: node pot/sell-alert.js $TEST
+      - name: Proposal
+        if: inputs.test != 'sale'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST: ${{ inputs.test == 'proposal' && '--test' || '' }}
+        run: node pot/proposal-alert.js $TEST

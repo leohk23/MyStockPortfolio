@@ -434,10 +434,11 @@ if (require.main === module && !process.argv.includes('--selftest')) {   // npm 
         + noFalsifier.map(x => x.id).join(', '));
 }
 
-module.exports = { build, parseProposal, potTrades, potHoldings, ARCHIVE };
+module.exports = { build, parseProposal, potTrades, potHoldings, ARCHIVE, WITHDRAWN };
 
 // ---------------------------------------------------------------- selftest
-if (process.argv.includes('--selftest')) {
+// Only when run itself: proposal-alert.js requires this file, and its own --selftest must not run this one.
+if (require.main === module && process.argv.includes('--selftest')) {
     const assert = require('assert');
 
     // Money in, money out: every currency the pot can trade must convert, pence included.
