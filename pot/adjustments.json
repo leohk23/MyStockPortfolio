@@ -1,7 +1,20 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-04",
+  "updated": "2026-11-09",
   "normalizedEps": {
+    "AMSC": {
+      "basis": "company non-GAAP diluted EPS (includes valuation-allowance tax benefit)",
+      "ccy": "USD",
+      "note": "Not recurring earnings: the issuer reconciliation retains the tax benefit. One quarter cannot establish a research TTM or percentile.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-12-31",
+          "eps": 2.75,
+          "source": "https://www.sec.gov/Archives/edgar/data/880807/000143774926002978/amsc20251231_10q.htm"
+        }
+      ]
+    },
     "UU.L": {
       "basis": "company underlying basic EPS",
       "ccy": "GBP",
@@ -552,6 +565,17 @@
     }
   },
   "adjustments": {
+    "AMSC": [
+      {
+        "fy": "2026-03-31",
+        "amount": 113100000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "December 2025 non-cash tax benefit from releasing deferred-tax valuation allowances. Evidence only; common-shareholder attribution not separately certified.",
+        "source": "https://www.sec.gov/Archives/edgar/data/880807/000143774926002978/amsc20251231_10q.htm",
+        "found": "2026-11-09"
+      }
+    ],
     "KWHIY": [
       {
         "fy": "2027-03-31",
