@@ -8,13 +8,14 @@ name: Pot second-run Sweep
 # workflow that is still going (Wait-CloudLanes).
 
 on:
-  schedule:
-    # Mon, Wed, Fri. Cron is UTC with no DST, so 11:17 UTC is 11:17 in winter and 12:17 in summer,
-    # ahead of the laptop's 12:45 either way. The 12:17 UTC firing is a retry for one GitHub drops
-    # (prices.yml records how few scheduled firings it delivers here); the gate makes it a no-op
-    # when the first one swept. Off the hour, as GitHub asks.
-    - cron: '17 11 * * 1,3,5'
-    - cron: '17 12 * * 1,3,5'
+  # Started by cron-job.org, as prices.yml is, with no `schedule:` here (D118). GitHub's own cron
+  # runs here hours late or not at all, and a firing at 17:00 would find the laptop's 12:45 Sweep
+  # over three hours old and sweep a second time. The job POSTs this workflow's dispatches endpoint
+  # with `{"ref":"main"}`, on the price job's token, at crontab `17 11,12 * * 1,3,5` in UTC.
+  #
+  # Mon, Wed, Fri. UTC has no DST, so 11:17 UTC is 11:17 in winter and 12:17 in summer, ahead of the
+  # laptop's 12:45 either way. The 12:17 UTC call is a retry for one that does not arrive; the gate
+  # makes it a no-op when the first one swept.
   workflow_dispatch:
     inputs:
       mode:

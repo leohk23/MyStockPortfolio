@@ -8,12 +8,16 @@ name: Pot Review
 # pot-lane.yml runs the lane and pushes it; pot-alert.yml then emails Leo if it called for a sale.
 
 on:
-  schedule:
-    # 00:31 UTC, 01:31 in summer: after the US after-close releases, and in a Claude 5-hour window of
-    # its own, closed before the 06:30 cycle's Opus Sweep and examination open the next. 01:31 UTC is
-    # the retry for a firing GitHub drops; the gate makes it a no-op when the first one ran.
-    - cron: '31 0 * * *'
-    - cron: '31 1 * * *'
+  # Started by cron-job.org, as prices.yml is, with no `schedule:` here (D118). GitHub's own cron
+  # runs here hours late or not at all (the HK board's 01:20 lands 06:00-08:00), which would put the
+  # Review inside the laptop's 06:30 cycle. The job POSTs this workflow's dispatches endpoint with
+  # `{"ref":"main"}`, on the price job's token, at crontab `31 0,1 * * *` in UTC.
+  #
+  # 00:31 UTC, 01:31 in summer: after the US after-close releases, and in a Claude 5-hour window of
+  # its own, closed before the 06:30 cycle's Opus Sweep and examination open the next. 01:31 UTC is
+  # the retry for a call that does not arrive; the gate makes it a no-op when the first one ran. UTC,
+  # not London time: review-due.js counts a booked date once its UTC day is over, and 00:31 London in
+  # summer is 23:31 UTC, before it is.
   workflow_dispatch:
     inputs:
       mode:
