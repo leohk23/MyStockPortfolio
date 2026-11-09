@@ -83,6 +83,8 @@
         #clear-wrap[hidden] { display: none; }   /* .btns sets display:flex, which beats [hidden] */
         #chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
         #chart-change { font-size: 18px; font-weight: 600; margin: 2px 0; }
+        /* Pre-market or after hours, under the regular price it never replaces (invariant 10). */
+        #chart-change .ext-line { display: block; font-size: 14px; font-weight: 500; margin-top: 2px; }
         #chart-sub { font-size: 12px; color: var(--text-muted); }
         #chart-controls { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         #legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 2px 0 8px; font-size: 12px; }
@@ -2330,6 +2332,24 @@
             : ` <span class="tag ${cls(move)}" title="Change since the previous session close — the `
                 + `same figure as the table's 1D column, and independent of the range selected here.">`
                 + `1D ${pct(move)}</span>`;
+        // The pre-market or after-hours price, on a line of its own under the regular one, which it
+        // never replaces (invariant 10): the headline, 1D and every figure derived from the price stay
+        // on the regular session. Leo, 9 Nov, reading on a phone, where the table's small mark and its
+        // tooltip say little. `ext` is recorded only when it is later than the regular print and is
+        // never carried forward, so when present it is the newest price there is; in practice only
+        // US listings have one. Its time is shown because the bot fetches every 15 minutes.
+        const extLine = q => {
+            const e = q?.ext;
+            if (!e || !(e.price > 0)) return '';
+            const label = escapeHTML(extLabel[e.kind] || e.kind).replace(/^./, c => c.toUpperCase());
+            const d = new Date(e.at * 1000);
+            const when = d.toDateString() === new Date().toDateString()
+                ? `${p2(d.getHours())}:${p2(d.getMinutes())}` : stamp(d.toISOString());
+            return `<span class="ext-line" title="${label} price, against the regular close shown above. `
+                + `Not reflected in that price or in any figure derived from it.">${label} `
+                + `<span class="${cls(e.pct)}">${pct(e.pct)}</span> `
+                + `<span class="muted">${nativePrice(e.price, q.currency)} at ${when}</span></span>`;
+        };
         const firstNonNull = a => a.find(v => v != null);
         const lastNonNull = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; };
 
@@ -2701,7 +2721,7 @@
                 hline: bar.prevClose > 0 ? { value: bar.prevClose, label: 'prev close' } : null,
                 fmtY: fmt,
                 headline: `<span class="${cls(q['1d'])}">${pct(q['1d'])}</span> `
-                    + `<span class="muted">${fmt(last)}</span>`,
+                    + `<span class="muted">${fmt(last)}</span>${extLine(q)}`,
                 sub: `${watch ? 'not held · watchlist' : priv ? HIDDEN : (holding?.qty || 0) + ' shares'} · today's session · `
                     + `${clock(bar.t[0])} → ${clock(bar.t[bar.t.length - 1])}`,
                 title: name,
@@ -2789,10 +2809,10 @@
                 zero: gainMode,
                 hline: avgNative ? { value: avgNative, label: 'avg cost' } : null,
                 fmtY: fmt,
-                headline: gainMode
+                headline: (gainMode
                     ? `<span class="${cls(last)}">${money(last * RATES[display])}</span> <span class="muted">${pct(gainPct)}</span>`
                     : `<span class="${cls((last - first) / first)}">${pct((last - first) / first)}</span> `
-                        + `<span class="muted">${fmt(last)}</span>${dayTag(q['1d'])}`,
+                        + `<span class="muted">${fmt(last)}</span>${dayTag(q['1d'])}`) + extLine(q),
                 // "0 shares" would be a lie about a watched stock — it isn't a sold-out position.
                 sub: `${watch ? 'not held · watchlist' : qtyText + ' shares'} · ${gainMode ? 'transaction-replayed gain/loss' : 'price per share'} · ${ymd(days[0])} → ${ymd(days[days.length - 1])}`,
                 title: gainMode ? `${name} Gain/Loss` : name,
