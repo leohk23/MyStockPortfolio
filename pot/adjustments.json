@@ -2,6 +2,48 @@
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-11-09",
   "normalizedEps": {
+    "ADUS": {
+      "basis": "company non-GAAP adjusted diluted EPS",
+      "ccy": "USD",
+      "note": "Second reader, 10 November 2026. Q3 2026 GAAP 1.54 plus acquisition expense 0.16, stock compensation 0.12 and restructuring/other 0.01 equals adjusted 1.83. Addbacks include recurring economic costs; not certified recurring earnings. Two nonconsecutive quarters cannot establish research TTM or adjusted historical percentile.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "eps": 1.56,
+          "source": "https://addus.gcs-web.com/news-releases/news-release-details/addus-homecare-announces-third-quarter-2026-financial-results"
+        },
+        {
+          "end": "2026-09-30",
+          "eps": 1.83,
+          "source": "https://addus.gcs-web.com/news-releases/news-release-details/addus-homecare-announces-third-quarter-2026-financial-results"
+        }
+      ]
+    },
+    "AAK.ST": {
+      "basis": "company basic EPS excluding items affecting comparability",
+      "ccy": "SEK",
+      "note": "Second reader, 10 November 2026. Basic, not diluted: keep separate from local diluted EPS. The prior-year adjustment is Fit-to-Win. Two nonconsecutive quarters do not establish a research TTM or adjusted percentile.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 14.01,
+          "source": "https://storage.mfn.se/46b85c4c-a56a-40c3-9b38-d9b4ee246267/aak-interim-report-q3-2026.pdf"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "eps": 3.50,
+          "source": "https://storage.mfn.se/46b85c4c-a56a-40c3-9b38-d9b4ee246267/aak-interim-report-q3-2026.pdf"
+        },
+        {
+          "end": "2026-09-30",
+          "eps": 3.22,
+          "source": "https://storage.mfn.se/46b85c4c-a56a-40c3-9b38-d9b4ee246267/aak-interim-report-q3-2026.pdf"
+        }
+      ]
+    },
     "AMSC": {
       "basis": "company non-GAAP diluted EPS (includes valuation-allowance tax benefit)",
       "ccy": "USD",
@@ -565,6 +607,17 @@
     }
   },
   "adjustments": {
+    "AAK.ST": [
+      {
+        "fy": "2025-12-31",
+        "amount": -250000000,
+        "ccy": "SEK",
+        "arithmetic": false,
+        "what": "Fit-to-Win launch cost recognised in Q2 2025. Pre-tax operating charge; no subtraction from attributable income or diluted EPS is certified. Evidence explains why nine-month 2026 reported operating-profit growth differs from the issuer's comparable decline.",
+        "source": "https://storage.mfn.se/46b85c4c-a56a-40c3-9b38-d9b4ee246267/aak-interim-report-q3-2026.pdf",
+        "found": "2026-11-10"
+      }
+    ],
     "AMSC": [
       {
         "fy": "2026-03-31",
