@@ -604,6 +604,44 @@
           "source": "https://www.sec.gov/Archives/edgar/data/1020859/000102085926000022/f26q4earningsrelease.htm"
         }
       ]
+    },
+    "RR.L": {
+      "basis": "company underlying basic EPS",
+      "ccy": "GBP",
+      "note": "Added 12 November 2026 by the ad hoc RR.L Deep dive. Issuer pence stored as GBP per ordinary share. Underlying results are struck at the hedged FX rate and exclude unrealised fair-value movements on the FX derivative book, which drive the reported EPS (H1 2025 reported 52.38p against 15.74p underlying). The derived H2 2025 is annual less H1 on two different weighted share counts while buybacks ran, so it is approximate. Only one rolling twelve-month observation is established; no underlying historical percentile is certified.",
+      "annual": [
+        {
+          "end": "2024-12-31",
+          "eps": 0.2029,
+          "source": "https://www.rolls-royce.com/media/press-releases/2026/26-02-2026-rr-holdings-plc-2025-full-year-results.aspx"
+        },
+        {
+          "end": "2025-12-31",
+          "eps": 0.2955,
+          "source": "https://www.rolls-royce.com/media/press-releases/2026/26-02-2026-rr-holdings-plc-2025-full-year-results.aspx"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 0.1574,
+          "source": "https://www.rolls-royce.com/media/press-releases/2026/30-07-2026-rr-holdings-plc-2026-half-year-results.aspx"
+        },
+        {
+          "end": "2025-12-31",
+          "months": 6,
+          "eps": 0.1381,
+          "derived": "FY2025 29.55p less H1 2025 15.74p",
+          "source": "https://www.rolls-royce.com/media/press-releases/2026/26-02-2026-rr-holdings-plc-2025-full-year-results.aspx and https://www.rolls-royce.com/media/press-releases/2026/30-07-2026-rr-holdings-plc-2026-half-year-results.aspx"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 0.2217,
+          "source": "https://www.rolls-royce.com/media/press-releases/2026/30-07-2026-rr-holdings-plc-2026-half-year-results.aspx"
+        }
+      ]
     }
   },
   "adjustments": {
