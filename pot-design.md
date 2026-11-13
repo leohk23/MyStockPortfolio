@@ -220,43 +220,56 @@ checked against it.
 | Lane                | Job                                             | Universe                                  | Cost            | Trigger             |
 | ------------------- | ----------------------------------------------- | ----------------------------------------- | --------------- | ------------------- |
 | **Scan**      | emits *signals*; also *instructions* for standing orders | closed — the tickers already fetched | **free**  | every cycle, and before each cloud lane (§4.1) |
-| **Sweep**     | read the world, find candidates                 | open                                      | one LLM session | weekly              |
-| **Review**    | re-read every open thesis against its falsifier | what the pot holds                        | one LLM session | weekly              |
-| **Deep dive** | research one name → executable order           | a single name                             | one LLM session | Scan or Sweep fires |
+| **Sweep**     | read the world, find candidates                 | open                                      | one LLM session | daily in the cycle, plus Mon/Wed/Fri on GitHub (D33, D111) |
+| **Review**    | re-read every open thesis against its falsifier | what the pot holds                        | one LLM session | on GitHub, the night after a date it booked or a holding's results, and at least every 2 days (D114) |
+| **Deep dive** | rank the watchlist → up to three executable proposals, or none | the watchlist, from the Sweep's candidates and the Scan's signals (D14) | two sessions: one model drafts, the other examines (D95) | daily (D30) |
 
-Sweep is daily and Review every 2 days (D30, D33) — ~520 sessions a year. That was negligible at the
-~2 minutes each measured in §4 and on a model costing ~5% of the weekly allowance per cycle; on
-gpt-6-astra a cycle is ~14% and the cadence IS the budget, which is why the lanes are gated at all.
-parts: Review first, then Sweep.** Not to save sessions but to protect the Review: an agent that
-has just talked itself into three exciting new names is not the one you want grading the theses it
-wrote last month. Reviewing before discovering keeps the two apart in the only way that matters.
+The cadence is the budget, which is why the lanes are gated at all: §4.2 holds the schedule and
+what each lane costs. **The lanes run in order: Review first, then Sweep, then the Deep dive.** Not
+to save sessions but to protect the Review: an agent that has just talked itself into three exciting
+new names is not the one you want grading the theses it wrote last month. Reviewing before
+discovering keeps the two apart in the only way that matters, and the Deep dive reads both.
 
 ```
-   Sweep (weekly, LLM) ──→ candidates ──→ watchlist.json
-                                │                │
-                                │      CI fetches fundamentals (< 15 min)
-                                │                ↓
-                                │      Scan (free, every 15 min)
-                                │                │
-                                │       fires, maybe months later
-                                ↓                ↓
-                              LEO PICKS ONE ← ← ←
-                                     │
-                            Deep dive (LLM) ──→ pot/proposals/
-                                     │
-                            Leo reads, executes, logs
+Review (LLM; GitHub nightly when its dates say so) ──→ pot/reviews/ ──→ sale email
+   runs first: what is held is judged before anything new is looked for
+
+Sweep (LLM; daily, + Mon/Wed/Fri on GitHub) ──→ candidates ──→ watchlist.json
+                         │                               │
+                         │                fetched in the same cycle
+                         │                               ↓
+                         │                Scan (free; each cycle) ──→ signals.json
+                         │                               │
+                         │           fires, maybe months later; and lists
+                         │           names that reported since the last Deep dive
+                         ↓                               ↓
+                Deep dive picks (D14) ← ← ← ← ← ← ← ← ← ┘   (Leo may name one ad hoc)
+                         │
+          one model drafts, the other examines (D95), daily
+                         │
+              pot/proposals/ ──→ emailed to Leo
+                         │
+     Leo reads, then executes or rejects; trades logged in the Tradelog
 ```
 
-**Two paths in, one gate.** A Sweep candidate can be picked the same week, or wait years until the
+*(Redrawn 13 Nov 2026. The August original had the Sweep weekly, the Scan every 15 minutes, Leo
+picking the name, and no Review.)*
+
+**Two paths in, one gate.** A Sweep candidate can be ranked the same day, or wait years until the
 Scan finds it cheap. Either way it must be in `watchlist.json` with independently fetched
 fundamentals before a Deep dive may touch it — that gate, not a rule against the short path, is
-what keeps the discipline. Measured on the first real run: CHRT.L and ROK were swept and fully
-covered, four filed years and four P/E bands each, inside one CI pass.
+what keeps the discipline. The cycle fetches a new name's figures and scans again straight after
+its Sweep, so the gate costs no day. An ad hoc name goes through the same gate: RR.L was added to
+the watchlist and fetched before its Deep dive on 12 Nov. Measured on the first real run: CHRT.L
+and ROK were swept and fully covered, four filed years and four P/E bands each, inside one CI pass.
 
-**Leo is the selector (D13), and that was a correction.** The first Deep dive brief told the agent
-to take the strongest unflagged signal itself. It produced a proposal for GME — a name that never
-appeared in that week's Sweep — because the brief pointed at `signals.json` and nothing pointed at
-the Sweep output. The lanes were not joined. The agent obeyed perfectly; the instruction was wrong.
+**The Deep dive is the selector (D14), reading both lanes; that was a correction twice over.** The
+first Deep dive brief told the agent to take the strongest unflagged signal itself. It produced a
+proposal for GME — a name that never appeared in that week's Sweep — because the brief pointed at
+`signals.json` and nothing pointed at the Sweep output. The lanes were not joined. The agent obeyed
+perfectly; the instruction was wrong. D13 made Leo the selector for a day; D14 handed the choice
+back to the agent with both sources in front of it, and kept Leo's ad hoc Deep dive as an extra
+door.
 
 The expensive lane is gated behind the free one. The free lane's coverage grows every time the
 Sweep runs, so the zero-cost surface compounds.
@@ -554,7 +567,7 @@ Was a plan; now mostly a record. Everything ticked below runs today.
 | ✅ | **Scan** — every `[auto]` rule over data CI already fetches. Free, no LLM | `npm run signals` |
 | ✅ | **Macro state** — 17 index, rate, currency and commodity series, plus a **Macro view** beside Calendar | part of `npm run fetch` |
 | ✅ | **Sweep brief** — discovery. Produces candidates, never orders | `pot/brief-sweep.md` |
-| ✅ | **Deep dive brief** — the only lane that may produce an order. Leo names the ticker (D13) | `pot/brief-deepdive.md` |
+| ✅ | **Deep dive brief** — the only lane that may produce an order. It picks from the Sweep's candidates and the Scan's signals (D14); Leo may name one ad hoc | `pot/brief-deepdive.md` |
 | ✅ | **Second reader** — the other model examines the day's Deep dive and completes its research (D95), and decides by a stated rule (D106) | `pot/brief-examine.md` |
 | ✅ | **Second reader's scorecard** — its dated calls, scored by the Review, by model (D106) | `pot/report.js`, `pot/calls.md` |
 | ✅ | **Rule questions** — gaps in the rules, asked once, closed by Leo's answer (D106) | `pot/questions.md` |
