@@ -122,9 +122,15 @@ function parseProposal(file) {
 // have answered 23 Oct, which never mentioned photonics. This collects them, newest text per label
 // with the falsifier its proposal wrote, and marks a proposal whose **Earlier risks:** block leaves
 // a label out. The judgement inside the answer is the lane's; only its presence is checked.
+//
+// A no-order record (ticker "none", §4.4) names no company, so neither rule follows it (D121). Each
+// day's no-order record was being judged against the last as one name: by 12 Nov, ten were "re-
+// proposed inside two weeks" and nine "left an earlier risk unanswered" under Needs you, every one
+// of them noise, and `cooldown` held "none" as if it were a ticker standing.
+const NO_ORDER = 'none';
 function riskHistory(proposals, rejected = new Set()) {
     const byTicker = new Map(), missing = new Map();
-    for (const p of [...proposals].sort((a, b) => a.id.localeCompare(b.id))) {
+    for (const p of [...proposals].filter(x => x.ticker !== NO_ORDER).sort((a, b) => a.id.localeCompare(b.id))) {
         const risks = byTicker.get(p.ticker) || new Map();
         if (p.written >= REPROPOSE_FROM && risks.size) {
             const said = (p.earlierRisks || '').toLowerCase();
@@ -210,7 +216,9 @@ const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announ
 
 function reproposalRule(proposals, today, rejected = new Set()) {
     // A proposal the second reader withdrew never reached Leo, so it opens no window (D95).
-    const buys = proposals.filter(p => p.side === 'BUY' && p.state !== 'withdrawn').sort((a, b) => a.id.localeCompare(b.id));
+    // Nor does a no-order record, which names no company (D121).
+    const buys = proposals.filter(p => p.side === 'BUY' && p.ticker !== NO_ORDER && p.state !== 'withdrawn')
+        .sort((a, b) => a.id.localeCompare(b.id));
     const last = new Map(), breaches = new Map();
     for (const p of buys) {
         const q = last.get(p.ticker);
@@ -323,7 +331,7 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         else if (parsed.withdrawn) state = 'withdrawn';     // D95: never reached Leo
         else if (rejected) state = 'rejected';
         const px = quotes[parsed.ticker]?.price;
-        const life = parsed.ticker === 'none' ? {} : openLife(parsed, prevById.get(id), quotes[parsed.ticker], px, today);
+        const life = parsed.ticker === NO_ORDER ? {} : openLife(parsed, prevById.get(id), quotes[parsed.ticker], px, today);
         if (state === 'open' && life.expiredBy) state = 'expired';
         // Inside its life a price above the limit only means the order has not filled yet.
         const vsLimit = state === 'open' && parsed.limit && px != null ? Number((px / parsed.limit - 1).toFixed(4)) : null;
@@ -643,6 +651,13 @@ if (require.main === module && process.argv.includes('--selftest')) {
         assert.deepStrictEqual(history['HLMA.L'][1], { category: 'competitive', text: 'competitive risk', id: '2026-10-16-1208-HLMA.L' },
             'points at its proposal, whose falsifier is in `proposals`');
         assert.ok(!riskHistory([R('2026-10-27-0900-HLMA.L', 'financial')], new Set(['HLMA.L'])).history['HLMA.L'], 'rejected: no history kept');
+        // D121: no-order records name no company, so neither rule chains them together.
+        const days = riskHistory([R('2026-11-04-2243-none', 'financial'), R('2026-11-12-0652-none', 'accounting')]);
+        assert.strictEqual(days.missing.size, 0, 'a no-order record answers no earlier one');
+        assert.ok(!days.history.none, 'and keeps no risk history');
+        const quiet = reproposalRule([{ ...R('2026-11-11-0701-none'), side: 'BUY', limit: null }, { ...R('2026-11-12-0652-none'), side: 'BUY', limit: null }], '2026-11-12');
+        assert.strictEqual(quiet.breaches.size, 0, 'no repeat of a no-order record');
+        assert.ok(!quiet.cooldown.none, '"none" is not a ticker standing');
     }
 
     console.log('selftest ok');
