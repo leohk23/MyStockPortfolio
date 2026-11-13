@@ -31,7 +31,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | reached for | sweeps | |
 |---|---:|---|
 | margin | 69 | **earns a feed** |
-| volume / units | 57 | **earns a feed** |
+| volume / units | 59 | **earns a feed** |
 | cash conversion | 49 | **earns a feed** |
 | return on capital | 31 | **earns a feed** |
 | leverage / net debt | 28 | **earns a feed** |
@@ -41,7 +41,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 8 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-467 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+471 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -50,17 +50,17 @@ Appended by the Sweep in any order and in any shape; sorted and tabulated here b
 every report run. Do not hand-edit between the markers.
 
 <!-- entries:start -->
-| 2026-11-13 | US joint-replacement procedure volumes. | None found; Stryker, Zimmer Biomet and Smith+Nephew Q3 product-line sales were used instead. Wanted quarterly, to tell falling knee procedures from one implant category losing out; CMS Medicare claims would be the agency source, with a lag. |
-| 2026-11-13 | US GLP-1 prescription volumes. | None used. Wanted quarterly beside the knee-implant data, to test the weight-loss hypothesis for weak knees rather than state it; Novo's and Lilly's own volume disclosures are the company source. |
-| 2026-11-13 | Text from ASX results PDFs with embedded fonts. | Cochlear's FY26 release and April update could not be decoded by the fetch tool or `pdfText`; figures were read through search excerpts only. Wanted whenever an ASX or other non-SEC name is a candidate. |
-| 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
 | date | wanted | detail |
 |---|---|---|
+| 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
 | 2026-11-13 | A second WTI print to reconcile press figures. | The press quoted WTI at $94 against local `CL=F` at $88.16, unreconciled. A note rather than a feed request. |
 | 2026-11-13 | A spin-off's history from before it listed. | No source used. VYLR has six weeks of prices, so §6.1 cannot test it for years. The parent's segment history and the Form 10 pro formas are the only record. Wanted once per spin-off, not weekly. |
 | 2026-11-13 | Brazil farm credit and agricultural-input channel inventory. | Corteva and Vylor Q3 2026 releases on SEC EDGAR. Wanted quarterly; Banco Central do Brasil's rural credit statistics would be the agency source. |
+| 2026-11-13 | Text from ASX results PDFs with embedded fonts. | Cochlear's FY26 release and April update could not be decoded by the fetch tool or `pdfText`; figures were read through search excerpts only. Wanted whenever an ASX or other non-SEC name is a candidate. |
 | 2026-11-13 | UK pension-buyout volumes and insurer pricing. | L&G's H1 2026 PRT market update. Wanted semi-annually. |
 | 2026-11-13 | US 2-year Treasury yield. | Only a press figure was found, and it was not used. Wanted daily from the US Treasury daily par yield curve: the rates read now turns on whether the Fed is priced to hike, which `^FVX` and `^TNX` cannot show. |
+| 2026-11-13 | US GLP-1 prescription volumes. | None used. Wanted quarterly beside the knee-implant data, to test the weight-loss hypothesis for weak knees rather than state it; Novo's and Lilly's own volume disclosures are the company source. |
+| 2026-11-13 | US joint-replacement procedure volumes. | None found; Stryker, Zimmer Biomet and Smith+Nephew Q3 product-line sales were used instead. Wanted quarterly, to tell falling knee procedures from one implant category losing out; CMS Medicare claims would be the agency source, with a lag. |
 | 2026-11-12 | Energy-distribution volumes, unit margins and inventory working capital. | Rubis Q3 trading update and H1 2026 results on rubis.fr. Wanted on results dates, not weekly. Needed to distinguish oil-price pass-through and inventory funding from demand and distributable cash; reported and fine-adjusted operating cash must stay separate. |
 | 2026-11-12 | Facilities outsourcing contract/volume growth, retention, wage recovery and cash adjustments. | ISS Q3 2026 trading update (`https://www.issworld.com/insights/news-and-press/trading-update-q3-2026`). Wanted on results dates. Contract and volume contributions are disclosed; a complete wage-recovery and unusual-cash-receipts bridge remains unavailable in the short update. Needed to test physical-services outsourcing rather than infer an AI benefit. |
 | 2026-11-12 | HKEX principal operating cash history, distinct from investment redemptions and participant funds. | Second reader 2026-11-12-0652: [FY2025 annual report, pp145/203](https://www.hkexgroup.com/-/media/HKEX-Group-Site/ssd/Investor-Relations/Regulatory-Reports/documents/2026/260316ar_e_WCAG.pdf) reconciles reported cash to principal cash and external-investment redemptions. Wanted on results dates: comparable historical denominators before assigning an owner-cash percentile. Current principal-cash multiples alone cannot establish that percentile. This is not an EPS adjustment. |
