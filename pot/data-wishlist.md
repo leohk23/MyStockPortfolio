@@ -52,6 +52,7 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-11-13 | A P/E history struck on trailing-twelve-month EPS, for names whose earnings are growing. | Deep dive 13:30, ad hoc EUZ.DE. The stored history divides each week by the latest ANNUAL EPS published by then, so its denominators lagged a rising EPS (FY2023 €0.42 to FY2025 €0.78) by 3 to 15 months. On that basis today's €15.31 is the 13.7th percentile. On the fresher reported TTM to September 2026 (€0.87) it would read 7.4th, but only by setting an unlagged multiple against a lagged distribution. A like-for-like answer needs quarterly EPS back to the window's start, and `earnings.json` holds EUZ quarters from Q1 2025 only. EDGAR covers US filers; non-US names would need the issuer's interim reports. Wanted at each results release. |
 | 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
 | 2026-11-13 | A second WTI print to reconcile press figures. | The press quoted WTI at $94 against local `CL=F` at $88.16, unreconciled. A note rather than a feed request. |
 | 2026-11-13 | A spin-off's history from before it listed. | No source used. VYLR has six weeks of prices, so §6.1 cannot test it for years. The parent's segment history and the Form 10 pro formas are the only record. Wanted once per spin-off, not weekly. |

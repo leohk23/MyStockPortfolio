@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-13T03:59:43.425Z",
- "cashGBP": 257.64,
+ "generated": "2026-11-13T13:25:36.967Z",
+ "cashGBP": 257.44,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -166,6 +166,49 @@
  },
  "proposals": [
   {
+   "file": "2026-11-13-0426-NFLX.md",
+   "id": "2026-11-13-0426-NFLX",
+   "state": "open",
+   "ticker": "NFLX",
+   "written": "2026-11-13",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 62.69,
+   "warning": "active at entry. Netflix's August US television share fell from **8.7% in 2025 to 7.7% in 2026**, an **11.5% relative decline** ([Nielsen 2025](https://www.nielsen.com/news-center/2025/disney-and-fox-gain-turf-in-august-as-footballs-return-kicks-off-seasonal-shifts-according-to-nielsen/), [Nielsen 2026](https://www.nielsen.com/news-center/2026/tv-viewing-cools-off-in-nielsens-august-gauge-reports-as-sports-take-a-breather-and-school-resumes/)). Re-read on the combined September/October release, promised later this year; by **31 December 2026** check availability. A comparable month at least 5% below its year-ago share warns; recovery to within 5% clears this audience warning. Missing comparability keeps it unresolved. Separately, at Q4 results warn if revenue is below the issuer's **USD13.442bn** forecast or its 2026 advertising figure is below **about USD2.7bn** ([Q3 letter](https://www.sec.gov/Archives/edgar/data/1065280/000106528026000290/ex991_q326.htm)). These are secondary business tests, not substitutes for audience evidence.",
+   "break": "propose exit under §5.1 on any of these, independently: - Two consecutive comparable Nielsen monthly observations after August show Netflix share at least **10% below** the same months a year earlier, even if revenue and margins rise. September and October are separate observations. Do not splice across Nielsen's September methodology change without comparable denominators. - The annual 2026 engagement report, checked by **31 March 2027**, reports less than **193bn hours** on comparable scope. This retains the second reader's existing call in [calls.md](../calls.md); rounded half-year totals do not establish exact growth. - FY2027 revenue guidance implies F/X-neutral growth below **8%**, checked at the Q4 letter and no later than **31 March 2027**. These are investment thresholds, not company promises. Unpublished figures do not score as failure or success: retain the warning and recheck within 14 days. Audience tests can break the thesis while price increases still protect revenue.",
+   "reviewBy": "2026-12-31",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-11-26",
+   "resultsDue": "2027-01-19",
+   "vsLimit": 0,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
+   "file": "2026-11-13-0426-EUZ.DE.md",
+   "id": "2026-11-13-0426-EUZ.DE",
+   "state": "expired",
+   "ticker": "EUZ.DE",
+   "written": "2026-11-13",
+   "nextResults": "2027-03-24",
+   "side": "BUY",
+   "limit": 14.5,
+   "warning": "at the **24 March 2027** annual release, or any earlier financial update, re-read if operating cash / positive parent-attributable profit falls below **1.0x**, cash after purchases of PP&E/intangibles and lease principal is **EUR10m or less**, or the company cuts its approximately EUR80m adjusted-EBIT expectation. The 1.0x conversion warning is **already active** at 0.870x: the earlier holding's 0.80x warning cleared, but I require more headroom for new money. These are my top-up thresholds; the existing six shares' accepted contract is not rewritten.",
+   "break": "propose exit of this top-up under §5.1 at FY2026 results if any of the following occurs: - OCF / positive parent-attributable profit is below **0.80x**, or attributable profit is non-positive. - OCF less gross purchases of PP&E and intangibles and lease principal is non-positive. - That same cash remainder **less cash advanced to related parties** is non-positive. Include convertible-bond subscriptions; do not treat a financing outflow as operating capex or ignore it. - A disclosed material impairment/default on Pentixapharm funding, or related-party cash advances exceeding that pre-financing cash remainder while net borrowing rises, establishes the capital-allocation failure. - Any further amendment that defers repayment again, waives interest or principal, enlarges the EUR18.5m facility, or converts the bond on terms below par counts as the default route. The 12 November 2026 amendment already deferred repayment of the drawn EUR5m by three years, so a default cannot otherwise show before 2030. (Second reader.) Use matching full-year consolidated statements and show the cash bridge and opening/closing borrowing. At subsequent quarterly reporting, continue these warning and break checks on a trailing-year basis where matching periods exist. Missing components trigger review, not a pass. These tests can fail while revenue and adjusted EBIT grow. The warning bites earlier in severity than the break: conversion below 1.0x warns before 0.8x breaks. Both next scheduled numerical readings arrive in March; there is no invented intermediate reporting date. Monitor funding announcements before then.",
+   "reviewBy": "2027-03-24",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-11-26",
+   "resultsDue": "2027-03-24",
+   "expiredBy": "above",
+   "expiredOn": "2026-11-13",
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-11-12-2149-none.md",
    "id": "2026-11-12-2149-none",
    "state": "open",
@@ -310,9 +353,9 @@
    "validUntil": "2026-11-18",
    "resultsDue": "2027-01-19",
    "vsLimit": -0.0573,
-   "supersededBy": null,
+   "supersededBy": "2026-11-13-0426-NFLX",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-11-04-2243-none.md",
@@ -1905,9 +1948,9 @@
    "validUntil": "2026-10-05",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": null,
+   "supersededBy": "2026-11-13-0426-EUZ.DE",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-09-21-0930-YUMC.md",
@@ -1998,7 +2041,7 @@
    "validUntil": "2026-10-03",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-09-22-0852-EUZ.DE",
+   "supersededBy": "2026-11-13-0426-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2044,7 +2087,7 @@
    "validUntil": "2026-10-02",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-09-22-0852-EUZ.DE",
+   "supersededBy": "2026-11-13-0426-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2090,7 +2133,7 @@
    "validUntil": "2026-09-30",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-09-22-0852-EUZ.DE",
+   "supersededBy": "2026-11-13-0426-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2221,7 +2264,7 @@
    "validUntil": "2026-09-27",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-09-22-0852-EUZ.DE",
+   "supersededBy": "2026-11-13-0426-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2744,7 +2787,7 @@
    "validUntil": "2026-09-22",
    "resultsDue": "2027-01-19",
    "expiredBy": "days",
-   "supersededBy": "2026-11-05-0910-NFLX",
+   "supersededBy": "2026-11-13-0426-NFLX",
    "phase": "live",
    "counts": false
   },
@@ -2786,7 +2829,7 @@
    "validUntil": "2026-09-21",
    "resultsDue": "2027-01-19",
    "expiredBy": "days",
-   "supersededBy": "2026-11-05-0910-NFLX",
+   "supersededBy": "2026-11-13-0426-NFLX",
    "phase": "live",
    "counts": false
   },
@@ -3923,10 +3966,10 @@
  ],
  "cooldown": {
   "NFLX": {
-   "last": "2026-11-05-0910-NFLX",
-   "limit": 66.5,
-   "until": "2026-11-19",
-   "below": 63.175
+   "last": "2026-11-13-0426-NFLX",
+   "limit": 62.69,
+   "until": "2026-11-27",
+   "below": 59.5555
   }
  },
  "earlierRisks": {
@@ -3969,8 +4012,8 @@
   "NFLX": [
    {
     "category": "competitive",
-    "text": "YouTube and creator or generated video take viewing time faster than price rises and advertising can make up, so revenue growth fades and pricing power goes with it.",
-    "id": "2026-11-05-0910-NFLX"
+    "text": "competing entertainment takes viewing time faster than Netflix can preserve its customer economics.",
+    "id": "2026-11-13-0426-NFLX"
    }
   ],
   "NVO": [
@@ -4002,8 +4045,8 @@
   "EUZ.DE": [
    {
     "category": "financial",
-    "text": "Expansion, working capital and related-party financing absorb the earnings, leaving shareholders with an attractive profit number but little cash.",
-    "id": "2026-09-22-0852-EUZ.DE"
+    "text": "expansion, working capital and related-party financing consume the earnings before ordinary shareholders can retain the cash.",
+    "id": "2026-11-13-0426-EUZ.DE"
    }
   ],
   "BVI.PA": [
