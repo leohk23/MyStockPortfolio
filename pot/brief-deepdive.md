@@ -5,12 +5,15 @@ placed without further thought and audited in two years.
 
 ## You choose the name — from both lanes (D14)
 
-If the instruction names a ticker ("…for CHRT.L"), research that one. Otherwise **you pick**, and
+If the instruction names a ticker ("…for CHRT.L"), research that one, and put the words `ad hoc` in
+the ranking's `# ` title: the Scan then keeps its list of names that have reported (D122) for the
+next full Deep dive rather than treating this run as having read them. Otherwise **you pick**, and
 you pick from **two sources together**:
 
 1. **`pot/sweeps/`** — **every Sweep written since the last Deep dive**, with its candidates and why
    each was raised (see the table below for which files that is).
-2. **`signals.json`** — what the free Scan fired on, with any `oneOff` flag.
+2. **`signals.json`** — what the free Scan fired on, with any `oneOff` flag, and the names that have
+   reported since the last Deep dive (D122, below).
 
 Reading only one of those is the mistake this brief already made once. An earlier version pointed
 at `signals.json` alone and produced a proposal for GME, a name that week's Sweep had never
@@ -118,6 +121,19 @@ Take the date from the company's own calendar where it has one, else `quotes[tic
 put it in the WAIT row. Results due today count unless they are already out; if they are, say so on
 the **Next results:** line. `positions.js` marks a proposal written within three days of its results
 (`beforeResults`) and the report lists it under *Needs you*.
+
+## Names that have reported since the last Deep dive — `reportedSinceDeepDive` (D122)
+
+`signals.json` → `reportedSinceDeepDive.names` lists every tracked name whose results came out
+after the last full Deep dive (`since`), held or watched, with the date (`reported`) and where it
+sits (`pot`, `HELD` for Leo's own book, `watchlist`). Leo, 13 Nov: a WAIT or a falsifier often
+waits on a dated figure, and nothing told this lane when one landed.
+
+**A verdict that waited on those figures is not carried forward unread.** For each listed name your
+previous ranking gave WAIT, STANDS or EXCLUDE on a test these results answer, read the results, say
+in its row what they showed, and decide again. A listed name that no verdict depended on needs
+nothing. A pot holding's results are the Review's to judge; here they only bear on whether to add
+to it, and they are D93's exception 2.
 
 ## Answer every risk an earlier proposal of the name found — `earlierRisks` (D94)
 

@@ -187,6 +187,31 @@ function reportedSince(previousDue, quotes, today) {
     return out;
 }
 
+// §6.3 for the Deep dive (D122): every tracked name that has reported since the last full Deep
+// dive, held or watched. §6.3 proper covers what the pot holds and starts the Review. A WAIT or an
+// EXCLUDE on a watched name often rests on a dated figure ("positive FY2026 cash, by 31 Mar"), and
+// nothing told the Deep dive when it landed: it re-ranks every name daily but carries yesterday's
+// verdict forward. Scan to scan is the wrong window, because the Scan runs at 06:30, 12:45 and 21:15
+// and before each cloud lane while the Deep dive runs once a day: 0823.HK reported on 12 Nov, was
+// diffed away by the 12:45 scan, and no Deep dive heard of it. So the list is carried from scan to
+// scan in signals.json and trimmed only to what was seen after the newest full Deep dive.
+function reportedForDeepDive(carried, newly, since, scanAt) {
+    const kept = (carried || []).filter(r => !since || r.seen > since);
+    const have = new Set(kept.map(r => r.ticker + ' ' + r.reported));
+    for (const r of newly) if (!have.has(r.ticker + ' ' + r.reported)) kept.push({ ...r, seen: scanAt });
+    return kept;
+}
+// The newest Deep dive that ranked the whole watchlist, as ISO time: the newest `-ranking.md` whose
+// title does not say "ad hoc". An ad hoc run researches the one name Leo asked about and carries
+// every other verdict unread (RR.L, 12 Nov 21:49), so it must not clear the list. `titleOf(stamp)`
+// returns the file's `# ` line; stamps are `YYYY-MM-DD-HHMM` UTC.
+function lastFullDeepDive(stamps, titleOf) {
+    for (const s of [...stamps].sort().reverse()) {
+        if (!/\bad hoc\b/i.test(titleOf(s) || '')) return `${s.slice(0, 10)}T${s.slice(11, 13)}:${s.slice(13, 15)}:00Z`;
+    }
+    return null;
+}
+
 // Is our trailing EPS behind the company's own reporting?
 //
 // Both sides of a multiple have to be current, and the denominator is the one that goes quietly
@@ -549,15 +574,19 @@ function scan(state, today) {
 
     // §6.3 is scoped to what the POT holds, so it stays blocked rather than quiet until there is
     // a pot. Blocked and quiet are different states and must not be conflated.
+    const scanAt = new Date().toISOString();
+    const reported = reportedSince(previous?.resultsDue, quotes, today);
+    const potHeld = new Set(Object.keys(potPositions?.holdings || {}));
+    const forDeepDive = reportedForDeepDive(previous?.reportedSinceDeepDive?.names,
+        reported.map(r => ({ ...r, where: potHeld.has(r.ticker) ? 'pot' : label(r.ticker) })),
+        state.deepDiveSince || null, scanAt);
     let shadow = [];
     if (!potPositions) {
         blocked.push({ rule: '6.3 results', why: 'the pot holds nothing yet (pot/positions.json absent)' });
         blocked.push({ rule: '6.4 dry powder', why: 'no pot cash balance to read yet' });
         blocked.push({ rule: '6.5 thesis review', why: 'no pot book yet (run npm run pot-book)' });
     } else {
-        const potTickers = new Set(Object.keys(potPositions.holdings || {}));
-        const rep = reportedSince(previous?.resultsDue, quotes, today)
-            .filter(r => potTickers.has(r.ticker));
+        const rep = reported.filter(r => potHeld.has(r.ticker));
         rep.length ? fired.push(...rep.map(r => ({ rule: '6.3 results', ...r })))
                    : quiet.push('6.3 results');
         const dp = dryPowder(potPositions.cashGBP, previous?.dryPowderAlerted || 0);
@@ -584,11 +613,13 @@ function scan(state, today) {
     for (const [t, q] of Object.entries(quotes)) if (q.earnings?.date) resultsDue[t] = q.earnings.date;
 
     return {
-        generated: new Date().toISOString(),
+        generated: scanAt,
         pricesAt: prices.updated || null,
         vix: vix ? { close: vix.price, day: vix['1d'] } : null,
         spxDay: spx,
         fired, instructions, quiet, blocked, resultsDue, shadow,
+        // D122: read by the Deep dive. `since` is the full Deep dive the list counts from.
+        reportedSinceDeepDive: { since: state.deepDiveSince || null, names: forDeepDive },
         // Where the human book actually sits, so the lanes can weigh concentration and argue for
         // diversification instead of deriving 59 rows of trades themselves.
         book: bookExposure(holdings, quotes, prices.rates),
@@ -614,6 +645,20 @@ function main() {
         holdings: (() => { const h = require('./vault').readHoldings(); return h.full ? h.holdings : []; })(),
         potPositions: read('pot/positions.json'),
         previous: read('signals.json'),
+        // D122: when the newest full Deep dive ran, from its ranking's stamp, in either folder (D99).
+        deepDiveSince: (() => {
+            const at = new Map();
+            for (const d of ['pot/proposals', 'pot/proposals/archive']) {
+                let names = [];
+                try { names = fs.readdirSync(d); } catch { /* no folder yet */ }
+                for (const f of names) {
+                    const m = f.match(/^(\d{4}-\d{2}-\d{2}-\d{4})-ranking\.md$/);
+                    if (m) at.set(m[1], `${d}/${f}`);
+                }
+            }
+            const titleOf = s => { try { return (fs.readFileSync(at.get(s), 'utf8').match(/^# .*$/m) || [''])[0]; } catch { return ''; } };
+            return lastFullDeepDive([...at.keys()], titleOf);
+        })(),
     };
     const out = scan(state, iso(new Date()));
     fs.writeFileSync('signals.json', JSON.stringify(out, null, 1));
@@ -634,6 +679,9 @@ function main() {
     }
     if (out.quiet.length) console.log(`\n  quiet: ${out.quiet.join(', ')}`);
     if (out.blocked.length) for (const b of out.blocked) console.log(`  blocked: ${b.rule} — ${b.why}`);
+    const rd = out.reportedSinceDeepDive;
+    console.log(`  reported since the Deep dive of ${rd.since ? rd.since.slice(0, 16).replace('T', ' ') : '–'}: `
+        + (rd.names.length ? rd.names.map(r => `${r.ticker} ${r.reported} (${r.where})`).join(', ') : 'none'));
     console.log(`\nwrote signals.json (${out.fired.length} fired, ${out.instructions.length} instruction${out.instructions.length === 1 ? '' : 's'})`);
 }
 
@@ -807,9 +855,29 @@ function selftest() {
         // Research wins over own when both exist.
         assert.strictEqual(oneOffRisk({ ...tw, researchEps: 3.79, normEpsOwn: 4.1 }, null, 30, 0).epsBasis, 'research');
     }
+    // D122: a report is carried until a full Deep dive has run after the scan that saw it.
+    {
+        const seen = '2026-11-12T12:45:08.066Z';
+        const carried = [{ ticker: '0823.HK', reported: '2026-11-12', next: null, where: 'watchlist', seen }];
+        assert.strictEqual(reportedForDeepDive(carried, [], '2026-11-12T06:52:00Z', 'x').length, 1, 'kept: no Deep dive since');
+        assert.strictEqual(reportedForDeepDive(carried, [], '2026-11-13T06:52:00Z', 'x').length, 0, 'dropped once one has run');
+        const both = reportedForDeepDive(carried, [{ ticker: '0823.HK', reported: '2026-11-12' }, { ticker: 'UU.L', reported: '2026-11-12' }],
+            '2026-11-12T06:52:00Z', '2026-11-12T21:15:07Z');
+        assert.deepStrictEqual(both.map(r => r.ticker + ' ' + r.seen), ['0823.HK ' + seen, 'UU.L 2026-11-12T21:15:07Z'], 'no duplicate, first sighting kept');
+        assert.strictEqual(reportedForDeepDive(null, [{ ticker: 'A', reported: '2026-11-12' }], null, 's').length, 1, 'no Deep dive yet: keep all');
+        const titles = { '2026-11-12-0652': '# Deep dive, 12 November', '2026-11-12-2149': '# Deep dive, 12 November 2026, 21:49 UTC: Rolls-Royce, ad hoc. No order' };
+        assert.strictEqual(lastFullDeepDive(Object.keys(titles), s => titles[s]), '2026-11-12T06:52:00Z', 'an ad hoc run does not count');
+        assert.strictEqual(lastFullDeepDive([], () => ''), null);
+        // Wired through scan(): the 6.3 holding signal still fires, and every report joins the list.
+        const s = scan({ prices: { quotes: { EUZ: { price: 1 }, UU: { price: 1 } } }, history: null, held: new Set(), holdings: [],
+            potPositions: { holdings: { EUZ: {} }, cashGBP: 0 }, deepDiveSince: '2026-11-12T06:52:00Z',
+            previous: { resultsDue: { EUZ: '2026-11-12', UU: '2026-11-12' }, reportedSinceDeepDive: { names: carried } } }, '2026-11-13');
+        assert.deepStrictEqual(s.fired.filter(f => f.rule === '6.3 results').map(f => f.ticker), ['EUZ']);
+        assert.deepStrictEqual(s.reportedSinceDeepDive.names.map(r => r.ticker + ' ' + r.where), ['0823.HK watchlist', 'EUZ pot', 'UU watchlist']);
+    }
     console.log('selftest ok');
 }
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main();
-module.exports = { nearOwnFloor, oneOffRisk, epsStale, macroNotes, worldBreadth, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, scan, RULES };
+module.exports = { nearOwnFloor, oneOffRisk, epsStale, macroNotes, worldBreadth, fellHard, dryPowder, vixStandingOrder, marketShock, reportedSince, reportedForDeepDive, lastFullDeepDive, scan, RULES };

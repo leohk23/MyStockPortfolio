@@ -35,7 +35,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 5.3  | Trim or all-or-nothing                   | Trim                                                                                                                |
 | 6.1  | Valuation signal                         | in the **cheapest 10%** of its own **5-year** history on **P/E or P/OCF**, saying which; P/E-only cheapness with P/OCF above the 40th percentile is flagged `denominatorDrift` |
 | 6.2  | Drawdown signal                          | **−15% in 7 days**, or **−25% in 30**                                                                 |
-| 6.3  | Results signal                           | the day after results, for anything the pot holds                                                                   |
+| 6.3  | Results signal                           | the day after results, for anything the pot holds; every other tracked name is listed for the next full Deep dive (D122) |
 | 6.4  | Dry-powder signal                        | at**£750** uninvested, then every **£250**                                                            |
 | 6.5  | Thesis review                            | sweep them**all, every week**                                                                                 |
 | 6.6  | Breaking news                            | both — weekly Sweep*and* a market-reaction proxy the Scan can see                                                |
