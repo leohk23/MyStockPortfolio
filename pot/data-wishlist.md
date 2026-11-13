@@ -520,3 +520,7 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
+
+## 2026-11-13
+
+- **EUZ.DE earnings freshness after the nine-month release.** The 04:20 UTC price snapshot still carries EUR0.79 trailing EPS and quarters through June, while the [12 November issuer report](https://www.ezag.com/wp-content/uploads/2026/11/euz326_e_offen.pdf) gives nine-month EPS EUR0.57 against EUR0.48 a year earlier. FY2025 EUR0.78 implies approximately EUR0.87 trailing EPS on rounded period figures. No epsStale flag accompanied this mismatch. At results, reconcile the filed periods and check why freshness detection did not flag it; retain separate reported and adjusted bases. The lane changed no price or earnings data.
