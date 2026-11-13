@@ -90,6 +90,12 @@ the macro data:
   threshold changes there first and in the code second.
 - **[pot-design.md](pot-design.md)** — the system, and a decision log carrying the reasons.
 
+"Required reading" means before changing the code. **A lane does not read `pot-design.md`** (D123):
+its brief states every rule it needs, and a D-number there is a citation for Leo. If a lane needs
+the reason behind one rule, it looks up that one row (`| D93 |`, about 3KB), never the top of the
+log, which holds the oldest and most often superseded decisions (132KB in its first 140 lines). A
+gap in the rules goes to `pot/questions.md`.
+
 ⚠️ **Update `pot-design.md` in the same change, never afterwards.** While this is still early, a
 decision made and not written down is one that gets silently re-made differently a week later. That
 file has already caught two contradictions in its own design — an AGREED rule saying a standing
