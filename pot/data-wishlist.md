@@ -50,6 +50,10 @@ Appended by the Sweep in any order and in any shape; sorted and tabulated here b
 every report run. Do not hand-edit between the markers.
 
 <!-- entries:start -->
+| 2026-11-13 | US joint-replacement procedure volumes. | None found; Stryker, Zimmer Biomet and Smith+Nephew Q3 product-line sales were used instead. Wanted quarterly, to tell falling knee procedures from one implant category losing out; CMS Medicare claims would be the agency source, with a lag. |
+| 2026-11-13 | US GLP-1 prescription volumes. | None used. Wanted quarterly beside the knee-implant data, to test the weight-loss hypothesis for weak knees rather than state it; Novo's and Lilly's own volume disclosures are the company source. |
+| 2026-11-13 | Text from ASX results PDFs with embedded fonts. | Cochlear's FY26 release and April update could not be decoded by the fetch tool or `pdfText`; figures were read through search excerpts only. Wanted whenever an ASX or other non-SEC name is a candidate. |
+| 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
 | date | wanted | detail |
 |---|---|---|
 | 2026-11-13 | A second WTI print to reconcile press figures. | The press quoted WTI at $94 against local `CL=F` at $88.16, unreconciled. A note rather than a feed request. |
