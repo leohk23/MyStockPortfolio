@@ -197,10 +197,14 @@ function openLife(p, before, quote, px, today) {
     return { validUntil: lastDay, ...(resultsDue ? { resultsDue } : {}), ...(expiredBy ? { expiredBy } : {}),
         ...(expiredOn ? { expiredOn } : {}), ...(early ? { beforeResults: resultsDue } : {}) };
 }
-// The day a proposal's D93 window closes: its 14 days, or earlier if it ended out of reach (D109).
-// Not a bought one: an order that filled was never out of reach, whatever the price did after.
+// The day a proposal's D93 window closes: its 14 days, or earlier if it ended out of reach (D109)
+// or was bought (D120). Out of reach applies only to an unbought one: an order that filled was never
+// out of reach, whatever the price did after. A fill ends the window on the trade date, because Leo
+// has decided it, so adding to the name is a top-up for §4.5a, not a repeat for D93. RMD, bought on
+// 2 Nov from its 31 Oct proposal, read STANDS until 14 Nov with its filled order called "still open".
 const windowEnd = q => [addDays(q.written, REPROPOSE_DAYS),
-    q.expiredBy === 'above' && q.state === 'expired' ? q.expiredOn : null].filter(Boolean).sort()[0];
+    q.expiredBy === 'above' && q.state === 'expired' ? q.expiredOn : null,
+    q.state === 'accepted' ? q.executed?.date : null].filter(Boolean).sort()[0];
 // A reason that is not price must name what changed; "price" alone is checked against the bar.
 const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
 
@@ -598,7 +602,15 @@ if (require.main === module && process.argv.includes('--selftest')) {
         assert.strictEqual(again.breaches.size, 0, 'a fresh proposal at the higher price is no breach');
         assert.strictEqual(again.cooldown.MWA.last, '2026-11-07-0900-MWA', 'and opens its own window');
         assert.strictEqual(reproposalRule([away, P('2026-11-05-0900-MWA', 23.5)], '2026-11-08').breaches.size, 1, 'before it ended, still a repeat');
-        assert.ok(reproposalRule([{ ...away, state: 'accepted' }], '2026-11-08').cooldown.MWA, 'a bought proposal keeps its window');
+        assert.ok(reproposalRule([{ ...away, state: 'accepted', executed: { date: '2026-11-09' } }], '2026-11-08').cooldown.MWA,
+            'out of reach does not end a bought one early; its fill does');
+        // D120: a bought proposal frees its name the day it fills; a top-up is §4.5a's question.
+        const rmd = P('2026-10-31-0004-RMD', 230);
+        assert.strictEqual(reproposalRule([rmd], '2026-11-04').cooldown.RMD.until, '2026-11-14', 'unbought: its two weeks');
+        const bought = { ...rmd, state: 'accepted', executed: { date: '2026-11-02', qty: 1, price: 229.38 } };
+        assert.ok(!reproposalRule([bought], '2026-11-02').cooldown.RMD, 'bought: free the day it filled');
+        assert.strictEqual(reproposalRule([bought, P('2026-11-03-0900-RMD', 239)], '2026-11-04').breaches.size, 0, 'a top-up after the fill is no repeat');
+        assert.strictEqual(reproposalRule([bought, P('2026-11-01-0900-RMD', 229)], '2026-11-04').breaches.size, 1, 'a repeat written before the fill still is');
     }
 
     // D95: a withdrawn proposal is recognised, opens no two-week window, and is not scored.

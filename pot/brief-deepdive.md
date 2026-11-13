@@ -103,6 +103,12 @@ may propose it again at today's price. Leo was shown the case at the old limit, 
 higher price does to it: the old limit, today's price, and whether the valuation still clears the
 rules on today's figures.
 
+**A bought proposal frees its name the day it fills (D120).** Leo has decided it, so it is not a
+repeat waiting to be re-read, and `positions.js` drops the name from `cooldown` from the trade date.
+Adding to it is a top-up, which §4.5a governs: argued in P1 against the fresh names that cleared.
+Never call a bought proposal's order open: `positions.json` records the fill under `executed`, and
+the shares are in `holdings`.
+
 ## Results due within three days: WAIT (D109)
 
 A name whose next results are due within the next three days, and not yet published, gets **WAIT**,
@@ -404,8 +410,9 @@ should be able to follow the whole cycle from this file alone and click through 
 also arrived at unprompted, and were kept:
 
 - **PROPOSE** — and the share count, where a proposal follows
-- **STANDS** — it would be proposed, but it was proposed inside the last two weeks and none of the
-  three exceptions holds (D93); name the standing proposal and give today's price against its limit
+- **STANDS** — it would be proposed, but it was proposed inside the last two weeks, not bought, and
+  none of the three exceptions holds (D93); name the standing proposal and give today's price
+  against its limit
 - **WAIT** — it clears the rules but something dated is missing; say what and by when. Results due
   within three days are always this (D109)
 - **EXCLUDE** — it does not clear a rule; say which one, in a clause
