@@ -38,10 +38,10 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | backlog / order intake | 23 | **earns a feed** |
 | inventory | 22 | **earns a feed** |
 | capital returns | 19 | **earns a feed** |
-| same-store / comparable sales | 8 | **earns a feed** |
+| same-store / comparable sales | 9 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-471 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+473 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -52,11 +52,12 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-11-13 | A P/E history struck on trailing-twelve-month EPS, for names whose earnings are growing. | Deep dive 13:30, ad hoc EUZ.DE. The stored history divides each week by the latest ANNUAL EPS published by then, so its denominators lagged a rising EPS (FY2023 €0.42 to FY2025 €0.78) by 3 to 15 months. On that basis today's €15.31 is the 13.7th percentile. On the fresher reported TTM to September 2026 (€0.87) it would read 7.4th, but only by setting an unlagged multiple against a lagged distribution. A like-for-like answer needs quarterly EPS back to the window's start, and `earnings.json` holds EUZ quarters from Q1 2025 only. EDGAR covers US filers; non-US names would need the issuer's interim reports. Wanted at each results release. |
 | 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
+| 2026-11-13 | A P/E history struck on trailing-twelve-month EPS, for names whose earnings are growing. | Deep dive 13:30, ad hoc EUZ.DE. The stored history divides each week by the latest ANNUAL EPS published by then, so its denominators lagged a rising EPS (FY2023 €0.42 to FY2025 €0.78) by 3 to 15 months. On that basis today's €15.31 is the 13.7th percentile. On the fresher reported TTM to September 2026 (€0.87) it would read 7.4th, but only by setting an unlagged multiple against a lagged distribution. A like-for-like answer needs quarterly EPS back to the window's start, and `earnings.json` holds EUZ quarters from Q1 2025 only. EDGAR covers US filers; non-US names would need the issuer's interim reports. Wanted at each results release. |
 | 2026-11-13 | A second WTI print to reconcile press figures. | The press quoted WTI at $94 against local `CL=F` at $88.16, unreconciled. A note rather than a feed request. |
 | 2026-11-13 | A spin-off's history from before it listed. | No source used. VYLR has six weeks of prices, so §6.1 cannot test it for years. The parent's segment history and the Form 10 pro formas are the only record. Wanted once per spin-off, not weekly. |
 | 2026-11-13 | Brazil farm credit and agricultural-input channel inventory. | Corteva and Vylor Q3 2026 releases on SEC EDGAR. Wanted quarterly; Banco Central do Brasil's rural credit statistics would be the agency source. |
+| 2026-11-13 | EUZ.DE licensing bridge beyond the Q1 event. | Second reader of 13:30: [FY2025 report](https://www.ezag.com/wp-content/uploads/2025/05/euz25e.pdf), pp. 25–26, shows additional licensing retained in trailing earnings. Evidence appended without EPS arithmetic. Need period-specific attributable after-tax amounts and cash timing at results, next annual 2027-03-24. |
 | 2026-11-13 | Text from ASX results PDFs with embedded fonts. | Cochlear's FY26 release and April update could not be decoded by the fetch tool or `pdfText`; figures were read through search excerpts only. Wanted whenever an ASX or other non-SEC name is a candidate. |
 | 2026-11-13 | UK pension-buyout volumes and insurer pricing. | L&G's H1 2026 PRT market update. Wanted semi-annually. |
 | 2026-11-13 | US 2-year Treasury yield. | Only a press figure was found, and it was not used. Wanted daily from the US Treasury daily par yield curve: the rates read now turns on whether the Fed is priced to hike, which `^FVX` and `^TNX` cannot show. |
@@ -524,5 +525,4 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | specialty-insurance pricing cycle and underwriting margin. | Fetched from Lancashire and Beazley results, an imperfect substitute for a consistent market series. Wanted quarterly rather than weekly; it decided whether Lancashire’s low multiple was a bargain or peak-cycle earnings. |
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
-| 2026-11-13 | EUZ.DE licensing bridge beyond the Q1 event. | Second reader of 13:30: [FY2025 report](https://www.ezag.com/wp-content/uploads/2025/05/euz25e.pdf), pp. 25–26, shows additional licensing retained in trailing earnings. Evidence appended without EPS arithmetic. Need period-specific attributable after-tax amounts and cash timing at results, next annual 2027-03-24. |
 <!-- entries:end -->
