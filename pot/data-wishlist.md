@@ -45,10 +45,10 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | backlog / order intake | 23 | **earns a feed** |
 | inventory | 22 | **earns a feed** |
 | capital returns | 19 | **earns a feed** |
-| same-store / comparable sales | 9 | **earns a feed** |
+| same-store / comparable sales | 10 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-473 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+478 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -59,9 +59,9 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-11-14 | UK gilt yields, 10-year and 30-year. | Not fetched; the macro block holds only US 5y and 10y. Wanted weekly: Leo holds gilts directly (UKT31.L, UKT36.L, IGLT.L) and the L&G candidate's pension-buyout supply turns on long gilt yields, yet the sweep cannot state the level from local data. The Bank of England publishes the yield curve daily, free. |
 | 2026-11-14 | Mexico same-store sales (ANTAD) and the peso. | ANTAD read only through Walmex's own release (its SSS beat ANTAD by 230bp). Wanted monthly while WALMEX.MX is watched; MXN is not in the macro block either. |
 | 2026-11-14 | Text from L&G's results PDF. | `pdfText` returned glyph-shifted text (a custom font encoding) for the half-year press-release-and-analyst-pack PDF; figures were taken from the HTML press release instead. Walmex's PDF decoded cleanly. Second sweep in two days to hit an unreadable results PDF, after Cochlear. |
+| 2026-11-14 | UK gilt yields, 10-year and 30-year. | Not fetched; the macro block holds only US 5y and 10y. Wanted weekly: Leo holds gilts directly (UKT31.L, UKT36.L, IGLT.L) and the L&G candidate's pension-buyout supply turns on long gilt yields, yet the sweep cannot state the level from local data. The Bank of England publishes the yield curve daily, free. |
 | 2026-11-13 | `pot/reading/` in the GitHub checkout. | The folder is absent on the runner, so a cloud sweep reads `pot/reading.md` but none of the saved texts. A note, not a feed request. |
 | 2026-11-13 | A P/E history struck on trailing-twelve-month EPS, for names whose earnings are growing. | Deep dive 13:30, ad hoc EUZ.DE. The stored history divides each week by the latest ANNUAL EPS published by then, so its denominators lagged a rising EPS (FY2023 €0.42 to FY2025 €0.78) by 3 to 15 months. On that basis today's €15.31 is the 13.7th percentile. On the fresher reported TTM to September 2026 (€0.87) it would read 7.4th, but only by setting an unlagged multiple against a lagged distribution. A like-for-like answer needs quarterly EPS back to the window's start, and `earnings.json` holds EUZ quarters from Q1 2025 only. EDGAR covers US filers; non-US names would need the issuer's interim reports. Wanted at each results release. |
 | 2026-11-13 | A second WTI print to reconcile press figures. | The press quoted WTI at $94 against local `CL=F` at $88.16, unreconciled. A note rather than a feed request. |
