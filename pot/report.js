@@ -327,7 +327,8 @@ function writeCalls(today) {
 // proposal its end allowed, it still is: that order may be at the broker.
 const EARLY_END = {
     above: 'more than 5% above its limit, so out of reach; a fresh Deep dive may propose it at the new price (D109)',
-    fall: 'more than 10% below its limit, so the numbers it was written on no longer hold (D102)',
+    ceiling: 'above its ceiling, so out of the cheapest 10% it was proposed in, and out of reach; the name is free for a fresh Deep dive (D124)',
+    fall: 'more than 10% below the price it was written at, so the numbers it rested on no longer hold (D102)',
     results: 'the company has reported since it was written (D102)',
 };
 const earlyEnds = (proposals, today) => proposals.filter(p => p.state === 'expired' && EARLY_END[p.expiredBy]
@@ -1254,13 +1255,18 @@ does not look exactly like a healthy one.
     // awaiting anything — together they had inflated this to 68 on 12 Sep.
     const superseded = new Set((pos.proposals || []).filter(p => p.supersededBy).map(p => p.file));
     // D102: a proposal stays open 14 days, less if results come first or the price falls 10% below
-    // its limit; up to 5% above its limit it has simply not filled yet, and beyond that it ends (D109).
+    // the price it was written at. Its limit is its ceiling since D124, and above the ceiling it ends;
+    // before that, up to 5% above its limit it had simply not filled yet, and beyond that it ended (D109).
     const byFile = new Map((pos.proposals || []).map(p => [p.file, p]));
     const validOf = f => (p => p?.validUntil ? p.validUntil + (p.resultsDue ? `, results ${p.resultsDue}` : '') : '–')(byFile.get(f));
     const vsLimitOf = f => {
-        const v = byFile.get(f)?.vsLimit;
-        return v == null ? '–' : v > 0 ? `${(v * 100).toFixed(1)}% above, not filled yet` : `${(-v * 100).toFixed(1)}% below`;
+        const p = byFile.get(f), v = p?.vsLimit;
+        if (v == null) return '–';
+        const what = p.ceiling != null && p.limit === p.ceiling ? 'its ceiling' : 'its limit';
+        return v > 0 ? `${(v * 100).toFixed(1)}% above ${what}, not filled yet` : `${(-v * 100).toFixed(1)}% below ${what}`;
     };
+    // D124: an order whose ceiling or price does not check out against what the bot published.
+    const offCeiling = (pos.proposals || []).filter(p => p.orderIssues?.length && p.state === 'open' && !p.supersededBy);
     const openProposals = proposals.filter(f => !/-(ranking|none)\.md$/.test(f) && !superseded.has(f)
         && (stateOf.get(f) || 'open') === 'open');
     // D93: a name proposed again inside its two weeks with neither a limit 5% lower nor a reason.
@@ -1297,13 +1303,17 @@ ${sig?.instructions?.length
 ${unannotatedLines(unannotated)}${openProposals.length
         ? '- **' + openProposals.length + ' proposal' + (openProposals.length === 1 ? '' : 's')
             + ' awaiting your decision**' + String.fromCharCode(10) + String.fromCharCode(10)
-            + '| proposal | written | valid until | price vs limit | second reader |' + String.fromCharCode(10) + '|---|---|---|---|---|' + String.fromCharCode(10)
+            + '| proposal | written | valid until | price vs ceiling or limit | second reader |' + String.fromCharCode(10) + '|---|---|---|---|---|' + String.fromCharCode(10)
             + openProposals.map(f => `| [${f.replace(/.md$/, "")}](proposals/${f}) | ${propWhen(f)} | ${validOf(f)} | ${vsLimitOf(f)} | ${secondRead(f)} |`).join(String.fromCharCode(10))
         : '- No proposal is waiting.'}
 ${reproposals.length
         ? reproposals.map(p => '- **Re-proposed inside its two weeks** — [' + p.id + '](proposals/' + p.file + ') repeats ['
-            + p.reproposalBreach.after + '](proposals/' + p.reproposalBreach.after + '.md) with neither a limit at or below '
+            + p.reproposalBreach.after + '](proposals/' + p.reproposalBreach.after + '.md) with neither a price at or below '
             + (p.reproposalBreach.bar ?? '–') + ' nor new results or a changed case (D93)').join(String.fromCharCode(10))
+        : ''}
+${offCeiling.length
+        ? offCeiling.map(p => '- **Order does not check out** — [' + p.id + '](proposals/' + p.file + '): '
+            + p.orderIssues.join('; ') + '. Check P1 before placing it (D124)').join(String.fromCharCode(10))
         : ''}
 ${unanswered.length
         ? unanswered.map(p => '- **Earlier risk not answered** — [' + p.id + '](proposals/' + p.file + ') says nothing about '
@@ -1611,6 +1621,8 @@ function selftest() {
         assert.deepStrictEqual(earlyEnds([E('a', 'above', '2026-11-04'), E('b', 'fall', '2026-11-02'), E('c', 'days', '2026-11-04'),
             E('d', 'above', '2026-11-01'), E('e', 'above', '2026-11-04', 'accepted'), E('f', 'results')], '2026-11-04').map(p => p.id),
             ['a', 'b'], 'early ends of the last three days only, and not a bought or a 14-day one');
+        assert.deepStrictEqual(earlyEnds([E('k', 'ceiling', '2026-11-16')], '2026-11-16').map(p => p.id), ['k'], 'D124: above its ceiling is listed');
+        assert.ok(/ceiling/.test(EARLY_END.ceiling), 'and says why');
         assert.deepStrictEqual(earlyEnds([{ ...E('g', 'above', '2026-11-04'), supersededBy: '2026-10-28-1017-BN.PA' },
             { ...E('h', 'above', '2026-11-04'), supersededBy: '2026-11-05-0630-MWA' }], '2026-11-05').map(p => p.id),
             ['h'], 'superseded before it ended: not listed; by the re-proposal its end allowed: listed');

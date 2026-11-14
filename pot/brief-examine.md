@@ -43,7 +43,10 @@ All of it, provided the evidence is cited and the change is visible:
 
 - **Complete the research** where the draft is thin, and put what you found into the proposal
   where it belongs (P2 thesis, P3 falsifier, P5 numbers, P6 case against).
-- **Amend** any part of a proposal: its thesis, falsifier, review date, numbers, size or limit.
+- **Amend** any part of a proposal: its thesis, falsifier, review date, numbers, size or limit. A
+  buy's limit is its ceiling, copied from `signals.json` with the price when written on P1's
+  `**Ceiling:**` and `**Price when written:**` lines (D124). You may lower the limit, never raise it
+  above the ceiling, and a proposal of your own carries both lines.
 - **Change a verdict** in the ranking: PROPOSE, STANDS, WAIT or EXCLUDE. Raising a name to PROPOSE
   means writing its proposal, to the full §8 contract, under the **same `<stamp>`**, headed exactly
   `model: pending, lane: examine, date: <today>, tokens: pending` so the report credits it to you.

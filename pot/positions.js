@@ -13,7 +13,8 @@
 // A proposal's state is therefore a FACT about the workbook, not an opinion:
 //
 //   accepted  a pot trade names this proposal id
-//   expired   no trade, and 14 days have passed, or results, or a fall of 10% below the limit (D102)
+//   expired   no trade, and 14 days have passed, or results, or a fall of 10% (D102), or a price
+//             above its ceiling (D124; 5% above its limit before it, D109)
 //   open      no trade yet, and still inside that life
 //   withdrawn the Deep dive's second reader took it back before Leo saw it (D95)
 //   obsolete  written before the pot was funded and never bought (D97): free to be proposed again
@@ -42,6 +43,13 @@ const CCY = /(?:US\$|HK\$|£|GBP|\$|USD|CHF|HKD|€|EUR|¥|JPY)/;
 // captured as "220.00." and Number() turned it into NaN.
 function limitOf(order) {
     const m = String(order || '').match(new RegExp('\\blimit(?:\\s+price)?(?:\\s+of)?\\s*@?\\s*\\**\\s*'
+        + CCY.source + '?\\s*(\\d[\\d,]*(?:\\.\\d+)?)', 'i'));
+    return m ? Number(m[1].replace(/,/g, '')) : null;
+}
+// D124: P1's **Ceiling:** and **Price when written:** lines, each a price in the listing's own units,
+// written first on its line: "**Ceiling:** €14.57: P/E at its 10th percentile...".
+function labelledPrice(order, label) {
+    const m = String(order || '').match(new RegExp('\\*\\*' + label + ':?\\*\\*[:\\s]*\\**\\s*'
         + CCY.source + '?\\s*(\\d[\\d,]*(?:\\.\\d+)?)', 'i'));
     return m ? Number(m[1].replace(/,/g, '')) : null;
 }
@@ -86,6 +94,11 @@ function parseProposal(file) {
         nextResults,
         side: /\bSELL\b/.test(order) ? 'SELL' : 'BUY',
         limit,
+        // D124: the most the order pays, and the price the case was argued at. Absent on a proposal
+        // from before the ceiling, whose limit was that day's close and stands for both. Only
+        // written when present: this file is resent on every Deep dive turn.
+        ...(c => c != null ? { ceiling: c } : {})(labelledPrice(order, 'Ceiling')),
+        ...(c => c != null ? { pricedAt: c } : {})(labelledPrice(order, 'Price when written')),
         // Two tiers since 30 Aug. Older proposals carry one unlabelled paragraph; keep it as the
         // break, because that is what a single-threshold falsifier always meant.
         warning: line(falsifier, 'Warning'),
@@ -154,7 +167,8 @@ function riskHistory(proposals, rejected = new Set()) {
 // 156 proposals to 23 Oct 2026, 10 acted on: MWA was proposed 34 times, BN.PA 13 (every one
 // expired), YUMC 13 before Leo rejected it, and the last fortnight was 27 proposals on 6 names. Each
 // repeat is a full Deep dive re-arguing a name Leo has already seen. So, Leo's numbers: for TWO WEEKS
-// after a name's last buy proposal, a fresh one needs a limit at least 5% below that one, or new
+// after a name's last buy proposal, a fresh one needs a limit at least 5% below that one (since D124,
+// a price when written 5% below the one it was written at), or new
 // results or a filing since, or a changed case, stated in a `**Re-proposed:**` line. Otherwise the
 // ranking says STANDS and points at the proposal already written. Ranking itself stays blind (D15).
 //
@@ -169,7 +183,8 @@ const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5)
 // is written, so it is not a day order: it stays open for the same 14 days its name stands under
 // D93, and ends early once the numbers it was written on stop holding: on the company's next
 // results, or a price more than 10% below its limit. The limit, not the price that day, because it
-// is the price the proposal agreed to pay. So a name either has a proposal Leo can still act on, or
+// is the price the proposal agreed to pay. (Since D124 the limit is the ceiling, above the price,
+// so the fall is measured from the price it was written at; see below.) So a name either has a proposal Leo can still act on, or
 // is free to be proposed fresh; never both blocked and expired. Expiry is final, which is why an
 // early one is carried from the last book: a price that recovers does not make stale numbers good.
 // `resultsDue` is the earlier of the quote's next results date and the one the proposal states
@@ -185,17 +200,25 @@ const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5)
 // look. `expiredOn` dates an early end, so reproposalRule can free the name from that day.
 // `beforeResults` marks a proposal written within three days of results it could not have seen
 // (D109: such a name is WAIT, not PROPOSE); judged from 4 Nov, so history is not called a breach.
+//
+// D124: a proposal with a ceiling ends when the price passes it (`ceiling`): the name has left the
+// cheapest 10% (§6.1), which is what the order stood on. Its limit is the ceiling, not that day's
+// price, so the fall is measured from the price it was written at (`pricedAt`); 10% under a ceiling
+// that sits above the price would end it on a small dip. One without a ceiling keeps D109's 5%.
 const FALL_BELOW_LIMIT = 0.10, ABOVE_LIMIT = 0.05, RESULTS_WAIT_DAYS = 3, RESULTS_WAIT_FROM = '2026-11-04';
+// The price a proposal was argued at: stated since D124, and before it the limit, which was that day's close.
+const writtenAt = p => p.pricedAt ?? p.limit ?? null;
 function openLife(p, before, quote, px, today) {
     const next = [quote?.earnings?.date, p.nextResults].filter(d => d > p.written).sort()[0];
     const resultsDue = before?.resultsDue && before.resultsDue <= today ? before.resultsDue : next || before?.resultsDue || null;
     const until = addDays(p.written, REPROPOSE_DAYS);
-    const buyAt = p.side === 'BUY' && p.limit && px != null;
+    const buy = p.side === 'BUY' && px != null, anchor = writtenAt(p);
+    const outOfReach = !buy ? null : p.ceiling ? (px > p.ceiling ? 'ceiling' : null)
+        : p.limit && px > p.limit * (1 + ABOVE_LIMIT) ? 'above' : null;
     let expiredBy = before?.state === 'expired' && before.expiredBy !== 'days' ? before.expiredBy : null;
     if (!expiredBy) expiredBy = today >= until ? 'days'
         : resultsDue && today >= resultsDue ? 'results'
-            : buyAt && px < p.limit * (1 - FALL_BELOW_LIMIT) ? 'fall'
-                : buyAt && px > p.limit * (1 + ABOVE_LIMIT) ? 'above' : null;
+            : buy && anchor && px < anchor * (1 - FALL_BELOW_LIMIT) ? 'fall' : outOfReach;
     const expiredOn = expiredBy && expiredBy !== 'days' ? before?.expiredOn || today : null;
     const early = p.side === 'BUY' && p.written >= RESULTS_WAIT_FROM && resultsDue
         && resultsDue <= addDays(p.written, RESULTS_WAIT_DAYS);
@@ -208,11 +231,14 @@ function openLife(p, before, quote, px, today) {
 // out of reach, whatever the price did after. A fill ends the window on the trade date, because Leo
 // has decided it, so adding to the name is a top-up for §4.5a, not a repeat for D93. RMD, bought on
 // 2 Nov from its 31 Oct proposal, read STANDS until 14 Nov with its filled order called "still open".
+const OUT_OF_REACH = new Set(['above', 'ceiling']);       // D109, D124
 const windowEnd = q => [addDays(q.written, REPROPOSE_DAYS),
-    q.expiredBy === 'above' && q.state === 'expired' ? q.expiredOn : null,
+    OUT_OF_REACH.has(q.expiredBy) && q.state === 'expired' ? q.expiredOn : null,
     q.state === 'accepted' ? q.executed?.date : null].filter(Boolean).sort()[0];
 // A reason that is not price must name what changed; "price" alone is checked against the bar.
 const REASON = /result|filing|10-[KQ]|20-F|annual report|interim|guidance|announce|case|thesis|falsifier/i;
+// D93's bar, 5% under the price the last proposal was written at, in the listing's own units.
+const barOf = q => writtenAt(q) != null ? Number((writtenAt(q) * (1 - REPROPOSE_DROP)).toFixed(4)) : null;
 
 function reproposalRule(proposals, today, rejected = new Set()) {
     // A proposal the second reader withdrew never reached Leo, so it opens no window (D95).
@@ -222,9 +248,11 @@ function reproposalRule(proposals, today, rejected = new Set()) {
     const last = new Map(), breaches = new Map();
     for (const p of buys) {
         const q = last.get(p.ticker);
+        // D124: price against price. A ceiling proposal's limit is the decile's edge, which moves
+        // only with the figures, so comparing limits would almost never let a cheaper one through.
         if (q && p.written < windowEnd(q) && p.written >= REPROPOSE_FROM) {
-            const bar = q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null;
-            const cheaper = bar != null && p.limit != null && p.limit <= bar;
+            const bar = barOf(q);
+            const cheaper = bar != null && writtenAt(p) != null && writtenAt(p) <= bar;
             if (!cheaper && !(p.reproposed && REASON.test(p.reproposed))) breaches.set(p.id, { after: q.id, bar });
         }
         last.set(p.ticker, p);
@@ -233,10 +261,32 @@ function reproposalRule(proposals, today, rejected = new Set()) {
     for (const [ticker, q] of last) {
         const until = windowEnd(q);
         if (today >= until || rejected.has(ticker)) continue;
-        cooldown[ticker] = { last: q.id, limit: q.limit, until,
-            below: q.limit != null ? Number((q.limit * (1 - REPROPOSE_DROP)).toFixed(4)) : null };
+        cooldown[ticker] = { last: q.id, limit: q.limit, ...(q.ceiling != null ? { ceiling: q.ceiling } : {}),
+            price: writtenAt(q), until, below: barOf(q) };
     }
     return { cooldown, breaches };
+}
+
+// ---------------------------------------------------------------- the ceiling, checked (D124)
+//
+// A lane copies its ceiling from signals.json into P1, and a copy is where pence become pounds.
+// So the first book to see a buy proposal records the two ceilings the bot was publishing then
+// (`ceilingSeen`, carried after, since the edge moves as weeks roll), and the proposal's must match
+// one of them within 2%. The price it was written at must be within 15% of the quote then: a slip
+// of units, not a move, is what that catches. Each gap goes in `orderIssues`, listed under Needs you.
+const CEILING_FROM = '2026-11-15', CEILING_MATCH = 0.02, PRICE_MATCH = 0.15;
+function orderIssues(p, seen) {
+    const near = (a, b, tol) => a > 0 && b > 0 && Math.abs(a / b - 1) <= tol;
+    const issues = [];
+    if (p.ceiling == null) issues.push('P1 has no **Ceiling:** line');
+    if (p.pricedAt == null) issues.push('P1 has no **Price when written:** line');
+    if (p.limit == null) issues.push('the order has no limit');
+    else if (p.ceiling != null && p.limit > p.ceiling) issues.push(`its limit ${p.limit} is above its ceiling ${p.ceiling}`);
+    if (p.ceiling != null && (seen.earnings || seen.cash) && !near(p.ceiling, seen.earnings, CEILING_MATCH) && !near(p.ceiling, seen.cash, CEILING_MATCH))
+        issues.push(`its ceiling ${p.ceiling} matches neither ceiling the bot published on ${seen.on} (P/E ${seen.earnings ?? '–'}, P/OCF ${seen.cash ?? '–'})`);
+    if (p.pricedAt != null && seen.price > 0 && !near(p.pricedAt, seen.price, PRICE_MATCH))
+        issues.push(`its price when written, ${p.pricedAt}, is far from the quote's ${seen.price} on ${seen.on}`);
+    return issues;
 }
 
 // ---------------------------------------------------------------- what the workbook says
@@ -335,8 +385,17 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         if (state === 'open' && life.expiredBy) state = 'expired';
         // Inside its life a price above the limit only means the order has not filled yet.
         const vsLimit = state === 'open' && parsed.limit && px != null ? Number((px / parsed.limit - 1).toFixed(4)) : null;
+        // D124: what the bot published when this book first saw the proposal, kept until it has a figure.
+        let check = {};
+        if (parsed.side === 'BUY' && parsed.ticker !== NO_ORDER && parsed.written >= CEILING_FROM && state !== 'withdrawn') {
+            const q = quotes[parsed.ticker], was = prevById.get(id)?.ceilingSeen;
+            const ceilingSeen = was && (was.earnings || was.cash) ? was
+                : { on: today, price: q?.price ?? null, earnings: q?.peCeiling ?? null, cash: q?.pocfCeiling ?? null };
+            const issues = orderIssues(parsed, ceilingSeen);
+            check = { ceilingSeen, ...(issues.length ? { orderIssues: issues } : {}) };
+        }
         return {
-            file, id, state, ...parsed, ...life, ...(vsLimit != null ? { vsLimit } : {}),
+            file, id, state, ...parsed, ...life, ...(vsLimit != null ? { vsLimit } : {}), ...check,
             ...(trade ? { executed: { date: trade.date, qty: trade.qty, price: trade.price } } : {}),
             ...(!trade && rejected ? { rejected: { date: rejected.date, reason: rejected.reason } } : {}),
         };
@@ -419,9 +478,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
         holdings: book,
         proposals,
         open: proposals.filter(x => x.state === 'accepted').map(x => x.id),
-        // D93: names proposed in the last two weeks. Proposing one again needs a limit at or
-        // below `below` (in the listing's own units), or a **Re-proposed:** line naming new
-        // results, a filing or a changed case. From `until` it is free again.
+        // D93: names proposed in the last two weeks. Proposing one again needs today's price at or
+        // below `below`, 5% under the `price` the last was written at (D124; its limit before),
+        // in the listing's own units, or a **Re-proposed:** line naming new results, a filing or a
+        // changed case. From `until` it is free again.
         cooldown,
         // D94: per name, every dominant risk an earlier proposal named, newest text per label; its
         // falsifier is that proposal's `warning`/`break` above. A new proposal answers each label
@@ -592,7 +652,7 @@ if (require.main === module && process.argv.includes('--selftest')) {
         ], '2026-11-02', new Set(['YUMC']));
         assert.deepStrictEqual([...breaches.keys()], ['2026-10-28-0900-BN.PA', '2026-10-30-0900-BN.PA']);
         assert.deepStrictEqual(breaches.get('2026-10-28-0900-BN.PA'), { after: '2026-10-27-0900-BN.PA', bar: 57.95 });
-        assert.deepStrictEqual(cooldown['BN.PA'], { last: '2026-10-31-0900-BN.PA', limit: 57.4, until: '2026-11-14', below: 54.53 });
+        assert.deepStrictEqual(cooldown['BN.PA'], { last: '2026-10-31-0900-BN.PA', limit: 57.4, price: 57.4, until: '2026-11-14', below: 54.53 });
         assert.strictEqual(cooldown['HLMA.L'].last, '2026-11-10-0900-HLMA.L', 'a free re-proposal starts a new window');
         assert.ok(!cooldown['AZN.L'], 'sells are not covered: §5 governs them');
         assert.ok(!cooldown['MWA'], 'window over by 2 Nov');
@@ -619,6 +679,59 @@ if (require.main === module && process.argv.includes('--selftest')) {
         assert.ok(!reproposalRule([bought], '2026-11-02').cooldown.RMD, 'bought: free the day it filled');
         assert.strictEqual(reproposalRule([bought, P('2026-11-03-0900-RMD', 239)], '2026-11-04').breaches.size, 0, 'a top-up after the fill is no repeat');
         assert.strictEqual(reproposalRule([bought, P('2026-11-01-0900-RMD', 229)], '2026-11-04').breaches.size, 1, 'a repeat written before the fill still is');
+    }
+
+    // D124: the ceiling. The order's limit is the decile's edge; the price it was written at anchors the rest.
+    {
+        const p1 = '## 1. Order\nBUY **6 shares of EUZ.DE on Xetra**, limit @ €14.57. Good till cancelled.\n'
+            + '**Ceiling:** €14.57: P/E at its 10th percentile, 18.68x on EPS €0.78.\n**Price when written:** **€14.20**, Xetra close 13 Nov.\n';
+        const orig = fs.readFileSync;
+        fs.readFileSync = () => '# EUZ.DE\n\n' + p1 + '\n## 2. Thesis\nx';
+        let euz;
+        try { euz = parseProposal('2026-11-15-0630-EUZ.DE.md'); } finally { fs.readFileSync = orig; }
+        assert.deepStrictEqual([euz.limit, euz.ceiling, euz.pricedAt], [14.57, 14.57, 14.2]);
+        assert.strictEqual(labelledPrice('**Ceiling:** 358.6p: P/OCF at its 10th percentile', 'Ceiling'), 358.6, 'pence');
+        assert.strictEqual(labelledPrice('**Ceiling:** 12,136 GBp', 'Ceiling'), 12136);
+        assert.strictEqual(labelledPrice('**Ceiling:** US$79.59, on cash', 'Ceiling'), 79.59);
+        assert.strictEqual(labelledPrice('**Price when written:** HK$12.50', 'Price when written'), 12.5);
+        assert.strictEqual(labelledPrice('BUY 1 share, limit @ $220.00.', 'Ceiling'), null, 'no line, no ceiling');
+
+        const life = (px, today, before) => openLife({ ...euz, written: '2026-11-15' }, before, {}, px, today);
+        assert.deepStrictEqual(life(14.57, '2026-11-16'), { validUntil: '2026-11-28' }, 'at the ceiling: still in the decile');
+        assert.deepStrictEqual(life(14.58, '2026-11-16'), { validUntil: '2026-11-28', expiredBy: 'ceiling', expiredOn: '2026-11-16' },
+            'a cent above it: out of the decile, out of reach');
+        assert.strictEqual(life(13.0, '2026-11-16').expiredBy, undefined, '8.5% below the price it was written at, 10.8% below its limit: open');
+        assert.strictEqual(life(12.7, '2026-11-16').expiredBy, 'fall', '10.6% below the price it was written at');
+        assert.strictEqual(life(14.3, '2026-11-17', { state: 'expired', expiredBy: 'ceiling', expiredOn: '2026-11-16' }).expiredBy, 'ceiling',
+            'final, like D109: a price back under the ceiling does not reopen it');
+        // An examiner may set a limit under the ceiling: between the two it has only not filled.
+        assert.strictEqual(openLife({ ...euz, written: '2026-11-15', limit: 14.3 }, undefined, {}, 14.5, '2026-11-16').expiredBy, undefined);
+
+        // D93 against prices. The last was written at 14.20, so a fresh one needs 13.49 or less.
+        const P = (id, extra) => ({ id, ticker: 'EUZ.DE', written: id.slice(0, 10), side: 'BUY', reproposed: null, ...extra });
+        const first = P('2026-11-15-0630-EUZ.DE', { limit: 14.57, ceiling: 14.57, pricedAt: 14.2 });
+        const r = reproposalRule([first, P('2026-11-16-0630-EUZ.DE', { limit: 14.57, ceiling: 14.57, pricedAt: 13.6 }),
+            P('2026-11-17-0630-EUZ.DE', { limit: 14.57, ceiling: 14.57, pricedAt: 12.9 })], '2026-11-17');
+        assert.deepStrictEqual([...r.breaches.keys()], ['2026-11-16-0630-EUZ.DE'], '13.60 is not 5% under 14.20; 12.90 is 5% under 13.60 (12.92)');
+        assert.deepStrictEqual(r.breaches.get('2026-11-16-0630-EUZ.DE'), { after: '2026-11-15-0630-EUZ.DE', bar: 13.49 });
+        assert.deepStrictEqual(r.cooldown['EUZ.DE'], { last: '2026-11-17-0630-EUZ.DE', limit: 14.57, ceiling: 14.57, price: 12.9, until: '2026-12-01', below: 12.255 });
+        // An older proposal's limit was its day's close, so it stands for the price across the change.
+        assert.strictEqual(reproposalRule([P('2026-11-13-0426-EUZ.DE', { limit: 14.5 }),
+            P('2026-11-15-0630-EUZ.DE', { limit: 14.57, ceiling: 14.57, pricedAt: 13.77 })], '2026-11-15').breaches.size, 0, '13.77 <= 13.775');
+        // Out of reach on the ceiling frees the name the day it happened, as D109 does.
+        const gone = { ...first, state: 'expired', expiredBy: 'ceiling', expiredOn: '2026-11-16' };
+        assert.ok(!reproposalRule([gone], '2026-11-16').cooldown['EUZ.DE'], 'free the day it left the decile');
+
+        // The first-sight check: a match to either published ceiling within 2%, a price within 15%.
+        const seen = { on: '2026-11-15', price: 14.3, earnings: 14.57, cash: 13.24 };
+        assert.deepStrictEqual(orderIssues(euz, seen), []);
+        assert.deepStrictEqual(orderIssues({ ...euz, ceiling: 13.24, limit: 13.24 }, seen), [], 'the cash side matches too');
+        assert.ok(/matches neither/.test(orderIssues({ ...euz, ceiling: 1457, limit: 1457 }, seen)[0]), 'cents for euros');
+        assert.ok(/above its ceiling/.test(orderIssues({ ...euz, limit: 15 }, seen)[0]));
+        assert.ok(/far from the quote/.test(orderIssues({ ...euz, pricedAt: 1420 }, seen)[0]), 'a slip of units in the price');
+        assert.deepStrictEqual(orderIssues({ ...euz, ceiling: undefined, pricedAt: undefined }, seen),
+            ['P1 has no **Ceiling:** line', 'P1 has no **Price when written:** line']);
+        assert.deepStrictEqual(orderIssues(euz, { on: '2026-11-15', price: null, earnings: null, cash: null }), [], 'nothing published: nothing to compare');
     }
 
     // D95: a withdrawn proposal is recognised, opens no two-week window, and is not scored.

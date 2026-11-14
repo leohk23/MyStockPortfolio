@@ -1453,6 +1453,9 @@ function capitalMetrics(year, cap, fallbackTax = null, prev = null) {
 
 const TROUGH_HORIZONS = { '3y': 3, '5y': 5, '10y': 10, all: null };
 const HEADLINE_HORIZON = '5y';
+// §6.1's cheapest decile, for the buy ceiling (D124). It must equal signals.js's
+// RULES.valuationPctile, whose selftest pins it to 0.10: change both together.
+const CEILING_PCTILE = 0.10;
 
 function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, quarters = null, histFrom = null, today = null, basis = 'reported') {
     const known = publishedEps(entry, quoteCurrency, rates, filedOn, quarters, basis);
@@ -1472,6 +1475,15 @@ function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, qu
     }
     if (!points.length) return null;
     const current = points[points.length - 1].pe;
+    // What today's multiple is struck on, in the quote's units: EPS, or OCF per share for ocfEntry.
+    // A ceiling multiple times this is a price (D124). Only when the last point IS the latest close:
+    // a loss voids the multiple, so after one the last point is an older week on a stale figure.
+    const denominator = points[points.length - 1].eps;
+    let lastClose = null;
+    for (let i = days.length - 1; i >= 0; i--) if (closes[i] != null) { lastClose = days[i]; break; }
+    const priced = points[points.length - 1].day === lastClose;
+    // Rounded DOWN, so the published price never admits a close that would rank outside the decile.
+    const floorSig = x => { const f = 10 ** (5 - Math.floor(Math.log10(x))); return Math.floor(x * f) / f; };
 
     const out = {};
     for (const [name, years] of Object.entries(TROUGH_HORIZONS)) {
@@ -1487,17 +1499,25 @@ function peHistory(entry, days, closes, quoteCurrency, rates, filedOn = null, qu
         const sorted = [...win].sort((a, b) => a.pe - b.pe);
         const at = f => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * f))].pe;
         const low = sorted[0];
+        // p10, the buy ceiling's multiple (D124): the highest multiple today could carry and still
+        // rank in the cheapest 10% by `pctile` below, which counts the weeks cheaper than today
+        // over every week in the window, today's included. So it is read from the OTHER weeks,
+        // where `at` reads all of them: at(0.10) moves with today's own price.
+        const others = win.slice(0, -1).map(p => p.pe).sort((a, b) => a - b);
+        const p10 = others[Math.floor(win.length * CEILING_PCTILE + 1e-9)];
         out[name] = {
             weeks: win.length, from: win[0].day,
             low: Number(low.pe.toPrecision(6)), lowDate: low.day,
             lowPrice: Number(low.price.toPrecision(6)), lowEps: Number(low.eps.toPrecision(6)),
-            p5: Number(at(0.05).toPrecision(6)), p25: Number(at(0.25).toPrecision(6)),
+            p5: Number(at(0.05).toPrecision(6)), p10: Number(p10.toPrecision(6)), p25: Number(at(0.25).toPrecision(6)),
+            ...(priced ? { ceiling: floorSig(p10 * denominator) } : {}),
             median: Number(at(0.5).toPrecision(6)),
             // Where today sits in that window: 0 means cheaper than every week in it.
             pctile: Number((win.filter(p => p.pe < current).length / win.length).toPrecision(4)),
         };
     }
-    return Object.keys(out).length ? { current: Number(current.toPrecision(6)), horizons: out } : null;
+    return Object.keys(out).length ? { current: Number(current.toPrecision(6)),
+        ...(priced ? { denominator: Number(denominator.toPrecision(6)) } : {}), horizons: out } : null;
 }
 
 // The cheapest multiple the market ever put on this stock's PUBLISHED earnings: each weekly
@@ -3066,6 +3086,10 @@ async function main() {
         Object.assign(quotes[t], {
             peLow: head.low, lowPrice: head.lowPrice, lowEps: head.lowEps, lowDate: head.lowDate,
             pePctile: head.pctile,
+            // D124: the highest price at which the P/E still ranks in the cheapest 10% (p10 in
+            // peHistory times the EPS it is struck on). signals.js turns this and pocfCeiling into
+            // the buy ceiling. Absent when the latest close carries no multiple.
+            ...(head.ceiling != null ? { peCeiling: head.ceiling } : {}),
             peWindow: hist.horizons[HEADLINE_HORIZON] ? HEADLINE_HORIZON : 'all',
             peFrom: head.from || null,
             peWeeks: head.weeks ?? null,
@@ -3080,7 +3104,8 @@ async function main() {
         if (ocfHead) {
             Object.assign(quotes[t], {
                 pocf: ocfHist.current, pocfPctile: ocfHead.pctile, pocfLow: ocfHead.low,
-                pocfMedian: ocfHead.median, pocfWeeks: ocfHead.weeks,
+                pocfMedian: ocfHead.median, pocfWeeks: ocfHead.weeks, pocfP10: ocfHead.p10,
+                ...(ocfHead.ceiling != null ? { pocfCeiling: ocfHead.ceiling } : {}),
                 pocfWindow: ocfHist.horizons[HEADLINE_HORIZON] ? HEADLINE_HORIZON : 'all',
             });
             pocfOk++;
@@ -3940,6 +3965,28 @@ function selftest() {
         assert.ok(cut.horizons.all.weeks < whole.horizons.all.weeks, `truncation dropped weeks`);
         // And the cutoff must not invent history where there is none.
         assert.strictEqual(peHistory(hEntry, hDays, hPx, 'USD', fx, null, null, '2099-01-01', '2025-12-26'), null);
+    }
+    // D124: the ceiling is the highest price at which today still ranks in the cheapest 10%, so a
+    // close AT it must pass §6.1's test (pctile <= 0.10) and a close a tick above must not. Ties
+    // included: the closes repeat 31.0 to 50.0, on one EPS of 2.
+    {
+        const cDays = weeks('2024-01-05', 104);
+        const cPx = cDays.map((_, i) => 31 + (i * 7) % 20);
+        const cEntry = { currency: 'USD', years: [{ date: '2022-12-31', eps: 2 }] };
+        const at = last => { const px = [...cPx]; px[px.length - 1] = last;
+            return peHistory(cEntry, cDays, px, 'USD', fx, null, null, null, '2025-12-26'); };
+        const h = at(40);
+        const { ceiling, p10 } = h.horizons['5y'];
+        assert.strictEqual(h.denominator, 2);
+        assert.ok(Math.abs(ceiling - p10 * 2) < 1e-9, `ceiling ${ceiling} is p10 ${p10} times EPS 2`);
+        assert.ok(at(ceiling).horizons['5y'].pctile <= 0.10, `at the ceiling ${ceiling}: ${at(ceiling).horizons['5y'].pctile}`);
+        assert.ok(at(ceiling * 1.001).horizons['5y'].pctile > 0.10, 'a tick above it leaves the decile');
+        assert.strictEqual(at(ceiling * 1.3).horizons['5y'].ceiling, ceiling, 'today\'s own price does not move it');
+        // After a loss the last multiple is an older week's, on a stale EPS: no ceiling then.
+        const loss = peHistory({ currency: 'USD', years: [{ date: '2022-12-31', eps: 2 }, { date: '2024-12-31', eps: -1 }] },
+            cDays, cPx, 'USD', fx, null, null, null, '2025-12-26');
+        assert.ok(loss && loss.horizons['5y'] && loss.horizons['5y'].ceiling === undefined && loss.denominator === undefined,
+            'a voided multiple publishes no ceiling');
     }
 
     const bands = peBands(bEntry, bDays, bPx, 'USD', fx);

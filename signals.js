@@ -137,10 +137,28 @@ function nearOwnFloor(quote, pctile = RULES.valuationPctile, entry = null) {
     // decile when it is already near that minimum. The question is the same one the signal asks:
     // on recurring earnings, is it still in the cheap quarter of its own history?
     const oneOff = oneOffRisk(quote, entry, h.p25, 0);
+    const ceiling = buyCeiling(quote, cash != null);
     return { pe, pctile: quote.pePctile, window, weeks: h.weeks,
         floor: h.low, floorDate: h.lowDate, p5: h.p5, median: h.median,
         vsFloor: pe / h.low - 1, cheapOn, ...(cashView ? { cash: cashView } : { cash: 'no operating cash flow history' }),
+        ...(ceiling ? { ceiling } : {}),
         ...(denominatorDrift ? { denominatorDrift } : {}), ...(oneOff ? { oneOff } : {}) };
+}
+
+// D124: the most a buy order pays, as a price: the highest at which the name still passes §6.1.
+// It passes while EITHER multiple is in the cheapest 10%, so the ceiling is the higher of the two
+// prices fetch-prices.js publishes, each the 10th-percentile multiple times what it is struck on.
+// The cash side counts only where §6.1 reads it (positive operating cash flow). Leo, 14 Nov 2026:
+// replaying the screen over ten years, a limit at the day's close filled 58% of the time, a
+// ceiling at the decile's edge 91%, and the extra fills did no worse.
+function buyCeiling(quote, cashCounts) {
+    const sides = [
+        ['earnings', quote.peCeiling, quote.peHistory?.[quote.peWindow || '5y']?.p10],
+        ['cash', cashCounts ? quote.pocfCeiling : null, quote.pocfP10],
+    ].filter(([, price]) => price > 0);
+    if (!sides.length) return null;
+    const [on, price, multiple] = [...sides].sort((a, b) => b[1] - a[1])[0];
+    return { price, on, multiple, ...Object.fromEntries(sides.map(([k, v]) => [k, v])) };
 }
 
 // §6.2 — fell hard, fast. Either window qualifies on its own.
@@ -671,7 +689,7 @@ function main() {
     for (const [rule, list] of Object.entries(by)) {
         console.log(`\n  ${rule} — ${list.length}`);
         for (const f of list.slice(0, 8)) {
-            if (f.pctile != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} [${f.cheapOn}] PE ${f.pe.toFixed(1)} = ${ordinal(Math.round(f.pctile*100))} pctile${f.cash?.pctile != null ? `, P/OCF ${f.cash.pocf.toFixed(1)} = ${ordinal(Math.round(f.cash.pctile*100))}` : ', no P/OCF'} (low ${f.floor.toFixed(1)} ${f.floorDate}, median ${f.median.toFixed(1)})  ${f.where}${f.denominatorDrift ? '  DRIFT?' : ''}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS' : ''}`);
+            if (f.pctile != null) console.log(`     ${(f.ticker + ' ').padEnd(10)} [${f.cheapOn}] PE ${f.pe.toFixed(1)} = ${ordinal(Math.round(f.pctile*100))} pctile${f.cash?.pctile != null ? `, P/OCF ${f.cash.pocf.toFixed(1)} = ${ordinal(Math.round(f.cash.pctile*100))}` : ', no P/OCF'} (low ${f.floor.toFixed(1)} ${f.floorDate}, median ${f.median.toFixed(1)})${f.ceiling ? `, ceiling ${f.ceiling.price} on ${f.ceiling.on}` : ''}  ${f.where}${f.denominatorDrift ? '  DRIFT?' : ''}${f.oneOff ? '  ONE-OFF? ' + f.oneOff.why : ''}${f.epsStale ? '  STALE EPS' : ''}`);
             else if (f.hits) console.log(`     ${(f.ticker || '').padEnd(10)} ${f.hits.map(h => `${h.window || h.what} ${pct(h.move)}`).join(', ')}  ${f.where || ''}`);
             else console.log(`     ${JSON.stringify(f)}`);
         }
@@ -719,6 +737,20 @@ function selftest() {
         assert.ok(drift.denominatorDrift, 'cheap on P/E, dear on cash is flagged');
         assert.strictEqual(nearOwnFloor({ ...base, pePctile: 0.02, pocfPctile: 0.3 }).denominatorDrift, undefined, 'mildly cheap cash is not drift');
         assert.strictEqual(nearOwnFloor({ ...base, pocf: -3, pePctile: 0.5, pocfPctile: 0.01 }), null, 'negative cash flow is no multiple');
+    }
+    // D124: the buy ceiling is the higher of the two decile-edge prices, and says which it is.
+    {
+        // fetch-prices.js publishes the edges at its CEILING_PCTILE; this pins the rule they serve.
+        assert.strictEqual(RULES.valuationPctile, 0.10, 'the ceiling is published for 0.10: change CEILING_PCTILE in fetch-prices.js too');
+        const q = { ...H, peHistory: { '5y': { ...H.peHistory['5y'], p10: 18.68 } }, price: 15.34, eps: 0.8, pocf: 16.4,
+            pePctile: 0.147, pocfPctile: 0.08, peCeiling: 14.57, pocfCeiling: 15.9, pocfP10: 17 };
+        assert.deepStrictEqual(nearOwnFloor(q).ceiling, { price: 15.9, on: 'cash', multiple: 17, earnings: 14.57, cash: 15.9 });
+        assert.deepStrictEqual(nearOwnFloor({ ...q, pePctile: 0.05, pocfCeiling: 13.24 }).ceiling,
+            { price: 14.57, on: 'earnings', multiple: 18.68, earnings: 14.57, cash: 13.24 });
+        assert.deepStrictEqual(nearOwnFloor({ ...q, pePctile: 0.05, pocf: -2 }).ceiling,
+            { price: 14.57, on: 'earnings', multiple: 18.68, earnings: 14.57 }, 'cash §6.1 cannot read sets no ceiling');
+        assert.strictEqual(nearOwnFloor({ ...q, pePctile: 0.05, peCeiling: undefined, pocfCeiling: undefined }).ceiling, undefined,
+            'none published: no ceiling, and so no order');
     }
 
     // §6.2 — either window on its own, and both reported when both trip.

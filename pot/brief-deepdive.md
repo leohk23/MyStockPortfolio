@@ -85,26 +85,30 @@ that are new.
 So for **two weeks** after a name's last buy proposal, you may write a fresh proposal for it only
 if one of these holds, and the first is checked against the numbers:
 
-1. **Your limit is at or below `cooldown[ticker].below`** — 5% under the last proposal's limit, in
-   the listing's own units (pence for London). Computed for you; do not recompute it.
+1. **Today's price is at or below `cooldown[ticker].below`**: 5% under `cooldown[ticker].price`,
+   the price the last proposal was written at (for one written before 15 Nov, its limit, which was
+   that day's close), in the listing's own units (pence for London). Computed for you; do not
+   recompute it.
 2. **New results or a filing** have come out since `cooldown[ticker].last` was written.
 3. **The case has changed**: the thesis, the dominant risk, or the falsifier, and you say how.
 
 For 2 or 3, the proposal carries a `**Re-proposed:**` line under its header naming what changed
 and when — "Q3 results on 30 Oct, operating margin 14.1% against 12.8% a year ago", not "new
-information". "Price" is not a reason under 2 or 3; a cheaper limit is rule 1 and needs no line.
+information". "Price" is not a reason under 2 or 3; a cheaper price is rule 1 and needs no line.
 
 Otherwise the name gets a **STANDS** row in the ranking and no new file: its rank as today's
-evidence sets it, the standing proposal's id, and today's price against its limit and against
-`below`. Leo still sees it, ranked where it belongs; he just is not handed the same proposal again.
+evidence sets it, the standing proposal's id, and today's price against its ceiling (its limit, for
+one written before 15 Nov) and against `below`. Leo still sees it, ranked where it belongs; he just
+is not handed the same proposal again.
 From `cooldown[ticker].until` the name is free. A rejected name is out under §3.2 regardless. The
 report flags any proposal that breaks this, so a repeat cannot pass unnoticed.
 
-**A standing proposal whose price ran more than 5% above its limit has ended, out of reach (D109).**
-Its order will not fill, so `positions.js` drops the name from `cooldown` the day it happens, and you
-may propose it again at today's price. Leo was shown the case at the old limit, so P5 says what the
-higher price does to it: the old limit, today's price, and whether the valuation still clears the
-rules on today's figures.
+**A standing proposal whose price rose above its ceiling has ended, out of reach (D124).** The name
+has left the cheapest 10% it was proposed in, so `positions.js` drops it from `cooldown` the day it
+happens. It clears §2.4 again only back inside the decile, usually after new figures move its
+ceiling; then propose it at today's price and new ceiling, and say in P5 what changed since the old
+one. A proposal written before 15 Nov has no ceiling and ends the old way, at a price more than 5%
+above its limit (D109).
 
 **A bought proposal frees its name the day it fills (D120).** Leo has decided it, so it is not a
 repeat waiting to be re-read, and `positions.js` drops the name from `cooldown` from the trade date.
@@ -191,6 +195,39 @@ book; nothing in this brief has ever made that visible, and it is exactly the fa
 This is a **disclosure, not a gate**. Do not downgrade a rank for overlap. Say it, and let Leo
 decide — the same treatment a one-off earnings flag gets.
 
+## The order's limit is its ceiling — `ceiling` in `signals.json` (D124)
+
+A buy order's limit is the **highest price at which the name still passes §6.1**, in the cheapest
+10% of its own five years on P/E or P/OCF. Leo, 14 Nov: replaying the screen over ten years, a limit
+at the day's close filled 58% of the time and a ceiling at the decile's edge 91%, and the extra fills
+did no worse. A limit at the ceiling fills at the market price whenever the market is below it, so
+it is not a price to pay: it is the most the order may pay, and the point where the filter would
+screen the name out.
+
+**It is computed for you; copy it, never derive it.** Each `6.1 valuation` hit in `signals.json`
+carries `ceiling`: `price` in the listing's own units (pence for London), `on` (`earnings` or
+`cash`, whichever sets it), the 10th-percentile `multiple`, and both sides' prices where they exist.
+They come from `prices.json` → `peCeiling` and `pocfCeiling`: each the 10th-percentile multiple
+(`peHistory[peWindow].p10`, `pocfP10`) times the earnings or operating cash flow per share it is
+struck on. The ceiling is the higher of the two, because §6.1 passes on either. A name with no
+`ceiling` gets no order: WAIT, saying so.
+
+P1 carries it on two lines, each with the price first, which `positions.js` reads:
+
+- `**Ceiling:** <price>: <P/E or P/OCF> at its 10th percentile, <multiple>x on <EPS or OCF per share> <figure>.`
+- `**Price when written:** <price>, <where and when it was quoted>.`
+
+The order's limit is the ceiling. The second reader may lower it and never raise it.
+`positions.js` checks the ceiling against the two the bot published, and the price against the
+quote, and lists a mismatch for Leo under *Needs you*. The price when written is what the 10% fall
+(D102) and the two-week rule (D93) are measured from.
+
+A ceiling can sit well above the price. NFLX's was 28% above on 14 Nov, at the 0.4th percentile on
+cash. So P1 states the most the order can cost at its ceiling as well as its cost today. Size it at
+today's price as below, and §4.2 is judged there, but the run's orders together must fit the pot's
+cash at their ceilings, since the pot does not borrow. Where they do not, the last order takes one
+share fewer.
+
 ## Size in whole shares
 
 Leo does not buy fractional shares. So a position is `floor(allocation ÷ price in GBP)` and the
@@ -208,7 +245,9 @@ Bounded, and the bounds are not optional:
 
 - **One share, never more**, when the cap would otherwise round the order to zero. Above that,
   §4.2 applies normally.
-- **It must fit available cash** in `pot/positions.json`. The pot does not borrow.
+- **It must fit available cash** in `pot/positions.json`, **at its ceiling**: that is the most it
+  can cost (D124). The pot does not borrow. If it fits today but not at the ceiling, one share
+  fewer.
 - **P1 states the resulting concentration and how it unwinds.** §4.2 binds on *contributed capital
   to date*, not on current pot value, so the breach shrinks with every £250: one INTU share is 98%
   of £250 today, 49% at £500, 33% at £750 — under the cap from the **second** contribution. Write
@@ -428,7 +467,7 @@ also arrived at unprompted, and were kept:
 - **PROPOSE** — and the share count, where a proposal follows
 - **STANDS** — it would be proposed, but it was proposed inside the last two weeks, not bought, and
   none of the three exceptions holds (D93); name the standing proposal and give today's price
-  against its limit
+  against its ceiling (its limit, for one written before 15 Nov)
 - **WAIT** — it clears the rules but something dated is missing; say what and by when. Results due
   within three days are always this (D109)
 - **EXCLUDE** — it does not clear a rule; say which one, in a clause
@@ -712,12 +751,16 @@ model: <model>, lane: deep-dive, date: <today>, tokens: <if known>
  the case moved>
 
 ## 1. Order
-BUY <n> share(s) of <ticker> on <exchange>, £<deployed> of £<allocation>, <market|limit @ price>.
-Good till cancelled. Currency <ccy>. Cash left idle: £<remainder>.
+BUY <n> share(s) of <ticker> on <exchange>, £<deployed at today's price> of £<allocation>, limit @
+<the ceiling>. Good till cancelled. Currency <ccy>. Cash left idle: £<remainder>. At most
+£<cost at the ceiling> if it fills at its ceiling.
+**Ceiling:** <price>: <P/E or P/OCF> at its 10th percentile, <multiple>x on <EPS or OCF per share>
+ <figure> (`signals.json`).
+**Price when written:** <price>, <where and when it was quoted>.
 <Not a day order: Leo may not read it the day it is written. The proposal stays open 14 days, and
- ends early at the company's next results, if the price falls more than 10% below the limit, or if
- it rises more than 5% above it (D102, D109); `positions.js` works that out, so do not write an
- expiry date. Up to 5% above the limit it is still open; it has just not filled yet.>
+ ends early at the company's next results, if the price falls more than 10% below the price when
+ written, or if it rises above the ceiling (D102, D124); `positions.js` works that out, so do not
+ write an expiry date. Below the ceiling it fills at the market.>
 **Next results:** <d Month yyyy, from the company's investor-relations calendar or filing, with its
  link; or "not announced". Yahoo has no date for most London and Paris names, and this is what ends
  the proposal when it has none.>

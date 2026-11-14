@@ -40,6 +40,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 6.5  | Thesis review                            | sweep them**all, every week**                                                                                 |
 | 6.6  | Breaking news                            | both — weekly Sweep*and* a market-reaction proxy the Scan can see                                                |
 | 7.1  | Maximum buys per quarter                 | No limit                                                                                                            |
+| 8.1  | **A buy's limit is its ceiling**         | The highest price at which the name is still in the cheapest 10% (§6.1) on P/E or P/OCF, the higher of the two; above it the proposal ends (D124) |
 | 7.2  | Local fact-check before execution        | **Mandatory**                                                                                                 |
 | 7.2a | **Uncertified earnings size, never veto**| Say which basis and how many years are adjusted; halve the allocation if material. "The data is incomplete" is not a reason to decline |
 | 7.3  | Unsourced figures                        | Not permitted                                                                                                       |
@@ -48,7 +49,7 @@ Derived from the answers below; **the sections are authoritative** and this tabl
 | 10   | Broker                                   | **T212 where it lists the name, IBKR where it cannot** — Tradelog still needs the `Pot` column                                                    |
 | 11.1 | Standing order                           | `^VIX` close ≥ 40 → buy **VUAG**, all available cash, no re-arm, overrides §4; alert if the pot is empty |
 
-**Nothing open.** All 34 questions answered; §6.1 revised 29 Aug 2026 (see below).
+**Nothing open.** All 34 questions answered; §6.1 revised 29 Aug 2026, and §8 extended 14 Nov 2026 with the buy ceiling (see below).
 
 Each question was asked with a suggested default drawn from what the existing book actually does.
 Those suggestions are kept as `> quoted` history rather than deleted: where an answer departs from
@@ -680,6 +681,25 @@ The contract. An instruction missing any of these is not executable.
 5. **The numbers as of today** — price, multiple, whatever the thesis rests on, each sourced. So
    that in two years you can tell what was known from what was hindsight.
 6. **The case against** — the strongest argument for not buying, stated by the agent itself.
+
+⚠ **Added 14 Nov 2026 (D124), on Leo's decision: a buy's limit is its ceiling.** A limit at the
+day's close let a name that still passed §6.1 slip out of reach on a 5% rise: EUZ.DE, HLN.L and
+BN.PA's proposals all ended that way, and none came back. Leo asked whether the proposal could give
+the highest price worth paying, then for the data and then for the optimum.
+
+**A** — the order's limit is the **highest price at which the name is still in the cheapest 10% of
+its own five years on P/E or P/OCF**, the higher of the two, since §6.1 passes on either. It fills
+at the market whenever the market is below it, and the proposal ends when the price passes it.
+
+- **The replay behind it.** The screen was rerun point-in-time over the weekly history of every
+  tracked name, with a proposal in each week a name sat in its cheapest 10% and two weeks to fill,
+  scored against its home index. A limit at the close filled 58%; a ceiling at the decile's edge
+  91%, paying a median 0.2% under the proposal's close, and the fills it added did as well or
+  better in every version. Ceilings above the 10th scored the same within noise, so the edge of the
+  screen itself was chosen: it pays least of them, and an order stands exactly as long as the name
+  passes the filter that admitted it.
+- **Caveats, stated then.** Today's names chosen with hindsight, mostly 2023 to 2026, prices
+  without dividends, weekly closes.
 
 ---
 
