@@ -263,8 +263,11 @@
       "basis": "company-adjusted diluted EPS",
       "ccy": "EUR",
       "note": "Added 6 October 2026. Half-year and Q2 periods overlap and must not be summed. No twelve-month adjusted series or historical percentile is established.",
-      "annual": [],
+      "annual": [
+        { "end": "2025-12-31", "eps": 0.54, "source": "https://ir.stevanatogroup.com/news-events/press-releases/detail/174/stevanato-group-delivers-7-revenue-growth-9-at-constant" }
+      ],
       "quarters": [
+        { "end": "2025-12-31", "eps": 0.18, "source": "https://ir.stevanatogroup.com/news-events/press-releases/detail/174/stevanato-group-delivers-7-revenue-growth-9-at-constant" },
         { "end": "2025-06-30", "eps": 0.11, "source": "https://ir.stevanatogroup.com/news-events/press-releases/detail/183/stevanato-group-delivers-8-revenue-growth-for-the-second" },
         { "end": "2026-06-30", "eps": 0.14, "source": "https://ir.stevanatogroup.com/news-events/press-releases/detail/183/stevanato-group-delivers-8-revenue-growth-for-the-second" },
         { "end": "2025-06-30", "months": 6, "eps": 0.22, "source": "https://ir.stevanatogroup.com/news-events/press-releases/detail/183/stevanato-group-delivers-8-revenue-growth-for-the-second" },
@@ -645,6 +648,19 @@
     }
   },
   "adjustments": {
+    "6690.HK": [
+      {
+        "fy": "2026-12-31",
+        "amount": 2179706576.66,
+        "ccy": "CNY",
+        "basis": "after-tax attributable",
+        "arithmetic": false,
+        "what": "Nine months ended September 2026: issuer's aggregate non-recurring profit after income tax and minority interests. Table includes tax/accounting-law changes, grants, financial-asset gains and other items; this is the aggregate, not an additional individual gain.",
+        "source": "https://smart-home.haier.com/media/21vfayr1/e_32014_ad-2-haier-smart-home-_ess.pdf",
+        "found": "2026-11-14",
+        "note": "Page 7 total. Evidence only: interim aggregate is not a full-year or TTM adjustment, and the known December fiscal year end has no filed FY2026 annual row yet. Do not subtract from FY2025 or vendor normalized income. Q3 attributable profit RMB4682407886.49 less issuer recurring RMB3520205653.31 equals the separately shown Q3 non-recurring total RMB1162202233.18; it is included in this nine-month amount, not additive."
+      }
+    ],
     "RR.L": [
       {
         "fy": "2025-12-31",

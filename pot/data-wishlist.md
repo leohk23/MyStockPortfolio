@@ -1,5 +1,12 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 14 November 2026
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-14 | Haier issuer recurring-profit series alongside vendor normalized income. | Q3 local revenue and parent profit agree with the issuer, but vendor normalized profit RMB4.865bn exceeds issuer profit excluding non-recurring items RMB3.520bn. Nine-month after-tax attributable non-recurring profit RMB2.179707bn is stored as evidence only. Needed each results date, with the fiscal-period and currency basis retained. Source: [issuer Q3 report, pp. 2 and 7](https://smart-home.haier.com/media/21vfayr1/e_32014_ad-2-haier-smart-home-_ess.pdf). |
+| 2026-11-14 | Dated external care-software adoption and pricing metrics for ResMed's T2/T3 exposure. | [WellSky's own disclosure](https://www.linkedin.com/posts/wellsky_wellsky-scribe-for-home-health-has-been-named-activity-7458139431179370497-xAIv) reports Scribe at more than 400 agencies. Wanted quarterly: comparable agency count, paid usage and per-seat versus outcome pricing beside retained RCS customer/core-growth figures. WellSky promises no regular count, so absent observations must remain unknown. Existing RMD drug-substitution/cohort requests remain open. |
+
 The feedback loop, written down. The Sweep looks at the open world; the Scan only sees what CI
 fetches. Every time the Sweep has to go and get something, that is evidence about what the Scan is
 missing — and once a series is fetched, checking it costs nothing forever.
