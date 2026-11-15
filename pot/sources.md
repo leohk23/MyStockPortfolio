@@ -108,8 +108,9 @@ still a voice, and the filing is still the filing.
        domain.com — what it is
      Domain only, no https://, no path. A domain here also covers its subdomains.
      Keep this list last in the file.
-     `npm run pot-report` reads THIS list and flags any run that cited one, so adding a line is
-     all that is needed to arm the check. Delete a line to un-ban a site. -->
+     `npm run pot-report` reads THIS list and flags any sweep, review or proposal from the last
+     seven days that cited one, so adding a line is all that is needed to arm the check. Delete a
+     line to un-ban a site. -->
 
 ## The never-cite list
 

@@ -1168,8 +1168,6 @@ does not look exactly like a healthy one.
             return [...list.matchAll(/^- ([a-z0-9-]+[.][a-z.]+) /gm)].map(m => m[1]);
         } catch { return []; }
     })();
-    // Only what the lanes actually publish. A domain covers its subdomains and nothing else:
-    // finance.example.com is example.com, notexample.com is not.
     // Quota, from the newest run that reported one. Runs arrive newest-first.
     const quota = (runs.find(r => r.limits) || {}).limits || null;
     // How much of the weekly allowance one full cycle costs. Measured from the DEEP DIVE runs,
@@ -1196,21 +1194,8 @@ does not look exactly like a healthy one.
     const propWhen = f => {
         try { return when(fs.statSync("pot/proposals/" + f).mtime.toISOString()); } catch { return "–"; }
     };
-    const violations = (() => {
-        const hits = [];
-        for (const dir of ['pot/sweeps', 'pot/proposals']) {
-            let files = [];
-            try { files = fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch { continue; }
-            for (const f of files) {
-                const text = fs.readFileSync(dir + '/' + f, 'utf8');
-                const cited = new Set([...text.matchAll(new RegExp('https?://([a-z0-9.-]+)', 'gi'))]
-                    .map(m => (m[1].toLowerCase().startsWith('www.') ? m[1].slice(4) : m[1]).toLowerCase()));
-                const bad = banned.filter(b => [...cited].some(c => c === b || c.endsWith('.' + b)));
-                if (bad.length) hits.push({ file: dir + '/' + f, bad });
-            }
-        }
-        return hits;
-    })();
+    // Every lane's output from the last NEVER_CITE_DAYS (D125).
+    const violations = neverCiteHits(recentLaneFiles(NEVER_CITE_DAYS, new Date()), banned);
 
     // Rule 3 of sources.md lets a Sweep quote a provisional price for a name we do not carry, on
     // condition it adds the ticker to watchlist.json so the next fetch makes it local. That second
@@ -1430,9 +1415,46 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
         console.log(`  ${violations.length} file(s) cited a never-cite source:`);
         for (const v of violations) console.log(`    ${v.file} — ${v.bad.join(', ')}`);
     } else if (banned.length) {
-        console.log(`  no never-cite source in any sweep or proposal (${banned.length} on the list)`);
+        console.log(`  no never-cite source in the last ${NEVER_CITE_DAYS} days' sweeps, reviews and proposals (${banned.length} on the list)`);
     }
     if (strandedSweep) console.log(`  ${strandedSweep} quoted a provisional price but added nothing to watchlist.json`);
+}
+
+// D125: what the lanes publish, and only the recent part of it. The check used to reread every
+// sweep and proposal ever written, so the same five files from August and September headed Needs
+// you on every cycle, and a new breach would have been a sixth line in a list nobody reads. It also
+// never read the Review's output or an archived proposal: eight reviews from 23 Sep to 30 Oct and
+// one archived ranking cited listed sites unseen. The date is the one in the file name, the time
+// the lane wrote it; mtime moves whenever archive.js rewrites a link. Undated files (smoke.md) are
+// tests, not output. A week, so a breach in a GitHub Sweep or Review between cycles is still there
+// when Leo next opens the summary, and gone once it is old news.
+const NEVER_CITE_DIRS = ['pot/sweeps', 'pot/reviews', 'pot/proposals', 'pot/proposals/archive'];
+const NEVER_CITE_DAYS = 7;
+
+function recentLaneFiles(days, now, dirs = NEVER_CITE_DIRS) {
+    const from = new Date(now.getTime() - days * 864e5).toISOString().slice(0, 10);
+    const out = [];
+    for (const dir of dirs) {
+        let names = [];
+        try { names = fs.readdirSync(dir); } catch { continue; }
+        for (const f of names.filter(f => f.endsWith('.md') && /^\d{4}-\d{2}-\d{2}/.test(f)).sort()) {
+            if (f.slice(0, 10) >= from) out.push({ file: dir + '/' + f, text: fs.readFileSync(dir + '/' + f, 'utf8') });
+        }
+    }
+    return out;
+}
+
+// A domain covers its subdomains and nothing else: in.investing.com is investing.com,
+// notinvesting.com is not.
+function neverCiteHits(files, banned) {
+    const hits = [];
+    for (const { file, text } of files) {
+        const cited = new Set([...text.matchAll(/https?:\/\/([a-z0-9.-]+)/gi)]
+            .map(m => m[1].toLowerCase().replace(/^www\./, '')));
+        const bad = banned.filter(b => [...cited].some(c => c === b || c.endsWith('.' + b)));
+        if (bad.length) hits.push({ file, bad });
+    }
+    return hits;
 }
 
 function selftest() {
@@ -1644,8 +1666,34 @@ function selftest() {
         assert.strictEqual(examinerHitLimit({ started: '2026-10-25T03:00:00Z' }, log), false, 'no matching header');
     }
 
+    // D125: the never-cite check reads the recent output of every lane, archived proposals too.
+    {
+        const banned = ['investing.com', 'marketbeat.com'];
+        const hits = neverCiteHits([
+            { file: 'a', text: '[x](https://in.investing.com/news/1) and [y](https://www.MarketBeat.com/s)' },
+            { file: 'b', text: '[x](https://notinvesting.com/1) [y](https://www.sec.gov/z) investing.com in prose' },
+        ], banned);
+        assert.deepStrictEqual(hits, [{ file: 'a', bad: ['investing.com', 'marketbeat.com'] }],
+            'a subdomain counts, a look-alike domain and a bare mention do not');
+
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nevercite-'));
+        const put = (dir, f) => { fs.mkdirSync(path.join(root, dir), { recursive: true });
+            fs.writeFileSync(path.join(root, dir, f), 'https://investing.com/x'); };
+        put('sweeps', '2026-08-28.md');                  // old: the case that repeated for months
+        put('sweeps', '2026-11-08-0900.md');             // exactly 7 days back: still in
+        put('sweeps', 'smoke.md');                       // a test, not output
+        put('reviews', '2026-11-14-0034.md');            // never read before D125
+        put('proposals/archive', '2026-11-12-0900-ranking.md');
+        const dirs = ['sweeps', 'reviews', 'proposals', 'proposals/archive'].map(d => path.join(root, d));
+        const seen = recentLaneFiles(7, new Date('2026-11-15T09:20:00Z'), dirs)
+            .map(x => path.relative(root, x.file).replace(/\\/g, '/'));
+        assert.deepStrictEqual(seen, ['sweeps/2026-11-08-0900.md', 'reviews/2026-11-14-0034.md',
+            'proposals/archive/2026-11-12-0900-ranking.md']);
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+
     console.log('report.js selftest ok');
 }
 
 if (require.main === module) process.argv.includes('--selftest') ? selftest() : build();
-module.exports = { summarise, sessionFiles, renderTranscript };
+module.exports = { summarise, sessionFiles, renderTranscript, neverCiteHits, recentLaneFiles };
