@@ -1,6 +1,6 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-14T09:00:09.863Z",
+ "generated": "2026-11-15T09:00:07.525Z",
  "cashGBP": 256.69,
  "contributions": [
   {
@@ -165,6 +165,27 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-14-0940-RMD.md",
+   "id": "2026-11-14-0940-RMD",
+   "state": "open",
+   "ticker": "RMD",
+   "written": "2026-11-14",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 239.53,
+   "warning": "At the next reported quarter, checked no later than **5 February 2027**, re-read if Americas sleep-device core constant-currency revenue growth falls below 3% (6% in September), masks/accessories growth falls below 5% (10% in September), or management describes falling device units, treatment starts or resupply despite growing revenue. Also warn if comparable unit/cohort evidence is withheld: revenue alone cannot certify that price has not hidden substitution. These are analyst-set early thresholds, not management guidance. *(Second reader)* The December quarter is the second under Medicare's GLP-1 Bridge (from 1 July 2026, see P6). Read these same two thresholds as the test of whether $50-a-month drug access is reaching US device starts. An FDA approval/launch update for a competing OSA drug, or a dated Philips restart of new US sleep-device sales, triggers an immediate review of treatment starts and mask replacement; it does not itself prove displacement. Check the AD109 decision on **28 February 2027**. For secondary T2 exposure, quarterly reviews compare retained Residential Care Software core growth and disclosed customer/pricing metrics with WellSky's dated adoption disclosures; loss of customers masked by price, or absent customer evidence after a material competing rollout, is a warning.",
+   "break": "By **7 May 2027**, sell under §5.1 if two consecutive post-order quarterly disclosures show falling device units/treatment starts or mask-resupply volumes, even if price keeps revenue positive. Two consecutive quarters of negative Americas sleep-device core constant-currency growth also break the growth case when unit recovery cannot be demonstrated. A dated, comparable treated-versus-untreated cohort showing persistently lower PAP starts or resupply in two observations is independently a break. If the necessary observations remain absent, retain the warning and do not add again; do not label the case passed. Trailing operating cash less gross PP&E turning non-positive is an additional financial break, not a substitute for the demand tests.",
+   "reviewBy": "2027-02-05",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-11-27",
+   "resultsDue": "2027-01-28",
+   "vsLimit": 0,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-11-13-1330-none.md",
    "id": "2026-11-13-1330-none",
@@ -3987,8 +4008,16 @@
   "NFLX": {
    "last": "2026-11-13-0426-NFLX",
    "limit": 62.69,
+   "price": 62.69,
    "until": "2026-11-27",
    "below": 59.5555
+  },
+  "RMD": {
+   "last": "2026-11-14-0940-RMD",
+   "limit": 239.53,
+   "price": 239.53,
+   "until": "2026-11-28",
+   "below": 227.5535
   }
  },
  "earlierRisks": {
@@ -4114,10 +4143,10 @@
   "RMD": [
    {
     "category": "competitive",
-    "text": "drug treatments reduce CPAP initiation and mask replacement before aggregate revenue reveals it.",
-    "id": "2026-10-31-0004-RMD"
+    "text": "Competing drug treatments or device suppliers reduce new PAP treatment and replacement-mask demand before aggregate, price-supported revenue makes the loss obvious.",
+    "id": "2026-11-14-0940-RMD"
    }
   ]
  },
- "today": "2026-11-14"
+ "today": "2026-11-15"
 }
