@@ -117,11 +117,11 @@ say something long before the return does.
 **A (added 15 Nov 2026)**
 
 This acts as AI-augmented investing, as I would not have the time to always monitor and digest
-everything from the world every day. So how to concisely share the relevant information and alert
-me is key.
+everything from the world every day. So how to share the relevant information and alert me is key.
 
-Recorded as part of the goal, not a convenience (D126): what reaches Leo, and when, is judged by
-whether it tells him what is relevant in few words, not by how complete it is. Return stays the
+Recorded as part of the goal, not a convenience (D126): what reaches Leo is judged by whether it
+brings him what bears on a decision, and reaches him when something needs him. Not by brevity: the
+workings stay, because a figure whose derivation is hidden is one he cannot check. Return stays the
 scoreboard (§9).
 
 ---
