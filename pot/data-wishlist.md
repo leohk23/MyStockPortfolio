@@ -49,7 +49,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | reached for | sweeps | |
 |---|---:|---|
 | margin | 69 | **earns a feed** |
-| volume / units | 59 | **earns a feed** |
+| volume / units | 60 | **earns a feed** |
 | cash conversion | 49 | **earns a feed** |
 | return on capital | 31 | **earns a feed** |
 | leverage / net debt | 28 | **earns a feed** |
@@ -59,7 +59,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 10 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-480 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+487 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -70,9 +70,9 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
-| 2026-11-16 | USD/BRL and `^BVSP` in the macro block, third request. | Fetched provisionally from Yahoo again (`BRL=X` 4.96 the week of 19 Oct, 5.67 today). The real has kept falling for three weeks after the equity crash stopped, and the macro block cannot show that. Asked for on 26 Oct and 4 Nov too. Wanted weekly while ITUB is watched; free on the endpoint already in use. |
-| 2026-11-16 | Text from B3's results PDFs (mziq CDN). | The 3Q26 earnings release and presentation from ri.b3.com.br would not decode through the fetch tool, and an inline FlateDecode parse returned nothing usable in two minutes. So none of B3's own figures could be cited and B3 was not carried. Third results PDF in four days that the lane could not read, after Cochlear and L&G. EssilorLuxottica's two PDFs decoded cleanly the same way. Wanted: a more capable local PDF text tool, whenever a non-SEC name is screened. |
 | 2026-11-16 | Drawdown from each holding's own peak, in `signals.json`. | Computed by hand from `history.json` `closes`: 000660.KS −61.7% from 22 Jun, DELL −41.4% from 17 Sep, NVDA −31.9% from 6 Oct, AVGO −27.9%, ASML −24.8%. `fromAth` is carried today only for the 43 country ETFs in `world`, not for a stock. The data is local and free; carrying it would let the Sweep and the Review see a sector unwind without recomputing it. Wanted every run. |
+| 2026-11-16 | Text from B3's results PDFs (mziq CDN). | The 3Q26 earnings release and presentation from ri.b3.com.br would not decode through the fetch tool, and an inline FlateDecode parse returned nothing usable in two minutes. So none of B3's own figures could be cited and B3 was not carried. Third results PDF in four days that the lane could not read, after Cochlear and L&G. EssilorLuxottica's two PDFs decoded cleanly the same way. Wanted: a more capable local PDF text tool, whenever a non-SEC name is screened. |
+| 2026-11-16 | USD/BRL and `^BVSP` in the macro block, third request. | Fetched provisionally from Yahoo again (`BRL=X` 4.96 the week of 19 Oct, 5.67 today). The real has kept falling for three weeks after the equity crash stopped, and the macro block cannot show that. Asked for on 26 Oct and 4 Nov too. Wanted weekly while ITUB is watched; free on the endpoint already in use. |
 | 2026-11-14 | Mexico same-store sales (ANTAD) and the peso. | ANTAD read only through Walmex's own release (its SSS beat ANTAD by 230bp). Wanted monthly while WALMEX.MX is watched; MXN is not in the macro block either. |
 | 2026-11-14 | Text from L&G's results PDF. | `pdfText` returned glyph-shifted text (a custom font encoding) for the half-year press-release-and-analyst-pack PDF; figures were taken from the HTML press release instead. Walmex's PDF decoded cleanly. Second sweep in two days to hit an unreadable results PDF, after Cochlear. |
 | 2026-11-14 | UK gilt yields, 10-year and 30-year. | Not fetched; the macro block holds only US 5y and 10y. Wanted weekly: Leo holds gilts directly (UKT31.L, UKT36.L, IGLT.L) and the L&G candidate's pension-buyout supply turns on long gilt yields, yet the sweep cannot state the level from local data. The Bank of England publishes the yield curve daily, free. |
