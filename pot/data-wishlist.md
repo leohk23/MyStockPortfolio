@@ -1,5 +1,14 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 16 November 2026, 07:06 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-16 | Cash-valuation window start date alongside `pocfWeeks`. | The local quote gives the cash observation count but no start date. The deep dive can disclose 191 cash observations without pretending that the earnings window's `peFrom` is also the cash start. Wanted whenever a P/OCF percentile is quoted. No guessed date was written. |
+| 2026-11-16 | Venue-valid limit precision and ceiling-boundary reconciliation. | ADUS is $123 in the quote and still a 6.1 hit, but the published ceiling is $122.999. An executable limit must not round above the computed maximum. Wanted before an order at a decile boundary; no ADUS order was written. |
+| 2026-11-16 | STVN variable compensation for lower GLP-1 volumes, by quarter and tax basis. | The [issuer Q3 presentation, slides 5 and 11](https://www.sec.gov/Archives/edgar/data/1849853/000119312526445354/stvn-ex99_1.htm) says Q2/Q3 revenue includes this compensation without separately quantifying it. It can make booked growth look stronger than factory utilization. Wanted at the FY2026 result and whenever such compensation recurs; no amount or adjusted percentile was invented. |
+| 2026-11-16 | Follow-up to the 15 November T212 availability gap: STVN Invest listing is accessible. | [Trading 212's Invest instrument page](https://www.trading212.com/trading-instruments/invest/STVN.US) confirms NYSE STVN, ISIN IT0005452658. The [published Invest fee schedule](https://helpcentre.trading212.com/hc/en-us/articles/11471996799517-What-are-the-fees-in-the-Invest-ISAs-and-SIPP) states 0.15% FX and free commission/custody. This resolves availability only; Italian transaction-tax applicability remains unverified. |
+
 ## Deep dive additions, 14 November 2026
 
 | Date | Data wanted | Why and cadence |

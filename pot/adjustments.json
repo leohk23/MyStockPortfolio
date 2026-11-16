@@ -2,6 +2,19 @@
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-11-09",
   "normalizedEps": {
+    "GWRE": {
+      "basis": "company non-GAAP diluted EPS",
+      "ccy": "USD",
+      "note": "Deep dive 16 November 2026. Company-adjusted EPS excludes recurring share compensation and other items; it is not owner earnings. Two annual observations and two isolated fourth quarters do not establish a rolling adjusted history or a research TTM. Prior-year non-GAAP comparisons are the issuer's recast figures excluding unrealized FX impacts.",
+      "annual": [
+        { "end": "2025-07-31", "eps": 2.51, "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026" },
+        { "end": "2026-07-31", "eps": 3.43, "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026" }
+      ],
+      "quarters": [
+        { "end": "2025-07-31", "eps": 0.81, "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026" },
+        { "end": "2026-07-31", "eps": 0.99, "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026" }
+      ]
+    },
     "ADUS": {
       "basis": "company non-GAAP adjusted diluted EPS",
       "ccy": "USD",
@@ -648,6 +661,30 @@
     }
   },
   "adjustments": {
+    "GWRE": [
+      {
+        "fy": "2026-07-31", "amount": 632000, "ccy": "USD", "arithmetic": false,
+        "what": "FY2026 net gain on sale of strategic investments. Gross gain in the issuer cash-flow and non-GAAP reconciliations; not certified after-tax attributable income. Evidence only.",
+        "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026", "found": "2026-11-16"
+      },
+      {
+        "fy": "2026-07-31", "amount": 489000, "ccy": "USD", "arithmetic": false,
+        "what": "FY2026 net fair-value gain on strategic investments. Gross non-cash gain, not certified after-tax attributable income; separate from the sale gain. Share compensation is a recurring economic cost and is not recorded as a one-off addback.",
+        "source": "https://ir.guidewire.com/news-releases/news-release-details/guidewire-announces-fourth-quarter-and-fiscal-year-2026", "found": "2026-11-16"
+      }
+    ],
+    "ADUS": [
+      {
+        "fy": "2026-12-31", "amount": 6400000, "ccy": "USD", "arithmetic": false,
+        "what": "Nine-month 2026 ARPA funding utilized as a reduction of cost of service revenues, including USD0.8m in Q3. Temporary government support, gross pre-tax benefit; no certified after-tax attributable adjustment. The USD6.3m received in cash is a different measure and is not another earnings adjustment.",
+        "source": "https://addus.gcs-web.com/static-files/50bc62cc-34a9-48b4-b65b-688d38b90fe1", "found": "2026-11-16"
+      },
+      {
+        "fy": "2026-12-31", "amount": 46000, "ccy": "USD", "arithmetic": false,
+        "what": "Nine-month 2026 gain on sale of assets in the adjusted EBITDA reconciliation. Gross pre-tax evidence only; no subtraction from common-shareholder income is certified.",
+        "source": "https://addus.gcs-web.com/news-releases/news-release-details/addus-homecare-announces-third-quarter-2026-financial-results", "found": "2026-11-16"
+      }
+    ],
     "6690.HK": [
       {
         "fy": "2026-12-31",
