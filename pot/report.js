@@ -1230,17 +1230,19 @@ does not look exactly like a healthy one.
     })();
 
     // D127: booked reopenings. No network here: what has landed comes from pot/reopened.json, which
-    // deepdive-due.js writes in the cycle before this runs. A lapsed one is shown for a week, then
-    // dropped as old news (the D125 reasoning).
+    // deepdive-due.js writes in the cycle before this runs. A lapsed or closed one is shown for a
+    // week, then dropped as old news (the D125 reasoning).
     const reopenings = (() => {
         try {
             const d = require('./deepdive-due');
             let state = {};
             try { state = JSON.parse(fs.readFileSync(d.STATE, 'utf8')); } catch { /* nothing has landed yet */ }
-            const held = new Set(Object.entries(pos.holdings || {}).filter(([, h]) => h?.qty > 0).map(([t]) => t.toUpperCase()));
-            const c = d.classify(d.allBookings().rows, state, {}, held, Date.now());
-            return { ...c, lapsed: c.lapsed.filter(r => Date.parse(r.by + 'T00:00:00Z') + 8 * 864e5 > Date.now()) };
-        } catch { return { due: [], waiting: [], lapsed: [] }; }
+            const ctx = d.context(), now = Date.now(), week = 7 * 864e5;
+            const c = d.classify(d.allBookings().rows, state, { held: ctx.held, now, inReach: ctx.inReach });
+            return { ...c,
+                lapsed: c.lapsed.filter(r => Date.parse(r.by + 'T00:00:00Z') + 8 * 864e5 > now),
+                dropped: [...c.closed.filter(r => r.closedAs && now - Date.parse(r.closedOn) < week), ...c.close] };
+        } catch { return { due: [], waiting: [], lapsed: [], refused: [], dropped: [] }; }
     })();
 
     // ---- the entry point
@@ -1363,10 +1365,14 @@ ${rejections.length
 | cash | holdings | open theses | contributed |
 |---:|---:|---:|---:|
 | £${(pos.cashGBP ?? 0).toLocaleString()} | ${Object.keys(pos.holdings || {}).length} | ${(pos.proposals || []).length} | £${((pos.contributions || []).reduce((a, c) => a + (c.amountGBP || 0), 0)).toLocaleString()} |
-${reopenings.due.length + reopenings.waiting.length
-        ? String.fromCharCode(10) + '**Waiting to reopen** (a Deep dive runs when it lands, D127):' + String.fromCharCode(10) + String.fromCharCode(10)
-            + [...reopenings.due.map(r => `- **${r.ticker}**: its ${r.landed.form} landed ${r.landed.filed}; the next cycle's Deep dive reads it`),
-               ...reopenings.waiting.map(r => `- **${r.ticker}**: ${r.event === 'date' ? 'after ' + r.from : 'its next ' + r.event + ' from ' + r.from + ', until ' + r.by}, booked in ${r.file}`)]
+${reopenings.due.length + reopenings.waiting.length + reopenings.dropped.length + reopenings.refused.length
+        ? String.fromCharCode(10) + '**Waiting to reopen** (an extra Deep dive runs when it lands, D127):' + String.fromCharCode(10) + String.fromCharCode(10)
+            + [...reopenings.due.map(r => `- **${r.ticker}**: its ${r.landed.form} landed ${r.landed.filed}; the next cycle's extra Deep dive reads it`),
+               ...reopenings.waiting.map(r => `- **${r.ticker}**: ${r.event === 'date' ? 'after ' + r.from : 'its next ' + r.event + ' from ' + r.from + ', until ' + r.by}, booked in ${r.file}`),
+               ...reopenings.dropped.map(r => `- **${r.ticker}**: not run, ${r.closedAs === 'stale'
+                    ? 'its filing landed but went unread for three days; the full Deep dive has it now'
+                    : 'its filing landed when it was no longer in its cheapest 10%'}`),
+               ...reopenings.refused.map(r => `- **${r.ticker}**: not run, booked again after ${r.unproposed} reads in a row without a proposal; back to the normal flow`)]
                 .join(String.fromCharCode(10))
         : ''}
 

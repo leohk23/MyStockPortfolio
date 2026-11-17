@@ -142,9 +142,8 @@ to it, and they are D93's exception 2.
 ## Book the run that reads what you are waiting for — `## Reopen when` (D127)
 
 When a name ends WAIT because a publication it needs is not out yet, book the Deep dive that will
-read it. The cycle watches for it and runs one on that name when it lands: inside the day's full run
-if one is due, on its own if today's has gone. Nobody has to watch for the filing. Add the table to
-the ranking:
+read it. The cycle watches for it and, when it lands, runs an extra ad hoc Deep dive on that name, on
+top of the day's own. Nobody has to watch for the filing. Add the table to the ranking:
 
 ```
 ## Reopen when
@@ -157,9 +156,13 @@ the ranking:
 - **event:** `10-Q`, `10-K`, `20-F`, `40-F`, `6-K` or `8-K`, for a company that files with the SEC,
   under its US ticker. For any other company, `date`, set to the day its results are due.
 - **from:** the first day a filing counts. **by:** the day to give up, a few weeks past the
-  expected date. **why:** what that run must read; it goes into its prompt word for word.
-- One row per publication. Only for a WAIT that a publication would settle, never for a name the
-  pot holds (the Review owns those).
+  expected date and at most six weeks after `from`. **why:** what that run must read; it goes into
+  its prompt word for word.
+- One row, for one publication. Only for a WAIT that a publication would settle, never for a name
+  the pot holds (the Review owns those).
+- What runs is limited, so book only what would change the verdict. A name gets one booking, and a
+  newer one replaces yours. It runs only if the name is still in its cheapest 10% when the
+  publication lands. A name read twice in a row this way without a proposal is not run a third time.
 
 A run started by a booking says so in its prompt. Read the case and tests behind the booking first,
 and say in the ranking whether each test it named is now met.

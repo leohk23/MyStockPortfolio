@@ -16,9 +16,6 @@ param(
     # Deep dive only: the name Leo picked. Selection is his, so it is an argument, never something
     # the agent decides for itself — see the top of pot\brief-deepdive.md for why.
     [string]$Ticker,
-    # Deep dive only: a sentence added to a FULL run's prompt, when a booked reopening has landed on
-    # a day its Deep dive was due anyway (D127). An ad hoc run carries its booking in -Ticker instead.
-    [string]$Also,
     [switch]$Push,
     # Pinned, rather than left to whatever ~/.codex/config.toml happens to say that day. Every run
     # on record before 8 Sep 2026 was gpt-5.6-sol; a change to the global default would change the
@@ -90,7 +87,6 @@ $branchBefore = git symbolic-ref -q HEAD
 
 $prompt = if ($Ticker) { "Follow the instructions in $Brief for $Ticker" }
           else { "Follow the instructions in $Brief" }
-if ($Also) { $prompt += ". $Also" }
 Note "prompt: $prompt"
 # The brief goes in with the prompt rather than being left for the agent to open (8 Nov). Opened as a
 # tool output it was 15-23% of what astra's Deep dive draft sent: Windows PowerShell's Get-Content

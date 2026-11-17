@@ -345,6 +345,8 @@ function Test-Allowance($lanes) {
 # claude-opus-4-8, not Opus 5, so the first Claude cycle ran on a different model than the one
 # asked for and nothing in the run said so until the ledger row was read.
 $CLAUDE_MODEL = 'claude-opus-5-5'
+# Extra Deep dives on landed reopenings, at most this many a cycle, on top of the day's own (D127).
+$REOPEN_PER_CYCLE = 2
 
 # Decide which agent each lane runs on, or $null to skip the cycle.
 #
@@ -523,7 +525,7 @@ function Sync-CloudTranscripts {
     }
 }
 
-function Invoke-Lane($brief, $agent = $null, [switch]$Soft, [string]$Ticker = '', [string]$Also = '') {
+function Invoke-Lane($brief, $agent = $null, [switch]$Soft, [string]$Ticker = '') {
     Note "--- $brief"
     # -Soft: a failure on Codex is noted and the cycle carries on, as it already does on Claude. For
     # the Deep dive's examiner (D95), whose failure must not cost the draft or the report after it.
@@ -544,7 +546,6 @@ function Invoke-Lane($brief, $agent = $null, [switch]$Soft, [string]$Ticker = ''
     if ($laneEffort) { $laneArgs.Effort = $laneEffort }
     if (-not $NoPush) { $laneArgs.Push = $true }
     if ($Ticker) { $laneArgs.Ticker = $Ticker }
-    if ($Also) { $laneArgs.Also = $Also }
     $before = (Get-Item (Join-Path $Repo $log)).Length
     try {
         & (Join-Path $Repo 'pot/run-lane.ps1') @laneArgs
@@ -597,8 +598,10 @@ function Get-DeepDiveOrder($day) {
     return @('codex', 'claude')
 }
 
-# -Ticker and -Also carry a landed reopening (D127) to both halves, so the examiner reads the same ask.
-function Invoke-DeepDive([string]$Ticker = '', [string]$Also = '') {
+# -Ticker carries a landed reopening (D127) to both halves, so the examiner reads the same ask. -Soft:
+# an extra run whose draft fails on Codex is noted and the cycle carries on to its report, where the
+# day's own run would stop the cycle.
+function Invoke-DeepDive([string]$Ticker = '', [switch]$Soft) {
     $planned = $PLAN['deepdive']
     if ($planned -eq 'skip') { Note 'deep dive skipped by the Claude budget - not run'; return }
     $codexOk = $planned -ne 'claude'
@@ -608,11 +611,11 @@ function Invoke-DeepDive([string]$Ticker = '', [string]$Also = '') {
         ($_ -eq 'codex' -and $codexOk) -or ($_ -eq 'claude' -and $claudeOk) })
     Note ("deep dive: {0}" -f ($(if ($order.Count -gt 1) { "$($order[0]) drafts, $($order[1]) examines" } else { "$($order[0]) alone, no second reader" })))
     $began = (Get-Date).ToUniversalTime().AddMinutes(-3)
-    Invoke-Lane 'pot/brief-deepdive.md' $order[0] -Ticker $Ticker -Also $Also
+    Invoke-Lane 'pot/brief-deepdive.md' $order[0] -Ticker $Ticker -Soft:$Soft
     $drafter = $order[0]
     if (-not $script:LaneOk -and $order.Count -gt 1) {
         Note "  the $($order[0]) draft did not finish - $($order[1]) drafts alone, no second reader"
-        Invoke-Lane 'pot/brief-deepdive.md' $order[1] -Ticker $Ticker -Also $Also
+        Invoke-Lane 'pot/brief-deepdive.md' $order[1] -Ticker $Ticker -Soft:$Soft
         return
     }
     if (-not $script:LaneOk -or $order.Count -lt 2) { return }
@@ -626,18 +629,16 @@ function Invoke-DeepDive([string]$Ticker = '', [string]$Also = '') {
         Note "  no ranking from this draft to examine - the $drafter draft stands unexamined"
         return
     }
-    Invoke-Lane 'pot/brief-examine.md' $order[1] -Soft -Ticker $Ticker -Also $Also
+    Invoke-Lane 'pot/brief-examine.md' $order[1] -Soft -Ticker $Ticker
     if (-not $script:LaneOk) { Note "  the $($order[1]) examination did not finish - the draft stands, not second-read" }
 }
 
-# D127: what a landed reopening asks of the Deep dive, from pot/deepdive-due.js's row. Ad hoc when the
-# day's full run has already gone, so it researches that one name; otherwise inside the full run.
-function Reopen-Ask($r, [switch]$Full) {
+# D127: what a landed reopening asks of its ad hoc Deep dive, from pot/deepdive-due.js's row.
+function Reopen-Ask($r) {
     $what = if ($r.landed.form -eq 'date') { "the date $($r.from) has passed" }
             else { "its $($r.landed.form) was filed on $($r.landed.filed), $($r.landed.url)" }
-    $scope = if ($Full) { "Research $($r.ticker) in this run as well as the names you pick" } else { 'Research it' }
     "A booked reopening has landed (D127): for $($r.ticker), $what. It was booked in $($r.file) because: $($r.why). " +
-        "Read the case and tests behind that booking first. $scope, and say in the ranking whether each test the booking named is now met"
+        "Read the case and tests behind that booking first, research it, and say in the ranking whether each test the booking named is now met"
 }
 
 # The newest ranking stamped at or after $since, or $null: which file a Deep dive wrote.
@@ -737,22 +738,7 @@ try {
     # session limit — only because that morning's Sweep had failed and was still outstanding.
     # Reading pot/proposals keeps the pairing where it matters (the Sweep still runs first inside a
     # cycle) while letting a FAILED Deep dive retry at the next slot, which pairing would not.
-    $fullDue = -not $NoDeepDive -and ((Lane-Due 'pot/proposals' 1) -or $Force -contains 'deepdive' -or $Force -contains 'all')
-    # D127: a booked reopening whose publication has landed takes this cycle's Deep dive, inside the
-    # full run when one is due and on its own when today's has already gone. One per cycle, oldest
-    # first, so a cycle still runs at most one Deep dive and the plan below prices it as one.
-    $reopenNext = $null
-    if (-not $NoDeepDive) {
-        try {
-            $reopen = (node pot/deepdive-due.js --json) -join '' | ConvertFrom-Json
-            $reopenNext = @($reopen.due) | Select-Object -First 1
-            foreach ($r in @($reopen.lapsed)) { Note "  reopening lapsed: $($r.ticker) $($r.event) from $($r.from) by $($r.by) ($($r.file))" }
-        } catch { Note "  reopenings not checked: $($_.Exception.Message)" }
-        if ($reopenNext) {
-            Note ("  reopening landed: {0}, {1} {2} - this cycle's Deep dive takes it (D127)" -f $reopenNext.ticker, $reopenNext.landed.form, $reopenNext.landed.filed)
-        }
-    }
-    $doDeep = $fullDue -or [bool]$reopenNext
+    $doDeep = -not $NoDeepDive -and ((Lane-Due 'pot/proposals' 1) -or $Force -contains 'deepdive' -or $Force -contains 'all')
     $planned = @()
     if ($doReview) { $planned += 'review' }
     if ($doSweep) { $planned += 'sweep' }
@@ -856,18 +842,50 @@ try {
     # Forcing the deep dive alone is legitimate: it judges the newest sweep's output, which is what
     # a rerun after a failed cycle needs. The pairing still governs the UNFORCED path.
     # Two stages since D95: one model drafts, the other examines. See Invoke-DeepDive.
-    if ($doDeep -and $reopenNext) {
-        $reopenSince = (Get-Date).ToUniversalTime().AddMinutes(-3)
-        if ($fullDue) { Invoke-DeepDive -Also (Reopen-Ask $reopenNext -Full) }
-        else { Invoke-DeepDive -Ticker ("$($reopenNext.ticker). " + (Reopen-Ask $reopenNext)) }
-        # Closed only by a ranking this run wrote; otherwise it stays due for the next cycle.
-        $made = Newest-Ranking $reopenSince
-        if ($made) { node pot/deepdive-due.js --ran $reopenNext.id "pot/proposals/$($made.Name)" 2>&1 | ForEach-Object { Note "  $_" } }
-        else { Note "  the reopened Deep dive wrote no ranking - $($reopenNext.ticker) stays due" }
-    } elseif ($doDeep) {
+    $fullSince = (Get-Date).ToUniversalTime().AddMinutes(-3)
+    if ($doDeep) {
         Invoke-DeepDive
     } elseif ($NoDeepDive) { Note 'deep dive not run - this cycle passes -NoDeepDive' }
     else { Note 'deep dive not due - it has run today' }
+
+    # ---- 6b. Reopenings (D127): an extra Deep dive on each booked name whose publication has
+    # landed, ad hoc, on top of the day's own. pot/deepdive-due.js applies the guards that keep old
+    # names from piling up (still cheap, one booking a name, two unproposed in a row, three days to
+    # be read). Here: at most $REOPEN_PER_CYCLE a cycle, oldest filing first, each only if it fits
+    # Codex's allowance as it stands after the runs before it, and never ahead of the full run. A
+    # full run that was due and wrote nothing goes first next cycle: an ad hoc file dated today
+    # would otherwise count as today's Deep dive (Lane-Due) and push it out for the day.
+    if (-not $NoDeepDive) {
+        $reopen = $null
+        try { $reopen = (node pot/deepdive-due.js --json) -join '' | ConvertFrom-Json }
+        catch { Note "  reopenings not checked: $($_.Exception.Message)" }
+        if ($reopen) {
+            foreach ($r in @($reopen.lapsed)) { Note "  reopening lapsed: $($r.ticker) $($r.event) from $($r.from) by $($r.by) ($($r.file))" }
+            foreach ($r in @($reopen.close)) { Note "  reopening closed: $($r.ticker) $($r.event), $($r.closedAs) ($($r.file))" }
+            foreach ($r in @($reopen.refused)) { Note "  reopening refused: $($r.ticker), read $($r.unproposed) times in a row without a proposal - back to the normal flow" }
+            $due = @($reopen.due)
+            if ($due.Count -and $doDeep -and -not (Newest-Ranking $fullSince)) {
+                Note "  $($due.Count) reopening(s) landed, but today's own Deep dive wrote nothing - they wait for the next cycle"
+                $due = @()
+            }
+            $ran = 0
+            foreach ($r in $due) {
+                if ($ran -ge $REOPEN_PER_CYCLE) { Note "  reopening $($r.ticker) waits for the next cycle (at most $REOPEN_PER_CYCLE a cycle)"; continue }
+                if (-not (Test-Allowance @('deepdive'))) { Note "  reopening $($r.ticker) waits - an extra Deep dive does not fit Codex's allowance now"; break }
+                Note ("reopened deep dive: {0}, its {1} {2} (D127)" -f $r.ticker, $r.landed.form, $r.landed.filed)
+                $kept = $PLAN['deepdive']
+                $PLAN['deepdive'] = 'codex'
+                $since = (Get-Date).ToUniversalTime().AddMinutes(-3)
+                Invoke-DeepDive -Ticker ("$($r.ticker). " + (Reopen-Ask $r)) -Soft
+                $PLAN['deepdive'] = $kept
+                # Closed only by a ranking this run wrote; otherwise it stays due for the next cycle.
+                $made = Newest-Ranking $since
+                if ($made) { node pot/deepdive-due.js --ran $r.id "pot/proposals/$($made.Name)" 2>&1 | ForEach-Object { Note "  $_" } }
+                else { Note "  the reopened Deep dive on $($r.ticker) wrote no ranking - it stays due" }
+                $ran++
+            }
+        }
+    }
 
     # Drop the local price fetch now it has been read. Leaving it modified would make the next
     # cycle's ff-only pull fail, and CI's copy is the one that should survive.
