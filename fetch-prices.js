@@ -2267,8 +2267,8 @@ const BENCH_INCOME = { '^GSPC': 'VOO', '^HSI': '2800.HK' };
 //
 // Machines for macro STATE, the LLM for macro INTERPRETATION. An agent asked "what is the regime?"
 // should be given these numbers, not spend a third of its session looking them up and possibly
-// getting them wrong. `^VIX` is deliberately absent: it is already a watchlist line, so it comes
-// through the normal quote path and the standing order reads it there.
+// getting them wrong. `^VIX` is also a watchlist line: its macro row reuses that quote, so it is
+// fetched once, and the standing order still reads it from quotes.
 // The same period keys `movements()` produces, spelled out here rather than imported: this file
 // does not load portfolio.js, and a macro row only needs the moves, not the whole quote shape.
 // Fed policy path — what the CME FedWatch tool shows, from the instrument FedWatch is built on:
@@ -2410,6 +2410,9 @@ const MACRO = {
     'GC=F':     { name: 'Gold',         group: 'Commodity' },
     'CL=F':     { name: 'Crude (WTI)',  group: 'Commodity' },
     'BTC-USD':  { name: 'Bitcoin',      group: 'Commodity' },
+    // Its own group: in Equity, signals.js macroNotes would restate its move "to a sterling
+    // holder", and nobody holds the VIX.
+    '^VIX':     { name: 'S&P 500 volatility', group: 'Volatility' },
 };
 
 async function main() {
@@ -2812,13 +2815,14 @@ async function main() {
 
     // Macro state. Best-effort per symbol, exactly like the benchmarks: a macro line that fails
     // is one blank row in a view, never a broken price file. ^GSPC and ^HSI are already fetched
-    // above as benchmarks, so they are reused rather than requested twice.
+    // above as benchmarks, and ^VIX as a watchlist line, so they are reused rather than requested twice.
     const macro = {};
     let macroOk = 0;
     for (const [sym, meta] of Object.entries(MACRO)) {
         try {
-            const q = benchQuotes[sym] || await fetchTicker(sym);
-            if (!benchQuotes[sym]) await sleep();
+            const have = benchQuotes[sym] || quotes[sym];
+            const q = have || await fetchTicker(sym);
+            if (!have) await sleep();
             macro[sym] = {
                 ...meta, price: q.price, currency: q.currency,
                 ...Object.fromEntries(MACRO_PERIODS.map(p => [p, q[p]])),

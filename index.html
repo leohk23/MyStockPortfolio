@@ -807,7 +807,7 @@
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
             <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
-            <button data-dim="macro" aria-pressed="false" title="Index, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
+            <button data-dim="macro" aria-pressed="false" title="Index, volatility, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
             <button data-dim="pot" aria-pressed="false" title="What the AI pot has produced: the summary, every proposal awaiting a decision, and the sweeps behind them. Rendered from the same markdown the agents write.">Pot</button>
         </div>
     </div>
@@ -4546,7 +4546,7 @@ function renderPot() {
                 + 'above is priced live and has already traded these numbers.';
         }
 
-        const MACRO_GROUPS = ['Equity', 'Rates', 'Currency', 'Commodity'];
+        const MACRO_GROUPS = ['Equity', 'Volatility', 'Rates', 'Currency', 'Commodity'];
         function renderMacro() {
             renderFed();
             renderInflation();
