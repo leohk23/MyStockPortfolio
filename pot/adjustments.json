@@ -621,6 +621,39 @@
         }
       ]
     },
+    "PRU.L": {
+      "basis": "company-adjusted basic EPS based on adjusted operating profit after tax",
+      "ccy": "USD",
+      "note": "Added 17 November 2026 by the deep dive. Prudential reports in US cents; stored as USD per share and converted to the GBp quote by the pipeline. FY2025 IFRS basic EPS was 154.2 cents against 101.4 cents on adjusted operating profit; the release does not itemise the gap in its summary, so no one-off amount is recorded. HY2026 IFRS 37.9 cents against operating 58.4 cents, HY2025 IFRS 49.2 cents against operating 49.3 cents. The derived H2 2025 is annual less H1 on different weighted share counts while buybacks ran, so it is approximate. One rolling twelve-month observation only; no operating-basis historical percentile is certified.",
+      "annual": [
+        {
+          "end": "2025-12-31",
+          "eps": 1.014,
+          "source": "https://www.prudentialplc.com/en/newsroom/company-news/2026/prudential-plc-2025-full-year-results/"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 0.493,
+          "source": "https://www.prudentialplc.com/en/newsroom/company-news/2026/prudential-plc-2026-half-year-results/ (HY2025 comparative)"
+        },
+        {
+          "end": "2025-12-31",
+          "months": 6,
+          "eps": 0.521,
+          "derived": "FY2025 101.4 cents less HY2025 49.3 cents",
+          "source": "https://www.prudentialplc.com/en/newsroom/company-news/2026/prudential-plc-2025-full-year-results/ and https://www.prudentialplc.com/en/newsroom/company-news/2026/prudential-plc-2026-half-year-results/"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 0.584,
+          "source": "https://www.prudentialplc.com/en/newsroom/company-news/2026/prudential-plc-2026-half-year-results/"
+        }
+      ]
+    },
     "RR.L": {
       "basis": "company underlying basic EPS",
       "ccy": "GBP",
