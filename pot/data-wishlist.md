@@ -66,7 +66,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 10 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-500 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+502 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
