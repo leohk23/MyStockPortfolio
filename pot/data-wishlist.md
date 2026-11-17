@@ -1,5 +1,12 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## NVDA ad hoc deep dive, 17 November 2026, 20:41 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-17 | Complete NVIDIA issuer-adjusted quarterly series on its current share-compensation basis. | Rechecked the [Q2 FY2027 release](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/): Q1/Q2 current non-GAAP EPS is $1.87/$2.22; its recast prior-year Q2 is $1.01, now appended for 2025-07-27. The current definition includes stock-based compensation. October 2025 and January 2026 quarters on that same definition remain missing, so no issuer-adjusted TTM or adjusted percentile is certified. Local Q1 normalized income equals GAAP while the issuer's adjusted EPS is lower; vendor normalized and issuer-adjusted bases must stay separate. Needed with results, next Q3 release scheduled for 17 November at approximately 21:20 UTC. |
+| 2026-11-17 | Follow-up to the 6 November NVIDIA financing/gains entry: period-safe evidence and cash collections. | [Q2 10-Q](https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm) and the issuer release confirm H1 pre-tax equity-security gains $23.707bn, including Q2 $7.771bn. The release does not isolate the after-tax common-shareholder amount of these gains. No FY2027 annual row exists locally, so no fabricated matching fy key or subtraction from FY2026 was written. Existing wishlist evidence is retained. Capture customer-support commitments, guarantees, funded investments and valuation gains separately each quarter, together with supported-customer collections where disclosed. Aggregate receivables alone cannot identify circular demand. |
+
 ## Deep dive additions, 16 November 2026, 07:06 UTC
 
 | Date | Data wanted | Why and cadence |
