@@ -139,6 +139,31 @@ in its row what they showed, and decide again. A listed name that no verdict dep
 nothing. A pot holding's results are the Review's to judge; here they only bear on whether to add
 to it, and they are D93's exception 2.
 
+## Book the run that reads what you are waiting for — `## Reopen when` (D127)
+
+When a name ends WAIT because a publication it needs is not out yet, book the Deep dive that will
+read it. The cycle watches for it and runs one on that name when it lands: inside the day's full run
+if one is due, on its own if today's has gone. Nobody has to watch for the filing. Add the table to
+the ranking:
+
+```
+## Reopen when
+
+| ticker | event | from | by | why |
+|---|---|---|---|---|
+| NVDA | 10-Q | 2026-11-17 | 2026-12-01 | Q3 10-Q: the legal-proceedings note, and China and Singapore billing against Q2 |
+```
+
+- **event:** `10-Q`, `10-K`, `20-F`, `40-F`, `6-K` or `8-K`, for a company that files with the SEC,
+  under its US ticker. For any other company, `date`, set to the day its results are due.
+- **from:** the first day a filing counts. **by:** the day to give up, a few weeks past the
+  expected date. **why:** what that run must read; it goes into its prompt word for word.
+- One row per publication. Only for a WAIT that a publication would settle, never for a name the
+  pot holds (the Review owns those).
+
+A run started by a booking says so in its prompt. Read the case and tests behind the booking first,
+and say in the ranking whether each test it named is now met.
+
 ## Answer every risk an earlier proposal of the name found — `earlierRisks` (D94)
 
 Leo's rule, 25 Oct. On 16 October a Deep dive found Halma's real risk: one hyperscaler, 20% of

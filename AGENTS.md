@@ -123,7 +123,9 @@ new, and the Deep dive reads both (pot-design §2):
 when the pot runs, and holds every Claude lane setting in one table. Go there before changing any
 timing or lane setting.** In short: Task Scheduler runs [`pot/run-daily.ps1`](pot/run-daily.ps1) on
 weekdays at 06:30, 12:45 and 21:15 and at weekends at 09:00, UK local. A cycle does the book, the
-Scan, then whichever lanes are due, in order, then the report. The Review also runs on GitHub on the
+Scan, then whichever lanes are due, in order, then the report. A Deep dive's WAIT can book the run
+that reads what it waits for (`## Reopen when`, Leo's in `pot/reopen.md`), and the cycle runs it
+when that filing or date lands (D127). The Review also runs on GitHub on the
 nights `pot/review-due.js` finds it due (D114), and the Mon/Wed/Fri second-run Sweep runs there too
 (D111). The day's one Deep dive is drafted by one model and examined by the other (D95). The
 allowance, not the clock, limits the schedule: read both limit columns of `pot/runs.md` before

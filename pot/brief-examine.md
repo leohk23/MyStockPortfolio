@@ -50,6 +50,9 @@ All of it, provided the evidence is cited and the change is visible:
 - **Change a verdict** in the ranking: PROPOSE, STANDS, WAIT or EXCLUDE. Raising a name to PROPOSE
   means writing its proposal, to the full §8 contract, under the **same `<stamp>`**, headed exactly
   `model: pending, lane: examine, date: <today>, tokens: pending` so the report credits it to you.
+- **Book, amend or remove a reopening** in the ranking's `## Reopen when` table, as
+  `pot/brief-deepdive.md` describes (D127). A test you set that a publication will answer belongs
+  there, so the run that reads it happens without anyone watching for it.
 - **Withdraw a proposal** you conclude should not go to Leo. Keep the file and its text, and put
   this as the line under the provenance line:
   `**Withdrawn by the second reader:** <one sentence: the evidence that decided it>`

@@ -1229,6 +1229,20 @@ does not look exactly like a healthy one.
         } catch { return null; }
     })();
 
+    // D127: booked reopenings. No network here: what has landed comes from pot/reopened.json, which
+    // deepdive-due.js writes in the cycle before this runs. A lapsed one is shown for a week, then
+    // dropped as old news (the D125 reasoning).
+    const reopenings = (() => {
+        try {
+            const d = require('./deepdive-due');
+            let state = {};
+            try { state = JSON.parse(fs.readFileSync(d.STATE, 'utf8')); } catch { /* nothing has landed yet */ }
+            const held = new Set(Object.entries(pos.holdings || {}).filter(([, h]) => h?.qty > 0).map(([t]) => t.toUpperCase()));
+            const c = d.classify(d.allBookings().rows, state, {}, held, Date.now());
+            return { ...c, lapsed: c.lapsed.filter(r => Date.parse(r.by + 'T00:00:00Z') + 8 * 864e5 > Date.now()) };
+        } catch { return { due: [], waiting: [], lapsed: [] }; }
+    })();
+
     // ---- the entry point
     // "Awaiting a decision" means state `open` in the derived book — not "absent from
     // positions.json". That test was right while positions.json listed only DECIDED proposals;
@@ -1322,6 +1336,10 @@ ${strandedSweep
             + ' quoted a price for a name we do not carry. Rule 3 of [sources.md](sources.md) says '
             + 'add the ticker to `watchlist.json`, so the next fetch makes it local.'
         : ''}
+${reopenings.lapsed.length
+        ? reopenings.lapsed.map(r => `- **Reopening lapsed** — ${r.ticker}: no ${r.event} filed between ${r.from} and ${r.by}, `
+            + `booked in ${r.file}. Nothing watches for it now: book it again, or let it go (D127)`).join(String.fromCharCode(10))
+        : ''}
 ${questions.length
         ? '- **' + questions.length + ' rule question' + (questions.length === 1 ? '' : 's') + ' for you**, in [questions.md](questions.md):'
             + String.fromCharCode(10) + questions.map(q => '  - ' + q[1]).join(String.fromCharCode(10))
@@ -1345,6 +1363,12 @@ ${rejections.length
 | cash | holdings | open theses | contributed |
 |---:|---:|---:|---:|
 | £${(pos.cashGBP ?? 0).toLocaleString()} | ${Object.keys(pos.holdings || {}).length} | ${(pos.proposals || []).length} | £${((pos.contributions || []).reduce((a, c) => a + (c.amountGBP || 0), 0)).toLocaleString()} |
+${reopenings.due.length + reopenings.waiting.length
+        ? String.fromCharCode(10) + '**Waiting to reopen** (a Deep dive runs when it lands, D127):' + String.fromCharCode(10) + String.fromCharCode(10)
+            + [...reopenings.due.map(r => `- **${r.ticker}**: its ${r.landed.form} landed ${r.landed.filed}; the next cycle's Deep dive reads it`),
+               ...reopenings.waiting.map(r => `- **${r.ticker}**: ${r.event === 'date' ? 'after ' + r.from : 'its next ' + r.event + ' from ' + r.from + ', until ' + r.by}, booked in ${r.file}`)]
+                .join(String.fromCharCode(10))
+        : ''}
 
 ## Latest by lane
 
@@ -1418,6 +1442,9 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
         console.log(`  no never-cite source in the last ${NEVER_CITE_DAYS} days' sweeps, reviews and proposals (${banned.length} on the list)`);
     }
     if (strandedSweep) console.log(`  ${strandedSweep} quoted a provisional price but added nothing to watchlist.json`);
+    for (const r of reopenings.waiting) console.log(`  reopening booked: ${r.ticker} ${r.event} from ${r.from} until ${r.by}`);
+    for (const r of reopenings.due) console.log(`  reopening landed: ${r.ticker} ${r.landed.form} ${r.landed.filed}, not yet read`);
+    for (const r of reopenings.lapsed) console.log(`  reopening lapsed: ${r.ticker} ${r.event} from ${r.from} by ${r.by}`);
 }
 
 // D125: what the lanes publish, and only the recent part of it. The check used to reread every

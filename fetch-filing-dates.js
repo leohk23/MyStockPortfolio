@@ -493,4 +493,5 @@ function selftest() {
 
 if (process.argv.includes('--selftest')) selftest();
 else if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { filedDates, matchYearEnd };
+// getJson for pot/deepdive-due.js (D127), so EDGAR is always asked with this file's one User-Agent.
+module.exports = { filedDates, matchYearEnd, getJson };
