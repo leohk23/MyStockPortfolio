@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-17T12:45:07.047Z",
- "cashGBP": 256.23,
+ "generated": "2026-11-18T06:30:08.123Z",
+ "cashGBP": 74.98,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -150,8 +150,8 @@
    ]
   },
   "RMD": {
-   "qty": 1,
-   "cost": 229.38,
+   "qty": 2,
+   "cost": 468.90999999999997,
    "currency": "USD",
    "trades": [
     {
@@ -160,11 +160,36 @@
      "qty": 1,
      "price": 229.38,
      "pot": "2026-10-31-0004-RMD"
+    },
+    {
+     "date": "2026-11-16",
+     "side": "BUY",
+     "qty": 1,
+     "price": 239.53,
+     "pot": "2026-11-14-0940-RMD"
     }
    ]
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-17-2041-none.md",
+   "id": "2026-11-17-2041-none",
+   "state": "open",
+   "ticker": "none",
+   "written": "2026-11-17",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": null,
+   "warning": "at Q3 disclosure, reviewed by **20 November 2026**, re-read if receivable days exceed **65** on the consistent proxy `closing net receivables / quarterly revenue × 91`, versus **59.64** at Q2. Also warn if any comparable customer-support category grows **over 20% quarter on quarter and faster than Data Center revenue**. Track equity investments plus unfunded commitments, cloud commitments plus third-party leases, and maximum guarantees separately. Separate valuation gains, cash additions and commitments transferred into funded investments; do not count the same exposure twice. Q2 receivables were **$63.059bn**, with revenue **$96.221bn**. [Q2 10-Q, balance sheet and Notes 6/10](https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm).",
+   "break": "abandon this prospective cash-backed-growth case if the next two reports disclose a material supported-customer default, called guarantee or associated credit loss; or if receivable days exceed 65 for both quarters while a comparable support category outgrows Data Center revenue in both. Final checkpoint **1 March 2027**, an analyst review backstop rather than a confirmed results date. A missing breakdown leaves the test unresolved, not passed. For any later purchased position these conditions would need to be adopted explicitly in its own proposal.",
+   "reviewBy": "2026-11-20",
+   "reproposed": null,
+   "withdrawn": null,
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-11-17-0702-none.md",
    "id": "2026-11-17-0702-none",
@@ -179,9 +204,9 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": null,
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-11-16-0706-none.md",
@@ -197,7 +222,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -215,14 +240,14 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
   {
    "file": "2026-11-14-0940-RMD.md",
    "id": "2026-11-14-0940-RMD",
-   "state": "open",
+   "state": "accepted",
    "ticker": "RMD",
    "written": "2026-11-14",
    "nextResults": null,
@@ -235,7 +260,11 @@
    "withdrawn": null,
    "validUntil": "2026-11-27",
    "resultsDue": "2027-01-28",
-   "vsLimit": -0.0056,
+   "executed": {
+    "date": "2026-11-16",
+    "qty": 1,
+    "price": 239.53
+   },
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -254,7 +283,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -274,7 +303,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-26",
    "resultsDue": "2027-01-19",
-   "vsLimit": -0.0309,
+   "vsLimit": -0.048,
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -315,7 +344,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -333,7 +362,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -351,7 +380,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -369,7 +398,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -387,7 +416,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -425,14 +454,14 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
   {
    "file": "2026-11-05-0910-NFLX.md",
    "id": "2026-11-05-0910-NFLX",
-   "state": "open",
+   "state": "expired",
    "ticker": "NFLX",
    "written": "2026-11-05",
    "nextResults": null,
@@ -445,7 +474,8 @@
    "withdrawn": null,
    "validUntil": "2026-11-18",
    "resultsDue": "2027-01-19",
-   "vsLimit": -0.0865,
+   "expiredBy": "fall",
+   "expiredOn": "2026-11-18",
    "supersededBy": "2026-11-13-0426-NFLX",
    "phase": "live",
    "counts": false
@@ -464,7 +494,7 @@
    "reviewBy": "2026-11-10",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -482,7 +512,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -525,7 +555,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -590,7 +620,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -629,7 +659,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -647,7 +677,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -665,7 +695,7 @@
    "reviewBy": null,
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -2968,7 +2998,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -2986,7 +3016,7 @@
    "reviewBy": "2026-09-09",
    "reproposed": null,
    "withdrawn": null,
-   "supersededBy": "2026-11-17-0702-none",
+   "supersededBy": "2026-11-17-2041-none",
    "phase": "live",
    "counts": false
   },
@@ -4047,6 +4077,7 @@
   }
  ],
  "open": [
+  "2026-11-14-0940-RMD",
   "2026-10-31-0004-RMD",
   "2026-10-08-0459-BVI.PA",
   "2026-10-07-1755-BVI.PA",
@@ -4066,13 +4097,6 @@
    "price": 62.69,
    "until": "2026-11-27",
    "below": 59.5555
-  },
-  "RMD": {
-   "last": "2026-11-14-0940-RMD",
-   "limit": 239.53,
-   "price": 239.53,
-   "until": "2026-11-28",
-   "below": 227.5535
   }
  },
  "earlierRisks": {
@@ -4203,5 +4227,5 @@
    }
   ]
  },
- "today": "2026-11-17"
+ "today": "2026-11-18"
 }
