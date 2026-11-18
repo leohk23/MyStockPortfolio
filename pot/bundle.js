@@ -17,6 +17,10 @@ const path = require('path');
 const REPO = 'https://github.com/leohk23/MyStockPortfolio/blob/main/';
 const ROOT = path.resolve(__dirname, '..');
 const { discoveries } = require('./discoveries');   // shared with report.js - one implementation
+const proposalFiles = require('./proposal-files');
+// A proposal is `proposals/<file>` in whichever folder holds it (D99, D128): both pages key its
+// status on that name, and a move between folders must not rename it.
+const proposalId = rel => proposalFiles.isProposalPath(rel) ? 'proposals/' + path.posix.basename(rel) : rel.replace(/^pot[/]/, '');
 
 const esc = s => s.replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,7 +44,7 @@ const linkTo = (target, fromDir, ids) => {
     const abs = path.resolve(ROOT, fromDir, target.split('#')[0]);
     const rel = path.relative(ROOT, abs).split(path.sep).join('/');
     if (rel.startsWith('..')) return { href: target, external: true };
-    const id = rel.replace(/^pot[/]/, '').replace(/^proposals\/archive\//, 'proposals/');   // D99
+    const id = proposalId(rel);   // D99, D128
     if (ids.has(id)) return { doc: id };
     if (!tracked || tracked.has(rel)) return { href: REPO + rel, external: true };
     return { dead: true };
@@ -189,7 +193,8 @@ function build() {
 //   proposal       this run's, plus anything the pot actually holds or is still deciding
 //   proposalpast   superseded drafts, kept and readable, out of the way
 const splitProposals = () => {
-    const all = listDir('pot/proposals', 'proposal');
+    const { FOLDERS } = proposalFiles;
+    const all = listDir(FOLDERS.current, 'proposal');
     const stampOf = f => (f.match(/^(\d{4}-\d{2}-\d{2}-\d{4})/) || [])[1] || '';
     // "Live" from positions.json rather than from the filename, because a proposal from an older
     // run can still be the thesis behind a holding — 2026-09-08-2133-MWA is exactly that case.
@@ -206,14 +211,16 @@ const splitProposals = () => {
         }
     } catch { /* no positions yet: newest run alone is a sane fallback */ }
     const newest = all.map(d => stampOf(d.file)).filter(Boolean).sort().pop() || '';
-    // D99: what pot/archive.js has filed away is history, wherever it came from.
-    const archived = listDir('pot/proposals/archive', 'proposal').map(d =>
+    // D128: what the pot bought is the thesis behind a holding, so always live.
+    const bought = listDir(FOLDERS.bought, 'proposal');
+    // D99, D128: what pot/archive.js has filed away, rejected or not, is history.
+    const archived = [FOLDERS.rejected, FOLDERS.archive].flatMap(dir => listDir(dir, 'proposal')).map(d =>
         ({ ...d, kind: /-ranking\.md$/.test(d.file) ? 'runreport' : 'proposalpast' }));
     return [...all.map(d => {
         if (/-ranking\.md$/.test(d.file)) return { ...d, kind: 'runreport' };
         if (stampOf(d.file) === newest || live.has(d.file)) return d;
         return { ...d, kind: 'proposalpast' };
-    }), ...archived];
+    }), ...bought, ...archived];
 };
 
     // The document list is settled before anything is rendered: a proposal links to the sweep
@@ -233,9 +240,7 @@ const splitProposals = () => {
         ...listDir('pot/summaries', 'archive'),
     ].filter(d => fs.existsSync(path.join(ROOT, d.dir, d.file)));
 
-    // A proposal is `proposals/<file>` whether it sits at the top or in archive/ (D99): both pages
-    // key its status on that name, and a move between folders must not rename it.
-    const idOf = d => `${d.dir}/${d.file}`.replace(/^pot\//, '').replace(/^proposals\/archive\//, 'proposals/');
+    const idOf = d => proposalId(`${d.dir}/${d.file}`);
     const ids = new Set(wanted.map(idOf));
 
     const docs = wanted.map(d => {

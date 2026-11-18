@@ -17,7 +17,7 @@ thorough, it is to stop re-reading the repo to reach the same verdicts.
 |---|---|
 | `strategy.md` §5 and §9 | the only valid reasons to sell, and how a decision is scored |
 | `pot/positions.json` | what the pot holds, its cash, and every paper record you are judging |
-| `pot/proposals/` | the open theses — the subject of the verdicts. Only what is current sits here; superseded, expired, obsolete, rejected and withdrawn proposals are in `pot/proposals/archive/` (D99), and `pot/positions.json` carries the state of both |
+| the accepted proposals | the open theses, the subject of the verdicts. A proposal's id is its file name, and it sits in a folder under `pot/proposals/` by its state (D99, D128): today an accepted one is in `pot/proposals/bought/`. Find each by its id anywhere under `pot/proposals/`, so a change of folders cannot hide one; `pot/positions.json` carries every state |
 | `prices.json` | marks and `epsStale`, for the paper record and for checking a thesis's numbers |
 | `pot/theses.md` | Leo's standing views, where one bears on a thesis you are judging |
 | `pot/calls.md` | the second reader's dated tests. Its **Due** table is what you score (D106) |

@@ -40,6 +40,7 @@
 // filings per company. A failed request leaves the row unchecked, never due and never lapsed.
 const fs = require('fs');
 const path = require('path');
+const proposalFiles = require('./proposal-files');
 
 const ROOT = path.resolve(__dirname, '..');
 const DAY = 86400000;
@@ -78,14 +79,10 @@ function parseBookings(md, file) {
     return { rows, bad };
 }
 
-// Every booking: the rankings, current and archived (D99), then Leo's own file.
+// Every booking: the rankings, in whichever folder holds them (D99, D128), then Leo's own file.
 function allBookings(root = ROOT) {
-    const files = [];
-    for (const dir of ['pot/proposals', 'pot/proposals/archive']) {
-        let names = [];
-        try { names = fs.readdirSync(path.join(root, dir)); } catch { continue; }
-        for (const f of names) if (/^\d{4}-\d{2}-\d{2}-\d{4}-ranking\.md$/.test(f)) files.push(dir + '/' + f);
-    }
+    const files = proposalFiles.list(proposalFiles.ALL, root)
+        .filter(x => /^\d{4}-\d{2}-\d{2}-\d{4}-ranking\.md$/.test(x.file)).map(x => x.rel);
     if (fs.existsSync(path.join(root, HAND))) files.push(HAND);
     const rows = [], bad = [];
     for (const f of files) {
@@ -218,13 +215,9 @@ async function check(now = Date.now(), getJson = null) {
 function proposedBy(ranking, ticker, root = ROOT) {
     const stamp = stampOf(ranking);
     if (!stamp) return false;
-    for (const dir of ['pot/proposals', 'pot/proposals/archive']) {
-        let names = [];
-        try { names = fs.readdirSync(path.join(root, dir)); } catch { continue; }
-        const f = names.find(n => n.toUpperCase() === `${stamp}-${ticker}.MD`.toUpperCase());
-        if (f && !/^\*\*Withdrawn by the second reader:\*\*/m.test(fs.readFileSync(path.join(root, dir, f), 'utf8'))) return true;
-    }
-    return false;
+    const want = `${stamp}-${ticker}.md`.toUpperCase();
+    return proposalFiles.list(proposalFiles.ALL, root).some(x => x.file.toUpperCase() === want
+        && !/^\*\*Withdrawn by the second reader:\*\*/m.test(fs.readFileSync(path.join(root, x.rel), 'utf8')));
 }
 
 function recordRan(id, ranking, now = Date.now()) {

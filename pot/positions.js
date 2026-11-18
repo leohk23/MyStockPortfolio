@@ -56,10 +56,11 @@ function labelledPrice(order, label) {
 
 const WITHDRAWN = /\*\*Withdrawn by the second reader:?\*\*[:\s]*([^\n]+)/i;   // D95
 
-// D99: a proposal sits at pot/proposals/ while current and in archive/ once dead; its id is its file
-// name either way, so a Tradelog `Pot` cell and every positions.json reference survive a move.
-const ARCHIVE = 'pot/proposals/archive';
-const proposalPath = file => fs.existsSync(p('pot/proposals/' + file)) ? p('pot/proposals/' + file) : p(ARCHIVE + '/' + file);
+// D99, D128: a proposal sits in one of pot/proposals' folders by its state; its id is its file name
+// whichever, so a Tradelog `Pot` cell and every positions.json reference survive a move. Only
+// proposal-files.js knows the folders.
+const proposalFiles = require('./proposal-files');
+const proposalPath = file => p(proposalFiles.find(file) || proposalFiles.FOLDERS.current + '/' + file);
 
 function parseProposal(file) {
     let md;
@@ -360,11 +361,10 @@ function build({ today = new Date().toISOString().slice(0, 10) } = {}) {
     let files = [];
     // A `-ranking.md` is the run's report, not a proposal: parsed as one it became ticker "ranking",
     // counted as a live decision and was marked on the paper page.
-    // Both folders: D99 keeps what is current at the top and moves the rest to archive/, but the
-    // history still feeds D93, D94 and the paper page, and an id is the file's name wherever it sits.
-    const listed = d => { try { return fs.readdirSync(p(d)); } catch { return []; } };
-    files = [...listed('pot/proposals'), ...listed(ARCHIVE)]
-        .filter(f => f.endsWith('.md') && !f.endsWith('-ranking.md') && f !== 'README.md').sort().reverse();
+    // Every folder: D99 and D128 file proposals by state, but the history still feeds D93, D94 and
+    // the paper page, and an id is the file's name wherever it sits.
+    files = proposalFiles.list().map(x => x.file)
+        .filter(f => !f.endsWith('-ranking.md')).sort().reverse();
 
     // Leo's rejections (pot/reject.js, D83): a company he has said no to is not awaiting anything.
     const rejectedBy = new Map();
@@ -506,7 +506,7 @@ if (require.main === module && !process.argv.includes('--selftest')) {   // npm 
         + noFalsifier.map(x => x.id).join(', '));
 }
 
-module.exports = { build, parseProposal, potTrades, potHoldings, ARCHIVE, WITHDRAWN };
+module.exports = { build, parseProposal, potTrades, potHoldings, WITHDRAWN };
 
 // ---------------------------------------------------------------- selftest
 // Only when run itself: proposal-alert.js requires this file, and its own --selftest must not run this one.

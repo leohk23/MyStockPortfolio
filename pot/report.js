@@ -19,6 +19,8 @@ const os = require('os');
 const SESSIONS = path.join(os.homedir(), '.codex', 'sessions');
 const LOGS = 'pot/logs';
 const { discoveries } = require('./discoveries');   // shared with bundle.js - one implementation
+// Where lanes write and what is current; the other folders are proposal-files.js's (D128).
+const PROPOSALS = require('./proposal-files').FOLDERS.current;
 
 const fmt = n => n == null ? '–' : n.toLocaleString();
 const mmss = s => s == null ? '–' : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
@@ -300,10 +302,8 @@ ${of('scored').length ? table(['id', 'name', 'test', 'expected', 'result', 'figu
 `;
 }
 function writeCalls(today) {
-    const rankings = ['pot/proposals', 'pot/proposals/archive'].flatMap(d => {
-        try { return fs.readdirSync(d).filter(f => f.endsWith('-ranking.md')).map(f => d + '/' + f); }
-        catch { return []; }
-    }).sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
+    const rankings = require('./proposal-files').list().filter(x => x.file.endsWith('-ranking.md')).map(x => x.rel)
+        .sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
     const calls = [], bad = [];
     for (const rel of rankings) {
         const md = fs.readFileSync(rel, 'utf8');
@@ -403,7 +403,7 @@ function stampProvenance(run, claimed = new Set()) {
     // 05:30 review recorded no write at all, so no run ever claimed those outputs and an older run
     // stole them. Only PENDING files, and only inside this run's name-stamp window: a run may claim
     // what was named during its own lifetime and never overwrite a stamp another run already set.
-    const LANE_DIR = { deepdive: 'pot/proposals', sweep: 'pot/sweeps', review: 'pot/reviews' };
+    const LANE_DIR = { deepdive: PROPOSALS, sweep: 'pot/sweeps', review: 'pot/reviews' };
     const laneDir = LANE_DIR[run.brief];
     let laneFiles = [];
     if (laneDir) { try { laneFiles = fs.readdirSync(laneDir); } catch { /* no directory yet */ } }
@@ -439,7 +439,7 @@ function examinerHitLimit(ex, runLog) {
 }
 function markUnexamined(runs, runLog) {
     let names = [];
-    try { names = fs.readdirSync('pot/proposals'); } catch { return 0; }
+    try { names = fs.readdirSync(PROPOSALS); } catch { return 0; }
     let marked = 0;
     for (const d of runs.filter(r => r.brief === 'deepdive' && (r.started || '') >= D95_FROM)) {
         const end = Date.parse(d.ended || d.started);
@@ -451,7 +451,7 @@ function markUnexamined(runs, runLog) {
             : `the second reader (${ex.model}) did not finish`;
         for (const name of names) {
             if (!name.endsWith('.md') || !inWindow(name, d)) continue;
-            const rel = 'pot/proposals/' + name;
+            const rel = PROPOSALS + '/' + name;
             try {
                 const body = fs.readFileSync(rel, 'utf8'), nl = body.indexOf('\n');
                 const head = nl < 0 ? '' : body.slice(0, nl);
@@ -1024,7 +1024,7 @@ function build() {
     };
     const sweep = byTime("pot/sweeps")[0] || null;
     const review = byTime("pot/reviews")[0] || null;
-    const proposals = byTime("pot/proposals");
+    const proposals = byTime(PROPOSALS);
 
     const lastOf = lane => runs.find(r => r.brief === lane);
 
@@ -1192,7 +1192,7 @@ does not look exactly like a healthy one.
     };
 
     const propWhen = f => {
-        try { return when(fs.statSync("pot/proposals/" + f).mtime.toISOString()); } catch { return "–"; }
+        try { return when(fs.statSync(PROPOSALS + "/" + f).mtime.toISOString()); } catch { return "–"; }
     };
     // Every lane's output from the last NEVER_CITE_DAYS (D125).
     const violations = neverCiteHits(recentLaneFiles(NEVER_CITE_DAYS, new Date()), banned);
@@ -1282,7 +1282,7 @@ does not look exactly like a healthy one.
     const secondRead = f => {
         if (f.slice(0, 10) < '2026-10-26') return '–';
         let md = '';
-        try { md = fs.readFileSync('pot/proposals/' + f, 'utf8'); } catch { /* listed but gone */ }
+        try { md = fs.readFileSync(PROPOSALS + '/' + f, 'utf8'); } catch { /* listed but gone */ }
         return /^## Second reader/m.test(md) ? ownLine(md) || 'read' : '**not second-read**';
     };
 
@@ -1461,7 +1461,7 @@ ${past.length > 6 ? String.fromCharCode(10) + "_…and " + (past.length - 6) + "
 // the lane wrote it; mtime moves whenever archive.js rewrites a link. Undated files (smoke.md) are
 // tests, not output. A week, so a breach in a GitHub Sweep or Review between cycles is still there
 // when Leo next opens the summary, and gone once it is old news.
-const NEVER_CITE_DIRS = ['pot/sweeps', 'pot/reviews', 'pot/proposals', 'pot/proposals/archive'];
+const NEVER_CITE_DIRS = ['pot/sweeps', 'pot/reviews', ...require('./proposal-files').ALL];
 const NEVER_CITE_DAYS = 7;
 
 function recentLaneFiles(days, now, dirs = NEVER_CITE_DIRS) {

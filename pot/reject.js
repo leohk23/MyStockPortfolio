@@ -47,8 +47,8 @@ function main(argv) {
     const meta = Object.values(read('meta.json', {}));
     const listings = [...new Set([...listingsOf(ticker, [...meta, ...read('watchlist.json', [])]), ...also])].sort();
     const q = (read('prices.json', {}).quotes || {})[ticker];
-    let proposals = [];
-    try { proposals = fs.readdirSync(path.join(ROOT, 'pot/proposals')); } catch { /* none */ }
+    // The newest proposal of the company, in whichever folder holds it now (D128).
+    const proposals = require('./proposal-files').list().map(x => x.file);
     const from = proposals.filter(f => listings.some(t => f.endsWith(`-${t}.md`))).sort().pop();
     const entry = {
         ticker, listings, date: new Date().toISOString().slice(0, 10), reason,

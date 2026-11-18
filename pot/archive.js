@@ -1,27 +1,30 @@
 #!/usr/bin/env node
-// `node pot/archive.js` — keep pot/proposals/ to what is current, and move the rest to
-// pot/proposals/archive/ (D99, Leo 25 Oct 2026). 218 files had accumulated, 62 of them run reports
+// `node pot/archive.js` — keep pot/proposals/ to what is current, and file the rest by state into
+// bought/, rejected/ or archive/ (D99, Leo 25 Oct 2026; D128, 18 Nov). 218 files had accumulated, 62 of them run reports
 // and 132 proposals already superseded, rejected or obsolete, around the dozen worth reading.
 //
 // A file's place follows its STATE, recomputed every cycle, so nothing is ever filed by hand and a
 // file moves back if its state comes back: an expired proposal reopens when the price returns
-// below its limit. Current is
-//   - a proposal the pot bought (the thesis behind a holding);
-//   - one awaiting Leo: open, and not superseded by a newer proposal of the name;
-//   - the standing proposal of a name inside its two-week window (D93), which a STANDS row names;
-//   - every file of the newest Deep dive run: its ranking, its proposals, its `none`.
-// Everything else is archived. A proposal's id is its file name in either folder (positions.js reads
-// both), so the Tradelog's `Pot` column and positions.json never notice. Links between the pot's
-// documents are rewritten to wherever their target now sits, so they keep working on GitHub; the
-// Pot tab names a document by its file name alone (bundle.js), so it does not depend on the folder.
+// below its limit. Since D128 (Leo, 18 Nov) there are four places, and pot/proposal-files.js is the
+// only file that names them:
+//   - bought/     a proposal the pot bought, the thesis behind a holding;
+//   - rejected/   a proposal of a company Leo has turned down (D83);
+//   - the top     what is current: awaiting Leo (open, not superseded by a newer proposal of the
+//                 name), the standing proposal of a name inside its two-week window (D93), which a
+//                 STANDS row names, and every file of the newest Deep dive run;
+//   - archive/    everything else.
+// A proposal's id is its file name in any folder (positions.js asks proposal-files.js), so the
+// Tradelog's `Pot` column and positions.json never notice. Links between the pot's documents are
+// rewritten to wherever their target now sits, so they keep working on GitHub; the Pot tab names a
+// document by its file name alone (bundle.js), so it does not depend on the folder.
 //
 // Runs at the end of a cycle, after the report and before the bundle, when no lane is running: a
 // file moved under a running lane is put back by D91.
 const fs = require('fs');
 const path = require('path');
+const { FOLDERS, ALL, list: listFiles, placeFor, isProposalPath } = require('./proposal-files');
 
 const ROOT = path.resolve(__dirname, '..');
-const TOP = 'pot/proposals', ARCHIVE = 'pot/proposals/archive';
 const stampOf = f => (f.match(/^(\d{4}-\d{2}-\d{2}-\d{4})/) || [])[1] || '';
 
 // Which files belong at the top. Pure: names in, a Set out.
@@ -36,6 +39,13 @@ function current(names, proposals, cooldown) {
     return keep;
 }
 
+// Where each file belongs: file name -> folder. Pure. State first (bought, rejected), then current.
+function placement(names, proposals, cooldown) {
+    const keep = current(names, proposals, cooldown);
+    const state = new Map(proposals.map(p => [p.file, p.state]));
+    return new Map(names.map(f => [f, placeFor(state.get(f), keep.has(f))]));
+}
+
 // Rewrite every relative link whose target is a proposals file to where that file now is. `where`
 // maps a file name to its repo-relative path; `fromDir` is the repo-relative folder of the document.
 function relink(text, fromDir, where) {
@@ -46,7 +56,7 @@ function relink(text, fromDir, where) {
         const to = where.get(base);
         if (!to || !file.endsWith('.md')) return target;
         const resolved = path.posix.normalize(path.posix.join(fromDir, file));
-        if (!/^pot\/proposals\/(archive\/)?[^/]+$/.test(resolved)) return target;   // not a proposals link
+        if (!isProposalPath(resolved)) return target;   // not a proposals link
         const rel = path.posix.relative(fromDir, to);
         return rel + (anchor !== undefined ? '#' + anchor : '');
     };
@@ -82,19 +92,22 @@ function run() {
     const { build } = require('./positions.js');
     const book = build();
     const list = d => { try { return fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.md') && f !== 'README.md'); } catch { return []; } };
-    const atTop = list(TOP), archived = list(ARCHIVE);
-    const keep = current([...atTop, ...archived], book.proposals, book.cooldown);
-    fs.mkdirSync(path.join(ROOT, ARCHIVE), { recursive: true });
-    let out = 0, back = 0;
-    for (const f of atTop) if (!keep.has(f)) { move(f, TOP, ARCHIVE); out++; }
-    for (const f of archived) if (keep.has(f)) { move(f, ARCHIVE, TOP); back++; }
+    const files = listFiles();
+    const place = placement(files.map(x => x.file), book.proposals, book.cooldown);
+    for (const d of ALL) fs.mkdirSync(path.join(ROOT, d), { recursive: true });
+    const moved = new Map();
+    for (const { file, dir } of files) {
+        const to = place.get(file);
+        if (to === dir) continue;
+        move(file, dir, to);
+        moved.set(to, (moved.get(to) || 0) + 1);
+    }
 
     // Every document that can link to a proposal: the proposals themselves, sweeps, reviews, and
     // the pot's own pages. Derived and regenerated folders (logs, summaries) are left to the report.
-    const where = new Map();
-    for (const f of list(TOP)) where.set(f, TOP + '/' + f);
-    for (const f of list(ARCHIVE)) where.set(f, ARCHIVE + '/' + f);
-    const docs = [...[TOP, ARCHIVE, 'pot/sweeps', 'pot/reviews'].flatMap(d => list(d).map(f => d + '/' + f)),
+    const now = listFiles();
+    const where = new Map(now.map(x => [x.file, x.rel]));
+    const docs = [...now.map(x => x.rel), ...['pot/sweeps', 'pot/reviews'].flatMap(d => list(d).map(f => d + '/' + f)),
         ...list('pot').map(f => 'pot/' + f)];
     let relinked = 0;
     for (const rel of docs) {
@@ -103,8 +116,11 @@ function run() {
         const next = relink(text, path.posix.dirname(rel), where);
         if (next !== text) { fs.writeFileSync(abs, next); relinked++; }
     }
-    console.log(`archive: ${out} moved to archive/, ${back} moved back, ${list(TOP).length} current, `
-        + `${list(ARCHIVE).length} archived; links updated in ${relinked} document(s)`);
+    const name = d => d === FOLDERS.current ? 'the top' : path.posix.basename(d) + '/';
+    const count = d => now.filter(x => x.dir === d).length;
+    console.log(`archive: ${[...moved].map(([d, n]) => `${n} moved to ${name(d)}`).join(', ') || 'nothing moved'}; `
+        + `${count(FOLDERS.current)} current, ${count(FOLDERS.bought)} bought, ${count(FOLDERS.rejected)} rejected, `
+        + `${count(FOLDERS.archive)} archived; links updated in ${relinked} document(s)`);
 }
 
 function selftest() {
@@ -123,6 +139,15 @@ function selftest() {
         'bought, awaiting, the D93 standing one, and the newest run; not the expired, obsolete, rejected or an older ranking');
     // A superseded open proposal is not awaiting anything.
     assert.ok(!current(['a.md'], [P('a.md', 'open', { supersededBy: 'b' })], {}).has('a.md'));
+    // D128: bought and rejected go by state, even from the newest run; the rest by currency.
+    const placed = placement(['2026-10-25-1133-ranking.md', '2026-10-25-1133-X.md', '2026-09-08-2133-MWA.md',
+        '2026-10-23-0918-HLMA.L.md', '2026-10-24-0948-BN.PA.md', '2026-09-04-2033-INTU.md'], [
+        P('2026-10-25-1133-X.md', 'rejected'), P('2026-09-08-2133-MWA.md', 'accepted'), P('2026-10-23-0918-HLMA.L.md', 'rejected'),
+        P('2026-10-24-0948-BN.PA.md', 'open'), P('2026-09-04-2033-INTU.md', 'expired')], {});
+    assert.deepStrictEqual(Object.fromEntries(placed), {
+        '2026-10-25-1133-ranking.md': FOLDERS.current, '2026-10-25-1133-X.md': FOLDERS.rejected,
+        '2026-09-08-2133-MWA.md': FOLDERS.bought, '2026-10-23-0918-HLMA.L.md': FOLDERS.rejected,
+        '2026-10-24-0948-BN.PA.md': FOLDERS.current, '2026-09-04-2033-INTU.md': FOLDERS.archive });
 
     const where = new Map([['2026-10-24-0948-ranking.md', 'pot/proposals/archive/2026-10-24-0948-ranking.md'],
         ['2026-10-24-0948-BN.PA.md', 'pot/proposals/2026-10-24-0948-BN.PA.md']]);
@@ -138,6 +163,10 @@ function selftest() {
         '[x](https://example.com/2026-10-24-0948-ranking.md) [y](../../prices.json)', 'external and non-proposal links untouched');
     const once = relink('[r](2026-10-24-0948-ranking.md)', 'pot/proposals', where);
     assert.strictEqual(relink(once, 'pot/proposals', where), once, 'idempotent');
+    const whereD128 = new Map([['2026-09-08-2133-MWA.md', 'pot/proposals/bought/2026-09-08-2133-MWA.md']]);
+    assert.strictEqual(relink('[m](../proposals/archive/2026-09-08-2133-MWA.md)', 'pot/reviews', whereD128),
+        '[m](../proposals/bought/2026-09-08-2133-MWA.md)', 'from archive/ to bought/');
+    assert.strictEqual(relink('[m](2026-09-08-2133-MWA.md)', 'pot/proposals', whereD128), '[m](bought/2026-09-08-2133-MWA.md)');
 
     // A file moving down a folder takes its own links with it; and back up again.
     const doc = '[s](../sweeps/2026-08-28.md) [p](../../prices.json#x) [w](https://a.b/c) [r](2026-08-28-ranking.md)\n[ref]: ../positions.json';
@@ -148,4 +177,4 @@ function selftest() {
 }
 
 if (require.main === module) process.argv.includes('--selftest') ? selftest() : run();
-module.exports = { current, relink, rebase };
+module.exports = { current, placement, relink, rebase };

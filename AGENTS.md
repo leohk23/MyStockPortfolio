@@ -155,7 +155,7 @@ workflow never calls an LLM. The lanes that run in CI, the cloud Sweep (D111) an
 subscription through Claude's long-lived token, so D3 holds; Codex cannot follow, because OpenAI's
 guide to a ChatGPT login in CI rules out public repositories.
 
-**`pot/proposals/` holds only what is current** (bought, awaiting Leo, a D93 standing proposal, the newest run); `pot/archive.js` files the rest in `pot/proposals/archive/` at the end of every cycle, by state, and moves a file back if its state returns (D99). A proposal's id is its file name in either folder, so read both when looking one up.
+**`pot/proposals/` holds only what is current** (awaiting Leo, a D93 standing proposal, the newest run); `pot/archive.js` files the rest by state at the end of every cycle, into `bought/`, `rejected/` or `archive/`, and moves a file back if its state returns (D99, D128). A proposal's id is its file name in whichever folder, so look one up anywhere under `pot/proposals/`. Only `pot/proposal-files.js` names the folders: a script asks it, never names one itself.
 
 **The second reader's search is open and its decision is not (D106).** What it examines is its own choice, with no checklist (D95). What follows is a rule in `pot/brief-examine.md`: findings graded `holds`, `weakens` or `breaks`, the grades set the outcome, and each section opens with its own `Would I place it` line. A disagreement is settled by type, and a gap in the rules goes once to `pot/questions.md`, which surfaces under "Needs you" until Leo's answer closes it. Its dated calls, each with a forecast, are scored by the Review and tallied by model in `pot/calls.md`.
 

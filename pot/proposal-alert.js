@@ -23,7 +23,7 @@ const { execFileSync } = require('child_process');
 const { WITHDRAWN } = require('./positions');
 
 const ROOT = path.resolve(__dirname, '..');
-const DIR = 'pot/proposals';
+const DIR = require('./proposal-files').FOLDERS.current;   // where a new proposal lands (D128)
 const ID = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})-([A-Z0-9][A-Z0-9.^=-]{0,14})$/i;
 const WINDOW_MS = 2 * 86400000;
 const MAX_BODY = 60000;            // GitHub refuses an issue body over 65,536 characters

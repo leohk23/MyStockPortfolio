@@ -663,16 +663,13 @@ function main() {
         holdings: (() => { const h = require('./vault').readHoldings(); return h.full ? h.holdings : []; })(),
         potPositions: read('pot/positions.json'),
         previous: read('signals.json'),
-        // D122: when the newest full Deep dive ran, from its ranking's stamp, in either folder (D99).
+        // D122: when the newest full Deep dive ran, from its ranking's stamp, in whichever folder
+        // holds it (D99, D128).
         deepDiveSince: (() => {
             const at = new Map();
-            for (const d of ['pot/proposals', 'pot/proposals/archive']) {
-                let names = [];
-                try { names = fs.readdirSync(d); } catch { /* no folder yet */ }
-                for (const f of names) {
-                    const m = f.match(/^(\d{4}-\d{2}-\d{2}-\d{4})-ranking\.md$/);
-                    if (m) at.set(m[1], `${d}/${f}`);
-                }
+            for (const { file, rel } of require('./pot/proposal-files').list()) {
+                const m = file.match(/^(\d{4}-\d{2}-\d{2}-\d{4})-ranking\.md$/);
+                if (m) at.set(m[1], rel);
             }
             const titleOf = s => { try { return (fs.readFileSync(at.get(s), 'utf8').match(/^# .*$/m) || [''])[0]; } catch { return ''; } };
             return lastFullDeepDive([...at.keys()], titleOf);
