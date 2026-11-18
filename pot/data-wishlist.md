@@ -1,5 +1,16 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 18 November 2026, 07:02 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-18 | Publication evidence behind BRC's reportedSinceDeepDive flag. | The Scan marks 17 November as reported while its next-results date is 24 November. The [issuer newsroom](https://investors.bradycorp.com/news-events/news-releases) did not supply the claimed new quarter in this run; local accounts still end July 2026. Retain the contradiction rather than treating the calendar flag as a filed result. Wanted at every reported event. |
+| 2026-11-18 | Follow-up to 17 November NVIDIA adjusted EPS and filing gaps. | The [Q3 issuer release](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Third-Quarter-Fiscal-2027/) supplies current-basis adjusted EPS $2.68 for 2026-10-25 and $1.27 for 2025-10-26, now appended. January 2026 on the same basis is still missing: no adjusted TTM or history is certified. Q3 legal proceedings, Singapore/China billing and supported-customer commitments still require the 10-Q; the supplemental release does not answer those tests. Wanted with each result. |
+| 2026-11-18 | Issuer-confirmed next annual-results dates for HKEX and AAK. | [HKEX investor relations](https://www.hkexgroup.com/Investor-Relations?sc_lang=en) says TBC; AAK's issuer-confirmed day was not retrieved. Existing calls retain their deadlines, but no guessed date event was booked. Needed before scheduling a non-SEC publication-triggered Deep dive. |
+| 2026-11-18 | Local coverage and executable costs for Finnish alternative listings. | T212 lists [Wärtsilä MTA.DE](https://www.trading212.com/trading-instruments/invest/MTA.DE) and [Metso M6Q.DE](https://www.trading212.com/fr/trading-instruments/invest/M6Q.DE). Neither has a local listing-specific quote/ceiling here. Confirm instrument identity and units, then obtain local coverage and actual venue costs before substituting it for Helsinki; never transfer another listing's numeric limit. |
+| 2026-11-18 | BBCA.JK broker access and all first-year trading/custody charges. | [IDX trading mechanism](https://www.idx.id/en/products-services/trading-hours-and-mechanism/) confirms 100 shares per lot. One lot fits current cash at the local ceiling; venue access and the applicable broker schedule, rather than share affordability, remain unknown. Confirm any alternative listing and its costs before an executable order. |
+
+
 ## NVDA ad hoc deep dive, 17 November 2026, 20:41 UTC
 
 | Date | Data wanted | Why and cadence |
