@@ -1,5 +1,16 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Sweep additions, 19 November 2026, 07:51 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-19 | UK headline inflation, fuel contribution and underlying inflation measures. | Fetched from the [ONS October bulletin](https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/october2026). Wanted monthly, carried into weekly sweeps; the fuel-led increase makes falling crude an incomplete measure of household and company cost pressure. |
+| 2026-11-19 | Oil on-water versus on-land inventories and the supply-demand balance, repeated reach. | The [IEA November OMR highlights](https://www.iea.org/reports/oil-market-report-november-2026) were directly accessible today, resolving yesterday's access failure. Wanted monthly while disruption persists. Earlier repeated entries already justify a feed: oil afloat and depleted on-land stocks can coexist with a forecast surplus. |
+| 2026-11-19 | Munich Re recurring investment income, running/reinvestment yields, major-loss budget versus actual and risk-adjusted renewal pricing. | Fetched from the [issuer Q3 statement](https://www.munichre.com/en/company/media-relations/media-information-and-corporate-news/media-information/2026/quarterly-statement-3-2026.integratortemplatesecure.html). Wanted on results and renewal dates while MUV2.DE is tracked; future renewal evidence remains outstanding. Separates durable reinvestment earnings from unusually light claims and reserve releases. |
+| 2026-11-19 | Compass retention, net new business, mobilisation capex and post-acquisition capital returns. | Fetched from the [Q3 update](https://www.compass-group.com/en/media/news/2026/compass-group-third-quarter-trading-update-2026.html) and [H1 results](https://www.compass-group.com/en/media/news/2026/half-year-results-announcement-for-the-six-months-ended-31-march.html). Wanted on results dates while CPG.L is tracked, next 24 November per the issuer calendar; customer wins must produce cash after mobilisation and acquisition costs. |
+| 2026-11-19 | CPG.L price-history currency continuity across 1 April 2026. | The [issuer's currency-change notice](https://www.compass-group.com/en/media/news/2026/change-in-trading-currency-of-compass-group-s-ordinary-shares-.html) confirms GBp to USD; [Yahoo's listing](https://finance.yahoo.com/quote/CPG.L/) now quotes USD. Needed once on onboarding and at later currency changes, not weekly. Historical continuity was not reconciled here; do not assume a multi-year price or valuation percentile is comparable across that boundary. |
+| 2026-11-19 | Tencent compute-prepayment utilisation and cash returns, plus issuer-release-to-local-accounts lag. | The [Q3 issuer release](https://www.tencent.com/wp-content/uploads/2026/11/Tencent-Announces-2026-Third-Quarter-Results.pdf) supplies a new cash-flow warning while local earnings and quote period markers remain June. Returns on prepaid compute are not separately established. Wanted every results release; NVIDIA's local quarterly store also remains July after its November release. Current prices do not certify current cash denominators. |
+
 ## Deep dive additions, 18 November 2026, 07:02 UTC
 
 | Date | Data wanted | Why and cadence |
