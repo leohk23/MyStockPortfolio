@@ -1,5 +1,12 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 19 November 2026, 08:31 UTC (ad hoc 0700.HK)
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-19 | A local TCEHY quote, its ADR ratio and depositary fee, third reach (after 2026-11-07 and 2026-11-11). | Ad hoc Deep dive 2026-11-19-0831. Trading 212's [TCEHY.US page](https://www.trading212.com/trading-instruments/invest/TCEHY.US) is in its indexed catalogue (OTC, ISIN US88032Q1094), but the page returned 403 to a direct fetch. The 0700.HK board lot of 100 shares is about £3,362, so TCEHY is the only route the pot can afford. With no `prices.json` quote, §7.2 cannot check an order price, and `positions.js` cannot check the ceiling. The 1:1 ratio and the depositary's annual fee are unverified, because the filing scout will not read depositary pages. Wanted before the next Tencent Deep dive, then on each price run. |
+| 2026-11-19 | Tencent's results-date notice for FY2026 annual results. | Not announced. `hk-board.json` should pick up the Rule 13.43 board-meeting notice, around early March. Wanted so the Q4 cash-flow test below can be booked as a `date` reopening on a real date rather than a guessed one. |
+
 ## Sweep additions, 19 November 2026, 07:51 UTC
 
 | Date | Data wanted | Why and cadence |

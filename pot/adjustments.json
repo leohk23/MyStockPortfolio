@@ -1,7 +1,17 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-18",
+  "updated": "2026-11-19",
   "normalizedEps": {
+    "0700.HK": {
+      "basis": "company-adjusted (non-IFRS) diluted EPS",
+      "ccy": "CNY",
+      "note": "Added 19 November 2026. Q3 2026 IFRS diluted EPS RMB6.947 against non-IFRS RMB7.227; Q3 2025 IFRS RMB6.779 against non-IFRS RMB7.575. Non-IFRS excludes share-based compensation, investee gains and losses, intangible amortisation and impairments. Two non-contiguous quarters do not establish research TTM or an adjusted historical percentile. Read via a text extraction of the issuer PDF, not opened first-hand.",
+      "annual": [],
+      "quarters": [
+        { "end": "2025-09-30", "eps": 7.575, "source": "https://www.tencent.com/wp-content/uploads/2026/11/Tencent-Announces-2026-Third-Quarter-Results.pdf" },
+        { "end": "2026-09-30", "eps": 7.227, "source": "https://www.tencent.com/wp-content/uploads/2026/11/Tencent-Announces-2026-Third-Quarter-Results.pdf" }
+      ]
+    },
     "IBKR": {
       "basis": "company-adjusted diluted EPS",
       "ccy": "USD",
@@ -718,6 +728,13 @@
     }
   },
   "adjustments": {
+    "0700.HK": [
+      {
+        "fy": "2026-12-31", "amount": 8780000000, "ccy": "CNY", "arithmetic": false,
+        "what": "Q3 2026 net gains from investee companies, excluded in the issuer's IFRS-to-non-IFRS reconciliation of profit attributable. Stated before the separate tax-effects line, so not certified after-tax attributable income. Evidence only: it is why Q3 IFRS EPS rose 2.5% while non-IFRS EPS fell 4.6%.",
+        "source": "https://www.tencent.com/wp-content/uploads/2026/11/Tencent-Announces-2026-Third-Quarter-Results.pdf", "found": "2026-11-19"
+      }
+    ],
     "GWRE": [
       {
         "fy": "2026-07-31", "amount": 632000, "ccy": "USD", "arithmetic": false,
