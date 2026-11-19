@@ -2,6 +2,20 @@
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-11-19",
   "normalizedEps": {
+    "BABA": {
+      "basis": "company-adjusted (non-GAAP) diluted EPS per ADS",
+      "ccy": "CNY",
+      "note": "Added 19 November 2026 (ad hoc BABA deep dive, 2026-11-19-2126). Per ADS (8 ordinary shares), the unit the BABA quote is in. Non-GAAP excludes share-based compensation, intangible amortisation, gains and losses on investments, impairments and certain other items. GAAP diluted EPS per ADS for the same quarters: Dec 2025 RMB5.93, Mar 2026 RMB10.36, Jun 2026 RMB3.97 (H1 RMB29.91 less Sep quarter RMB25.94), Sep 2026 RMB25.94. The Dec 2025 and Mar 2026 figures were fetched by a scout-filings subagent from the issuer's 6-K exhibits and cross-checked here: Dec 7.09 + Mar 0.62 + H1 FY2026 (16.62 / 0.87 = 19.10) = 26.81 against the stated FY2026 non-GAAP RMB26.80. Four contiguous quarters give a current adjusted TTM of RMB24.33; this does not create an adjusted historical percentile.",
+      "annual": [
+        { "end": "2026-03-31", "eps": 26.80, "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926060224/tm2614494d1_ex99-1.htm" }
+      ],
+      "quarters": [
+        { "end": "2025-12-31", "eps": 7.09, "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926032060/tm269353d1_ex99-1.htm" },
+        { "end": "2026-03-31", "eps": 0.62, "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926060224/tm2614494d1_ex99-1.htm" },
+        { "end": "2026-06-30", "eps": 8.52, "derived": "H1 FY2027 RMB16.62 less Sep 2026 quarter RMB8.10", "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926130115/tm2630263d1_ex99-1.htm" },
+        { "end": "2026-09-30", "eps": 8.10, "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926130115/tm2630263d1_ex99-1.htm" }
+      ]
+    },
     "0700.HK": {
       "basis": "company-adjusted (non-IFRS) diluted EPS",
       "ccy": "CNY",
@@ -729,6 +743,13 @@
     }
   },
   "adjustments": {
+    "BABA": [
+      {
+        "fy": "2027-03-31", "amount": 87068000000, "ccy": "CNY", "arithmetic": false,
+        "what": "Sep 2026 quarter gain on deemed disposals, disposals and revaluation of investments (mark-to-market of equity investments), excluded in the issuer's net income to non-GAAP reconciliation. Pre-tax and consolidated: offset in the same quarter by RMB18,446m impairment of goodwill and investments and RMB20,591m of tax effects, so not certified after-tax attributable. Evidence only: it is why quarterly net income was RMB64,420m against non-GAAP RMB19,909m, and GAAP diluted EPS per ADS RMB25.94 against non-GAAP RMB8.10.",
+        "source": "https://www.sec.gov/Archives/edgar/data/1577552/000110465926130115/tm2630263d1_ex99-1.htm", "found": "2026-11-19"
+      }
+    ],
     "0700.HK": [
       {
         "fy": "2026-12-31", "amount": 8780000000, "ccy": "CNY", "arithmetic": false,
