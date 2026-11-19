@@ -612,3 +612,10 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
+
+## Second reader additions, 19 November 2026, ad hoc BABA
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-19 | BABA profit-to-operating-cash reconciliation, cloud customer prepayments and cash taxes paid | The [19 November HKEX announcement](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1119/2026111900873.pdf), pp. 33–35 and 39–40, gives condensed cash totals and an exact OCF-to-FCF bridge, but no detailed net-income-to-OCF working-capital reconciliation or cloud-only prepayment contribution. Deferred-revenue balance changes and current tax expense cannot substitute for cash-flow lines. Wanted in the next fuller interim/annual accounts when published; the date of that fuller disclosure is unverified. The 18 November booked cash-bridge task remains partly met. Do not infer a working-capital outflow from net income less OCF. |
+| 2026-11-19 | BABA June 2026 local earnings reconciliation | The [20 August issuer release](https://data.alibabagroup.com/ecms-files/1532295521/fa5d65fc-9b3e-4e82-a8fc-4ce1c3e2c407/Alibaba%20Group%20Announces%20June%20Quarter%202026%20Results.pdf) reports operating income RMB15,161m against local 19,619m; their RMB4,458m difference equals goodwill impairment. GAAP diluted EPS is RMB3.71 against local 3.68, while company-adjusted diluted EPS is directly RMB8.52. Wanted on the next fundamentals refresh, preserving source/basis labels; this examination does not edit earnings.json. |
