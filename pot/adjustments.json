@@ -1,7 +1,46 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-19",
+  "updated": "2026-11-20",
   "normalizedEps": {
+    "INTU": {
+      "basis": "company-adjusted non-GAAP diluted EPS including share-based compensation",
+      "ccy": "USD",
+      "note": "Added 20 November 2026. FY2027 presentation includes share-based compensation; the issuer restates every FY2026 comparator onto that same basis in Table B2. Do not mix with older non-GAAP EPS that excluded SBC. Table B1 gives Q1 FY2027 GAAP EPS 2.59 and non-GAAP EPS 2.91, with USD119m net investment gains (pre-tax; not an attributable earnings deduction). Five contiguous quarters support current company-adjusted TTM, not an adjusted historical percentile. The cached local latest quarter still ends July 2026; these records await the normal price fetch.",
+      "annual": [
+        {
+          "end": "2026-07-31",
+          "eps": 18.63,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-10-31",
+          "eps": 1.87,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        },
+        {
+          "end": "2026-01-31",
+          "eps": 2.73,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        },
+        {
+          "end": "2026-04-30",
+          "eps": 11.47,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        },
+        {
+          "end": "2026-07-31",
+          "eps": 2.62,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        },
+        {
+          "end": "2026-10-31",
+          "eps": 2.91,
+          "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm"
+        }
+      ]
+    },
     "BABA": {
       "basis": "company-adjusted (non-GAAP) diluted EPS per ADS",
       "ccy": "CNY",
@@ -107,7 +146,7 @@
     "UU.L": {
       "basis": "company underlying basic EPS",
       "ccy": "GBP",
-      "note": "FY2025 comparator is unaudited pro forma, re-presented for FY2026 estimation changes. FY2026 includes 37p from higher IRE capitalisation and 3p from inflation-linked debt estimation. Annual evidence only: no current research TTM or comparable adjusted percentile established.",
+      "note": "FY2025 comparator is unaudited pro forma, re-presented for FY2026 estimation changes. FY2026 includes 37p from higher IRE capitalisation and 3p from inflation-linked debt estimation. Annual evidence only: no current research TTM or comparable adjusted percentile established. Update 20 November 2026: added the issuer's H1 FY2027 EPS and its newly pro-forma H1 comparator. The September 2025 0.572 is pro forma, not the originally published 0.528. It includes the issuer's accounting re-presentation; do not derive a matching H2 from an annual figure without reconciling the basis. These two half-years are non-contiguous and do not create adjusted TTM.",
       "annual": [
         {
           "end": "2025-03-31",
@@ -120,7 +159,20 @@
           "source": "https://corporate.unitedutilities.com/globalassets/documents/corporate-documents/2025-26-preliminary-full-year-results-rns-final.pdf"
         }
       ],
-      "quarters": []
+      "quarters": [
+        {
+          "end": "2025-09-30",
+          "months": 6,
+          "eps": 0.572,
+          "source": "https://www.unitedutilities.com/globalassets/documents/corporate-documents/1h27-rns-final-combined-website.pdf"
+        },
+        {
+          "end": "2026-09-30",
+          "months": 6,
+          "eps": 0.563,
+          "source": "https://www.unitedutilities.com/globalassets/documents/corporate-documents/1h27-rns-final-combined-website.pdf"
+        }
+      ]
     },
     "RMD": {
       "basis": "company-adjusted (non-GAAP) diluted EPS",
@@ -743,6 +795,17 @@
     }
   },
   "adjustments": {
+    "INTU": [
+      {
+        "fy": "2027-07-31",
+        "amount": 119000000,
+        "ccy": "USD",
+        "arithmetic": false,
+        "what": "Q1 FY2027 net realized and unrealized gains on long-term investments, Table B1 footnote A. Pre-tax amount only, not an after-tax attributable deduction. Current fiscal year is not yet an annual row in earnings.json; do not attach this to FY2026.",
+        "source": "https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm",
+        "found": "2026-11-20"
+      }
+    ],
     "BABA": [
       {
         "fy": "2027-03-31", "amount": 87068000000, "ccy": "CNY", "arithmetic": false,

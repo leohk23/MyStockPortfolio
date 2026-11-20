@@ -1,5 +1,15 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 20 November 2026, 18:25 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-20 | Local alternative-listing quotes, primary mappings, executable units and ceilings for AJI.DE, MTA.DE and M6Q.DE. | Trading 212 Invest lists [Ajinomoto AJI](https://www.trading212.com/trading-instruments/invest/AJI.DE), [Wärtsilä MTA](https://www.trading212.com/trading-instruments/invest/MTA.DE) and [Metso M6Q](https://www.trading212.com/trading-instruments/invest/M6Q.DE). AJI carries ISIN JP3119600009. The home symbols are 2802.T, WRT1V.HE and METSO.HE. None of these alternative listings has a local quote/ceiling. Do not mechanically FX-convert a home-listing ceiling. Resolve before an order, then use the normal price pipeline. BCA BZG2.DE remains an already-recorded coverage request. Ajinomoto's [issuer ADR page](https://www.ajinomoto.co.jp/company/en/ir/stock/adr.html) also identifies AJINY; prefer the ordinary-share route if verified, otherwise source receipt fees. |
+| 2026-11-20 | Extend the existing EUZ operating-profit reconciliation through FY2025 and 9M2026. | The [FY2025 issuer report](https://www.ezag.com/wp-content/uploads/2025/05/euz25e.pdf) gives FY2022–25 EBIT EUR46.8m, 45.5m, 59.9m and 73.7m; local opinc is EUR45.921m, 46.582m, 67.225m and 75.276m. Nine-month local opinc EUR52.761m also differs from [filed EBIT EUR52.574m](https://www.ezag.com/wp-content/uploads/2026/11/euz326_e_offen.pdf). Reconcile definitions before certifying local ROIC, rather than treating these as trends on one basis. Existing licensing and October-2024 spin-off history requests remain open. |
+| 2026-11-20 | Intuit October-quarter refresh and basis-labelled non-GAAP history including SBC. | [Q1 FY2027 release](https://www.sec.gov/Archives/edgar/data/896878/000089687826000043/fy27q1earningspressrelease.htm) provides current and restated comparative EPS including SBC. Appended source-backed periods to adjustments; local earnings still ends July and trailing EPS is 16.50. Refresh in the normal workflow; do not overwrite filed EPS or attach a reported percentile to company-adjusted TTM. Wanted at results. |
+| 2026-11-20 | AOT reported/next-results timestamp reconciliation. | The Scan says reported 20 November yet still supplies next 26 November. Outside the valuation filter today, so no investment verdict depended on that metadata. Confirm against the issuer before treating a future D122 event as proof of publication. |
+| 2026-11-20 | Accepted EUZ limit-price increment at Trading 212/Xetra. | The computed ceiling is EUR14.5699; exact platform tick acceptance was not verified. Never round upward through the economic ceiling. The examiner can lower the executable limit after verifying the increment. Wanted before placing this order; not a change to the valuation formula. |
+
 ## Deep dive additions, 19 November 2026, 08:31 UTC (ad hoc 0700.HK)
 
 | Date | Data wanted | Why and cadence |
