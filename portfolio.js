@@ -126,6 +126,38 @@ function twr(mv, flow, income = null) {
     return out;
 }
 
+// What each holding did to a basket's time-weighted return: its share of twr(), in the return's own
+// units (0.0281 = 2.81 points of it). `parts` is one { mv, flow, income } per holding, from cohortMV
+// over the same days and already cut to the range. The basket is their sum, so this is the line
+// twr() draws for the whole, and the shares add up to its last value exactly, not approximately.
+// Each day a holding adds its own gain (change in value, less its trade cash, plus its dividend)
+// over the basket's value the day before, scaled by how far the basket had grown by that day. A
+// position bought mid-range adds nothing before it is held, and its buy is cash in, not a gain.
+// Gaps follow twr(): a day with no priced holding breaks the chain, and the next day starts afresh.
+function contributions(parts) {
+    const n = parts.reduce((m, p) => Math.max(m, p.mv.length), 0);
+    const shares = parts.map(() => 0);
+    let grown = 1, prev = null;
+    for (let i = 0; i < n; i++) {
+        let v = null, flow = 0, income = 0;
+        for (const p of parts) {
+            if (p.mv[i] != null) v = (v ?? 0) + p.mv[i];
+            flow += p.flow[i] || 0;
+            income += p.income?.[i] || 0;
+        }
+        if (v == null) { prev = null; continue; }
+        if (prev != null && prev > 0) {
+            for (let k = 0; k < parts.length; k++) {
+                const p = parts[k];
+                shares[k] += grown * ((p.mv[i] ?? 0) - (p.mv[i - 1] ?? 0) - (p.flow[i] || 0) + (p.income?.[i] || 0)) / prev;
+            }
+            grown *= 1 + (v - prev - flow + income) / prev;
+        }
+        prev = v;
+    }
+    return { total: grown - 1, shares };
+}
+
 // What a holding has paid out since it was bought, in USD at today's FX (invariant 2), net of
 // withholding. `actual`: IBKR's own record (h.received, extract-portfolio.js), every dividend and the
 // tax taken from it, and a gilt's interest. `estimated`: every other lot, from `divs` (net per share,
@@ -555,7 +587,7 @@ function existingShares(holdings, since, rates) {
     return out;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, contributions, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -656,6 +688,30 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
     assert.deepStrictEqual(cohortMV(['2026-01-02', '2026-01-09'],
         [{ yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2025-12-01', side: 'BUY', qty: 4, price: 10, currency: 'USD' }] }],
         { A: [10, 10] }, rates, null, { A: [['2026-01-06', 0.5]] }).income, [0, 2]);
+
+    // contributions(): each holding's share of the basket's TWR, adding up to it exactly. A is held
+    // throughout (10 @ 10, 11, 11, 12); B is bought on day 2 (5 @ 20), then rises to 22. The buy is
+    // cash in, not a gain, so B adds nothing until day 3. Returns: +10%, 0, +20/210; TWR 43/210.
+    // A: 10/100, then 10/210 grown by 1.1 = 32/210. B: 10/210 grown by 1.1 = 11/210.
+    {
+        const cdays = ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'];
+        const A = { yahoo: 'A', quoteCurrency: 'USD', trades: [{ date: '2026-01-01', side: 'BUY', qty: 10, price: 10, currency: 'USD' }] };
+        const B = { yahoo: 'B', quoteCurrency: 'USD', trades: [{ date: '2026-01-03', side: 'BUY', qty: 5, price: 20, currency: 'USD' }] };
+        const closes = { A: [10, 11, 11, 12], B: [20, 20, 20, 22] };
+        const parts = [A, B].map(h => cohortMV(cdays, [h], closes, rates, null));
+        const whole = cohortMV(cdays, [A, B], closes, rates, null);
+        const line = twr(whole.mv, whole.flow, whole.income);
+        const c = contributions(parts);
+        assert.ok(Math.abs(c.shares[0] - 32 / 210) < 1e-12 && Math.abs(c.shares[1] - 11 / 210) < 1e-12, 'each holding\'s share');
+        assert.ok(Math.abs(c.total - line[3]) < 1e-12 && Math.abs(c.shares[0] + c.shares[1] - line[3]) < 1e-12, 'the shares add up to the line');
+        // A dividend is return: the price falls by the dividend paid, and the holding's share is 0.
+        const div = cohortMV(['2026-01-01', '2026-01-02'], [A], { A: [10, 9] }, rates, null, { A: [['2026-01-02', 1]] });
+        assert.ok(Math.abs(contributions([div]).shares[0]) < 1e-12, 'a dividend offsets its own ex-date drop');
+        // A day with nothing priced breaks the chain, as in twr(): no return is invented across it.
+        const gapped = contributions([{ mv: [100, null, 120], flow: [0, 0, 0] }]);
+        assert.deepStrictEqual([gapped.total, gapped.shares[0]], [0, 0]);
+        assert.strictEqual(twr([100, null, 120], [0, 0, 0])[2], 0);
+    }
 
     // Weighted by value: a $300 leg at +10% and a $100 leg at -10% => +5%.
     const legs = [{ value: 300, quote: { '1y': 0.10 } }, { value: 100, quote: { '1y': -0.10 } }];

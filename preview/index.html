@@ -123,6 +123,11 @@
         #tip .row { display: flex; align-items: center; gap: 5px; }
         #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        #chart-movers { font-size: 12px; margin-top: 6px; line-height: 1.5; }
+        #chart-movers:empty { display: none; }
+        /* Contribution needs the trades: locked, the column is not there at all, rather than a
+           column of dashes that reads as missing data. */
+        body.no-contrib .contrib { display: none; }
         #chart-note .deep-notes { margin-top: 0; }
         #chart-note .deep-notes > div { margin-top: 4px; }
 
@@ -759,6 +764,7 @@
             <svg id="chart" role="img" aria-label="Portfolio chart"></svg>
             <div id="tip" role="status"></div>
         </div>
+        <div id="chart-movers"></div>
         <div id="chart-note"></div>
     </section>
 
@@ -807,7 +813,7 @@
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
             <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
-            <button data-dim="macro" aria-pressed="false" title="Index, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
+            <button data-dim="macro" aria-pressed="false" title="Index, volatility, rate, currency and commodity levels — the state the Sweep is handed rather than asked to look up.">Macro</button>
             <button data-dim="pot" aria-pressed="false" title="What the AI pot has produced: the summary, every proposal awaiting a decision, and the sweeps behind them. Rendered from the same markdown the agents write.">Pot</button>
         </div>
     </div>
@@ -826,6 +832,7 @@
                     <th data-sort="6m">6M</th>
                     <th data-sort="1y">1Y</th>
                     <th data-sort="ytd">YTD</th>
+                    <th data-sort="contrib" class="contrib" title="What each holding did to the portfolio's return over the range picked on the chart, in percentage points. The column adds up to that range's Performance figure: Total, or New buys or Existing when the table is cut to one of them. Counted the way that line is: time-weighted, dividends net of withholding tax reinvested, today's FX. A holding bought inside the range counts from the day it was bought, and the purchase itself is cash in, not a gain. Positions sold entirely are not in the book, so they are in neither the line nor this column. Needs your trades, so it shows only when unlocked.">Contribution <span class="muted contrib-range"></span></th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <!-- Return, then the period it took, then the rate. Sitting after Realized it
@@ -2425,6 +2432,76 @@
             yahoo: h.yahoo, trades: h.trades || [],
             quoteCurrency: STATE.quotes[h.yahoo]?.currency || h.quote?.currency || h.currency,
         }));
+        // Which trades make each Performance cohort. One definition, read by the lines and by the
+        // table's Contribution column, so the column always adds up to the line it names.
+        // New = money put in this year (buys); a trim of an older position this year stays in the
+        // Existing story rather than becoming a phantom short there.
+        const COHORT_FILTER = {
+            total: null,
+            existing: t => t.date < YEAR_START,
+            new: t => t.date >= YEAR_START && t.side !== 'SELL',
+        };
+
+        // Contribution: each holding's share of the Performance figure for the chart's range
+        // (portfolio.js contributions). The whole book, or the cohort the table is cut to, so the
+        // column adds up to the line it names. Each holding is replayed on its own with the same
+        // cohortMV the line uses, over the same days, so nothing here can disagree with the chart.
+        // Needs the trades: null when locked, and until history.json lands.
+        let contribMemo = null;
+        const rangeLabel = () => rangeIntraday ? '1D'
+            : document.querySelector('#ranges button[aria-pressed="true"]')?.textContent.trim() || '';
+        function contribState() {
+            if (!STATE || STATE.locked || !HISTORY) return null;
+            const hist = longRange ? HISTORY.long : HISTORY;
+            if (!hist?.days?.length) return null;
+            const view = STATE.cohortView || null;
+            const key = [longRange, rangeYtd, rangeDays, rangeYears, rangeIntraday, view].join('|');
+            if (contribMemo && contribMemo.key === key && contribMemo.state === STATE && contribMemo.hist === hist) return contribMemo.value;
+            const legs = twrHoldings(STATE.holdings);
+            const full = legs.map(l => portfolioLib.cohortMV(hist.days, [l], hist.closes, STATE.rates, COHORT_FILTER[view || 'total'], netDivs()));
+            const arrays = full.flatMap(r => [r.mv, r.flow, r.income]);
+            // 1D is a single stock's intraday chart, with no portfolio line of its own: the
+            // column then shows the latest session, the last two daily bars.
+            const cut = rangeIntraday && !longRange
+                ? { days: hist.days.slice(-2), arrays: arrays.map(a => a.slice(-2)) }
+                : sliceRange(hist.days, arrays, longRange ? STATE.firstTrade : '');
+            const { total, shares } = portfolioLib.contributions(legs.map((_, k) =>
+                ({ mv: cut.arrays[k * 3], flow: cut.arrays[k * 3 + 1], income: cut.arrays[k * 3 + 2] })));
+            const byYahoo = new Map();
+            legs.forEach((l, k) => byYahoo.set(l.yahoo, (byYahoo.get(l.yahoo) || 0) + shares[k]));
+            const value = { key, total, byYahoo, view, label: rangeLabel(), from: cut.days[0], to: cut.days[cut.days.length - 1] };
+            contribMemo = { key, state: STATE, hist, value };
+            return value;
+        }
+        // A row's contribution is the sum of its legs': points add, unlike percentages.
+        const rowContrib = (c, r) => c ? r.legs.reduce((a, l) => a + (c.byYahoo.get(l.yahoo) || 0), 0) : null;
+        const pts = x => x == null || !Number.isFinite(x) ? '–' : `${x >= 0 ? '+' : '−'}${Math.abs(x * 100).toFixed(2)}`;
+        const contribCell = x => `<td class="contrib ${cls(x)}">${pts(x)}</td>`;
+        const contribLine = view => view ? cohortLabel(view) : 'Total';
+
+        // One line under the Performance chart: the companies that moved it most, so the answer to
+        // "what did that?" is on screen without scrolling to the table. Whole portfolio only. A
+        // group's chart is its own line, which the column (points of the whole book) does not add
+        // up to. Leads with whichever side moved the figure.
+        function moversLine() {
+            const c = contribState();
+            if (!c || chartSel || chartGroup || portfolioMetric !== 'twr') return '';
+            const byCo = new Map();
+            for (const h of STATE.holdings) {
+                const v = c.byYahoo.get(h.yahoo);
+                if (v) byCo.set(h.group, (byCo.get(h.group) || 0) + v);
+            }
+            const sorted = [...byCo].sort((a, b) => a[1] - b[1]);
+            const took = sorted.filter(x => x[1] < 0).slice(0, 3);
+            const added = sorted.filter(x => x[1] > 0).reverse().slice(0, 3);
+            if (!took.length && !added.length) return '';
+            const list = xs => xs.map(([n, v]) => `${escapeHTML(n)} <span class="${cls(v)}">${pts(v)}</span>`).join(', ');
+            const parts = [took.length ? `took off most ${list(took)}` : '', added.length ? `added most ${list(added)}` : ''];
+            if (c.total >= 0) parts.reverse();
+            return `What moved ${escapeHTML(contribLine(c.view))}, ${escapeHTML(c.label)} <span class="${cls(c.total)}">${pct(c.total)}</span>, in points of it: `
+                + parts.filter(Boolean).join('; ')
+                + `. <span class="muted">Sort the table by Contribution for the rest.</span>`;
+        }
 
         // Time-weighted return of a set of holdings — real performance with the effect of
         // deposits/withdrawals removed. Used for the whole portfolio and for a selected group.
@@ -2470,11 +2547,9 @@
             };
             const history = longRange ? HISTORY.long : HISTORY;
             const DEFS = {
-                total:    { label: 'Total',    color: PORT_COLOR,          filter: null },
-                existing: { label: `Existing (pre-${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^GSPC'], filter: t => t.date < YEAR_START },
-                // New = money put in this year (buys); a 2026 trim of an older position stays
-                // in the Existing story rather than becoming a phantom short here.
-                new:      { label: `New buys (${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^HSI'],  filter: t => t.date >= YEAR_START && t.side !== 'SELL' },
+                total:    { label: 'Total',    color: PORT_COLOR,          filter: COHORT_FILTER.total },
+                existing: { label: `Existing (pre-${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^GSPC'], filter: COHORT_FILTER.existing },
+                new:      { label: `New buys (${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^HSI'],  filter: COHORT_FILTER.new },
             };
             const active = ['total', 'existing', 'new'].filter(k => cohortOn.has(k));
             if (!active.length) active.push('total');
@@ -2893,6 +2968,10 @@
                 : '';
             const noteFold = noteEl.querySelector('details');
             if (noteFold) noteFold.ontoggle = e => { chartNoteOpen = e.target.open; };
+            // The range buttons and history.json's arrival both come through here, and the table's
+            // Contribution column follows the range, so redraw the table when its range is stale.
+            document.getElementById('chart-movers').innerHTML = moversLine();
+            if ((contribState()?.key ?? null) !== contribShown) renderTable();
             if (days.length < 2) { svg.innerHTML = ''; return; }
 
             // Legend (always shown for >=2 series).
@@ -3545,6 +3624,7 @@
             if (key === 'held') return row.held ? row.held.days : null;
             if (key === 'live') return row.legs.some(l => isLive(l.quote)) ? 1 : 0;
             if (key === 'trades') return rowTrades(row) || null;
+            if (key === 'contrib') return rowContrib(contribState(), row);
             if (key === 'specialPe') return recurringNow(row).pe;
             // Single instruments only, like every multiple in this table.
             if (key === 'pocfPctile') return row.legs.length === 1 ? row.legs[0].quote?.pocfPctile ?? null : null;
@@ -3698,8 +3778,14 @@
             renderTable();
         }
 
+        let contribShown = null;   // the contribState key the table was last drawn with
         function renderTable() {
             const total = STATE.total;          // Mix is always a share of the WHOLE portfolio
+            const contrib = contribState();
+            contribShown = contrib?.key ?? null;
+            document.body.classList.toggle('no-contrib', !!STATE.locked);
+            const rangeTag = document.querySelector('#portfolio .contrib-range');
+            if (rangeTag) rangeTag.textContent = contrib ? contrib.label : '';
             const shown = sortedRows();
             // The name-cell bar is scaled to the biggest row on screen, so it always uses the full
             // width whatever is filtered in. Recomputed per render because search changes the set.
@@ -3724,6 +3810,7 @@
                     ${liveCell(r.legs.map(l => l.quote))}
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
+                    ${contribCell(rowContrib(contrib, r))}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
@@ -3764,6 +3851,7 @@
                         ${liveCell([leg.quote])}
                         <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
+                        ${contribCell(contrib ? contrib.byYahoo.get(leg.yahoo) ?? 0 : null)}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
@@ -3800,7 +3888,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="32">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="33">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
@@ -3864,6 +3952,12 @@
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
             }
+            // The rows shown, summed, like every total here. Unfiltered, that is the line's own
+            // figure for the range, which the tooltip states so the two can be checked by eye.
+            {
+                const sum = contrib ? shown.reduce((a, r) => a + rowContrib(contrib, r), 0) : null;
+                put('contrib', `<td class="contrib ${cls(sum)}"${contrib ? ` title="${escapeHTML(`${contribLine(contrib.view)} ${contrib.label}, ${ymd(contrib.from)} to ${ymd(contrib.to)}: ${pct(contrib.total)}`)}"` : ''}>${pts(sum)}</td>`);
+            }
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
             renderNewNote();
             updateSearchCount();
@@ -3907,7 +4001,10 @@
             }
             // table-layout:fixed needs explicit column widths; copy the live header's so every
             // cell lines up under the column it totals, sticky first column included.
-            const widths = [...table.tHead.rows[0].cells].map(th => th.getBoundingClientRect().width);
+            // Visible columns only: a hidden one (Contribution, locked) takes no column in the
+            // clone either, so a <col> for it would shift every total after it one place left.
+            const widths = [...table.tHead.rows[0].cells].filter(th => th.getClientRects().length)
+                .map(th => th.getBoundingClientRect().width);
             const cols = widths.map(w => `<col style="width:${w}px">`).join('');
             el.innerHTML = `<table><colgroup>${cols}</colgroup><tbody>${footRow.outerHTML}</tbody></table>`;
             updateTotalFloat();
