@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-20T17:52:13.779Z",
- "cashGBP": 67.91,
+ "generated": "2026-11-20T18:36:55.994Z",
+ "cashGBP": 67.67,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -172,6 +172,35 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-20-1825-EUZ.DE.md",
+   "id": "2026-11-20-1825-EUZ.DE",
+   "state": "open",
+   "ticker": "EUZ.DE",
+   "written": "2026-11-20",
+   "nextResults": "2027-03-24",
+   "side": "BUY",
+   "limit": 14.56,
+   "ceiling": 14.5699,
+   "pricedAt": 14.48,
+   "warning": "at the annual release on **24 March 2027**, or an earlier financial update, re-read if operating cash flow / positive parent-attributable profit is below **1.0x**, cash after gross purchases of PP&E and intangibles and lease principal is **EUR10m or less**, or the approximately EUR80m adjusted-EBIT guidance is cut. Conversion is already **0.870x**, so this stricter new-money warning is **active**. I accept that warning for two shares because cash after both reinvestment and related-party advances is still positive; it is not a claim that the warning cleared.",
+   "break": "recommend exit of this top-up under §5.1 if FY2026 matching statements show any of: - OCF / positive parent-attributable profit below **0.80x**, or non-positive attributable profit. - OCF less gross PP&E/intangible purchases and lease principal **at or below zero**. - That remainder less cash advanced to related parties, including convertible subscriptions, **at or below zero**. - Material impairment/default of Pentixapharm funding, or related-party advances exceeding the pre-financing cash remainder while net borrowing rises. - A further amendment after 12 November deferring repayment, waiving interest/principal, enlarging the EUR18.5m facility or converting below par. Do not wait until 2030 to recognise economic forbearance. Use like-for-like full-year periods and show the bridge and net borrowing. Missing components trigger a review, never a pass. Thereafter use matching trailing-year periods when available. These tests can fail while revenue and adjusted profit grow. The warning is earlier in severity, not an invented earlier financial publication: the next numerical warning and break readings are both in March. Funding disclosures can arrive sooner. Existing accepted lots retain their own contracts.",
+   "reviewBy": "2027-01-15",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-12-03",
+   "resultsDue": "2027-03-24",
+   "vsLimit": -0.0055,
+   "ceilingSeen": {
+    "on": "2026-11-20",
+    "price": 14.48,
+    "earnings": 14.5699,
+    "cash": 13.2399
+   },
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-11-19-2126-none.md",
    "id": "2026-11-19-2126-none",
@@ -393,7 +422,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-26",
    "resultsDue": "2027-01-19",
-   "vsLimit": -0.0825,
+   "vsLimit": -0.0849,
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -416,9 +445,9 @@
    "resultsDue": "2027-03-24",
    "expiredBy": "above",
    "expiredOn": "2026-11-13",
-   "supersededBy": null,
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
-   "counts": true
+   "counts": false
   },
   {
    "file": "2026-11-12-2149-none.md",
@@ -2163,7 +2192,7 @@
    "validUntil": "2026-10-05",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-11-13-0426-EUZ.DE",
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2256,7 +2285,7 @@
    "validUntil": "2026-10-03",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-11-13-0426-EUZ.DE",
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2302,7 +2331,7 @@
    "validUntil": "2026-10-02",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-11-13-0426-EUZ.DE",
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2348,7 +2377,7 @@
    "validUntil": "2026-09-30",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-11-13-0426-EUZ.DE",
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -2479,7 +2508,7 @@
    "validUntil": "2026-09-27",
    "resultsDue": "2026-11-12",
    "expiredBy": "days",
-   "supersededBy": "2026-11-13-0426-EUZ.DE",
+   "supersededBy": "2026-11-20-1825-EUZ.DE",
    "phase": "live",
    "counts": false
   },
@@ -4187,6 +4216,14 @@
    "price": 62.69,
    "until": "2026-11-27",
    "below": 59.5555
+  },
+  "EUZ.DE": {
+   "last": "2026-11-20-1825-EUZ.DE",
+   "limit": 14.56,
+   "ceiling": 14.5699,
+   "price": 14.48,
+   "until": "2026-12-04",
+   "below": 13.756
   }
  },
  "earlierRisks": {
@@ -4262,8 +4299,8 @@
   "EUZ.DE": [
    {
     "category": "financial",
-    "text": "expansion, working capital and related-party financing consume the earnings before ordinary shareholders can retain the cash.",
-    "id": "2026-11-13-0426-EUZ.DE"
+    "text": "expansion, working capital and related-party financing consume the earnings before ordinary shareholders retain the cash.",
+    "id": "2026-11-20-1825-EUZ.DE"
    }
   ],
   "BVI.PA": [
