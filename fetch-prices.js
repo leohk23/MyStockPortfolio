@@ -14,7 +14,7 @@ const publishable = v => !HOLDINGS_FULL ? null : HOLDINGS_SEALED ? sealValue(v) 
 const watchlist = require('./watchlist.json');
 // Splits declared in meta.json, by Yahoo symbol — see mergeSplits.
 const DECLARED_SPLITS = Object.fromEntries([...holdings, ...watchlist].filter(x => x.splits).map(x => [x.yahoo, x.splits]));
-const { cohortMV, twr, shareBasisBreak } = require('./portfolio.js'); // local, dependency-free — CI stays clean
+const { cohortMV, twr, bookStart, shareBasisBreak } = require('./portfolio.js'); // local, dependency-free — CI stays clean
 const { giltQuote } = require('./gilt-quote.js');   // likewise
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -2976,9 +2976,16 @@ async function main() {
     const perfHold = priced.map(h => ({ yahoo: h.yahoo, trades: h.trades || [], quoteCurrency: quotes[h.yahoo].currency }));
     // With `dv` (netDivs), the same lines as total return: dividends net of withholding, reinvested on
     // the ex-date. Both are published while the live page still draws the price-only ones.
+    // Null before the book's own start (portfolio.js bookStart), so a locked page draws All from
+    // where the book as it stands began, not from a round trip closed years before it with empty
+    // weeks after. Unlocked, the page cuts its own lines at the same date.
+    const perfStart = bookStart(perfHold);
     const perfLines = (days, cl, dv = null) => HOLDINGS_FULL ? Object.fromEntries(Object.entries(perfCohorts).map(([k, f]) => {
         const { mv, flow, income } = cohortMV(days, perfHold, cl, rates, f, dv);
-        return [k, twr(mv, flow, dv ? income : null).map(v => v == null ? null : Number(v.toFixed(5)))];
+        let s = perfStart ? days.findIndex(d => d >= perfStart) : 0;
+        if (s < 0) s = days.length;
+        const line = twr(mv.slice(s), flow.slice(s), dv ? income.slice(s) : null);
+        return [k, [...new Array(s).fill(null), ...line].map(v => v == null ? null : Number(v.toFixed(5)))];
     })) : null;
     fs.writeFileSync('history.json', JSON.stringify({
         updated: new Date().toISOString(),

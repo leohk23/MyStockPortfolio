@@ -120,7 +120,18 @@ The holdings table's **Contrib.** column (preview, 20 Nov 2026) is each row's sh
 - **What it adds up to:** Total, or New buys or Existing when the table is cut to one of them. The trades in each cohort come from one definition, `COHORT_FILTER`, which the lines read too, so the two cannot drift apart. The Total row sums the rows shown, like every total in the table.
 - **Points of the whole book,** as Mix is a share of it. A selected group's chart is its own line, which the column does not add up to, so What moved it shows on the whole-portfolio Performance chart only. Its open or closed state is remembered per browser (`moversOpen`).
 - **Never published.** It needs the trades, and contributions over a chosen range reveal how much of each stock was held on past dates, and so when it was traded, which D84 keeps sealed. Locked, the column and the fold are hidden (`body.no-contrib`, `hidden`), and the floating Total row skips hidden columns so its totals stay under their headers.
-- **Closed positions are in neither.** `extract-portfolio.js` drops a position whose balance has reached zero, so the Performance line, the published `twr` and this column all leave out anything sold entirely, for the whole time it was held. A range is complete only if no position was closed out inside it. Which ones were, and when, is Tradelog detail and stays off this public file.
+- **Closed positions are in neither.** `extract-portfolio.js` drops a position whose balance has reached zero, so the Performance line, the published `twr` and this column all leave out anything sold entirely, for the whole time it was held. A range is complete only if no position was closed out inside it. Which ones were, and when, is Tradelog detail and stays off this public file. They are listed in the Sold tab, below.
+
+## Sold: every round trip (preview, 21 Nov 2026)
+
+A tab after Sector listing every round trip the Tradelog records: a first buy through the trade that took the balance back to zero. That covers stocks sold out of, and earlier rounds of stocks held again today, which are tagged **held again**. Leo asked to see the whole record in a table rather than on the chart for now. It answers how past exits went; it is not on any chart or in any total.
+
+- **Built by** `extract-portfolio.js` `roundTrips` and sealed with the holdings as `closed` (`seal({ holdings, closed })`; `readHoldings()` returns it). There is no public field for it, ever: a sold stock has no other trace in the repo, and its name alone says it was held. Locked, the tab does not exist.
+- **Gain is cash:** sells minus buys at **Adjusted Price w Commissions** (column 10), in the trade's currency, then converted at today's rate like every amount on the page. No average cost enters it. One currency per round trip, or no result. Dividends are not included, and Return is gain over cost, not annualised; Held sits beside it.
+- **The workbook's Gain/(Loss) is kept beside it** (`sheetGain`), and a row is tagged **sheet** where the two part by more than rounding (HK$1 or 0.5% of cost). See the Average Purchase Price gotcha under Workbook tabs. On 21 Nov 2026 one round trip differed.
+- **Not added to the holdings table.** A held-again round is also inside that holding's Realized figure, which sums the Gain/(Loss) column over every row of the ticker. The note under the table says so, and the Sold footer is a total of the Sold rows only.
+- **The chart's long ranges start at `bookStart`**, not the earliest trade (AGENTS.md invariant 7), so an old round trip and the empty stretch after it no longer open the All range. Rounds of stocks held again that fall after that date are still replayed in the line, because their trades are part of the holding; rounds of stocks no longer held are not.
+- Hovering a row lists its trades, quantities masked in the eye view. The search box filters it. Sorting is its own state (`soldSort`), latest sale first.
 
 ## Gilts: priced from the London Stock Exchange's order book, by ISIN, not Yahoo
 
@@ -194,6 +205,8 @@ Each `meta.json` entry carries its `yahoo` symbol directly — no derivation, no
 **Forex is still live.** Tradelog Price/Commission formulas use named ranges from it (`=5315/rngUSDJPY`). Extraction reads *cached* values, so a broken formula fails quietly rather than loudly — the app would happily consume a `#REF`. Keep Forex.
 
 Tab name `Tradelog` must not be renamed. Per-instrument display facts (yahoo/group/geography) live in `meta.json`.
+
+**Average Purchase Price (column 14, O) ignores sales** (found 21 Nov 2026, not fixed). On a BUY row its formula divides every buy of the symbol since the position was last flagged Closed by all of their shares, so shares already sold stay in the average. Recomputed as an average cost should be (a sale leaves the average alone, and the next buy is averaged with what is left), 61 of the 438 rows differ, across seven symbols: one closed round trip and six open positions, by up to a quarter of their cost. The app's cost basis, Gain %, the published `gains` and Realized all come from this column. The Sold table's cash figures do not, which is why they can disagree with it. Which convention to use is Leo's call, so the workbook and the extract are unchanged until he makes it.
 
 **Split column = the units→shares multiplier.** Tradelog `Stock split/Bonus shares` scales raw Qty up and raw Price down. A wrong value here is silent: it keeps total cost correct while misstating both share count and per-share price. (7532 was logged with `2` when the true split was `5`, so the app showed 200 shares instead of 500.) Cross-check quantities against the broker when a position looks off.
 

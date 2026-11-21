@@ -200,6 +200,31 @@ function incomeReceived(h, divs, rates, quoteCurrency, since = null) {
     return { actual, estimated };
 }
 
+// Where the book as it stands began: the first trade after the last day it held nothing. A stock
+// sold out of years before the rest was bought, then bought again, still carries those first trades,
+// so the earliest trade alone put the long ranges' start on that old round trip. On 21 Nov 2026 the
+// All range opened on one, then ran a long stretch holding nothing, counted as 0% and annualised
+// over: +170.8% at 12.0% a year against +267.2% at 20.7% from where the book really starts. The
+// round trip itself is in the Sold table (extract-portfolio.js roundTrips).
+// Trades are walked in date order on the Tradelog's own running balance (a running count where a
+// trade has none); a day ending with every balance at zero empties the book, and the next trade
+// starts it again. '' when nothing is dated or nothing is held at the end.
+function bookStart(holdings) {
+    const all = [];
+    (holdings || []).forEach((h, k) => (h.trades || []).forEach(t => { if (t?.date) all.push({ k, t }); }));
+    all.sort((a, b) => a.t.date.localeCompare(b.t.date));
+    const bal = new Map();
+    let start = '';
+    for (let i = 0; i < all.length; i++) {
+        const { k, t } = all[i];
+        if (!start) start = t.date;
+        bal.set(k, Number.isFinite(t.balanceQty) ? t.balanceQty : (bal.get(k) || 0) + (t.side === 'SELL' ? -t.qty : t.qty));
+        const dayEnds = i === all.length - 1 || all[i + 1].t.date !== t.date;
+        if (dayEnds && [...bal.values()].every(q => !(q > 1e-9))) start = '';
+    }
+    return start;
+}
+
 // Everything the "is it cheap?" question needs, from the quote alone.
 //
 // Deliberately takes no position, cost or trade: valuation is a property of the STOCK, not of
@@ -611,7 +636,7 @@ function existingShares(holdings, since, rates) {
     return out;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, contributions, incomeReceived, bucketOf, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, contributions, incomeReceived, bookStart, bucketOf, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -743,6 +768,22 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
         const gapped = contributions([{ mv: [100, null, 120], flow: [0, 0, 0] }]);
         assert.deepStrictEqual([gapped.total, gapped.shares[0]], [0, 0]);
         assert.strictEqual(twr([100, null, 120], [0, 0, 0])[2], 0);
+    }
+
+    // bookStart(): the first trade after the book last held nothing. A is a round trip in 2010 and
+    // bought again in 2015; B opens in 2012, so the book starts there and not in 2010.
+    {
+        const t = (date, side, qty, balanceQty) => ({ date, side, qty, balanceQty });
+        const A = { trades: [t('2010-03-01', 'BUY', 10, 10), t('2010-06-01', 'SELL', 10, 0), t('2015-01-05', 'BUY', 5, 5)] };
+        const B = { trades: [t('2012-02-01', 'BUY', 3, 3)] };
+        assert.strictEqual(bookStart([A, B]), '2012-02-01');
+        // Never empty at a day's end: a sale to zero and another buy on the same day keep the start.
+        const C = { trades: [t('2010-06-01', 'BUY', 2, 2)] };
+        assert.strictEqual(bookStart([A, B, C]), '2010-03-01');
+        // No running balance on the trades: counted from the quantities instead.
+        assert.strictEqual(bookStart([{ trades: [{ date: '2010-03-01', side: 'BUY', qty: 1 }, { date: '2010-04-01', side: 'SELL', qty: 1 }, { date: '2011-01-03', side: 'BUY', qty: 1 }] }]), '2011-01-03');
+        assert.strictEqual(bookStart([{ trades: [] }]), '');
+        assert.strictEqual(bookStart([{ trades: [t('2010-03-01', 'BUY', 1, 1), t('2010-04-01', 'SELL', 1, 0)] }]), '');
     }
 
     // Weighted by value: a $300 leg at +10% and a $100 leg at -10% => +5%.

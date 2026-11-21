@@ -56,7 +56,9 @@ function readHoldings(file = path.join(__dirname, 'holdings.json')) {
     const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (!doc.sealed) return { ...doc, full: true };                  // legacy plain file
     const inside = open(doc.sealed);
-    return inside ? { ...doc, holdings: inside.holdings, full: true } : { ...doc, full: false };
+    // `closed` is every finished round trip (extract-portfolio.js roundTrips), for the page's Sold
+    // table only; nothing that builds a total or a line reads it.
+    return inside ? { ...doc, holdings: inside.holdings, closed: inside.closed || [], full: true } : { ...doc, full: false };
 }
 
 // The public half of a holding: enough to fetch a quote and group a row, nothing that sizes it.

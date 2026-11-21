@@ -34,7 +34,9 @@ const META = 'meta.json';
 // pot trade with no proposal behind it, such as the §11.1 VIX standing order.
 //
 // The column is optional. Until it exists every trade reads as main-book, which is correct.
-const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24, pot: 25 };
+// `cashPrice` (Adjusted Price w Commissions) is what a share actually cost or fetched, so a round
+// trip's result is sells minus buys at it, with no average cost involved (roundTrips).
+const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, cashPrice: 10, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24, pot: 25 };
 
 // The workbook prices its Japanese holdings off the US ADR, because its data provider has no
 // Tokyo coverage. So those rows record the price in USD as `=3976/rngUSDJPY` with Currency
@@ -107,10 +109,14 @@ function parseTrade(r, row, local = null) {
 
 // Single pass over the Tradelog: trades grouped by symbol (oldest first) and realized
 // gain summed per symbol (workbook's "Gain/(Loss)" column, in local currency).
+// `facts` holds, per trade object, what only roundTrips needs: the price with commission and the
+// row's own Gain/(Loss), both in the trade's currency. Kept off the trade so holdings.json's
+// trades are exactly what they were.
 function readTradelog(sheet) {
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
     const bySymbol = new Map();
     const realized = new Map();
+    const facts = new WeakMap();
     for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
         if (!r[TRADE.symbol]) continue;
@@ -129,9 +135,64 @@ function readTradelog(sheet) {
         const list = bySymbol.get(symbol) || [];
         list.push(trade);
         bySymbol.set(symbol, list);
+        // A cash price that is not a number leaves that round trip's result blank, rather than
+        // refusing the whole extract over a column nothing else reads.
+        const cash = Number(r[TRADE.cashPrice]);
+        facts.set(trade, { cash: Number.isFinite(cash) && cash > 0 ? cash * (local ? local.scale : 1) : null,
+            gain: (Number(gain) || 0) * (local ? local.scale : 1) });
     }
     for (const list of bySymbol.values()) list.sort((a, b) => a.date.localeCompare(b.date));
-    return { bySymbol, realized };
+    return { bySymbol, realized, facts };
+}
+
+// Every round trip in the Tradelog: a first buy through the trade that took the balance back to
+// zero, for stocks sold out of and for earlier rounds of stocks held again today. Sealed with the
+// holdings, and read only by the page's Sold table: the holdings, their totals and every chart line
+// are built from `holdings` alone.
+//
+// The result is sells minus buys at the price with commission. The workbook's Gain/(Loss) is summed
+// beside it as `sheetGain`, because it is struck against the Average Purchase Price column, and on
+// 21 Nov 2026 that column averaged a buy with shares already sold: its formula takes every buy since
+// the position was last flagged Closed and never removes a sale (DASHBOARD.md, Workbook tabs). One
+// round trip showed a small gain there and a loss in cash. Where the two differ the page shows the
+// cash figure and says so.
+//
+// One currency per round trip, or no result: adding HKD to USD would invent a number.
+function roundTrips(bySymbol, facts, meta = {}) {
+    const out = [];
+    for (const [sym, trades] of bySymbol) {
+        const m = meta[sym] || {};
+        const stillHeld = trades.length > 0 && trades[trades.length - 1].balanceQty > 1e-9;
+        let run = [];
+        for (const t of trades) {
+            run.push(t);
+            if (t.balanceQty > 1e-9) continue;
+            if (!run.some(x => x.side === 'BUY')) { run = []; continue; }
+            const currencies = [...new Set(run.map(x => x.currency))];
+            const cashOf = x => facts?.get(x)?.cash ?? null;
+            const sum = side => run.filter(x => x.side === side).reduce((a, x) => (a == null || cashOf(x) == null ? null : a + x.qty * cashOf(x)), 0);
+            const cost = currencies.length === 1 ? sum('BUY') : null;
+            const proceeds = currencies.length === 1 ? sum('SELL') : null;
+            out.push({
+                symbol: sym,
+                ticker: m.ticker || sym,
+                ...(m.yahoo ? { yahoo: m.yahoo } : {}),
+                ...(m.group ? { group: m.group } : {}),
+                currency: currencies.length === 1 ? currencies[0] : null,
+                from: run[0].date,
+                to: t.date,
+                cost,
+                proceeds,
+                gain: cost != null && proceeds != null ? proceeds - cost : null,
+                sheetGain: currencies.length === 1 ? run.reduce((a, x) => a + (facts?.get(x)?.gain || 0), 0) : null,
+                stillHeld,
+                ...(run.some(x => x.pot) ? { pot: true } : {}),
+                trades: run.map(x => ({ ...x, cash: cashOf(x) })),
+            });
+            run = [];
+        }
+    }
+    return out;
 }
 
 // meta.json (instrument facts) + Tradelog aggregates -> one holding per open position.
@@ -377,7 +438,7 @@ async function main() {
     const wb = XLSX.readFile(WORKBOOK, { cellDates: true, cellFormula: true, sheets: ['Tradelog'] });
     if (!wb.Sheets.Tradelog) throw new Error('no "Tradelog" tab in workbook');
 
-    const { bySymbol, realized } = readTradelog(wb.Sheets.Tradelog);
+    const { bySymbol, realized, facts } = readTradelog(wb.Sheets.Tradelog);
 
     // Guard the one new failure mode: a position is open in the Tradelog but has no
     // meta.json entry, so it would silently vanish from the app.
@@ -437,6 +498,9 @@ async function main() {
     // key refuses the write instead of publishing quantities in the clear.
     const { seal, open, publicRow } = require('./vault');
     const pub = holdings.map(publicRow);
+    // Every finished round trip, for the Sold table. Sealed with the rest and never given a public
+    // field: a stock you sold has no other trace in the repo, and its name alone would say you held it.
+    const closed = roundTrips(bySymbol, facts, meta);
     const groups = new Set(holdings.map(h => h.group));
     // Nothing new: leave the file exactly as it is. The seal is re-randomised on every write and
     // `generated` moves, so rewriting identical holdings made a commit and a CI run out of nothing,
@@ -445,7 +509,7 @@ async function main() {
     try {
         const prev = JSON.parse(fs.readFileSync('holdings.json', 'utf8'));
         same = JSON.stringify(prev.holdings) === JSON.stringify(pub)
-            && JSON.stringify(open(prev.sealed)) === JSON.stringify({ holdings });
+            && JSON.stringify(open(prev.sealed)) === JSON.stringify({ holdings, closed });
     } catch { /* no file, or a sealed half this key cannot open: write it fresh */ }
     if (same) {
         console.log(`holdings.json unchanged: ${holdings.length} instruments in ${groups.size} groups`);
@@ -455,10 +519,11 @@ async function main() {
         generated: new Date().toISOString(),
         note: 'Tickers and groupings only. Quantities, costs and trades are in `sealed` (vault.js).',
         holdings: pub,
-        sealed: seal({ holdings }),
+        sealed: seal({ holdings, closed }),
     }, null, 1));
 
-    console.log(`wrote holdings.json: ${holdings.length} instruments in ${groups.size} groups`);
+    console.log(`wrote holdings.json: ${holdings.length} instruments in ${groups.size} groups, `
+        + `${closed.length} finished round trips (${closed.filter(c => c.stillHeld).length} on stocks held again)`);
     for (const g of [...groups].sort()) {
         const rows = holdings.filter(h => h.group === g);
         if (rows.length > 1) console.log(`  merged: ${g} <- ${rows.map(r => r.yahoo).join(' + ')}`);
@@ -543,6 +608,28 @@ async function selftest() {
     assert.strictEqual(h.realizedLC, 12.5);
     assert.strictEqual(h.trades.length, 2);
 
+    // roundTrips: each run from a buy to a zero balance, at the price with commission. AAA is two
+    // rounds and held again; BBB is one round in two currencies, so it has no result.
+    {
+        const tr = (date, side, qty, balanceQty, currency = 'HKD') => ({ date, side, qty, price: 1, balanceQty, avgPrice: 1, currency });
+        const a = [tr('2010-01-04', 'BUY', 100, 100), tr('2010-02-01', 'BUY', 100, 200), tr('2010-03-01', 'SELL', 200, 0),
+            tr('2011-01-03', 'BUY', 50, 50), tr('2011-02-01', 'SELL', 50, 0), tr('2015-01-05', 'BUY', 10, 10)];
+        const b = [tr('2012-01-02', 'BUY', 10, 10, 'USD'), tr('2012-02-01', 'SELL', 10, 0, 'HKD')];
+        const f = new WeakMap([[a[0], { cash: 5, gain: 0 }], [a[1], { cash: 6, gain: 0 }], [a[2], { cash: 5.4, gain: 30 }],
+            [a[3], { cash: 4, gain: 0 }], [a[4], { cash: 5, gain: 50 }], [a[5], { cash: 6, gain: 0 }], [b[0], { cash: 1, gain: 0 }], [b[1], { cash: 2, gain: 0 }]]);
+        const rt = roundTrips(new Map([['AAA', a], ['BBB', b]]), f, { AAA: { ticker: 'AAA', yahoo: 'AAA.HK', group: 'Aaa' } });
+        assert.strictEqual(rt.length, 3, 'two rounds of AAA, one of BBB; the open 2015 lot is not a round trip');
+        assert.deepStrictEqual([rt[0].from, rt[0].to, rt[0].stillHeld, rt[0].yahoo], ['2010-01-04', '2010-03-01', true, 'AAA.HK']);
+        assert.ok(Math.abs(rt[0].cost - 1100) < 1e-9 && Math.abs(rt[0].proceeds - 1080) < 1e-9 && Math.abs(rt[0].gain + 20) < 1e-9, 'sells minus buys in cash');
+        assert.strictEqual(rt[0].sheetGain, 30, 'the workbook figure kept beside it, not used');
+        assert.strictEqual(rt[1].gain, 50);
+        assert.deepStrictEqual([rt[2].currency, rt[2].cost, rt[2].gain, rt[2].stillHeld], [null, null, null, false], 'two currencies: no result');
+        assert.strictEqual(rt[0].trades[1].cash, 6);
+        assert.ok(!('cash' in a[0]), 'the holdings\' own trade objects are not touched');
+        const blank = roundTrips(new Map([['AAA', a.slice(3, 5)]]), new WeakMap([[a[3], { cash: null, gain: 0 }], [a[4], { cash: 5, gain: 50 }]]));
+        assert.strictEqual(blank[0].gain, null, 'a missing cash price leaves the result blank');
+    }
+
     // newSymbols: only holdings absent from the known (last-fetched) set are "new".
     const hs = [{ yahoo: 'GOOG' }, { yahoo: 'AVGO' }, { yahoo: 'NTO.F' }];
     assert.deepStrictEqual(newSymbols(hs, new Set(['GOOG', 'NTO.F'])).map(x => x.yahoo), ['AVGO']);
@@ -613,4 +700,4 @@ if (require.main === module) {
     if (process.argv[2] === '--selftest') selftest().catch(e => { console.error(e); process.exit(1); });
     else main().catch(e => { console.error(e.message); process.exit(1); });
 }
-module.exports = { resolveMeta, resolveGilt, yahooQuote, readTradelog };
+module.exports = { resolveMeta, resolveGilt, yahooQuote, readTradelog, roundTrips };
