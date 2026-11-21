@@ -201,6 +201,8 @@ Tab name `Tradelog` must not be renamed. Per-instrument display facts (yahoo/gro
 
 - `fetch-prices.js` must stay dependency-free — CI installs nothing. Don't `require` a package.
 - Index symbols (`^GSPC`, `^HSI`) need the caret URL-encoded (`%5E`); `fetchTicker` does this.
+- **1D's base is found by date, not by value** (`prevSessionClose`, 21 Nov 2026). Yahoo's chart call no longer sends `previousClose`, so the base is the newest daily bar from a session before the price's own, each bar's day read on the exchange's clock (`gmtoffset`). The old test, "the newest bar whose close equals the price is today's", wrote 0.00% for a −3.29% day on VUSA.L (price 102.232, bar 102.2325), on every run for every Sydney listing (two bars per session), and on 3 to 10 US tickers a run mid-session, whose bar lags the price.
+- **Sydney closes are filed a day early in `history.json`** (known, not fixed). `alignedCloses` keys a bar by its UTC date, and a Sydney session opens at 23:00 UTC the day before, so every `.AX` close sits on the previous date and each Monday puts a Sunday into the daily calendar (25 of them by 21 Nov 2026). Only watchlist names trade there today, so no holding's line is moved.
 - The price bot commits to `main` on every scheduled run, so local pushes need `git pull --rebase` first (`publish.js` does it). On conflict in prices.json/history.json, the bot's/your newer generated file wins — regenerate rather than hand-merge.
 - Windows shell here is PowerShell; a Bash tool exists too. `.xlsx` reads need `xlsx` installed (`npm install`), which is dev-only and absent in CI by design.
 

@@ -35,11 +35,31 @@ function pctFrom(timestamps, closes, cutoffTs, current) {
 
 // "% change today": current price vs the previous regular-session close. A one-day move needs a
 // precise base — pctFrom's date-cutoff is too coarse (a Monday's cutoff would skip Friday). Yahoo's
-// meta.previousClose IS that prior-day close (the number driving its own quote page); fall back to
-// the last completed daily bar — skipping the final live/today bar — for the rare symbol that omits
-// it. Rounded to 4dp like every other movement; a fraction (0.012 = +1.2%).
-function prevSessionClose(meta, closes, current) {
+// meta.previousClose IS that prior-day close (the number driving its own quote page), when it is
+// sent. Rounded to 4dp like every other movement; a fraction (0.012 = +1.2%).
+//
+// It is not sent: on 21 Nov 2026 the chart call (range=1y) carried no previousClose for any ticker,
+// so the daily bars are the main path, not a rare fallback. The base is the newest close from a
+// session BEFORE the price's own, with each bar's day read on the exchange's clock (gmtoffset) and
+// the price's session taken from regularMarketTime. Telling today's bar by its value, as the rule
+// below did, failed whenever the bar and the price differ by a hair, and the move then read 0.00%:
+// - VUSA.L's price came as 102.232 and its bar as 102.2325, so -3.29% read 0.00% for a day.
+// - A US bar lags the live price by a tick mid-session: 3 to 10 tickers a run read 0.00% on
+//   20 Nov (NVDA -11.8%, AVGO -12.1%, MRVL -10.9%), each right again on the next run.
+// - Sydney's session opens at 23:00 UTC the day before and Yahoo also sends a bar at the last
+//   trade, so CSL.AX had two bars for one session and skipping one left the other as "yesterday".
+// The value test stays only for a response without timestamps.
+function prevSessionClose(meta, closes, current, timestamps = null) {
     if (meta.previousClose > 0) return meta.previousClose;
+    const off = meta.gmtoffset ?? meta.currentTradingPeriod?.regular?.gmtoffset;
+    if (timestamps?.length === closes.length && meta.regularMarketTime > 0 && Number.isFinite(off)) {
+        const day = s => new Date((s + off) * 1000).toISOString().slice(0, 10);
+        const session = day(meta.regularMarketTime);
+        for (let i = closes.length - 1; i >= 0; i--) {
+            if (closes[i] != null && timestamps[i] != null && day(timestamps[i]) < session) return closes[i];
+        }
+        return null;
+    }
     // Skip the newest bar ONLY when it IS today's live bar — which Yahoo marks by setting that
     // bar's close to the live price itself. The old rule skipped the newest non-null bar
     // unconditionally, and Yahoo leaves today's daily bar NULL on a good number of tickers: for
@@ -59,8 +79,8 @@ function prevSessionClose(meta, closes, current) {
     }
     return null;
 }
-function dailyMove(meta, closes, current) {
-    const prev = prevSessionClose(meta, closes, current);
+function dailyMove(meta, closes, current, timestamps = null) {
+    const prev = prevSessionClose(meta, closes, current, timestamps);
     return prev > 0 ? Math.round(((current - prev) / prev) * 1e4) / 1e4 : null;
 }
 
@@ -115,7 +135,7 @@ function shape(r, declared = DECLARED_SPLITS[r.meta.symbol], now = Date.now()) {
         if (now - Date.parse(sp.date) < 7 * DAY * 1000 && previousClose > 0 && price > 0
             && Math.abs(Math.log(previousClose / price / sp.ratio)) < Math.log(1.3)) previousClose /= sp.ratio;
     }
-    const moves = { '1d': dailyMove({ ...r.meta, previousClose }, closes, price), ...movements(timestamps, closes, price, now / 1000) };
+    const moves = { '1d': dailyMove({ ...r.meta, previousClose }, closes, price, timestamps), ...movements(timestamps, closes, price, now / 1000) };
     return {
         price,
         // Trust Yahoo over the workbook: .L tickers quote in pence ("GBp"), .T in JPY.
@@ -4085,6 +4105,34 @@ function selftest() {
     // 2026-08-10's 267.85 is +0.40%; the old rule skipped to 2026-08-07 and printed -4.83%.
     assert.strictEqual(dailyMove({}, [282.57, 267.85, null], 268.93),
         Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
+    // With timestamps, today's bar is told by its day on the exchange's clock, not by its value.
+    // The three cases of 20 Nov 2026, as Yahoo sent them, each of which read 0.00%:
+    {
+        const t = iso => Date.parse(iso) / 1000;
+        // VUSA.L: price 102.232 against a bar of 102.2325, so the value test kept today's bar as the base.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-11-20T16:35:17Z'), gmtoffset: 0 },
+            [105.47, 105.71, 102.2325], 102.232, [t('2026-11-18T08:00Z'), t('2026-11-19T08:00Z'), t('2026-11-20T08:00Z')]),
+            Math.round((102.232 / 105.71 - 1) * 1e4) / 1e4);
+        // A US bar a tick behind the live price mid-session.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-11-20T17:20:00Z'), gmtoffset: -18000 },
+            [180.64, 125.41], 125.53, [t('2026-11-19T14:30Z'), t('2026-11-20T14:30Z')]),
+            Math.round((125.53 / 180.64 - 1) * 1e4) / 1e4);
+        // CSL.AX: Friday's session opens at 23:00 UTC on Thursday, and a second bar sits at the last
+        // trade. Both are Friday in Sydney; Thursday's close is the one at 23:00 UTC on Wednesday.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-11-20T05:21:14Z'), gmtoffset: 39600 },
+            [199.85, 197.29, 197.29], 197.29, [t('2026-11-18T23:00Z'), t('2026-11-19T23:00Z'), t('2026-11-20T05:21Z')]),
+            Math.round((197.29 / 199.85 - 1) * 1e4) / 1e4);
+        // The ARM case still holds: today's bar null, so the newest bar is yesterday's and is the base.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-08-11T20:00:00Z'), gmtoffset: -14400 },
+            [282.57, 267.85, null], 268.93, [t('2026-08-07T13:30Z'), t('2026-08-10T13:30Z'), t('2026-08-11T13:30Z')]),
+            Math.round((268.93 / 267.85 - 1) * 1e4) / 1e4);
+        // Before the open the price is yesterday's close, so 1D is yesterday's move, as Yahoo shows it.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-11-20T21:00:01Z'), gmtoffset: -18000 },
+            [145.98, 125.53], 125.53, [t('2026-11-19T14:30Z'), t('2026-11-20T14:30Z')]),
+            Math.round((125.53 / 145.98 - 1) * 1e4) / 1e4);
+        // Only today's bar in the window: no base, so no move rather than 0.
+        assert.strictEqual(dailyMove({ regularMarketTime: t('2026-11-20T16:00Z'), gmtoffset: 0 }, [100], 101, [t('2026-11-20T08:00Z')]), null);
+    }
     // A split half applied voids the moves; a real move, an old split or no split does not.
     const sNow = Date.parse('2026-10-06T20:00:00Z'), tk15 = [{ date: '2026-10-06', ratio: 15 }];
     assert.strictEqual(halfSplit(14.25, tk15, sNow), true);
