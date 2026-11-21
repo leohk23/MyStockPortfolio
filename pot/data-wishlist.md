@@ -1,5 +1,15 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Sweep additions, 21 November 2026, 09:00 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-21 | An earnings basis for Japanese-GAAP filers before goodwill amortisation. | Sweep 2026-11-21-0900, Seven & i. The [issuer forecast page](https://www.7andi.com/en/ir/financial/forecasts.html) gives FY to Feb 2027 EPS ¥121.90 and EPS before goodwill amortisation ¥169.81, so a P/E on reported EPS reads about 39% higher than on an IFRS-comparable basis. Wanted whenever a Japanese-GAAP filer is tracked, beside the reported basis and never replacing it. |
+| 2026-11-21 | A lane-callable PDF text extractor for any issuer, second reach. | Sweep 2026-11-21-0900. WebFetch could not decode Seven & i's H1 tanshin PDF (2026_1008kte.pdf); its HTML highlight page was used instead. Same need as the HKEXnews entry of 20 November: one `node` helper taking a URL would serve both. |
+| 2026-11-21 | A keyword passage from a long EDGAR filing. | Sweep 2026-11-21-0900, Cigna. EDGAR full-text search found "risk adjustment" with "HCSC" in the FY2025 10-K and the Q2 2026 10-Q, but WebFetch truncates those filings and never reached the passage. Wanted whenever a Deep dive needs one note out of a 10-K, here whether Cigna kept Medicare Advantage audit liability for payment years 2018 to 2024. |
+| 2026-11-21 | US regulatory calendar: proposed and final rules with comment deadlines. | Sweep 2026-11-21-0900. Used the [CMS CRUSH fact sheet](https://www.cms.gov/newsroom/fact-sheets/comprehensive-regulations-uncover-suspicious-healthcare-crush-proposed-rule-cms-6098-p) (proposed 16 Nov, 60-day comment period). Wanted weekly from the Federal Register's free API: a comment deadline is a dated observable for any healthcare or regulated name. |
+| 2026-11-21 | Cause of a large index move, third reach. | Sweep 2026-11-21-0900. Nasdaq −5.3% on 20 Nov, explained this time by [CNBC](https://www.cnbc.com/amp/2026/11/19/stock-market-today-live-updates.html) and [Bloomberg citing Reuters](https://www.bloomberg.com/news/articles/2026-11-20/wall-street-regulator-probing-nvidia-s-accounting-reuters-says) (SEC inquiry into Nvidia's accounting). Third sweep in two days to need it, which meets the three-sweep bar. |
+
 ## Deep dive additions, 20 November 2026, 18:25 UTC
 
 | Date | Data wanted | Why and cadence |
