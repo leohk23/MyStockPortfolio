@@ -123,6 +123,30 @@
         #tip .row { display: flex; align-items: center; gap: 5px; }
         #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        /* "What moved it", folded under the chart. The summary is the one line worth reading at a
+           glance; opened, the same arithmetic by company, sector and geography, and the days that
+           did it. Its tables are small reads, not the portfolio table: none of the sticky header,
+           1280px minimum or uppercase that the global table rules carry for that one. */
+        #chart-movers { margin-top: 6px; }
+        #chart-movers > summary { display: block; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+        #chart-movers > summary::before { margin-right: 5px; }
+        #chart-movers .mv-grid { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-start; margin-top: 8px; }
+        #chart-movers table { width: auto; min-width: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+        #chart-movers caption { text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 600; padding-bottom: 2px; }
+        #chart-movers th { position: static; background: none; text-transform: none; letter-spacing: 0;
+            font-size: 11px; color: var(--text-muted); font-weight: 600; padding: 3px 6px; }
+        #chart-movers td { padding: 3px 6px; }
+        #chart-movers th:first-child, #chart-movers td:first-child { text-align: left; padding-left: 0; }
+        #chart-movers tbody + tbody tr:first-child td { border-top: 1px solid var(--text-muted); }
+        #chart-movers tr.mv-rest td { color: var(--text-muted); }
+        #chart-movers td.mv-who { text-align: left; white-space: normal; min-width: 180px; }
+        #chart-movers .mv-since { font-size: 11px; }
+        #chart-movers .mv-flip { border-bottom: 1px dotted var(--text-muted); cursor: help; }
+        #chart-movers .mv-p { font-size: 12px; margin: 8px 0 0; color: var(--text-secondary); line-height: 1.5; }
+        #chart-movers .mv-note { font-size: 11px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.5; }
+        /* Contribution needs the trades: locked, the column is not there at all, rather than a
+           column of dashes that reads as missing data. */
+        body.no-contrib .contrib { display: none; }
         #chart-note .deep-notes { margin-top: 0; }
         #chart-note .deep-notes > div { margin-top: 4px; }
 
@@ -492,7 +516,9 @@
            wide enough to scroll on a phone, and the sticky first column then took a share of that
            1280 rather than of the screen — a Date column half the viewport wide. Sized to its
            own content, nothing scrolls sideways and the pin never comes into play. */
-        #calendar { min-width: 0; }
+        #calendar, #sold-table { min-width: 0; }
+        #sold-table .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+        #sold-table tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
         th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
         th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; position: sticky; top: 0; }
         th:first-child, td:first-child { text-align: left; }
@@ -759,6 +785,7 @@
             <svg id="chart" role="img" aria-label="Portfolio chart"></svg>
             <div id="tip" role="status"></div>
         </div>
+        <details id="chart-movers" class="deep-notes" hidden><summary></summary><div class="mv-body"></div></details>
         <div id="chart-note"></div>
     </section>
 
@@ -804,6 +831,7 @@
             <button data-dim="company" aria-pressed="true">Company</button>
             <button data-dim="geography" aria-pressed="false">Geography</button>
             <button data-dim="sector" aria-pressed="false" title="Holdings grouped by sector, from Yahoo. A fund has no single sector, so every fund sits under Funds rather than being filed under a misleading one.">Sector</button>
+            <button data-dim="sold" aria-pressed="false" hidden title="Every round trip in the Tradelog, from a first buy to the sale that took the holding back to zero. Shown once unlocked.">Sold</button>
             <button data-dim="watch" aria-pressed="false" hidden>Watchlist</button>
             <button data-dim="calendar" aria-pressed="false">Calendar</button>
             <button data-dim="world" aria-pressed="false" title="47 single-country ETFs, ranked by how far each sits below its own all-time high. A monitor, not a buy list.">World</button>
@@ -826,6 +854,7 @@
                     <th data-sort="6m">6M</th>
                     <th data-sort="1y">1Y</th>
                     <th data-sort="ytd">YTD</th>
+                    <th data-sort="contrib" class="contrib" title="What each holding did to the portfolio's return over the range picked on the chart, in percentage points. The column adds up to that range's Performance figure: Total, or New buys or Existing when the table is cut to one of them. Counted the way that line is: time-weighted, dividends net of withholding tax reinvested, today's FX. A holding bought inside the range counts from the day it was bought, and the purchase itself is cash in, not a gain. Positions sold entirely are not in the book, so they are in neither the line nor this column. Needs your trades, so it shows only when unlocked. Opened under the chart, What moved it has the same points by company, sector and geography, and the days that did it.">Contrib.</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <!-- Return, then the period it took, then the rate. Sitting after Realized it
@@ -904,6 +933,27 @@
             <tbody></tbody>
         </table>
         <p id="cal-none" class="deep-note"></p>
+    </div>
+
+    <!-- Every round trip the Tradelog records, from a first buy to the sale that took the holding
+         back to zero, for stocks sold out of and for earlier rounds of stocks held again (Leo,
+         21 Nov 2026: "I'd like to see all records", in a table for now rather than the chart).
+         Sealed (extract-portfolio.js roundTrips), so the tab exists only once unlocked. Nothing here
+         feeds a total, a weight or a line elsewhere on the page. -->
+    <div class="table-responsive" id="sold" hidden>
+        <table id="sold-table">
+            <thead><tr>
+                <th data-sort="name">Stock</th>
+                <th data-sort="to" aria-sort="descending" title="The sale that took the holding back to zero. Hover a row for every trade in it.">Sold</th>
+                <th data-sort="days" title="First buy to that sale, in calendar time.">Held</th>
+                <th data-sort="cost" title="Everything paid for the shares in this round trip, commission included, at today's exchange rate.">Cost</th>
+                <th data-sort="gain" title="Sells minus buys, both at the price with commission, at today's exchange rate. Dividends are not included.">Gain</th>
+                <th data-sort="ret" title="Gain over cost. Not annualised: a week's trade and a two-year hold sit side by side, and Held says which is which.">Return</th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+        </table>
+        <p id="sold-note" class="deep-note"></p>
     </div>
 
     <!-- World breadth. One ETF per country, ranked by distance below its own all-time high —
@@ -2425,6 +2475,173 @@
             yahoo: h.yahoo, trades: h.trades || [],
             quoteCurrency: STATE.quotes[h.yahoo]?.currency || h.quote?.currency || h.currency,
         }));
+        // Which trades make each Performance cohort. One definition, read by the lines and by the
+        // table's Contribution column, so the column always adds up to the line it names.
+        // New = money put in this year (buys); a trim of an older position this year stays in the
+        // Existing story rather than becoming a phantom short there.
+        const COHORT_FILTER = {
+            total: null,
+            existing: t => t.date < YEAR_START,
+            new: t => t.date >= YEAR_START && t.side !== 'SELL',
+        };
+
+        // Contribution: each holding's share of the Performance figure for the chart's range
+        // (portfolio.js contributions). The whole book, or the cohort the table is cut to, so the
+        // column adds up to the line it names. Each holding is replayed on its own with the same
+        // cohortMV the line uses, over the same days, so nothing here can disagree with the chart.
+        // Needs the trades: null when locked, and until history.json lands.
+        let contribMemo = null;
+        const rangeLabel = () => rangeIntraday ? '1D'
+            : document.querySelector('#ranges button[aria-pressed="true"]')?.textContent.trim() || '';
+        function contribState() {
+            if (!STATE || STATE.locked || !HISTORY) return null;
+            const hist = longRange ? HISTORY.long : HISTORY;
+            if (!hist?.days?.length) return null;
+            const view = STATE.cohortView || null;
+            const key = [longRange, rangeYtd, rangeDays, rangeYears, rangeIntraday, view].join('|');
+            if (contribMemo && contribMemo.key === key && contribMemo.state === STATE && contribMemo.hist === hist) return contribMemo.value;
+            const legs = twrHoldings(STATE.holdings);
+            const full = legs.map(l => portfolioLib.cohortMV(hist.days, [l], hist.closes, STATE.rates, COHORT_FILTER[view || 'total'], netDivs()));
+            const arrays = full.flatMap(r => [r.mv, r.flow, r.income]);
+            // 1D is a single stock's intraday chart, with no portfolio line of its own: the
+            // column then shows the latest session, the last two daily bars.
+            const cut = rangeIntraday && !longRange
+                ? { days: hist.days.slice(-2), arrays: arrays.map(a => a.slice(-2)) }
+                : sliceRange(hist.days, arrays, longRange ? STATE.firstTrade : '');
+            const parts = legs.map((_, k) => ({ mv: cut.arrays[k * 3], flow: cut.arrays[k * 3 + 1], income: cut.arrays[k * 3 + 2] }));
+            const { total, shares } = portfolioLib.contributions(parts);
+            const byYahoo = new Map();
+            legs.forEach((l, k) => byYahoo.set(l.yahoo, (byYahoo.get(l.yahoo) || 0) + shares[k]));
+            const value = { key, total, byYahoo, view, label: rangeLabel(), from: cut.days[0], to: cut.days[cut.days.length - 1],
+                days: cut.days, parts, weekly: !!longRange, by: {} };
+            contribMemo = { key, state: STATE, hist, value };
+            return value;
+        }
+        // A row's contribution is the sum of its legs': points add, unlike percentages.
+        const rowContrib = (c, r) => c ? r.legs.reduce((a, l) => a + (c.byYahoo.get(l.yahoo) || 0), 0) : null;
+        const pts = x => x == null || !Number.isFinite(x) ? '–' : `${x >= 0 ? '+' : '−'}${Math.abs(x * 100).toFixed(2)}`;
+        const contribCell = x => `<td class="contrib ${cls(x)}">${pts(x)}</td>`;
+        const contribLine = view => view ? cohortLabel(view) : 'Total';
+
+        // The same arithmetic with the holdings summed into the rows of `dim` (company, sector or
+        // geography, filed by portfolio.js bucketOf exactly as the table files them). A row's points
+        // are the sum of its holdings'; its weight and own return are the row's taken as one
+        // position. Same basket, so the rows add up to the same line.
+        function contribBy(c, dim) {
+            if (c.by[dim]) return c.by[dim];
+            const rows = new Map();
+            STATE.holdings.forEach((h, k) => {
+                const name = portfolioLib.bucketOf(h, STATE.quotes[h.yahoo], dim), q = c.parts[k];
+                if (!rows.has(name)) rows.set(name, { mv: q.mv.map(() => null), flow: q.mv.map(() => 0), income: q.mv.map(() => 0) });
+                const p = rows.get(name);
+                q.mv.forEach((v, i) => { if (v != null) p.mv[i] = (p.mv[i] ?? 0) + v; });
+                q.flow.forEach((v, i) => { p.flow[i] += v || 0; });
+                q.income.forEach((v, i) => { p.income[i] += v || 0; });
+            });
+            const names = [...rows.keys()], r = portfolioLib.contributions([...rows.values()]);
+            const list = names.map((name, j) => {
+                const first = rows.get(name).mv.findIndex(v => v > 0);
+                return { name, pts: r.shares[j], weight: r.weight[j], own: r.own[j], since: first > 0 ? c.days[first] : null };
+            }).filter(x => x.weight != null || x.pts);
+            return (c.by[dim] = { rows: list, names, steps: r.steps });
+        }
+
+        // "What moved it", folded under the Performance chart. The summary names the companies that
+        // moved the figure most, so "what did that?" is answered without scrolling to the table;
+        // opened, it shows the workings: how big each was and how far it moved, the same points by
+        // sector and geography, how many names the move came from, and the days that did it.
+        // Whole-portfolio Performance only: a group's chart is its own line, which points of the
+        // whole book do not add up to. Leads with whichever side moved the figure. Needs the trades,
+        // so it is not there at all while locked.
+        let moversOpen = false;
+        try { moversOpen = localStorage.getItem('moversOpen') === '1'; } catch { }
+        const dayShort = (iso, withYear) => `${+iso.slice(8)} ${QMON[+iso.slice(5, 7) - 1]}${withYear ? ` '${iso.slice(2, 4)}` : ''}`;
+        const weekday = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+        function renderMovers() {
+            const el = document.getElementById('chart-movers');
+            if (!el.ontoggle) {
+                el.open = moversOpen;
+                el.ontoggle = () => { try { localStorage.setItem('moversOpen', el.open ? '1' : '0'); } catch { } };
+            }
+            const c = contribState();
+            const co = c && !chartSel && !chartGroup && portfolioMetric === 'twr' ? contribBy(c, 'company') : null;
+            el.hidden = !co?.rows.length;
+            if (el.hidden) return;
+            const lead = c.total < 0 ? -1 : 1;
+            const ordered = rows => rows.slice().sort((a, b) => lead * (b.pts - a.pts));
+            const took = co.rows.filter(r => r.pts < 0).sort((a, b) => a.pts - b.pts);
+            const added = co.rows.filter(r => r.pts > 0).sort((a, b) => b.pts - a.pts);
+            const [first, second] = lead < 0 ? [took, added] : [added, took];
+            const named = xs => xs.map(r => `${escapeHTML(r.name)} <span class="${cls(r.pts)}">${pts(r.pts)}</span>`).join(', ');
+            const side = (xs, verb) => xs.length ? `${verb} most ${named(xs.slice(0, 3))}` : '';
+            const sides = [side(took, 'took off'), side(added, 'added')];
+            if (lead > 0) sides.reverse();
+            el.querySelector('summary').innerHTML = `What moved ${escapeHTML(contribLine(c.view))}, ${escapeHTML(c.label)} `
+                + `<span class="${cls(c.total)}">${pct(c.total)}</span>, in points: ${sides.filter(Boolean).join('; ')}.`;
+
+            // From the first day that carries a return: YTD starts on the last close of the year before.
+            const multiYear = c.days[Math.min(1, c.days.length - 1)].slice(0, 4) !== c.days[c.days.length - 1].slice(0, 4);
+            const sum = xs => xs.reduce((a, r) => a + r.pts, 0);
+            const since = r => r.since
+                ? ` <span class="muted mv-since" title="Bought inside the range: Weight and Return count from ${ymd(r.since)}">from ${dayShort(r.since, multiYear)}</span>` : '';
+            // Points and Return can disagree in sign: a holding that gained while it was a big part of
+            // the basket and lost once it was a small one (or the reverse) helped the line while
+            // losing money, which is worth knowing rather than looking like an error.
+            const flip = r => r.own != null && Math.abs(r.pts) >= 0.00005 && Math.sign(r.pts) !== Math.sign(r.own)
+                ? ` mv-flip" title="Opposite sign to its Return: it ${r.pts > 0 ? 'gained' : 'lost'} while it was a bigger part of the basket than when it ${r.pts > 0 ? 'lost' : 'gained'}` : '';
+            const row = r => `<tr><td>${escapeHTML(r.name)}</td><td>${plain(r.weight)}</td>`
+                + `<td class="${cls(r.own)}">${pct(r.own)}${since(r)}</td><td><span class="${cls(r.pts)}${flip(r)}">${pts(r.pts)}</span></td></tr>`;
+            const head = name => `<thead><tr><th>${name}</th>`
+                + `<th title="Average share of the holdings behind the line, on the days it was held">Weight</th>`
+                + `<th title="Its own return over the days it was held: time-weighted, dividends in, today's FX">Return</th>`
+                + `<th title="Percentage points of the line above. Roughly Weight times Return; they differ where it was bought or trimmed inside the range">Points</th></tr></thead>`;
+            const N = 5, top = [...first.slice(0, N), ...second.slice(0, N)];
+            const rest = co.rows.filter(r => !top.includes(r));
+            const restRow = rest.length
+                ? `<tbody><tr class="mv-rest"><td>${rest.length} others</td><td></td><td></td><td>${pts(sum(rest))}</td></tr></tbody>` : '';
+            const coTable = `<table><caption>By company: the five that moved it most each way</caption>${head('Company')}`
+                + `<tbody>${first.slice(0, N).map(row).join('')}</tbody>`
+                + (second.length ? `<tbody>${second.slice(0, N).map(row).join('')}</tbody>` : '') + restRow + '</table>';
+            const dimTable = (dim, name) => {
+                const rows = contribBy(c, dim).rows;
+                return rows.length ? `<table><caption>By ${name.toLowerCase()}</caption>${head(name)}<tbody>${ordered(rows).map(row).join('')}</tbody></table>` : '';
+            };
+
+            // The days (weeks, on the long ranges) that moved the book most, and who did it. Points
+            // of that day's move, which add up to it; not of the range's, which the tables show.
+            let daysTable = '';
+            const steps = co.steps.filter(s => Number.isFinite(s.r));
+            if (steps.length >= 5) {
+                const unit = c.weekly ? 'week' : 'day';
+                const down = steps.filter(s => s.r < 0).sort((a, b) => a.r - b.r).slice(0, 3);
+                const up = steps.filter(s => s.r > 0).sort((a, b) => b.r - a.r).slice(0, 3);
+                const who = s => co.names.map((name, j) => [name, s.c[j]])
+                    .filter(([, v]) => v * s.r > 0).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3)
+                    .map(([n, v]) => `${escapeHTML(n)} <span class="${cls(v)}">${pts(v)}</span>`).join(', ');
+                const when = iso => c.weekly ? dayShort(iso, multiYear) : `${weekday(iso)} ${dayShort(iso, multiYear)}`;
+                const dayRow = s => `<tr><td>${when(c.days[s.i])}</td><td class="${cls(s.r)}">${pct(s.r)}</td><td class="mv-who">${who(s)}</td></tr>`;
+                const [d1, d2] = lead < 0 ? [down, up] : [up, down];
+                daysTable = `<table><caption>The ${unit}s that moved it most</caption><thead><tr>`
+                    + `<th>${c.weekly ? 'Week to' : 'Day'}</th><th title="The book's own return that ${unit}">Book</th>`
+                    + `<th title="Points of that ${unit}'s move, which add up to it">Moved most</th></tr></thead>`
+                    + `<tbody>${d1.map(dayRow).join('')}</tbody>` + (d2.length ? `<tbody>${d2.map(dayRow).join('')}</tbody>` : '') + '</table>';
+            }
+
+            // How broad the move was: many names a little, or a few names a lot.
+            const share = xs => xs.length > N ? ` (${pts(sum(xs.slice(0, N)))} of it from the five largest)` : '';
+            const spread = [first, second].filter(xs => xs.length)
+                .map(xs => `${xs.length} ${xs === took ? 'took off' : 'added'} ${pts(sum(xs))}${share(xs)}`).join(' and ');
+            el.querySelector('.mv-body').innerHTML =
+                `<p class="mv-p">Of the ${co.rows.length} ${co.rows.length === 1 ? 'company' : 'companies'} held in this range, ${spread}.</p>`
+                + `<div class="mv-grid">${coTable}${daysTable}${dimTable('sector', 'Sector')}${dimTable('geography', 'Geography')}</div>`
+                + `<p class="mv-note">${escapeHTML(contribLine(c.view))}, ${ymd(c.from)} to ${ymd(c.to)}, ${pct(c.total)}. `
+                + 'Points are percentage points of that line, so each table adds up to it. Weight is the average share of the book '
+                + 'on the days a position was held, and Return its own return over those days, so Points is roughly the two '
+                + 'multiplied. A buy or trim inside the range makes them differ, and a dotted figure differs in sign: it '
+                + 'gained while it was a bigger part of the basket than when it lost, or the reverse. '
+                + "The days table counts points of that day's move. Positions sold entirely are not in the book, "
+                + "so they are in neither the line nor this. The table's Contrib. column has every holding.</p>";
+        }
 
         // Time-weighted return of a set of holdings — real performance with the effect of
         // deposits/withdrawals removed. Used for the whole portfolio and for a selected group.
@@ -2442,7 +2659,12 @@
             if (published) {
                 const hist = longRange ? HISTORY.long : HISTORY;
                 const keys = ['total', 'existing', 'new'].filter(k => cohortOn.has(k) && published[k]);
-                const { days, arrays } = sliceRange(hist.days, keys.map(k => published[k]), longRange ? STATE.firstTrade : '');
+                // Locked there are no trades to find the book's start from, so the published line's
+                // own first value stands in: the bot leaves it null before bookStart. Without this
+                // the long ranges ran from history's first day, 2 Jan 1970, flat to the first trade,
+                // and CAGR was taken over all 56 years.
+                const lineStart = hist.days[(published.total || []).findIndex(v => v != null)] || '';
+                const { days, arrays } = sliceRange(hist.days, keys.map(k => published[k]), longRange ? STATE.firstTrade || lineStart : '');
                 const DEFS = { total: ['Total', PORT_COLOR], existing: [`Existing (pre-${YEAR_START.slice(0, 4)})`, BENCH_COLOR['^GSPC']],
                     new: [`New buys (${YEAR_START.slice(0, 4)})`, BENCH_COLOR['^HSI']] };
                 const series = keys.map((k, idx) => {
@@ -2470,11 +2692,9 @@
             };
             const history = longRange ? HISTORY.long : HISTORY;
             const DEFS = {
-                total:    { label: 'Total',    color: PORT_COLOR,          filter: null },
-                existing: { label: `Existing (pre-${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^GSPC'], filter: t => t.date < YEAR_START },
-                // New = money put in this year (buys); a 2026 trim of an older position stays
-                // in the Existing story rather than becoming a phantom short here.
-                new:      { label: `New buys (${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^HSI'],  filter: t => t.date >= YEAR_START && t.side !== 'SELL' },
+                total:    { label: 'Total',    color: PORT_COLOR,          filter: COHORT_FILTER.total },
+                existing: { label: `Existing (pre-${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^GSPC'], filter: COHORT_FILTER.existing },
+                new:      { label: `New buys (${YEAR_START.slice(0, 4)})`, color: BENCH_COLOR['^HSI'],  filter: COHORT_FILTER.new },
             };
             const active = ['total', 'existing', 'new'].filter(k => cohortOn.has(k));
             if (!active.length) active.push('total');
@@ -2618,8 +2838,9 @@
             // past prices and put the S&P group at $5,723 in Dec 2019 when it was really $593.
             const { mv } = portfolioLib.cohortMV(
                 history.days, twrHoldings(group.legs), history.closes, STATE.rates);
-            const firstTrade = group.legs.flatMap(leg => leg.trades || [])
-                .reduce((first, trade) => !first || trade.date < first ? trade.date : first, '');
+            // The group's own start, by the same rule as the book's: an earlier round trip in this
+            // stock, sold out of and followed by years of nothing, is in the Sold tab, not on this line.
+            const firstTrade = portfolioLib.bookStart(group.legs);
             const { days, arrays } = sliceRange(
                 history.days, [mv], longRange ? firstTrade : '',
             );
@@ -2893,6 +3114,10 @@
                 : '';
             const noteFold = noteEl.querySelector('details');
             if (noteFold) noteFold.ontoggle = e => { chartNoteOpen = e.target.open; };
+            // The range buttons and history.json's arrival both come through here, and the table's
+            // Contribution column follows the range, so redraw the table when its range is stale.
+            renderMovers();
+            if ((contribState()?.key ?? null) !== contribShown) renderTable();
             if (days.length < 2) { svg.innerHTML = ''; return; }
 
             // Legend (always shown for >=2 series).
@@ -3532,6 +3757,7 @@
             const [shown, of] = STATE.dim === 'watch' ? [visibleWatch().length, WATCH.length]
                 : STATE.dim === 'macro' || STATE.dim === 'world' ? [0, 0]
                 : STATE.dim === 'calendar' ? [cal().length, calendarRows().length]
+                : STATE.dim === 'sold' ? [soldRows().length, (STATE.closed || []).length]
                 : [visibleRows().length, baseRows().length];
             el.textContent = shown ? `${shown} of ${of}` : 'no matches';
         }
@@ -3545,6 +3771,7 @@
             if (key === 'held') return row.held ? row.held.days : null;
             if (key === 'live') return row.legs.some(l => isLive(l.quote)) ? 1 : 0;
             if (key === 'trades') return rowTrades(row) || null;
+            if (key === 'contrib') return rowContrib(contribState(), row);
             if (key === 'specialPe') return recurringNow(row).pe;
             // Single instruments only, like every multiple in this table.
             if (key === 'pocfPctile') return row.legs.length === 1 ? row.legs[0].quote?.pocfPctile ?? null : null;
@@ -3698,8 +3925,19 @@
             renderTable();
         }
 
+        let contribShown = null;   // the contribState key the table was last drawn with
         function renderTable() {
             const total = STATE.total;          // Mix is always a share of the WHOLE portfolio
+            const contrib = contribState();
+            contribShown = contrib?.key ?? null;
+            document.body.classList.toggle('no-contrib', !!STATE.locked);
+            // The header is short (Contrib.), so the range it follows is in its tooltip.
+            const contribTh = document.querySelector('#portfolio th[data-sort="contrib"]');
+            if (contribTh) {
+                contribTh.dataset.tip ??= contribTh.title;
+                contribTh.title = contribTh.dataset.tip + (contrib
+                    ? ` Now: ${contribLine(contrib.view)}, ${contrib.label}, ${ymd(contrib.from)} to ${ymd(contrib.to)}.` : '');
+            }
             const shown = sortedRows();
             // The name-cell bar is scaled to the biggest row on screen, so it always uses the full
             // width whatever is filtered in. Recomputed per render because search changes the set.
@@ -3724,6 +3962,7 @@
                     ${liveCell(r.legs.map(l => l.quote))}
                     <td>${priceCell(r.price, r.priceCurrency, r.legs.length === 1 ? r.legs[0].quote : null)}</td>
                     ${portfolioLib.PERIODS.map(p => `<td class="${cls(r.moves[p])}">${pct(r.moves[p])}</td>`).join('')}
+                    ${contribCell(rowContrib(contrib, r))}
                     <td>${tradeCell(r.lastTrade)}</td>
                     <td class="${cls(r.since)}">${pct(r.since)}</td>
                     <td class="${cls(r.gainPct)}">${pct(r.gainPct)}</td>
@@ -3764,6 +4003,7 @@
                         ${liveCell([leg.quote])}
                         <td>${priceCell(leg.quote.price, leg.quote.currency, leg.quote)}</td>
                         ${portfolioLib.PERIODS.map(p => `<td class="${cls(leg.quote[p])}">${pct(leg.quote[p])}</td>`).join('')}
+                        ${contribCell(contrib ? contrib.byYahoo.get(leg.yahoo) ?? 0 : null)}
                         <td>${tradeCell(leg.lastTrade)}</td>
                         <td class="${cls(leg.since)}">${pct(leg.since)}</td>
                         <td class="${cls(gain)}">${pct(leg.cost ? gain / leg.cost : null)}</td>
@@ -3800,7 +4040,7 @@
                 const tradeRows = trades.slice().reverse().map(trade => {
                     const el = document.createElement('tr');
                     el.className = 'trade-detail';
-                    el.innerHTML = `<td colspan="32">${tradeDetail(trade)}</td>`;
+                    el.innerHTML = `<td colspan="33">${tradeDetail(trade)}</td>`;
                     tbody.appendChild(el);
                     return el;
                 });
@@ -3864,6 +4104,12 @@
                 const move = portfolioLib.weightedMove(shown.map(r => ({ value: r.value, quote: r.moves })), p);
                 put(p, `<td class="${cls(move)}">${pct(move)}</td>`);
             }
+            // The rows shown, summed, like every total here. Unfiltered, that is the line's own
+            // figure for the range, which the tooltip states so the two can be checked by eye.
+            {
+                const sum = contrib ? shown.reduce((a, r) => a + rowContrib(contrib, r), 0) : null;
+                put('contrib', `<td class="contrib ${cls(sum)}"${contrib ? ` title="${escapeHTML(`${contribLine(contrib.view)} ${contrib.label}, ${ymd(contrib.from)} to ${ymd(contrib.to)}: ${pct(contrib.total)}`)}"` : ''}>${pts(sum)}</td>`);
+            }
             document.querySelector('#portfolio tfoot').innerHTML = `<tr>${cells.join('')}</tr>`;
             renderNewNote();
             updateSearchCount();
@@ -3900,14 +4146,17 @@
             const table = document.getElementById('portfolio');
             const footRow = table.tFoot?.rows[0];
             // Watchlist and calendar views have no totals to float; nor does an empty table.
-            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || STATE.dim === 'macro' || STATE.dim === 'world' || !footRow || !table.tBodies[0]?.rows.length) {
+            if (STATE.dim === 'watch' || STATE.dim === 'calendar' || STATE.dim === 'macro' || STATE.dim === 'world' || STATE.dim === 'sold' || !footRow || !table.tBodies[0]?.rows.length) {
                 el.classList.remove('show');
                 el.innerHTML = '';
                 return;
             }
             // table-layout:fixed needs explicit column widths; copy the live header's so every
             // cell lines up under the column it totals, sticky first column included.
-            const widths = [...table.tHead.rows[0].cells].map(th => th.getBoundingClientRect().width);
+            // Visible columns only: a hidden one (Contribution, locked) takes no column in the
+            // clone either, so a <col> for it would shift every total after it one place left.
+            const widths = [...table.tHead.rows[0].cells].filter(th => th.getClientRects().length)
+                .map(th => th.getBoundingClientRect().width);
             const cols = widths.map(w => `<col style="width:${w}px">`).join('');
             el.innerHTML = `<table><colgroup>${cols}</colgroup><tbody>${footRow.outerHTML}</tbody></table>`;
             updateTotalFloat();
@@ -4138,11 +4387,91 @@
             markSelectedRow();
         }
 
+        // ---------------- Sold: every finished round trip (sealed, extract-portfolio.js roundTrips) ----------------
+        // Its own table, never a row in the holdings one: a sold stock has no value, weight or
+        // price, and its result must not reach a total that reports what you hold. Gain is the
+        // extract's cash figure, sells minus buys at the price with commission, converted at today's
+        // rate like every amount on the page (invariant 2).
+        let soldSort = { key: 'to', dir: -1 };   // latest sale first
+        const heldFor = days => days < 60 ? `${days} d` : days < 730 ? `${Math.round(days / 30.44)} mo` : `${(days / 365.25).toFixed(1)} yr`;
+        // An amount in the trade's own currency, for the tooltips; masked in the eye view like money().
+        const nativeAmt = (n, ccy) => priv ? HIDDEN : n == null ? '–' : `${ccy} ${n < 0 ? '-' : ''}${Math.round(Math.abs(n)).toLocaleString()}`;
+        // The workbook's own Gain/(Loss) for the round trip parts from the cash figure by more than rounding.
+        const sheetDiffers = c => c.gain != null && c.sheetGain != null && Math.abs(c.gain - c.sheetGain) > Math.max(1, 0.005 * (c.cost || 0));
+        function soldRows() {
+            const terms = searchTerms();
+            return (STATE?.closed || []).map(c => {
+                const rate = c.currency ? rateOf(c.currency) : null;
+                const usd = n => n == null || !rate ? null : n * rate;
+                return { ...c, days: daysBetween(c.from, c.to), costUSD: usd(c.cost), gainUSD: usd(c.gain),
+                    ret: c.gain != null && c.cost > 0 ? c.gain / c.cost : null };
+            }).filter(c => !terms.length
+                || matches([c.ticker, c.symbol, c.yahoo, c.group, c.currency].filter(Boolean).join(' ').toLowerCase(), terms));
+        }
+        function renderSold() {
+            const table = document.getElementById('sold-table');
+            if (!STATE || !table) return;
+            const tbody = table.tBodies[0], tfoot = table.tFoot;
+            tbody.textContent = '';
+            tfoot.textContent = '';
+            const all = STATE.closed || [];
+            if (!all.length) { document.getElementById('sold-note').textContent = ''; return; }
+            const rows = soldRows();
+            const key = { name: r => r.ticker, to: r => r.to, days: r => r.days, cost: r => r.costUSD, gain: r => r.gainUSD, ret: r => r.ret }[soldSort.key] || (r => r.to);
+            rows.sort((a, b) => {
+                const x = key(a), y = key(b);
+                if (x == null || y == null) return x == null && y == null ? 0 : x == null ? 1 : -1;   // blanks last either way
+                return ((x < y ? -1 : x > y ? 1 : 0) * soldSort.dir) || b.to.localeCompare(a.to);
+            });
+            for (const r of rows) {
+                const tr = document.createElement('tr');
+                // The workings, on hover: every trade in the round trip at the price with commission.
+                tr.title = `${r.ticker}${r.group ? ` (${r.group})` : ''}, ${ymd(r.from)} to ${ymd(r.to)}\n`
+                    + r.trades.map(t => `${ymd(t.date)} ${t.side} ${qtyCell(t.qty)} at ${t.cash == null ? '–' : `${r.currency || ''} ${Number(t.cash.toPrecision(6))}`}`
+                        + (t.platform ? ` (${t.platform === 'IB' ? 'IBKR' : t.platform})` : '') + (t.comment ? `: ${t.comment}` : '')).join('\n');
+                const off = sheetDiffers(r);
+                tr.innerHTML = `
+                    <td>${escapeHTML(r.ticker)} <span class="muted">${escapeHTML(r.group && r.group !== r.ticker ? r.group : r.currency || '')}</span>`
+                    + (r.stillHeld ? ' <span class="tag" title="You hold this stock again today. This earlier round is also inside the Realized figure on its row in the holdings table.">held again</span>' : '')
+                    + (r.pot ? ' <span class="tag" title="At least one trade in it carries a Pot entry in the Tradelog.">pot</span>' : '') + `</td>
+                    <td>${qShort(r.to)}</td>
+                    <td title="Bought ${ymd(r.from)}, sold ${ymd(r.to)}: ${r.days} days.">${heldFor(r.days)}</td>
+                    <td title="${escapeHTML(nativeAmt(r.cost, r.currency))}">${money(r.costUSD)}</td>
+                    <td class="${cls(r.gainUSD)}" title="${escapeHTML(`Proceeds ${nativeAmt(r.proceeds, r.currency)} less cost ${nativeAmt(r.cost, r.currency)}: ${nativeAmt(r.gain, r.currency)}.`)}">${money(r.gainUSD)}`
+                    + (off ? ` <span class="tag" title="${escapeHTML(`The workbook's Gain/(Loss) for these trades adds up to ${nativeAmt(r.sheetGain, r.currency)}, against ${nativeAmt(r.gain, r.currency)} in cash. Its figure is struck against the workbook's Average Purchase Price column, which averages a buy with shares already sold. This page works the average out from the trades instead, so its Realized agrees with the cash figure.`)}">sheet</span>` : '') + `</td>
+                    <td class="${cls(r.ret)}">${pct(r.ret)}</td>`;
+                tbody.appendChild(tr);
+            }
+            const priced = rows.filter(r => r.costUSD != null && r.gainUSD != null);
+            const cost = priced.reduce((a, r) => a + r.costUSD, 0), gain = priced.reduce((a, r) => a + r.gainUSD, 0);
+            tfoot.innerHTML = `<tr><td>${rows.length === all.length ? `${all.length} round trips` : `${rows.length} of ${all.length}`}</td><td></td><td></td>
+                <td>${money(cost)}</td><td class="${cls(gain)}">${money(gain)}</td><td class="${cls(cost ? gain / cost : null)}">${pct(cost ? gain / cost : null)}</td></tr>`;
+            const won = all.filter(c => c.gain > 0).length, lost = all.filter(c => c.gain < 0).length;
+            const again = all.filter(c => c.stillHeld).length;
+            const parted = all.filter(sheetDiffers);
+            const first = all.reduce((m, c) => (!m || c.from < m ? c.from : m), ''), last = all.reduce((m, c) => (c.to > m ? c.to : m), '');
+            document.getElementById('sold-note').innerHTML =
+                `${all.length} round trips from ${qShort(first)} to ${qShort(last)}: ${won} at a gain, ${lost} at a loss`
+                + `${all.length - won - lost ? `, ${all.length - won - lost} even` : ''}. Gain is sells minus buys at the price with `
+                + `commission, without dividends, at today's exchange rates like every amount on this page. `
+                + (again ? `${again} are earlier rounds of stocks you hold again, tagged <b>held again</b>: their results are also `
+                    + `inside the Realized column of the holdings table, so the two tables do not add up to one figure. ` : '')
+                + (parted.length ? `For ${parted.length === 1 ? 'one' : parted.length}, tagged <b>sheet</b>, the workbook's own `
+                    + `Gain/(Loss) gives a different result; hover the tag for both. ` : '')
+                + `The Performance chart replays only the stocks held today, so the ${all.length - again} round trips in stocks you no `
+                + `longer hold are not in it. Its All range starts on ${STATE.firstTrade ? ymd(STATE.firstTrade) : '–'}, the first trade `
+                + `after the book last held nothing` + (() => {
+                    const before = all.filter(c => c.stillHeld && STATE.firstTrade && c.to < STATE.firstTrade).length;
+                    return before ? `, so ${before === 1 ? 'one earlier round' : `${before} earlier rounds`} of a stock held again ${before === 1 ? 'falls' : 'fall'} before it too.` : '.';
+                })();
+        }
+
         // The watchlist and the calendar each take the holdings table's place rather than sitting
         // beneath it — one table area, one control.
         function applyView() {
             const dim = STATE.dim;
-            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot';
+            document.getElementById('holdings-table').hidden = dim === 'watch' || dim === 'calendar' || dim === 'macro' || dim === 'world' || dim === 'pot' || dim === 'sold';
+            document.getElementById('sold').hidden = dim !== 'sold';
             document.getElementById('new-note').hidden = !STATE.cohortRows || document.getElementById('holdings-table').hidden;
             document.getElementById('watch').hidden = dim !== 'watch';
             document.getElementById('cal').hidden = dim !== 'calendar';
@@ -4607,6 +4936,7 @@ function renderPot() {
             renderTable();
             renderWatchlist();
             renderCalendar();
+            renderSold();
             renderMacro();
             renderWorld();
             renderPot();
@@ -4664,6 +4994,7 @@ function renderPot() {
                 renderTable();
                 renderWatchlist();
                 renderCalendar();       // reads STATE.rows, so it follows the rebuild
+                renderSold();
             }
             const doc = url.get('p');
             if (doc && doc !== potDoc) {
@@ -4740,6 +5071,7 @@ function renderPot() {
             renderTable();
             renderWatchlist();
             renderCalendar();
+            renderSold();
             updateSearchCount();
         });
 
@@ -4755,7 +5087,16 @@ function renderPot() {
                 renderTable();
                 renderWatchlist();
                 renderCalendar();   // needs the rows rebuild above: it reads STATE.rows
+                renderSold();
                 updateChart();
+            }));
+
+        document.querySelectorAll('#sold-table th[data-sort]').forEach(th =>
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                soldSort = soldSort.key === key ? { key, dir: -soldSort.dir } : { key, dir: key === 'name' ? 1 : -1 };
+                markSort('#sold-table th[data-sort]', soldSort);
+                renderSold();
             }));
 
         document.getElementById('clear-sel').addEventListener('click', clearSelection);
@@ -4807,10 +5148,10 @@ function renderPot() {
             // It used to fall back to an empty list, blanking the table, although D67 kept the
             // tickers public on purpose. Skipped = locked: the eye view, forced on (D84), with the
             // published weights and performance lines standing in for what the trades would give.
-            let locked = false;
+            let locked = false, closed = [];
             if (sealed) {
                 const inside = await unlockHoldings(sealed);
-                if (inside) holdings = inside.holdings; else locked = true;
+                if (inside) { holdings = inside.holdings; closed = inside.closed || []; } else locked = true;
             }
             if (locked) priv = true;
             nav = await vaultOpen(nav);
@@ -4823,15 +5164,20 @@ function renderPot() {
             WATCH = portfolioLib.buildWatchlist(watchlist.filter(w => !held.has(w.yahoo)), quotes);
             // No watchlist, no button — and never restore into a view that would render empty.
             document.querySelector('#groupby button[data-dim="watch"]').hidden = !WATCH.length;
-            const views = ['instrument', 'company', 'geography', 'sector', ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world', 'pot'];
+            // Sealed, so no tab at all when locked, rather than one that opens on nothing.
+            document.querySelector('#groupby button[data-dim="sold"]').hidden = !closed.length;
+            const views = ['instrument', 'company', 'geography', 'sector', ...(closed.length ? ['sold'] : []), ...(WATCH.length ? ['watch'] : []), 'calendar', 'macro', 'world', 'pot'];
             // The URL hash wins over localStorage for the tab, so a shared/bookmarked link opens
             // where it points; otherwise fall back to the last tab this browser used.
             const url = new URLSearchParams(location.hash.slice(1));
             const saved = localStorage.getItem('dim');
             const dim = views.includes(url.get('g')) ? url.get('g')
                 : views.includes(saved) ? saved : 'company';
-            const firstTrade = holdings.flatMap(h => h.trades || []).reduce((first, t) => !first || t.date < first ? t.date : first, '');
-            STATE = { holdings, rates, quotes, macro, fed, inflation, countries, signals, nav, received, performance, weights, gains, locked, firstTrade, dim, updated };
+            // Where the long ranges start: the first trade after the book last held nothing
+            // (portfolio.js bookStart), not the earliest trade, which on 21 Nov 2026 was an old round
+            // trip followed by a long stretch holding nothing. That round trip is in the Sold tab.
+            const firstTrade = portfolioLib.bookStart(holdings);
+            STATE = { holdings, closed, rates, quotes, macro, fed, inflation, countries, signals, nav, received, performance, weights, gains, locked, firstTrade, dim, updated };
             document.querySelector(`#groupby button[data-dim="${dim}"]`)?.setAttribute('aria-pressed', 'true');
             document.querySelectorAll('#groupby button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dim === dim)));
             // Restore sort before the first paint so the table comes up in the saved order.
