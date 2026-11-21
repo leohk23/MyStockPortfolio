@@ -123,8 +123,27 @@
         #tip .row { display: flex; align-items: center; gap: 5px; }
         #tip i { width: 9px; height: 3px; border-radius: 2px; display: inline-block; }
         #chart-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-        #chart-movers { font-size: 12px; margin-top: 6px; line-height: 1.5; }
-        #chart-movers:empty { display: none; }
+        /* "What moved it", folded under the chart. The summary is the one line worth reading at a
+           glance; opened, the same arithmetic by company, sector and geography, and the days that
+           did it. Its tables are small reads, not the portfolio table: none of the sticky header,
+           1280px minimum or uppercase that the global table rules carry for that one. */
+        #chart-movers { margin-top: 6px; }
+        #chart-movers > summary { display: block; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+        #chart-movers > summary::before { margin-right: 5px; }
+        #chart-movers .mv-grid { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-start; margin-top: 8px; }
+        #chart-movers table { width: auto; min-width: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+        #chart-movers caption { text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 600; padding-bottom: 2px; }
+        #chart-movers th { position: static; background: none; text-transform: none; letter-spacing: 0;
+            font-size: 11px; color: var(--text-muted); font-weight: 600; padding: 3px 6px; }
+        #chart-movers td { padding: 3px 6px; }
+        #chart-movers th:first-child, #chart-movers td:first-child { text-align: left; padding-left: 0; }
+        #chart-movers tbody + tbody tr:first-child td { border-top: 1px solid var(--text-muted); }
+        #chart-movers tr.mv-rest td { color: var(--text-muted); }
+        #chart-movers td.mv-who { text-align: left; white-space: normal; min-width: 180px; }
+        #chart-movers .mv-since { font-size: 11px; }
+        #chart-movers .mv-flip { border-bottom: 1px dotted var(--text-muted); cursor: help; }
+        #chart-movers .mv-p { font-size: 12px; margin: 8px 0 0; color: var(--text-secondary); line-height: 1.5; }
+        #chart-movers .mv-note { font-size: 11px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.5; }
         /* Contribution needs the trades: locked, the column is not there at all, rather than a
            column of dashes that reads as missing data. */
         body.no-contrib .contrib { display: none; }
@@ -764,7 +783,7 @@
             <svg id="chart" role="img" aria-label="Portfolio chart"></svg>
             <div id="tip" role="status"></div>
         </div>
-        <div id="chart-movers"></div>
+        <details id="chart-movers" class="deep-notes" hidden><summary></summary><div class="mv-body"></div></details>
         <div id="chart-note"></div>
     </section>
 
@@ -832,7 +851,7 @@
                     <th data-sort="6m">6M</th>
                     <th data-sort="1y">1Y</th>
                     <th data-sort="ytd">YTD</th>
-                    <th data-sort="contrib" class="contrib" title="What each holding did to the portfolio's return over the range picked on the chart, in percentage points. The column adds up to that range's Performance figure: Total, or New buys or Existing when the table is cut to one of them. Counted the way that line is: time-weighted, dividends net of withholding tax reinvested, today's FX. A holding bought inside the range counts from the day it was bought, and the purchase itself is cash in, not a gain. Positions sold entirely are not in the book, so they are in neither the line nor this column. Needs your trades, so it shows only when unlocked.">Contribution <span class="muted contrib-range"></span></th>
+                    <th data-sort="contrib" class="contrib" title="What each holding did to the portfolio's return over the range picked on the chart, in percentage points. The column adds up to that range's Performance figure: Total, or New buys or Existing when the table is cut to one of them. Counted the way that line is: time-weighted, dividends net of withholding tax reinvested, today's FX. A holding bought inside the range counts from the day it was bought, and the purchase itself is cash in, not a gain. Positions sold entirely are not in the book, so they are in neither the line nor this column. Needs your trades, so it shows only when unlocked. Opened under the chart, What moved it has the same points by company, sector and geography, and the days that did it.">Contrib.</th>
                     <th data-sort="tradeDate">Last trade</th>
                     <th data-sort="since">Since</th>
                     <!-- Return, then the period it took, then the rate. Sitting after Realized it
@@ -2465,11 +2484,12 @@
             const cut = rangeIntraday && !longRange
                 ? { days: hist.days.slice(-2), arrays: arrays.map(a => a.slice(-2)) }
                 : sliceRange(hist.days, arrays, longRange ? STATE.firstTrade : '');
-            const { total, shares } = portfolioLib.contributions(legs.map((_, k) =>
-                ({ mv: cut.arrays[k * 3], flow: cut.arrays[k * 3 + 1], income: cut.arrays[k * 3 + 2] })));
+            const parts = legs.map((_, k) => ({ mv: cut.arrays[k * 3], flow: cut.arrays[k * 3 + 1], income: cut.arrays[k * 3 + 2] }));
+            const { total, shares } = portfolioLib.contributions(parts);
             const byYahoo = new Map();
             legs.forEach((l, k) => byYahoo.set(l.yahoo, (byYahoo.get(l.yahoo) || 0) + shares[k]));
-            const value = { key, total, byYahoo, view, label: rangeLabel(), from: cut.days[0], to: cut.days[cut.days.length - 1] };
+            const value = { key, total, byYahoo, view, label: rangeLabel(), from: cut.days[0], to: cut.days[cut.days.length - 1],
+                days: cut.days, parts, weekly: !!longRange, by: {} };
             contribMemo = { key, state: STATE, hist, value };
             return value;
         }
@@ -2479,28 +2499,124 @@
         const contribCell = x => `<td class="contrib ${cls(x)}">${pts(x)}</td>`;
         const contribLine = view => view ? cohortLabel(view) : 'Total';
 
-        // One line under the Performance chart: the companies that moved it most, so the answer to
-        // "what did that?" is on screen without scrolling to the table. Whole portfolio only. A
-        // group's chart is its own line, which the column (points of the whole book) does not add
-        // up to. Leads with whichever side moved the figure.
-        function moversLine() {
-            const c = contribState();
-            if (!c || chartSel || chartGroup || portfolioMetric !== 'twr') return '';
-            const byCo = new Map();
-            for (const h of STATE.holdings) {
-                const v = c.byYahoo.get(h.yahoo);
-                if (v) byCo.set(h.group, (byCo.get(h.group) || 0) + v);
+        // The same arithmetic with the holdings summed into the rows of `dim` (company, sector or
+        // geography, filed by portfolio.js bucketOf exactly as the table files them). A row's points
+        // are the sum of its holdings'; its weight and own return are the row's taken as one
+        // position. Same basket, so the rows add up to the same line.
+        function contribBy(c, dim) {
+            if (c.by[dim]) return c.by[dim];
+            const rows = new Map();
+            STATE.holdings.forEach((h, k) => {
+                const name = portfolioLib.bucketOf(h, STATE.quotes[h.yahoo], dim), q = c.parts[k];
+                if (!rows.has(name)) rows.set(name, { mv: q.mv.map(() => null), flow: q.mv.map(() => 0), income: q.mv.map(() => 0) });
+                const p = rows.get(name);
+                q.mv.forEach((v, i) => { if (v != null) p.mv[i] = (p.mv[i] ?? 0) + v; });
+                q.flow.forEach((v, i) => { p.flow[i] += v || 0; });
+                q.income.forEach((v, i) => { p.income[i] += v || 0; });
+            });
+            const names = [...rows.keys()], r = portfolioLib.contributions([...rows.values()]);
+            const list = names.map((name, j) => {
+                const first = rows.get(name).mv.findIndex(v => v > 0);
+                return { name, pts: r.shares[j], weight: r.weight[j], own: r.own[j], since: first > 0 ? c.days[first] : null };
+            }).filter(x => x.weight != null || x.pts);
+            return (c.by[dim] = { rows: list, names, steps: r.steps });
+        }
+
+        // "What moved it", folded under the Performance chart. The summary names the companies that
+        // moved the figure most, so "what did that?" is answered without scrolling to the table;
+        // opened, it shows the workings: how big each was and how far it moved, the same points by
+        // sector and geography, how many names the move came from, and the days that did it.
+        // Whole-portfolio Performance only: a group's chart is its own line, which points of the
+        // whole book do not add up to. Leads with whichever side moved the figure. Needs the trades,
+        // so it is not there at all while locked.
+        let moversOpen = false;
+        try { moversOpen = localStorage.getItem('moversOpen') === '1'; } catch { }
+        const dayShort = (iso, withYear) => `${+iso.slice(8)} ${QMON[+iso.slice(5, 7) - 1]}${withYear ? ` '${iso.slice(2, 4)}` : ''}`;
+        const weekday = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+        function renderMovers() {
+            const el = document.getElementById('chart-movers');
+            if (!el.ontoggle) {
+                el.open = moversOpen;
+                el.ontoggle = () => { try { localStorage.setItem('moversOpen', el.open ? '1' : '0'); } catch { } };
             }
-            const sorted = [...byCo].sort((a, b) => a[1] - b[1]);
-            const took = sorted.filter(x => x[1] < 0).slice(0, 3);
-            const added = sorted.filter(x => x[1] > 0).reverse().slice(0, 3);
-            if (!took.length && !added.length) return '';
-            const list = xs => xs.map(([n, v]) => `${escapeHTML(n)} <span class="${cls(v)}">${pts(v)}</span>`).join(', ');
-            const parts = [took.length ? `took off most ${list(took)}` : '', added.length ? `added most ${list(added)}` : ''];
-            if (c.total >= 0) parts.reverse();
-            return `What moved ${escapeHTML(contribLine(c.view))}, ${escapeHTML(c.label)} <span class="${cls(c.total)}">${pct(c.total)}</span>, in points of it: `
-                + parts.filter(Boolean).join('; ')
-                + `. <span class="muted">Sort the table by Contribution for the rest.</span>`;
+            const c = contribState();
+            const co = c && !chartSel && !chartGroup && portfolioMetric === 'twr' ? contribBy(c, 'company') : null;
+            el.hidden = !co?.rows.length;
+            if (el.hidden) return;
+            const lead = c.total < 0 ? -1 : 1;
+            const ordered = rows => rows.slice().sort((a, b) => lead * (b.pts - a.pts));
+            const took = co.rows.filter(r => r.pts < 0).sort((a, b) => a.pts - b.pts);
+            const added = co.rows.filter(r => r.pts > 0).sort((a, b) => b.pts - a.pts);
+            const [first, second] = lead < 0 ? [took, added] : [added, took];
+            const named = xs => xs.map(r => `${escapeHTML(r.name)} <span class="${cls(r.pts)}">${pts(r.pts)}</span>`).join(', ');
+            const side = (xs, verb) => xs.length ? `${verb} most ${named(xs.slice(0, 3))}` : '';
+            const sides = [side(took, 'took off'), side(added, 'added')];
+            if (lead > 0) sides.reverse();
+            el.querySelector('summary').innerHTML = `What moved ${escapeHTML(contribLine(c.view))}, ${escapeHTML(c.label)} `
+                + `<span class="${cls(c.total)}">${pct(c.total)}</span>, in points: ${sides.filter(Boolean).join('; ')}.`;
+
+            // From the first day that carries a return: YTD starts on the last close of the year before.
+            const multiYear = c.days[Math.min(1, c.days.length - 1)].slice(0, 4) !== c.days[c.days.length - 1].slice(0, 4);
+            const sum = xs => xs.reduce((a, r) => a + r.pts, 0);
+            const since = r => r.since
+                ? ` <span class="muted mv-since" title="Bought inside the range: Weight and Return count from ${ymd(r.since)}">from ${dayShort(r.since, multiYear)}</span>` : '';
+            // Points and Return can disagree in sign: a holding that gained while it was a big part of
+            // the basket and lost once it was a small one (or the reverse) helped the line while
+            // losing money, which is worth knowing rather than looking like an error.
+            const flip = r => r.own != null && Math.abs(r.pts) >= 0.00005 && Math.sign(r.pts) !== Math.sign(r.own)
+                ? ` mv-flip" title="Opposite sign to its Return: it ${r.pts > 0 ? 'gained' : 'lost'} while it was a bigger part of the basket than when it ${r.pts > 0 ? 'lost' : 'gained'}` : '';
+            const row = r => `<tr><td>${escapeHTML(r.name)}</td><td>${plain(r.weight)}</td>`
+                + `<td class="${cls(r.own)}">${pct(r.own)}${since(r)}</td><td><span class="${cls(r.pts)}${flip(r)}">${pts(r.pts)}</span></td></tr>`;
+            const head = name => `<thead><tr><th>${name}</th>`
+                + `<th title="Average share of the holdings behind the line, on the days it was held">Weight</th>`
+                + `<th title="Its own return over the days it was held: time-weighted, dividends in, today's FX">Return</th>`
+                + `<th title="Percentage points of the line above. Roughly Weight times Return; they differ where it was bought or trimmed inside the range">Points</th></tr></thead>`;
+            const N = 5, top = [...first.slice(0, N), ...second.slice(0, N)];
+            const rest = co.rows.filter(r => !top.includes(r));
+            const restRow = rest.length
+                ? `<tbody><tr class="mv-rest"><td>${rest.length} others</td><td></td><td></td><td>${pts(sum(rest))}</td></tr></tbody>` : '';
+            const coTable = `<table><caption>By company: the five that moved it most each way</caption>${head('Company')}`
+                + `<tbody>${first.slice(0, N).map(row).join('')}</tbody>`
+                + (second.length ? `<tbody>${second.slice(0, N).map(row).join('')}</tbody>` : '') + restRow + '</table>';
+            const dimTable = (dim, name) => {
+                const rows = contribBy(c, dim).rows;
+                return rows.length ? `<table><caption>By ${name.toLowerCase()}</caption>${head(name)}<tbody>${ordered(rows).map(row).join('')}</tbody></table>` : '';
+            };
+
+            // The days (weeks, on the long ranges) that moved the book most, and who did it. Points
+            // of that day's move, which add up to it; not of the range's, which the tables show.
+            let daysTable = '';
+            const steps = co.steps.filter(s => Number.isFinite(s.r));
+            if (steps.length >= 5) {
+                const unit = c.weekly ? 'week' : 'day';
+                const down = steps.filter(s => s.r < 0).sort((a, b) => a.r - b.r).slice(0, 3);
+                const up = steps.filter(s => s.r > 0).sort((a, b) => b.r - a.r).slice(0, 3);
+                const who = s => co.names.map((name, j) => [name, s.c[j]])
+                    .filter(([, v]) => v * s.r > 0).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3)
+                    .map(([n, v]) => `${escapeHTML(n)} <span class="${cls(v)}">${pts(v)}</span>`).join(', ');
+                const when = iso => c.weekly ? dayShort(iso, multiYear) : `${weekday(iso)} ${dayShort(iso, multiYear)}`;
+                const dayRow = s => `<tr><td>${when(c.days[s.i])}</td><td class="${cls(s.r)}">${pct(s.r)}</td><td class="mv-who">${who(s)}</td></tr>`;
+                const [d1, d2] = lead < 0 ? [down, up] : [up, down];
+                daysTable = `<table><caption>The ${unit}s that moved it most</caption><thead><tr>`
+                    + `<th>${c.weekly ? 'Week to' : 'Day'}</th><th title="The book's own return that ${unit}">Book</th>`
+                    + `<th title="Points of that ${unit}'s move, which add up to it">Moved most</th></tr></thead>`
+                    + `<tbody>${d1.map(dayRow).join('')}</tbody>` + (d2.length ? `<tbody>${d2.map(dayRow).join('')}</tbody>` : '') + '</table>';
+            }
+
+            // How broad the move was: many names a little, or a few names a lot.
+            const share = xs => xs.length > N ? ` (${pts(sum(xs.slice(0, N)))} of it from the five largest)` : '';
+            const spread = [first, second].filter(xs => xs.length)
+                .map(xs => `${xs.length} ${xs === took ? 'took off' : 'added'} ${pts(sum(xs))}${share(xs)}`).join(' and ');
+            el.querySelector('.mv-body').innerHTML =
+                `<p class="mv-p">Of the ${co.rows.length} ${co.rows.length === 1 ? 'company' : 'companies'} held in this range, ${spread}.</p>`
+                + `<div class="mv-grid">${coTable}${daysTable}${dimTable('sector', 'Sector')}${dimTable('geography', 'Geography')}</div>`
+                + `<p class="mv-note">${escapeHTML(contribLine(c.view))}, ${ymd(c.from)} to ${ymd(c.to)}, ${pct(c.total)}. `
+                + 'Points are percentage points of that line, so each table adds up to it. Weight is the average share of the book '
+                + 'on the days a position was held, and Return its own return over those days, so Points is roughly the two '
+                + 'multiplied. A buy or trim inside the range makes them differ, and a dotted figure differs in sign: it '
+                + 'gained while it was a bigger part of the basket than when it lost, or the reverse. '
+                + "The days table counts points of that day's move. Positions sold entirely are not in the book, "
+                + "so they are in neither the line nor this. The table's Contrib. column has every holding.</p>";
         }
 
         // Time-weighted return of a set of holdings — real performance with the effect of
@@ -2970,7 +3086,7 @@
             if (noteFold) noteFold.ontoggle = e => { chartNoteOpen = e.target.open; };
             // The range buttons and history.json's arrival both come through here, and the table's
             // Contribution column follows the range, so redraw the table when its range is stale.
-            document.getElementById('chart-movers').innerHTML = moversLine();
+            renderMovers();
             if ((contribState()?.key ?? null) !== contribShown) renderTable();
             if (days.length < 2) { svg.innerHTML = ''; return; }
 
@@ -3784,8 +3900,13 @@
             const contrib = contribState();
             contribShown = contrib?.key ?? null;
             document.body.classList.toggle('no-contrib', !!STATE.locked);
-            const rangeTag = document.querySelector('#portfolio .contrib-range');
-            if (rangeTag) rangeTag.textContent = contrib ? contrib.label : '';
+            // The header is short (Contrib.), so the range it follows is in its tooltip.
+            const contribTh = document.querySelector('#portfolio th[data-sort="contrib"]');
+            if (contribTh) {
+                contribTh.dataset.tip ??= contribTh.title;
+                contribTh.title = contribTh.dataset.tip + (contrib
+                    ? ` Now: ${contribLine(contrib.view)}, ${contrib.label}, ${ymd(contrib.from)} to ${ymd(contrib.to)}.` : '');
+            }
             const shown = sortedRows();
             // The name-cell bar is scaled to the biggest row on screen, so it always uses the full
             // width whatever is filtered in. Recomputed per render because search changes the set.

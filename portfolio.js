@@ -134,9 +134,17 @@ function twr(mv, flow, income = null) {
 // over the basket's value the day before, scaled by how far the basket had grown by that day. A
 // position bought mid-range adds nothing before it is held, and its buy is cash in, not a gain.
 // Gaps follow twr(): a day with no priced holding breaks the chain, and the next day starts afresh.
+//
+// The workings come back too, so a share can be read as "how big, times how far it moved":
+// `weight` is the part's average share of the basket on the days it was held, `own` its own
+// time-weighted return over those days (dividends in, trades out), and `steps` each day's basket
+// return `r` with every part's points of that day `c` (not yet scaled by `grown`), for the days
+// that moved it most. `own` and `weight` are null for a part never held inside the range.
 function contributions(parts) {
     const n = parts.reduce((m, p) => Math.max(m, p.mv.length), 0);
     const shares = parts.map(() => 0);
+    const wSum = parts.map(() => 0), held = parts.map(() => 0), own = parts.map(() => 1);
+    const steps = [];
     let grown = 1, prev = null;
     for (let i = 0; i < n; i++) {
         let v = null, flow = 0, income = 0;
@@ -147,15 +155,25 @@ function contributions(parts) {
         }
         if (v == null) { prev = null; continue; }
         if (prev != null && prev > 0) {
+            const c = new Array(parts.length);
             for (let k = 0; k < parts.length; k++) {
-                const p = parts[k];
-                shares[k] += grown * ((p.mv[i] ?? 0) - (p.mv[i - 1] ?? 0) - (p.flow[i] || 0) + (p.income?.[i] || 0)) / prev;
+                const p = parts[k], was = p.mv[i - 1] ?? 0;
+                const gain = (p.mv[i] ?? 0) - was - (p.flow[i] || 0) + (p.income?.[i] || 0);
+                c[k] = gain / prev;
+                shares[k] += grown * c[k];
+                if (was > 0) { wSum[k] += was / prev; held[k]++; own[k] *= 1 + gain / was; }
             }
-            grown *= 1 + (v - prev - flow + income) / prev;
+            const r = (v - prev - flow + income) / prev;
+            steps.push({ i, r, c });
+            grown *= 1 + r;
         }
         prev = v;
     }
-    return { total: grown - 1, shares };
+    return {
+        total: grown - 1, shares, steps,
+        weight: held.map((h, k) => h ? wSum[k] / h : null),
+        own: held.map((h, k) => h ? own[k] - 1 : null),
+    };
 }
 
 // What a holding has paid out since it was bought, in USD at today's FX (invariant 2), net of
@@ -433,11 +451,23 @@ function buildWatchlist(watchlist, quotes) {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// Which row of `dimension` a holding belongs to: build()'s grouping, and the page's "What moved it"
+// breakdown, so the two can never file a holding differently.
+// Sector is the one grouping key that does not live on the holding: holdings.json has no
+// sector field, it comes from the quote (fetch-prices reads Yahoo's assetProfile). A fund has
+// no single sector — VOO is 37% technology, not a technology company — so rather than pick a
+// misleading winner every fund buckets under `Funds`, and a gilt under `Bonds`. That is deliberately NOT what
+// signals.js `book.bySector` does: the lanes' view splits a fund across its look-through
+// weights, because it is aggregating exposure rather than listing one row per holding.
+function bucketOf(h, quote, dimension) {
+    const field = DIMENSIONS[dimension] || DIMENSIONS.company;
+    return String(field === 'sector' ? (quote?.sector || (quote?.bond ? 'Bonds' : 'Funds')) : h[field]);
+}
+
 // holdings[] + prices.json -> one row per bucket of `dimension`, sorted by market value.
 // Each row keeps its constituent instruments as `legs` (a single-instrument row has one).
 // `asOf` is a parameter only so holding ages are testable without freezing the clock.
 function build(holdings, rates, quotes, dimension = 'company', asOf = new Date().toISOString().slice(0, 10)) {
-    const field = DIMENSIONS[dimension] || DIMENSIONS.company;
     const groups = new Map();
     for (const h of holdings) {
         const quote = quotes[h.yahoo];
@@ -466,13 +496,7 @@ function build(holdings, rates, quotes, dimension = 'company', asOf = new Date()
             realized: (h.realizedLC || 0) * rate,
             income: value * (quote.divYield || 0),
         };
-        // Sector is the one grouping key that does not live on the holding: holdings.json has no
-        // sector field, it comes from the quote (fetch-prices reads Yahoo's assetProfile). A fund has
-        // no single sector — VOO is 37% technology, not a technology company — so rather than pick a
-        // misleading winner every fund buckets under `Funds`, and a gilt under `Bonds`. That is deliberately NOT what
-        // signals.js `book.bySector` does: the lanes' view splits a fund across its look-through
-        // weights, because it is aggregating exposure rather than listing one row per holding.
-        const key = String(field === 'sector' ? (quote.sector || (quote.bond ? 'Bonds' : 'Funds')) : h[field]);
+        const key = bucketOf(h, quote, dimension);
         if (!groups.has(key)) groups.set(key, { name: key, legs: [] });
         groups.get(key).legs.push(leg);
     }
@@ -587,7 +611,7 @@ function existingShares(holdings, since, rates) {
     return out;
 }
 
-const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, contributions, incomeReceived, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
+const portfolioLib = { rateFor, weightedMove, gainHistory, cohortMV, twr, contributions, incomeReceived, bucketOf, build, newBuys, existingShares, valuation, buildWatchlist, fillMissingQuarters, onUnderlying, shareBasisBreak, fiscalQuarter, holdingAge, annualised, CAGR_MIN_DAYS, PERIODS, DIMENSIONS };
 if (typeof module !== 'undefined') module.exports = portfolioLib;
 else if (typeof window !== 'undefined') window.portfolioLib = portfolioLib;
 
@@ -704,6 +728,14 @@ if (typeof require !== 'undefined' && require.main === module && process.argv[2]
         const c = contributions(parts);
         assert.ok(Math.abs(c.shares[0] - 32 / 210) < 1e-12 && Math.abs(c.shares[1] - 11 / 210) < 1e-12, 'each holding\'s share');
         assert.ok(Math.abs(c.total - line[3]) < 1e-12 && Math.abs(c.shares[0] + c.shares[1] - line[3]) < 1e-12, 'the shares add up to the line');
+        // The workings. A's own return is 12/10 - 1 = +20%; its weight is 1, 1, then 110/210 while
+        // B is held. B is held for one step only (+10%, at 100/210 of the basket). Each step's
+        // points add up to that step's basket return.
+        assert.ok(Math.abs(c.own[0] - 0.2) < 1e-12 && Math.abs(c.own[1] - 0.1) < 1e-12, 'own returns');
+        assert.ok(Math.abs(c.weight[0] - (2 + 110 / 210) / 3) < 1e-12 && Math.abs(c.weight[1] - 100 / 210) < 1e-12, 'average weight while held');
+        assert.deepStrictEqual(c.steps.map(s => s.i), [1, 2, 3]);
+        assert.ok(c.steps.every(s => Math.abs(s.c[0] + s.c[1] - s.r) < 1e-12), "a day's points add up to its return");
+        assert.deepStrictEqual(contributions([cohortMV(cdays, [A], closes, rates, t => t.date > '2026-01-04')]).own, [null]);
         // A dividend is return: the price falls by the dividend paid, and the holding's share is 0.
         const div = cohortMV(['2026-01-01', '2026-01-02'], [A], { A: [10, 9] }, rates, null, { A: [['2026-01-02', 1]] });
         assert.ok(Math.abs(contributions([div]).shares[0]) < 1e-12, 'a dividend offsets its own ex-date drop');
