@@ -1,9 +1,9 @@
 // Builds holdings.json (committed) from the Tradelog tab of "Tradelog.xlsx"
 // (gitignored) plus meta.json (committed). Run after trading: `npm run extract`.
 //
-// The Tradelog is the single source of truth: quantity, average cost, realized gain,
-// and per-trade history are all summed from it — the same SUMIFs the workbook's
-// Portfolio tab used to do, now done here so that tab no longer feeds the web app.
+// The Tradelog is the single source of truth: quantity and per-trade history are read from it,
+// and average cost and realized gain are worked out from its trades (averageCost), not read
+// from its Average Purchase Price and Gain/(Loss) columns, which mishandle a sale (21 Nov 2026).
 // meta.json supplies the per-instrument facts that aren't in the Tradelog: the Yahoo
 // symbol, company grouping, geography, and purchase currency. Add a meta.json entry
 // when you open a position in a new instrument (see README).
@@ -21,7 +21,8 @@ const META = 'meta.json';
 
 // Tradelog columns (0-indexed). "Non US date" is the trade date; "Exec Time" is the
 // bulk-import stamp. "Adjusted Price/Qty" are split-adjusted so they stay comparable to
-// today's spot. "Bal Qty"/"Average Purchase Price" are the running position and cost.
+// today's spot. "Bal Qty" is the running position. "Average Purchase Price" and "Gain/(Loss)"
+// are read only to compare with the figures averageCost works out.
 //
 // Column 25, `Pot`, is how a trade says it belongs to the AI pot rather than the main book
 // (strategy §10). Leo records the decision where he already records everything else, so the
@@ -34,8 +35,8 @@ const META = 'meta.json';
 // pot trade with no proposal behind it, such as the §11.1 VIX standing order.
 //
 // The column is optional. Until it exists every trade reads as main-book, which is correct.
-// `cashPrice` (Adjusted Price w Commissions) is what a share actually cost or fetched, so a round
-// trip's result is sells minus buys at it, with no average cost involved (roundTrips).
+// `cashPrice` (Adjusted Price w Commissions) is what a share actually cost or fetched: the average
+// cost is struck on it (averageCost), and a round trip's result is sells minus buys at it (roundTrips).
 const TRADE = { side: 2, symbol: 4, rawPrice: 5, date: 7, adjPrice: 9, cashPrice: 10, adjQty: 11, balanceQty: 12, avgPrice: 14, currency: 15, gainLC: 16, platform: 23, comment: 24, pot: 25 };
 
 // The workbook prices its Japanese holdings off the US ADR, because its data provider has no
@@ -80,7 +81,7 @@ function parseTrade(r, row, local = null) {
     const date = r[TRADE.date];
     if (!r[TRADE.symbol] || !(date instanceof Date) || r[TRADE.adjPrice] == null || r[TRADE.adjQty] == null) return null;
 
-    for (const field of ['adjPrice', 'adjQty', 'balanceQty', 'avgPrice']) {
+    for (const field of ['adjPrice', 'cashPrice', 'adjQty', 'balanceQty', 'avgPrice']) {
         const v = r[TRADE[field]];
         if (v != null && !Number.isFinite(Number(v))) {
             throw new Error(`Tradelog row ${row ?? '?'} (${r[TRADE.symbol]}): ${field} is "${v}", not a number. `
@@ -107,15 +108,15 @@ function parseTrade(r, row, local = null) {
     };
 }
 
-// Single pass over the Tradelog: trades grouped by symbol (oldest first) and realized
-// gain summed per symbol (workbook's "Gain/(Loss)" column, in local currency).
-// `facts` holds, per trade object, what only roundTrips needs: the price with commission and the
-// row's own Gain/(Loss), both in the trade's currency. Kept off the trade so holdings.json's
-// trades are exactly what they were.
+// Single pass over the Tradelog: trades grouped by symbol (oldest first), each trade's average
+// cost and each symbol's realized gain worked out from them (averageCost), in local currency.
+// `sheetRealized` is the workbook's Gain/(Loss) summed the same way, kept to compare.
+// `facts` holds, per trade object, what stays out of holdings.json: the price with commission, and
+// the row's own Average Purchase Price and Gain/(Loss), all in the trade's currency.
 function readTradelog(sheet) {
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
     const bySymbol = new Map();
-    const realized = new Map();
+    const sheetRealized = new Map();
     const facts = new WeakMap();
     for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
@@ -128,21 +129,66 @@ function readTradelog(sheet) {
         }
         // Realized gain was computed off the same USD price, so it rescales with it.
         const local = localPriceScale(sheet, i, String(r[TRADE.currency] || ''));
-        realized.set(key, (realized.get(key) || 0) + (Number(gain) || 0) * (local ? local.scale : 1));
+        sheetRealized.set(key, (sheetRealized.get(key) || 0) + (Number(gain) || 0) * (local ? local.scale : 1));
         const t = parseTrade(r, i + 1, local);
         if (!t) continue;
         const { symbol, ...trade } = t;
         const list = bySymbol.get(symbol) || [];
         list.push(trade);
         bySymbol.set(symbol, list);
-        // A cash price that is not a number leaves that round trip's result blank, rather than
-        // refusing the whole extract over a column nothing else reads.
-        const cash = Number(r[TRADE.cashPrice]);
-        facts.set(trade, { cash: Number.isFinite(cash) && cash > 0 ? cash * (local ? local.scale : 1) : null,
-            gain: (Number(gain) || 0) * (local ? local.scale : 1) });
+        // parseTrade has refused a cash price that is not a number. A blank or negative one is
+        // null here, and averageCost refuses it: a buy at nothing (bonus shares) is a real 0.
+        const cash = r[TRADE.cashPrice] == null ? NaN : Number(r[TRADE.cashPrice]);
+        facts.set(trade, { cash: cash >= 0 ? cash * (local ? local.scale : 1) : null,
+            gain: (Number(gain) || 0) * (local ? local.scale : 1), sheetAvg: trade.avgPrice });
     }
     for (const list of bySymbol.values()) list.sort((a, b) => a.date.localeCompare(b.date));
-    return { bySymbol, realized, facts };
+    const realized = new Map(), outOfOrder = [];
+    for (const [sym, list] of bySymbol) {
+        const { realized: r, offAt } = averageCost(sym, list, facts);
+        realized.set(sym, r);
+        if (offAt) outOfOrder.push(`${sym} from ${offAt}`);
+    }
+    return { bySymbol, realized, sheetRealized, facts, outOfOrder };
+}
+
+// Average cost and realized gain, worked out from one symbol's trades in date order (Leo, 21 Nov
+// 2026), in place of the workbook's Average Purchase Price (column O) and the Gain/(Loss) struck
+// against it (column Q). Column O averages a buy with every buy since the position was last flagged
+// Closed and never takes a sale out, so a position sold down and bought again was averaged as if
+// the sold shares were still held, one holding's a quarter too low. Here a buy is averaged
+// with the shares still held, at the price with commission; a sale leaves the average alone and
+// realizes qty x (its price - the average); a balance of zero starts the next buy afresh.
+//
+// Each trade's `avgPrice` is overwritten with the average after it (the workbook's stays in
+// facts.sheetAvg), so every consumer of holdings.json reads this figure. A full round trip realizes
+// exactly sells minus buys, the Sold table's figure. `offAt` is the first date the running share
+// count parts from Bal Qty: column M sums in sheet order, so a row typed below a later-dated one
+// does that, and the quantities published from Bal Qty are then off too.
+function averageCost(sym, trades, facts) {
+    let held = 0, avg = 0, realized = 0, offAt = null;
+    for (const t of trades) {
+        const cash = facts.get(t)?.cash;
+        if (cash == null) {
+            throw new Error(`Tradelog ${sym} ${t.date}: Adjusted Price w Commisions is blank or negative, so its average cost `
+                + `cannot be worked out. Fix the workbook before publishing; refusing to write a bad holdings.json.`);
+        }
+        if (t.side === 'BUY') {
+            avg = held > 1e-9 ? (held * avg + t.qty * cash) / (held + t.qty) : cash;
+            held += t.qty;
+        } else {
+            if (t.qty > held + 1e-6 * Math.max(1, held)) {
+                throw new Error(`Tradelog ${sym} ${t.date}: sells ${t.qty} with ${held} held in date order, so it has no average cost. `
+                    + `Check the row's date and quantity before publishing.`);
+            }
+            realized += t.qty * (cash - avg);
+            held -= t.qty;
+        }
+        if (held <= 1e-9) held = 0;
+        if (!offAt && Math.abs(held - t.balanceQty) > 1e-6 * Math.max(1, held)) offAt = t.date;
+        t.avgPrice = avg;
+    }
+    return { realized, offAt };
 }
 
 // Every round trip in the Tradelog: a first buy through the trade that took the balance back to
@@ -150,12 +196,11 @@ function readTradelog(sheet) {
 // holdings, and read only by the page's Sold table: the holdings, their totals and every chart line
 // are built from `holdings` alone.
 //
-// The result is sells minus buys at the price with commission. The workbook's Gain/(Loss) is summed
-// beside it as `sheetGain`, because it is struck against the Average Purchase Price column, and on
-// 21 Nov 2026 that column averaged a buy with shares already sold: its formula takes every buy since
-// the position was last flagged Closed and never removes a sale (DASHBOARD.md, Workbook tabs). One
-// round trip showed a small gain there and a loss in cash. Where the two differ the page shows the
-// cash figure and says so.
+// The result is sells minus buys at the price with commission, which is also what averageCost
+// realizes over the round. The workbook's Gain/(Loss) is summed beside it as `sheetGain`, because it
+// is struck against the Average Purchase Price column, which averages a buy with shares already sold
+// (averageCost; DASHBOARD.md, Workbook tabs). One round trip showed a small gain there and a loss in
+// cash. Where the two differ the page shows the cash figure and says so.
 //
 // One currency per round trip, or no result: adding HKD to USD would invent a number.
 function roundTrips(bySymbol, facts, meta = {}) {
@@ -196,7 +241,7 @@ function roundTrips(bySymbol, facts, meta = {}) {
 }
 
 // meta.json (instrument facts) + Tradelog aggregates -> one holding per open position.
-// Position size and cost come straight from the last trade's running balance/avg cost.
+// Position size is the last trade's Bal Qty, and cost its average cost (averageCost).
 function buildHoldings(meta, bySymbol, realized) {
     const holdings = [];
     for (const [sym, m] of Object.entries(meta)) {
@@ -438,7 +483,11 @@ async function main() {
     const wb = XLSX.readFile(WORKBOOK, { cellDates: true, cellFormula: true, sheets: ['Tradelog'] });
     if (!wb.Sheets.Tradelog) throw new Error('no "Tradelog" tab in workbook');
 
-    const { bySymbol, realized, facts } = readTradelog(wb.Sheets.Tradelog);
+    const { bySymbol, realized, sheetRealized, facts, outOfOrder } = readTradelog(wb.Sheets.Tradelog);
+    if (outOfOrder.length) {
+        console.warn(`  Bal Qty parts from the trades in date order on ${outOfOrder.join(', ')}: a row is probably typed below `
+            + `a later-dated one. Average cost is worked out in date order; the quantities published from Bal Qty are off until it is moved.`);
+    }
 
     // Guard the one new failure mode: a position is open in the Tradelog but has no
     // meta.json entry, so it would silently vanish from the app.
@@ -479,6 +528,17 @@ async function main() {
     if (dupes.length) throw new Error(`duplicate Yahoo symbols: ${dupes.join(', ')}`);
 
     await verifyNewSymbols(holdings); // network only for symbols not already in prices.json
+
+    // The workbook's own figures, where they part from the trades: its reports are wrong there.
+    // Percentages only, and in the local log only: amounts stay sealed (D67).
+    const parted = holdings.map(h => ({ h, sheet: facts.get(h.lastTrade)?.sheetAvg }))
+        .filter(({ h, sheet }) => h.avgPrice > 0 && sheet > 0 && Math.abs(sheet / h.avgPrice - 1) > 0.001);
+    const realizedOff = [...realized].filter(([s, r]) => Math.abs(r - (sheetRealized.get(s) || 0)) > 0.01).map(([s]) => s);
+    if (parted.length || realizedOff.length) {
+        console.log(`  average cost and realized gain from the trades. The workbook's Average Purchase Price differs on `
+            + (parted.map(({ h, sheet }) => `${h.ticker} (${sheet > h.avgPrice ? '+' : ''}${((sheet / h.avgPrice - 1) * 100).toFixed(1)}%)`).join(', ') || 'no open holding')
+            + `; its Gain/(Loss) on ${realizedOff.join(', ') || 'none'}.`);
+    }
 
     // What IBKR actually paid each holding (`npm run dividends`, ibkr-dividends.js), sealed with
     // the rest below: amounts. Optional — without the file nothing is attached.
@@ -630,6 +690,26 @@ async function selftest() {
         assert.strictEqual(blank[0].gain, null, 'a missing cash price leaves the result blank');
     }
 
+    // averageCost: sold down and bought again. The 5 bought back average with the 5 still held,
+    // (5 x 15 + 5 x 25) / 10 = 20; column O took every buy since Closed, (100 + 200 + 125) / 25 = 17.
+    {
+        const tr = (date, side, qty, balanceQty) => ({ date, side, qty, price: 1, balanceQty, avgPrice: 17, currency: 'USD' });
+        const t = [tr('2010-01-04', 'BUY', 10, 10), tr('2010-02-01', 'BUY', 10, 20), tr('2010-03-01', 'SELL', 15, 5),
+            tr('2010-04-01', 'BUY', 5, 10), tr('2010-05-03', 'SELL', 10, 0), tr('2011-01-03', 'BUY', 2, 2)];
+        const f = new WeakMap(t.map((x, i) => [x, { cash: [10, 20, 30, 25, 20, 7][i], gain: 0, sheetAvg: x.avgPrice }]));
+        const { realized, offAt } = averageCost('AAA', t, f);
+        assert.deepStrictEqual(t.map(x => x.avgPrice), [10, 15, 15, 20, 20, 7], 'a sale leaves the average; zero starts afresh');
+        assert.strictEqual(realized, 15 * (30 - 15) + 10 * (20 - 20));
+        assert.strictEqual(realized, roundTrips(new Map([['AAA', t]]), f)[0].gain, 'a full round realizes sells minus buys');
+        assert.strictEqual(offAt, null);
+        assert.strictEqual(f.get(t[0]).sheetAvg, 17, 'the workbook figure kept aside, out of holdings.json');
+        const one = (side, qty, bal, cash) => { const x = tr('2012-01-02', side, qty, bal); return [[x], new WeakMap([[x, { cash }]])]; };
+        assert.throws(() => averageCost('BBB', ...one('SELL', 1, -1, 5)), /sells 1 with 0 held/);
+        assert.throws(() => averageCost('BBB', ...one('BUY', 1, 1, null)), /blank or negative/);
+        assert.strictEqual(averageCost('BBB', ...one('BUY', 1, 1, 0)).realized, 0, 'bonus shares at nothing are a real 0');
+        assert.strictEqual(averageCost('BBB', ...one('BUY', 3, 4, 5)).offAt, '2012-01-02', 'Bal Qty parting from the trades is reported');
+    }
+
     // newSymbols: only holdings absent from the known (last-fetched) set are "new".
     const hs = [{ yahoo: 'GOOG' }, { yahoo: 'AVGO' }, { yahoo: 'NTO.F' }];
     assert.deepStrictEqual(newSymbols(hs, new Set(['GOOG', 'NTO.F'])).map(x => x.yahoo), ['AVGO']);
@@ -700,4 +780,4 @@ if (require.main === module) {
     if (process.argv[2] === '--selftest') selftest().catch(e => { console.error(e); process.exit(1); });
     else main().catch(e => { console.error(e.message); process.exit(1); });
 }
-module.exports = { resolveMeta, resolveGilt, yahooQuote, readTradelog, roundTrips };
+module.exports = { resolveMeta, resolveGilt, yahooQuote, readTradelog, roundTrips, averageCost };

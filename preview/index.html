@@ -4438,7 +4438,7 @@
                     <td title="Bought ${ymd(r.from)}, sold ${ymd(r.to)}: ${r.days} days.">${heldFor(r.days)}</td>
                     <td title="${escapeHTML(nativeAmt(r.cost, r.currency))}">${money(r.costUSD)}</td>
                     <td class="${cls(r.gainUSD)}" title="${escapeHTML(`Proceeds ${nativeAmt(r.proceeds, r.currency)} less cost ${nativeAmt(r.cost, r.currency)}: ${nativeAmt(r.gain, r.currency)}.`)}">${money(r.gainUSD)}`
-                    + (off ? ` <span class="tag" title="${escapeHTML(`The workbook's Gain/(Loss) for these trades adds up to ${nativeAmt(r.sheetGain, r.currency)}, against ${nativeAmt(r.gain, r.currency)} in cash. Its figure is struck against the workbook's Average Purchase Price column, so the two part when that column is off. The cash figure needs no average cost.`)}">sheet</span>` : '') + `</td>
+                    + (off ? ` <span class="tag" title="${escapeHTML(`The workbook's Gain/(Loss) for these trades adds up to ${nativeAmt(r.sheetGain, r.currency)}, against ${nativeAmt(r.gain, r.currency)} in cash. Its figure is struck against the workbook's Average Purchase Price column, which averages a buy with shares already sold. This page works the average out from the trades instead, so its Realized agrees with the cash figure.`)}">sheet</span>` : '') + `</td>
                     <td class="${cls(r.ret)}">${pct(r.ret)}</td>`;
                 tbody.appendChild(tr);
             }

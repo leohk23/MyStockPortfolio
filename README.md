@@ -57,7 +57,7 @@ For an architecture/agent-oriented reference see [AGENTS.md](AGENTS.md), and [DA
 
 ## The Tradelog is the source of truth
 
-`extract-portfolio.js` reads **only the Tradelog tab** and writes `holdings.json`. Every number — current quantity, average cost, realized gain, cost basis — is summed from the Tradelog, the same way the workbook's old Portfolio-tab formulas did. That tab (and all its reporting columns) no longer feeds the web app, so you can stop maintaining it for reporting.
+`extract-portfolio.js` reads **only the Tradelog tab** and writes `holdings.json`. Every number comes from it. Current quantity is its running balance. Average cost, cost basis and realized gain are worked out from its trades, not read from its Average Purchase Price and Gain/(Loss) columns, because the first averages a buy with shares already sold (see DASHBOARD.md, Workbook tabs). That tab (and all its reporting columns) no longer feeds the web app, so you can stop maintaining it for reporting.
 
 - **Tradelog** — every trade per symbol: split-adjusted quantity, running balance, average cost, realized gain, `Platform` (broker), and the comment shown in expandable trade history. Comments are deliberately published at the owner's request; the repo and site are public.
 
