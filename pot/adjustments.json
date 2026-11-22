@@ -2,6 +2,23 @@
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
   "updated": "2026-11-20",
   "normalizedEps": {
+    "TOM.OL": {
+      "basis": "company-adjusted EPS (adjusted for special items)",
+      "ccy": "EUR",
+      "note": "Added by the 22 November 2026 deep dive. Issuer reports in EUR against a NOK quote. Q4 2025 is derived from the FY2025 figure less the three 2025 quarters, each restated as the prior-year comparative in TOMRA's 2026 quarterly releases. Q2 and Q3 2026 carried no special items, so adjusted equals reported there; the only gap is Q1 2026's EUR13m pre-tax Recycling cost-programme charge. Four quarters give twelve contiguous months; no adjusted historical percentile is implied. The Q2 2026 figure was read from the issuer's quarterly report by a scout whose PDF extraction was partial; it agrees with local reported Q2 EPS 0.10.",
+      "annual": [
+        { "end": "2025-12-31", "eps": 0.31, "source": "https://news.cision.com/tomra-systems-asa/r/tomra-strong-finish-to-2025-with-record-quarter-in-collection-and-solid-quarter-in-recycling-and-foo,c4307254" }
+      ],
+      "quarters": [
+        { "end": "2025-03-31", "eps": 0.03, "source": "https://news.cision.com/tomra-systems-asa/r/tomra--1q26--strong-growth-in-collection-and-food--profitability-impacted-by-recycling-and-short-ter,c4339633" },
+        { "end": "2025-06-30", "eps": 0.08, "source": "https://www.tomra.com/-/media/project/tomra/tomra/investor-relations/quarterly-results-files/2026/2q/2026-q2_quarterly-report_tomra.pdf" },
+        { "end": "2025-09-30", "eps": 0.05, "source": "https://news.cision.com/tomra-systems-asa/r/tomra--3q26---20--revenue-growth-with-strong-operational-performance,c4414197" },
+        { "end": "2025-12-31", "eps": 0.15, "derived": "FY2025 EUR0.31 less Q1 2025 EUR0.03, Q2 2025 EUR0.08 and Q3 2025 EUR0.05", "source": "https://news.cision.com/tomra-systems-asa/r/tomra-strong-finish-to-2025-with-record-quarter-in-collection-and-solid-quarter-in-recycling-and-foo,c4307254 and the three 2026 quarterly releases cited for the 2025 quarters" },
+        { "end": "2026-03-31", "eps": 0.02, "source": "https://news.cision.com/tomra-systems-asa/r/tomra--1q26--strong-growth-in-collection-and-food--profitability-impacted-by-recycling-and-short-ter,c4339633" },
+        { "end": "2026-06-30", "eps": 0.10, "source": "https://www.tomra.com/-/media/project/tomra/tomra/investor-relations/quarterly-results-files/2026/2q/2026-q2_quarterly-report_tomra.pdf" },
+        { "end": "2026-09-30", "eps": 0.08, "source": "https://news.cision.com/tomra-systems-asa/r/tomra--3q26---20--revenue-growth-with-strong-operational-performance,c4414197" }
+      ]
+    },
     "INTU": {
       "basis": "company-adjusted non-GAAP diluted EPS including share-based compensation",
       "ccy": "USD",
@@ -795,6 +812,18 @@
     }
   },
   "adjustments": {
+    "TOM.OL": [
+      {
+        "fy": "2026-12-31",
+        "amount": 13000000,
+        "ccy": "EUR",
+        "arithmetic": false,
+        "what": "Q1 2026 special items: Recycling cost-reduction programme charge (part of a EUR16m programme), an expense rather than income to remove.",
+        "source": "https://news.cision.com/tomra-systems-asa/r/tomra--1q26--strong-growth-in-collection-and-food--profitability-impacted-by-recycling-and-short-ter,c4339633",
+        "found": "2026-11-22",
+        "note": "Pre-tax, consolidated; no after-tax attributable amount stated. Evidence only: do not subtract or add it independently of the direct company-adjusted EPS under normalizedEps.TOM.OL. Current fiscal year is not yet an annual row in earnings.json."
+      }
+    ],
     "INTU": [
       {
         "fy": "2027-07-31",

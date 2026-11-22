@@ -1,5 +1,12 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Deep dive additions, 22 November 2026, 07:12 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-22 | Local quote for TOMRA's Trading 212 line, TMRA.DE (Gettex, EUR, ISIN NO0012470089), mapped to TOM.OL as `primary`. | Deep dive 2026-11-22-0712. Trading 212 lists TOMRA only as [TMRA.DE on Gettex](https://www.trading212.com/nl/trading-instruments/invest/TMRA.DE) (search index; direct fetch returned 403). IBKR's Oslo minimum is [NOK 49 a order](https://www.interactivebrokers.com/en/pricing/commissions-stocks.php), about £3.84, 14% of a £27 ticket, so Oslo fails §4.1a. A proposal therefore needs a EUR limit, and today it could only be the NOK ceiling converted by hand. Wanted before the reopened TOMRA run (24 Nov to 8 Dec): the EUR quote, its spread, and a ceiling in EUR from the bot. |
+| 2026-11-22 | TOMRA's quarterly report and annual report as text: segment EBITA, net debt and leverage, the customer-concentration note and the risk factors. | Three scouts could not decode TOMRA's quarterly-report PDFs (media.tomra.com), and the [Annual Report 2025](https://www.tomra.com/-/media/project/tomra/tomra/investor-relations/annual-reports/2025/tomra-annual-report-2025.pdf) exceeds the 10MB fetch limit. Only the Cision press-release text was usable. Same need as the 21 Nov lane-callable PDF extractor entry; third reach. |
+
 ## Sweep additions, 21 November 2026, 09:00 UTC
 
 | Date | Data wanted | Why and cadence |
