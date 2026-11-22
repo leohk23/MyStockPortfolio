@@ -111,18 +111,18 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| margin | 69 | **earns a feed** |
-| volume / units | 66 | **earns a feed** |
-| cash conversion | 49 | **earns a feed** |
-| return on capital | 33 | **earns a feed** |
-| leverage / net debt | 28 | **earns a feed** |
+| margin | 70 | **earns a feed** |
+| volume / units | 67 | **earns a feed** |
+| cash conversion | 50 | **earns a feed** |
+| return on capital | 34 | **earns a feed** |
+| leverage / net debt | 29 | **earns a feed** |
 | inventory | 24 | **earns a feed** |
 | backlog / order intake | 23 | **earns a feed** |
 | capital returns | 21 | **earns a feed** |
 | same-store / comparable sales | 11 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-552 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+559 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -133,6 +133,11 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-11-22 | Deposit-return rollout milestones and supplier economics. | Used the [commencement regulation](https://www.legislation.gov.uk/uksi/2025/67/regulation/1/made?view=plain), [operator registration notice](https://exchangeforchange.co.uk/news/exchange-for-change-opens-registration-for-deposit-return-scheme), [TOMRA Q3 report](https://media.tomra.com/download/1fad059ecf6d11f195fddabb6db84e3a) and [UK supplier appointment](https://news.cision.com/tomra-systems-asa/r/tomra--appointed-majority-supplier-to-leading-retail-chain-in-uk,c4375490). Wanted weekly for implementation changes, at results for installations, service, margins and cash conversion; procurement is not recognised revenue. |
+| 2026-11-22 | Energy-security assessment beyond the crude price, extending existing oil-flow requests. | Used the [IEA World Energy Outlook 2026 executive summary](https://www.iea.org/reports/world-energy-outlook-2026/executive-summary). Wanted at publication, with monthly OMR updates during disruption and the latest assessment carried into weekly sweeps; a falling crude quote does not establish restored supply or consumer affordability. |
+| 2026-11-22 | Euro-area growth, inflation and construction/funding backdrop. | Used the [European Commission autumn forecast](https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/economic-forecasts/autumn-2026-economic-forecast-shows-continued-growth-amid-higher-inflation_en). Wanted on forecast releases, not weekly; label projections and preserve their vintage. Weak construction and restrictive financing qualify an energy-efficiency demand story. |
+| 2026-11-22 | Initial TOM.OL and ROCK-B.CO quote, earnings and valuation-history coverage. | Neither exists in local prices or earnings. Yahoo indexed pages identified the listings, but direct quote pages returned HTTP 429 and a ROCKWOOL preview was stale. Added both to watchlist.json for the normal independent fetch. Wanted at ordinary refresh cadence; verify both render afterwards. No provisional market-price figure was used. |
+| 2026-11-22 | Insulation volumes, energy-cost recovery, investment returns and Russia-comparable accounts. | Used [ROCKWOOL's H1 report](https://ne-cdn.eurolandir.com/press-releases-attachments./4168087/se-2026-22-en.pdf). Wanted at results; the [issuer notice](https://www.rockwool.com/group/about-us/investors/financial-reports/) confirms a 26 November call. Preserve continuing/discontinued bases and the issuer's ROIC definition. Growing volumes must earn cash after capacity spending. |
 | 2026-11-21 | Customer advances and contract liabilities beside operating cash flow, per fiscal year. | Second reader, Deep dive 0929. STVN's FY2025 operating cash of €286.1m includes a €65.5m rise in advances from customers ([20-F note](https://www.sec.gov/Archives/edgar/data/1849853/000119312526091540/R93.htm)). The Scan's P/OCF counts it as cash earned: 13.7x as filed, about 17.7x without it. The same applies to any manufacturer funded by customer prepayments. Wanted annually with the `capital` block, so P/OCF can be shown with and without them. Pending Leo's answer in questions.md, 21 Nov. |
 | 2026-11-21 | STVN quote/filed EPS reconciliation and Italian transaction-tax execution route. | Deep dive 0929: prices.json USD0.59 trailing EPS differs from the four rounded filed quarters totalling EUR0.50 (USD0.54875 at the snapshot FX). Keep both labelled; request the underlying share/currency/period bridge at the next earnings refresh. The Q2 operating-profit discrepancy is already recorded on 6 October and remains open. The issuer's [2025 20-F, Financial Transaction Tax](https://ir.stevanatogroup.com/sec-filings/content/0001193125-26-091540/stvn-20251231.htm) explicitly states 2026 rates of 0.20% on qualifying markets and 0.40% otherwise, and applicability to its shares: this advances the 15 November tax request. Exact T212 execution-route qualification is not confirmed; the proposed ticket reserves the higher tax, separately from the broker's 0.15% FX fee. Wanted once per execution route, not a new recurring market-data fetch. |
 | 2026-11-20 | A lane-callable HKEXnews PDF text extractor. | Sweep 2026-11-20-1126. WebFetch could not decode any of four HKEX PDFs (Chow Tai Fook operational data, profit alert, board notice; BOCHK Q3 review); inflating the streams locally, as `fetch-hk-board.js` `pdfText` does, read all four. Wanted as a reusable `node` helper taking a URL: every Hong Kong filing hits this. |
@@ -653,13 +658,3 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
-
-## Sweep additions, 22 November 2026, 06:46 UTC
-
-| Date | Data wanted | Why and cadence |
-|---|---|---|
-| 2026-11-22 | Energy-security assessment beyond the crude price, extending existing oil-flow requests. | Used the [IEA World Energy Outlook 2026 executive summary](https://www.iea.org/reports/world-energy-outlook-2026/executive-summary). Wanted at publication, with monthly OMR updates during disruption and the latest assessment carried into weekly sweeps; a falling crude quote does not establish restored supply or consumer affordability. |
-| 2026-11-22 | Euro-area growth, inflation and construction/funding backdrop. | Used the [European Commission autumn forecast](https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/economic-forecasts/autumn-2026-economic-forecast-shows-continued-growth-amid-higher-inflation_en). Wanted on forecast releases, not weekly; label projections and preserve their vintage. Weak construction and restrictive financing qualify an energy-efficiency demand story. |
-| 2026-11-22 | Deposit-return rollout milestones and supplier economics. | Used the [commencement regulation](https://www.legislation.gov.uk/uksi/2025/67/regulation/1/made?view=plain), [operator registration notice](https://exchangeforchange.co.uk/news/exchange-for-change-opens-registration-for-deposit-return-scheme), [TOMRA Q3 report](https://media.tomra.com/download/1fad059ecf6d11f195fddabb6db84e3a) and [UK supplier appointment](https://news.cision.com/tomra-systems-asa/r/tomra--appointed-majority-supplier-to-leading-retail-chain-in-uk,c4375490). Wanted weekly for implementation changes, at results for installations, service, margins and cash conversion; procurement is not recognised revenue. |
-| 2026-11-22 | Insulation volumes, energy-cost recovery, investment returns and Russia-comparable accounts. | Used [ROCKWOOL's H1 report](https://ne-cdn.eurolandir.com/press-releases-attachments./4168087/se-2026-22-en.pdf). Wanted at results; the [issuer notice](https://www.rockwool.com/group/about-us/investors/financial-reports/) confirms a 26 November call. Preserve continuing/discontinued bases and the issuer's ROIC definition. Growing volumes must earn cash after capacity spending. |
-| 2026-11-22 | Initial TOM.OL and ROCK-B.CO quote, earnings and valuation-history coverage. | Neither exists in local prices or earnings. Yahoo indexed pages identified the listings, but direct quote pages returned HTTP 429 and a ROCKWOOL preview was stale. Added both to watchlist.json for the normal independent fetch. Wanted at ordinary refresh cadence; verify both render afterwards. No provisional market-price figure was used. |
