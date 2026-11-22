@@ -1,6 +1,6 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-21T09:00:06.353Z",
+ "generated": "2026-11-22T06:41:34.463Z",
  "cashGBP": 66.45,
  "contributions": [
   {
@@ -172,6 +172,34 @@
   }
  },
  "proposals": [
+  {
+   "file": "2026-11-21-0929-STVN.md",
+   "id": "2026-11-21-0929-STVN",
+   "state": "open",
+   "ticker": "STVN",
+   "written": "2026-11-21",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 17.86,
+   "ceiling": 19.3999,
+   "pricedAt": 15.65,
+   "warning": "already active on nine-month cash after gross reinvestment and leases, approximately **−EUR12.3m**. Re-read at the FY2026 release, no later than **31 March 2027**, if annual cash after those uses is positive but **below EUR10m**, if D104 ROIC is no higher than FY2025's **8.10%**, or if management reduces the 2027 outlook to flat/falling sales. These are analyst thresholds, not guidance. At any earlier company update, a further customer order deferral or cancellation that leaves installed capacity unfilled also warns. The 2 December conference is an earlier qualitative checkpoint, not a promised cash disclosure.",
+   "break": "recommend exit under §5.1 if FY2026 **net cash from operating activities less cash purchases of PP&E, intangible assets and lease principal is zero or negative**, checked by **31 March 2027**. Do not add back start-up costs, net out asset-sale proceeds, or substitute the company's FCF definition. *Second reader:* the same residual also breaks if it is zero or negative once the year's **increase** in advances from customers plus contract liabilities is subtracted. Read that from the balance-sheet note, against €142.687m at 31 December 2025. A decrease is not added back. A customer's prepayment for future supply is a liability, not cash the business earned. In FY2025 it supplied €65.5m of the €286.1m. Independently, a FY2027 sales outlook with midpoint at or below FY2026 actual revenue breaks this entry case at the same reading. By **31 May 2027**, Q1 2027 reported revenue failing to exceed Q1 2026 EUR273.574m **together with** reported operating margin below Q1 2026's 14.16% is a further break. These are separate routes, not a requirement for all to fail. The warning's low positive cash band is reached before the non-positive break. P3 directly tests whether the capacity consumes cash and fails to earn its keep; revenue or EBITDA growth alone cannot clear it. Missing annual components keep the test unresolved, trigger a re-read within 14 days and bar a top-up; missing disclosure is not a pass.",
+   "reviewBy": "2026-12-03",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-12-04",
+   "vsLimit": -0.1237,
+   "ceilingSeen": {
+    "on": "2026-11-22",
+    "price": 15.65,
+    "earnings": 17.8602,
+    "cash": 19.3999
+   },
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
   {
    "file": "2026-11-20-1825-EUZ.DE.md",
    "id": "2026-11-20-1825-EUZ.DE",
@@ -4225,6 +4253,14 @@
    "price": 14.48,
    "until": "2026-12-04",
    "below": 13.756
+  },
+  "STVN": {
+   "last": "2026-11-21-0929-STVN",
+   "limit": 17.86,
+   "ceiling": 19.3999,
+   "price": 15.65,
+   "until": "2026-12-05",
+   "below": 14.8675
   }
  },
  "earlierRisks": {
@@ -4353,7 +4389,14 @@
     "text": "Competing drug treatments or device suppliers reduce new PAP treatment and replacement-mask demand before aggregate, price-supported revenue makes the loss obvious.",
     "id": "2026-11-14-0940-RMD"
    }
+  ],
+  "STVN": [
+   {
+    "category": "financial",
+    "text": "new factories and equipment absorb cash faster than customer orders earn an adequate return, leaving shareholders funding underused capacity.",
+    "id": "2026-11-21-0929-STVN"
+   }
   ]
  },
- "today": "2026-11-21"
+ "today": "2026-11-22"
 }
