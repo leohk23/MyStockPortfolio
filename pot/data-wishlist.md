@@ -1,5 +1,14 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Sweep additions, 23 November 2026, 11:18 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-23 | A PDF text reader that handles CID-keyed (Type0) fonts, fourth reach. | Sweep 2026-11-23-1118. AIA's [Q3 2026 new-business filing](https://www1.hkexnews.hk/listedco/listconews/sehk/2026/1030/2026103000001.pdf), Next's [5 Nov trading statement](https://www.nextplc.co.uk/~/media/Files/N/next-plc-v4/documents/2026/trading-statement-nov-26.pdf) and Shionogi's [March 2023 HIV presentation](https://www.shionogi.com/content/dam/shionogi/global/investors/ir-library/presentation/2022/E20230330.pdf) all failed in WebFetch. The `pdfText` method in `fetch-hk-board.js` read only AIA's cover disclaimer, because the body is set in an embedded CID font. Same need as the 21 and 22 Nov entries. It has now been reached for four times, so it meets the three-sweep bar. |
+| 2026-11-23 | An issuer's royalty income and patent-expiry dates, as filed. | Sweep 2026-11-23-1118, Shionogi. The 29 Oct forecast revision calls HIV "a key pillar of Shionogi's earnings" and expects royalty income and equity-method profit from ViiV to rise, but gives no figure for either. The dolutegravir expiry dates came only from a search preview of the 2023 deck. Wanted at results for any pharma name on the watchlist. A royalty's expiry is a dated falsifier. |
+| 2026-11-23 | EU customs-duty collections on low-value parcels, and the e-commerce import volumes behind them. | Sweep 2026-11-23-1118. The [Commission's notice](https://commission.europa.eu/news-and-media/news/ensuring-fairness-and-safety-eur3-customs-duty-low-value-parcels-2026-06-29_en) gives the €3-per-item rule but no volumes. Wanted monthly from Eurostat or DG TAXUD if published. It would show whether stock is moving from parcels into EU warehouses (CTP, Inditex) or the duty is simply being paid (Next). |
+| 2026-11-23 | Listed property: discount to EPRA NTA, and the European 5y swap rate. | Sweep 2026-11-23-1118, CTP at about 41% below its reported NTA. The NTA came from the company release and the price from Yahoo (provisional), and the swap rate was not found. Wanted weekly for any REIT or property name we track (SUPR.L, 0823.HK, CTPNV.AS). The US 10y in `macro` is the wrong curve for a euro landlord. |
+
 ## Deep dive additions, 22 November 2026, 07:12 UTC
 
 | Date | Data wanted | Why and cadence |
