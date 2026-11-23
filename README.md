@@ -1,4 +1,4 @@
-# My Stock Portfolio
+# My Portfolio
 
 Static portfolio dashboard on GitHub Pages. No server, no runtime dependencies.
 

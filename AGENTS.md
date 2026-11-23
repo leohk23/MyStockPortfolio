@@ -6,7 +6,7 @@ Orientation for anyone (human or agent) picking this repo up cold. Read this bef
 
 ## What this is
 
-A **static** stock-portfolio dashboard on GitHub Pages. No server, no runtime deps. Live at [https://leohk23.github.io/MyStockPortfolio/](https://leohk23.github.io/MyStockPortfolio/). The repo is **public** — treat everything committed as world-readable.
+A **static** portfolio dashboard on GitHub Pages: stocks, funds, gilts and alternatives such as gold and Bitcoin ETFs. No server, no runtime deps. Live at [https://leohk23.github.io/MyStockPortfolio/](https://leohk23.github.io/MyStockPortfolio/). The repo is **public** — treat everything committed as world-readable.
 
 **One user, one reader: the owner.** This is a personal decision tool, not a product. Nobody needs to be impressed or onboarded by it.
 
