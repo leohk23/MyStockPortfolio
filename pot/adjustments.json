@@ -1,7 +1,44 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-20",
+  "updated": "2026-11-24",
   "normalizedEps": {
+    "CTPNV.AS": {
+      "basis": "company-specific adjusted EPRA EPS",
+      "ccy": "EUR",
+      "note": "Added 24 November 2026. CTP's own recurring measure, which excludes property revaluations. From 2026 CTP capitalises interest on qualifying development (IAS 23) and restated its 2025 comparatives; every period below is on that restated basis. FY2025 as first reported, EUR0.85 (https://ctp.eu/news/ctp-nv-fy-2025-results/), predates the restatement and is deliberately NOT stored in annual, so it cannot be mixed with these. Restated FY2025 and Q4 2025 are not published (guidance implies about EUR0.93, which is arithmetic, not a filing), so no twelve contiguous months exist yet. Half-years and quarters overlap and must not be summed across them.",
+      "annual": [],
+      "quarters": [
+        {
+          "end": "2025-03-31",
+          "eps": 0.23,
+          "source": "https://ctp.eu/news/ctp-n-v-q1-2026-results/"
+        },
+        {
+          "end": "2025-06-30",
+          "months": 6,
+          "eps": 0.46,
+          "source": "https://ctp.eu/news/ctp-n-v-h1-2026-results/"
+        },
+        {
+          "end": "2025-09-30",
+          "eps": 0.24,
+          "derived": "9M 2025 restated EUR0.70 less H1 2025 restated EUR0.46",
+          "source": "https://ctp.eu/news/ctp-n-v-q3-2026-results/"
+        },
+        {
+          "end": "2026-06-30",
+          "months": 6,
+          "eps": 0.5,
+          "source": "https://ctp.eu/news/ctp-n-v-h1-2026-results/"
+        },
+        {
+          "end": "2026-09-30",
+          "eps": 0.25,
+          "derived": "9M 2026 EUR0.75 less H1 2026 EUR0.50",
+          "source": "https://ctp.eu/news/ctp-n-v-q3-2026-results/"
+        }
+      ]
+    },
     "TOM.OL": {
       "basis": "company-adjusted EPS (adjusted for special items)",
       "ccy": "EUR",
