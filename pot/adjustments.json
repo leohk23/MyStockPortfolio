@@ -1,7 +1,40 @@
 {
   "_README": "Source-backed earnings research. `normalizedEps` stores direct company-reported adjusted EPS by period, which is preferred when twelve contiguous months exist: quarters, half-years (\"months\": 6) or a mix, with \"derived\" naming the subtraction for a quarter the issuer never states alone; \"ccy\" is the issuer currency and is converted to the quote's (D70). Under `adjustments`, a directly stated `amountPerShare` may drive arithmetic. An absolute `amount` may do so only with `basis: after-tax attributable`; gross or pre-tax amounts stay as evidence with `arithmetic:false`.",
-  "updated": "2026-11-24",
+  "updated": "2026-11-25",
   "normalizedEps": {
+    "CWK.L": {
+      "basis": "company-adjusted diluted EPS",
+      "ccy": "GBP",
+      "note": "Added 25 November 2026 from Note 17 of the issuer's interim statement. All values are pounds per share, not pence. Actual 52/26-week period ends are retained; Yahoo stores the annual as 2026-03-31. H2 is annual less H1 using rounded diluted EPS and does not independently recalculate the half-year weighted share count. Company-adjusted excludes IAS 41 movements and amortisation; it is not owner earnings. One trailing year cannot certify an adjusted historical percentile.",
+      "annual": [
+        {
+          "end": "2026-03-28",
+          "eps": 2.96,
+          "source": "https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf"
+        }
+      ],
+      "quarters": [
+        {
+          "end": "2025-09-27",
+          "months": 6,
+          "eps": 1.422,
+          "source": "https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf"
+        },
+        {
+          "end": "2026-03-28",
+          "months": 6,
+          "eps": 1.538,
+          "derived": "FY2026 adjusted diluted EPS GBP2.960 less H1 FY2026 GBP1.422, both in Note 17 of the 24 November 2026 interim statement",
+          "source": "https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf"
+        },
+        {
+          "end": "2026-09-26",
+          "months": 6,
+          "eps": 1.541,
+          "source": "https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf"
+        }
+      ]
+    },
     "CTPNV.AS": {
       "basis": "company-specific adjusted EPRA EPS",
       "ccy": "EUR",
@@ -849,6 +882,17 @@
     }
   },
   "adjustments": {
+    "CWK.L": [
+      {
+        "fy": "2026-03-31",
+        "amount": 5100000,
+        "ccy": "GBP",
+        "arithmetic": false,
+        "what": "H1 FY2026 IAS 41 biological-asset valuation gain, the prior-half comparator in the 24 November 2026 interim statement Note 17. Pre-tax evidence only; not an after-tax attributable deduction. The full FY2026 net IAS 41 movement was instead a GBP2.2m charge: never subtract this half-year gain again from the annual EPS or add it to the direct company-adjusted EPS. Yahoo labels the actual 28 March 2026 year-end as 2026-03-31.",
+        "source": "https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf",
+        "found": "2026-11-25"
+      }
+    ],
     "TOM.OL": [
       {
         "fy": "2026-12-31",
