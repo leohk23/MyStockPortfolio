@@ -1,5 +1,14 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## TOMRA ad hoc deep dive, 25 November 2026, 21:30 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-25 | TOM.OL trailing EPS and gross-profit reconciliation to issuer statements. | Local price NOK78 / EPS NOK3.79 gives 20.58x. The Q3 report's rounded FY2025 + 9M2026 - 9M2025 reported EPS is EUR0.31 + 0.17 - 0.17 = about EUR0.31, giving 23.41x at local FX; summing individually rounded local quarters gives EUR0.32. Do not assume a rounded-quarter mismatch proves a corrupt quarter. FY2025 local gross profit/assets of 46.87% implies EUR833.4m gross profit; the issuer reports EUR585m, or about 32.90% of EUR1,778m assets. Sources: [Q3 report pp6,13](https://mb.cision.com/Public/4659/4414197/b4b00b5c4776540f.pdf), [Q4 2025 report pp5,13](https://mb.cision.com/Public/4659/4307254/b2ddd275a5c7fc81.pdf). Wanted before a future order and when fundamentals refresh. No pipeline fields changed in this lane. |
+| 2026-11-25 | TMRA.DE executable EUR quote/ceiling and Gettex spread, follow-up to 22 Nov. | User specifies T212 Invest TMRA.DE; direct instrument page did not load. The local bot still publishes only TOM.OL's NOK95.6999 ceiling. No hand-converted limit was issued. Broker's current Norway schedule distinguishes NOK49 fixed from NOK10 tiered; both exceed the 0.5% gate even using all current cash. Wanted before a future proposal, preserving the instructed cheaper venue rather than rejecting the company as untradeable. |
+| 2026-11-25 | TOMRA UK contract margins, signed orders after launch, and CMD Q&A transcript. | [24 Nov CMD deck](https://media.tomra.com/download/17cf5eb0e7c511f18c9366c8c9d3575d), pp19,28,30,59-60, gives mix, market estimates and savings ambitions, not a UK margin or contracted post-launch revenue bridge. No transcript link was visible on the event page. Wanted at results and when the transcript is published. The no-buy is an economic judgement, not a data-completeness veto. |
+| 2026-11-25 | Explain TOM.OL's future-labelled final weekly observation. | The 25 Nov local snapshot labels its latest P/E low 27 Nov. This may be a week-ending convention; it must not be described as an observed future close. Confirm the weekly bar labelling before a future historical claim. |
+
 ## Sweep additions, 25 November 2026, 11:18 UTC
 
 | Date | Data wanted | Why and cadence |

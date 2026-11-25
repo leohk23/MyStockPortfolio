@@ -1,7 +1,7 @@
 {
  "note": "Derived by `npm run pot-book` from Tradelog.xlsx (via holdings.json) and pot/proposals/. Do not hand-edit: contributions are the only field written here by a human.",
- "generated": "2026-11-25T06:30:09.951Z",
- "cashGBP": 66.88,
+ "generated": "2026-11-25T21:15:08.537Z",
+ "cashGBP": 69.36,
  "contributions": [
   {
    "date": "2026-09-04",
@@ -173,6 +173,35 @@
  },
  "proposals": [
   {
+   "file": "2026-11-25-0705-CWK.L.md",
+   "id": "2026-11-25-0705-CWK.L",
+   "state": "open",
+   "ticker": "CWK.L",
+   "written": "2026-11-25",
+   "nextResults": null,
+   "side": "BUY",
+   "limit": 5470,
+   "ceiling": 5470,
+   "pricedAt": 5380,
+   "warning": "at the **2 February 2027** trading statement, or any earlier issuer update, a disclosed material capacity delay/cost overrun or reduction in the current-year profit outlook triggers a re-read. A missing cash update is unknown, not a pass. At the FY2027 results, checked by **31 May 2027**, warn if the residual cash defined below is positive but **below £60m**, or if issuer-defined trailing ROCE is **below 17%**. These are analyst thresholds, not company guidance. The cash band warns before the zero-cash break; a falling return catches spending that has not yet emptied the cash account.",
+   "break": "at FY2027 results, checked by **31 May 2027**, recommend exit under §5.1 if either **(a) residual cash is zero or negative**, **(b) statutory Group operating profit plus the income statement's net IAS 41 valuation loss (less any gain) is at or below FY2026's £235.0m** (£232.8m statutory + £2.2m IAS 41 loss), or **(c) issuer-defined trailing ROCE is below 15%**. A disclosed material impairment or abandonment of a major capacity project is a separate immediate break. These are independent routes: sales or adjusted EPS growth cannot override a failed cash or capital-return test. Route (b) adds back only the IAS 41 line, which is printed in the income statement; amortisation and every other cost stay deducted, so it is not the company's adjusted measure. *Second reader, 25 Nov:* route (b) previously read statutory operating profit at or below £232.8m. The H1 statutory decline is entirely the pig-herd revaluation, the GB standard pig price is at its 2026 low, and the issuer's valuation model references it, so the old route could signal an exit on a non-cash pig-price mark while the processing business grew. The FY2026 base moves to the same basis.",
+   "reviewBy": "2027-02-03",
+   "reproposed": null,
+   "withdrawn": null,
+   "validUntil": "2026-12-08",
+   "resultsDue": "2027-05-18",
+   "vsLimit": -0.075,
+   "ceilingSeen": {
+    "on": "2026-11-25",
+    "price": 5060,
+    "earnings": 5020,
+    "cash": 5470
+   },
+   "supersededBy": null,
+   "phase": "live",
+   "counts": true
+  },
+  {
    "file": "2026-11-24-0653-CTPNV.AS.md",
    "id": "2026-11-24-0653-CTPNV.AS",
    "state": "withdrawn",
@@ -246,7 +275,7 @@
    "reproposed": null,
    "withdrawn": null,
    "validUntil": "2026-12-04",
-   "vsLimit": -0.1417,
+   "vsLimit": -0.1699,
    "ceilingSeen": {
     "on": "2026-11-22",
     "price": 15.65,
@@ -508,7 +537,7 @@
    "withdrawn": null,
    "validUntil": "2026-11-26",
    "resultsDue": "2027-01-19",
-   "vsLimit": -0.0609,
+   "vsLimit": -0.0523,
    "supersededBy": null,
    "phase": "live",
    "counts": true
@@ -4343,6 +4372,14 @@
    "price": 15.65,
    "until": "2026-12-05",
    "below": 14.8675
+  },
+  "CWK.L": {
+   "last": "2026-11-25-0705-CWK.L",
+   "limit": 5470,
+   "ceiling": 5470,
+   "price": 5380,
+   "until": "2026-12-09",
+   "below": 5111
   }
  },
  "earlierRisks": {
@@ -4484,6 +4521,13 @@
     "category": "financial",
     "text": "CTP stays above its own leverage target while it buys a ~US$500m Vietnam portfolio, buys back €100m of shares and refinances 0.75% debt at about 3.6%, so adjusted EPRA EPS growth stalls and the NTA the discount is measured against falls.",
     "id": "2026-11-24-0653-CTPNV.AS"
+   }
+  ],
+  "CWK.L": [
+   {
+    "category": "financial",
+    "text": "expansion absorbs cash and earns progressively less on the capital committed, so rising volumes and adjusted profit fail to create returns for shareholders.",
+    "id": "2026-11-25-0705-CWK.L"
    }
   ]
  },
