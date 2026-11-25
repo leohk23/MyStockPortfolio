@@ -130,7 +130,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| volume / units | 72 | **earns a feed** |
+| volume / units | 73 | **earns a feed** |
 | margin | 70 | **earns a feed** |
 | cash conversion | 50 | **earns a feed** |
 | return on capital | 34 | **earns a feed** |
@@ -141,7 +141,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 11 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-574 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+579 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
