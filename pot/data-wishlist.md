@@ -1,5 +1,15 @@
 # Data wishlist — what the Sweep reached for and we did not have
 
+## Sweep additions, 25 November 2026, 11:18 UTC
+
+| Date | Data wanted | Why and cadence |
+|---|---|---|
+| 2026-11-25 | A PDF text reader that applies each font's ToUnicode CMap, fifth reach. | Sweep 2026-11-25-1118. Neither WebFetch nor a Read could decode Rightmove's [H1 2026 RNS](https://plc.rightmove.co.uk/content/uploads/2026/07/2026.07.31-Rightmove-final-RNS-H12026-unsigned.pdf). About 40 lines of inline `node` and `zlib` that map each page's fonts to their ToUnicode streams did read it, with a few glyphs garbled. That is the step `fetch-hk-board.js` `pdfText` lacks, and it covers the CID-font case the 21 to 23 Nov entries hit. Rightmove's [6 Nov trading update](https://plc.rightmove.co.uk/content/uploads/2026/11/261106-Trading-update.pdf) has no ToUnicode map and stayed unreadable. Wanted once, as a helper the lanes may call. |
+| 2026-11-25 | Cause of a large overnight move in a held name, fourth reach. | Sweep 2026-11-25-1118. SK Hynix (000660.KS) −11.05% and Samsung −9.87% on 25 Nov (`prices.json`). Searches returned only the July 2026 sell-off, so the move stays uncaused. Wanted whenever a held name moves by a 6.2-sized amount in one day. |
+| 2026-11-25 | US real yields (10y TIPS) and breakevens, second reach today. | Sweep 2026-11-25-1118. Dell's record quarter ([8-K](https://www.sec.gov/Archives/edgar/data/0001571996/000157199626000050/exhibit991earnings8kq3fy27.htm)) traded −5.34% pre-market. Selling on the rate rather than on demand is the reading, and it is untestable without the series. Wanted weekly in `macro` (FRED DFII10, T10YIE). |
+| 2026-11-25 | HIBOR, and HSBC's net interest income sensitivity to rates. | Sweep 2026-11-25-1118, HSBA.L. The [3Q 2026 release](https://www.hsbc.com/investors/results-and-announcements/all-reporting/3q-2026-quick-read) guides banking NII of at least $46bn for 2026 but gives no rate sensitivity. Not fetched. Wanted weekly for HIBOR (HKMA) while HSBA.L is tracked, and the sensitivity table at each interim and annual report. |
+| 2026-11-25 | UK residential property transactions and mortgage approvals. | Sweep 2026-11-25-1118, RMV.L. Not fetched. HMRC publishes monthly transactions and the Bank of England monthly approvals. Wanted monthly while RMV.L is tracked, to separate a housing-volume slowdown from AI disintermediation. |
+
 ## Sweep additions, 23 November 2026, 11:18 UTC
 
 | Date | Data wanted | Why and cadence |
