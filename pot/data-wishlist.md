@@ -140,7 +140,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 <!-- tally:start -->
 | reached for | sweeps | |
 |---|---:|---|
-| volume / units | 73 | **earns a feed** |
+| volume / units | 74 | **earns a feed** |
 | margin | 71 | **earns a feed** |
 | cash conversion | 50 | **earns a feed** |
 | return on capital | 34 | **earns a feed** |
@@ -151,7 +151,7 @@ it is approximate and deliberately conservative — a near-miss phrasing is unde
 | same-store / comparable sales | 11 | **earns a feed** |
 | pricing / realisation | 2 | – |
 
-584 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
+591 entries. Three or more meets the bar in "How an entry earns a feed" and makes the series a candidate for the Scan — it still has to be free to fetch and actually decisive.
 <!-- tally:end -->
 
 ## Entries
@@ -162,6 +162,13 @@ every report run. Do not hand-edit between the markers.
 <!-- entries:start -->
 | date | wanted | detail |
 |---|---|---|
+| 2026-11-26 | Australian capex by industry and equipment/buildings. | [ABS September-quarter release](https://www.abs.gov.au/media-centre/media-releases/data-centre-investment-continues-drive-new-capital-expenditure), read through official search extracts after direct opens failed. Tests physical data-centre investment beyond US guidance. Wanted quarterly, not a weekly refetch. |
+| 2026-11-26 | Cranswick project-level returns, remaining cash commitments and dated completion of the proposed new poultry site. | Examine 2026-11-26-1102. The [24 November issuer RNS](https://www.tradingview.com/news/reuters.com,2026-11-24:newsml_RSX3363Ea:0-reg-cranswick-plc-interim-results/) gives total project budgets and group returns; these do not establish unspent amounts or individual plant returns. The new site's completion date was not established. Seek issuer project updates at results and planning milestones; retain blanks rather than derive a completion date or treat total budgets as future cash outflow. |
+| 2026-11-26 | IMCD independent price, EPS and historical valuation coverage. | [Yahoo IMCD.AS](https://finance.yahoo.com/quote/IMCD.AS/) search extract verified the identifier; direct open returned 429. New watchlist entry lets the existing pipeline replace provisional data. Wanted after addition and on normal refreshes; no separate feed. |
+| 2026-11-26 | IMCD price/volume split, acquisition returns and cash-flow definitions. | [Issuer nine-month release](https://ml-eu.globenewswire.com/Resource/Download/c5d61f6d-f040-4b94-ab34-86a2dc0072ba). Organic growth does not prove volume growth. Wanted at results, before extrapolation, not weekly. |
+| 2026-11-26 | Korean monetary-policy decision and outlook. | [BOK 26 November release](https://www.bok.or.kr/eng/bbs/E0000627/view.do?depth=400022&menuNo=400022&nttId=11067085&oldMenuNo=400007&programType=newsDataEng&relate=Y), official search extracts; direct opens failed. Relevant to held Korean semiconductor exposure and funding conditions. Wanted at each meeting, latest carried weekly. |
+| 2026-11-26 | US real consumption, PCE inflation and revised investment detail, repeat reach. | [BEA October income/outlays](https://www.bea.gov/news/2026/personal-income-and-outlays-october-2026) and [Q3 second estimate](https://www.bea.gov/news/2026/gdp-second-estimate-and-corporate-profits-3rd-quarter-2026). Strong quarterly growth can coexist with stalled monthly real spending. Wanted monthly/quarterly, with the latest available to each weekly sweep. |
+| 2026-11-26 | US ten-year real yield and breakevens, repeat reach after both 25 November sweeps. | Not fetched. Nominal yield from `prices.json` cannot establish a real-rate explanation for simultaneous tech, gold and bitcoin weakness. FRED DFII10/T10YIE remain the proposed sources, not sources consulted today. Wanted weekly; this has now recurred across three sweeps. |
 | 2026-11-25 | ADS ratio for SBS. | Sweep 2026-11-25-0636. Yahoo's SBS series runs $2.87–$6.73 over two years with no split event: internally consistent, but the per-ADS share ratio needs confirming against the depositary before any P/E is struck on BRL EPS. Wanted once per ADR. |
 | 2026-11-25 | Cranswick PDF gap resolved for this read, recurring coverage still needed. | The Deep dive opened the issuer's interim PDF through the link on its news page. Note 17 reconciles statutory and adjusted profit and diluted EPS; page 13 supplies cash after tax, investment, leases and interest. Direct PDF open and one screenshot request failed while the linked text succeeded. The local quarterly store is empty and its 288p trailing EPS differs from the 286.5p rounded filed-period bridge. Record half-year statements on release dates, including actual 52-week ends versus Yahoo's calendar-month ends. Source: https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf . |
 | 2026-11-25 | CWK.L Scan EPS-jump unit mismatch. | signals.json reports a 99.2419x jump by comparing quote EPS 288p with filed annual EPS GBP2.902. Comparable units give 0.9924x. The official FY2026 diluted EPS is 290.2p. Correct the flag's unit comparison in a separate code change; this lane leaves the pipeline untouched and does not dismiss real IAS 41 adjustments. Source: https://s3.eu-west-1.amazonaws.com/cranswick-2021/Interim-statement-FY27-final.pdf . |
@@ -698,15 +705,3 @@ every report run. Do not hand-edit between the markers.
 | 2026-08-29 | US inflation, payroll revisions and the goods/services spending split. | Fetched from the Federal Reserve, Bureau of Labor Statistics and Bureau of Economic Analysis. Wanted monthly; this was the second sweep to need the labour and spending set, and the inflation context determined whether weak employment could safely be read as imminent rate relief. |
 | 2026-08-29 | US payrolls, real earnings and real consumer spending. | Fetched from the Bureau of Labor Statistics and the Bureau of Economic Analysis. Wanted monthly, with the latest release carried into each weekly Sweep. Drove the value-retail read. |
 <!-- entries:end -->
-
-## Sweep additions, 26 November 2026, 10:40 UTC
-
-| Date | Data wanted | Source, use and cadence |
-|---|---|---|
-| 2026-11-26 | US real consumption, PCE inflation and revised investment detail, repeat reach. | [BEA October income/outlays](https://www.bea.gov/news/2026/personal-income-and-outlays-october-2026) and [Q3 second estimate](https://www.bea.gov/news/2026/gdp-second-estimate-and-corporate-profits-3rd-quarter-2026). Strong quarterly growth can coexist with stalled monthly real spending. Wanted monthly/quarterly, with the latest available to each weekly sweep. |
-| 2026-11-26 | Australian capex by industry and equipment/buildings. | [ABS September-quarter release](https://www.abs.gov.au/media-centre/media-releases/data-centre-investment-continues-drive-new-capital-expenditure), read through official search extracts after direct opens failed. Tests physical data-centre investment beyond US guidance. Wanted quarterly, not a weekly refetch. |
-| 2026-11-26 | Korean monetary-policy decision and outlook. | [BOK 26 November release](https://www.bok.or.kr/eng/bbs/E0000627/view.do?depth=400022&menuNo=400022&nttId=11067085&oldMenuNo=400007&programType=newsDataEng&relate=Y), official search extracts; direct opens failed. Relevant to held Korean semiconductor exposure and funding conditions. Wanted at each meeting, latest carried weekly. |
-| 2026-11-26 | IMCD price/volume split, acquisition returns and cash-flow definitions. | [Issuer nine-month release](https://ml-eu.globenewswire.com/Resource/Download/c5d61f6d-f040-4b94-ab34-86a2dc0072ba). Organic growth does not prove volume growth. Wanted at results, before extrapolation, not weekly. |
-| 2026-11-26 | IMCD independent price, EPS and historical valuation coverage. | [Yahoo IMCD.AS](https://finance.yahoo.com/quote/IMCD.AS/) search extract verified the identifier; direct open returned 429. New watchlist entry lets the existing pipeline replace provisional data. Wanted after addition and on normal refreshes; no separate feed. |
-| 2026-11-26 | US ten-year real yield and breakevens, repeat reach after both 25 November sweeps. | Not fetched. Nominal yield from `prices.json` cannot establish a real-rate explanation for simultaneous tech, gold and bitcoin weakness. FRED DFII10/T10YIE remain the proposed sources, not sources consulted today. Wanted weekly; this has now recurred across three sweeps. |
-| 2026-11-26 | Cranswick project-level returns, remaining cash commitments and dated completion of the proposed new poultry site. | Examine 2026-11-26-1102. The [24 November issuer RNS](https://www.tradingview.com/news/reuters.com,2026-11-24:newsml_RSX3363Ea:0-reg-cranswick-plc-interim-results/) gives total project budgets and group returns; these do not establish unspent amounts or individual plant returns. The new site's completion date was not established. Seek issuer project updates at results and planning milestones; retain blanks rather than derive a completion date or treat total budgets as future cash outflow. |
